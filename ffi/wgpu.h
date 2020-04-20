@@ -703,7 +703,7 @@ typedef uint32_t WGPUBackendBit;
 
 typedef void (*WGPURequestAdapterCallback)(WGPUOption_AdapterId id, void *userdata);
 
-typedef void (*WGPULogCallback)(const char *msg);
+typedef void (*WGPULogCallback)(int level, const char *msg);
 
 typedef struct {
   WGPUOption_TextureViewId view_id;
@@ -992,7 +992,9 @@ void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
 
 void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
 
-void wgpu_set_log_callback(int level, WGPULogCallback callback);
+void wgpu_set_log_callback(WGPULogCallback callback);
+
+void wgpu_set_log_level(int level);
 
 WGPUSwapChainOutput wgpu_swap_chain_get_next_texture(WGPUSwapChainId swap_chain_id);
 
