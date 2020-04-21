@@ -43,14 +43,24 @@ pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id
                     .create_surface_from_nsview(ns_view, cfg!(debug_assertions)),
             }
         }
-        #[cfg(all(unix, not(target_os = "android"), not(target_os = "ios"), not(target_os = "macos")))]
+        #[cfg(all(
+            unix,
+            not(target_os = "android"),
+            not(target_os = "ios"),
+            not(target_os = "macos")
+        ))]
         Rwh::Xlib(h) => core::instance::Surface {
             vulkan: instance
                 .vulkan
                 .as_ref()
                 .map(|inst| inst.create_surface_from_xlib(h.display as _, h.window as _)),
         },
-        #[cfg(all(unix, not(target_os = "android"), not(target_os = "ios"), not(target_os = "macos")))]
+        #[cfg(all(
+            unix,
+            not(target_os = "android"),
+            not(target_os = "ios"),
+            not(target_os = "macos")
+        ))]
         Rwh::Wayland(h) => core::instance::Surface {
             vulkan: instance
                 .vulkan
@@ -85,7 +95,12 @@ pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id
         .register_identity(PhantomData, surface, &mut token)
 }
 
-#[cfg(all(unix, not(target_os = "android"), not(target_os = "ios"), not(target_os = "macos")))]
+#[cfg(all(
+    unix,
+    not(target_os = "android"),
+    not(target_os = "ios"),
+    not(target_os = "macos")
+))]
 #[no_mangle]
 pub extern "C" fn wgpu_create_surface_from_xlib(
     display: *mut *const std::ffi::c_void,
@@ -99,7 +114,12 @@ pub extern "C" fn wgpu_create_surface_from_xlib(
     }))
 }
 
-#[cfg(all(unix, not(target_os = "android"), not(target_os = "ios"), not(target_os = "macos")))]
+#[cfg(all(
+    unix,
+    not(target_os = "android"),
+    not(target_os = "ios"),
+    not(target_os = "macos")
+))]
 #[no_mangle]
 pub extern "C" fn wgpu_create_surface_from_wayland(
     surface: *mut std::ffi::c_void,
