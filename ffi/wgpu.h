@@ -127,6 +127,15 @@ typedef enum {
 } WGPULoadOp;
 
 typedef enum {
+  WGPULogLevel_Off = 0,
+  WGPULogLevel_Error = 1,
+  WGPULogLevel_Warn = 2,
+  WGPULogLevel_Info = 3,
+  WGPULogLevel_Debug = 4,
+  WGPULogLevel_Trace = 5,
+} WGPULogLevel;
+
+typedef enum {
   WGPUPowerPreference_Default = 0,
   WGPUPowerPreference_LowPower = 1,
   WGPUPowerPreference_HighPerformance = 2,
@@ -994,7 +1003,7 @@ void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
 
 void wgpu_set_log_callback(WGPULogCallback callback);
 
-void wgpu_set_log_level(int level);
+int wgpu_set_log_level(WGPULogLevel level);
 
 WGPUSwapChainOutput wgpu_swap_chain_get_next_texture(WGPUSwapChainId swap_chain_id);
 

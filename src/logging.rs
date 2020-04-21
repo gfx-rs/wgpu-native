@@ -1,7 +1,3 @@
-/* This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
 use log::{LevelFilter, Metadata, Record};
 use std::ffi::CString;
 use std::os::raw::c_char;
@@ -37,11 +33,28 @@ impl log::Log for LogProxy {
 // Store the logger instance as a mutable nullable static object
 static mut LOGGER: Option<LogProxy> = None;
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum LogLevel {
+    Off = 0,
+    Error = 1,
+    Warn = 2,
+    Info = 3,
+    Debug = 4,
+    Trace = 5,
+}
+
 // Note: this function may only be called once in the lifetime of a program.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_set_log_callback(callback: LogCallback) {
+    // Check if the logger has already been set
+    match &LOGGER {
+        Some(_) => panic!("The logger callback can only be set once."),
+        None => (),
+    }
     // Instantiate logger, store as static object, and make it THE logger.
-    let logger: LogProxy = LogProxy { callback: callback };
+    let logger: LogProxy = LogProxy { callback };
     LOGGER = Some(logger);
     log::set_logger(LOGGER.as_ref().unwrap()).unwrap();
     // The max_level is Off by default. If not set yet, set it to Warn instead.
@@ -51,14 +64,19 @@ pub unsafe extern "C" fn wgpu_set_log_callback(callback: LogCallback) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_set_log_level(level: c_int) {
+pub unsafe extern "C" fn wgpu_set_log_level(level: LogLevel) -> c_int {
+    let level_val = level as i32;
+    if level_val < LogLevel::Off as i32 || level_val > LogLevel::Trace as i32 {
+        return -1;
+    }
     let level_filter = match level {
-        0 => LevelFilter::Off,
-        1 => LevelFilter::Error,
-        2 => LevelFilter::Warn,
-        3 => LevelFilter::Info,
-        4 => LevelFilter::Debug,
-        _ => LevelFilter::Trace,
+        LogLevel::Off => LevelFilter::Off,
+        LogLevel::Error => LevelFilter::Error,
+        LogLevel::Warn => LevelFilter::Warn,
+        LogLevel::Info => LevelFilter::Info,
+        LogLevel::Debug => LevelFilter::Debug,
+        LogLevel::Trace => LevelFilter::Trace,
     };
     log::set_max_level(level_filter);
+    return 0;
 }
