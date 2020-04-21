@@ -828,6 +828,8 @@ WGPUSurfaceId wgpu_create_surface_from_metal_layer(void *layer);
 
 WGPUSurfaceId wgpu_create_surface_from_wayland(void *surface, void *display);
 
+WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
+
 WGPUSurfaceId wgpu_create_surface_from_windows_hwnd(void *_hinstance, void *hwnd);
 
 WGPUSurfaceId wgpu_create_surface_from_xlib(const void **display, unsigned long window);
