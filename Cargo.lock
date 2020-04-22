@@ -641,6 +641,7 @@ dependencies = [
  "arrayvec",
  "lazy_static",
  "libc",
+ "log",
  "objc",
  "parking_lot",
  "raw-window-handle",

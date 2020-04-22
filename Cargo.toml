@@ -33,6 +33,7 @@ git = "https://github.com/gfx-rs/wgpu"
 version = "0.5"
 
 [dependencies]
+log="0.4"
 arrayvec = "0.5"
 lazy_static = "1.1"
 parking_lot = "0.10"
