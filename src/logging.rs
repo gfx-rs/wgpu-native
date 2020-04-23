@@ -22,7 +22,7 @@ impl log::Log for LogProxy {
             unsafe {
                 callback(record.level() as c_int, msg_c.as_ptr());
             }
-            // We do not use std::mem::forget(s), so Rust will reclaim the memory
+            // We do not use std::mem::forget(msg_c), so Rust will reclaim the memory
             // once msg_c gets cleared. The callback should thus make a copy.
         }
     }
