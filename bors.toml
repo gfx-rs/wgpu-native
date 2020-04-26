@@ -1,6 +1,14 @@
 status = [
-  "continuous-integration/travis-ci/push",
-  #"continuous-integration/appveyor/branch"
+  "Android Stable",
+  "iOS Stable",
+  "MacOS Stable",
+  "MacOS Nightly",
+  "MacOS Stable (Vulkan)",
+  "Ubuntu Stable",
+  "Ubuntu Nightly",
+  "Windows Stable",
+  "Windows Nightly",
+  "Publish release artifacts"
 ]
 
 timeout_sec = 18000 # 5 hours
