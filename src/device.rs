@@ -1,98 +1,15 @@
 use crate::GLOBAL;
 
-use core::{gfx_select, hub::Token, id};
+use wgc::{device::Label, gfx_select, hub::Token, id};
 use wgt::{BackendBit, DeviceDescriptor, Limits};
 
 use std::{marker::PhantomData, slice};
-
-#[cfg(target_os = "macos")]
-use objc::{msg_send, runtime::Object, sel, sel_impl};
 
 pub type RequestAdapterCallback =
     unsafe extern "C" fn(id: Option<id::AdapterId>, userdata: *mut std::ffi::c_void);
 
 pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
-    use raw_window_handle::RawWindowHandle as Rwh;
-
-    let instance = &GLOBAL.instance;
-    let surface = match raw_handle {
-        #[cfg(target_os = "ios")]
-        Rwh::IOS(h) => core::instance::Surface {
-            #[cfg(feature = "vulkan-portability")]
-            vulkan: None,
-            metal: instance
-                .metal
-                .create_surface_from_uiview(h.ui_view, cfg!(debug_assertions)),
-        },
-        #[cfg(target_os = "macos")]
-        Rwh::MacOS(h) => {
-            let ns_view = if h.ns_view.is_null() {
-                let ns_window = h.ns_window as *mut Object;
-                unsafe { msg_send![ns_window, contentView] }
-            } else {
-                h.ns_view
-            };
-            core::instance::Surface {
-                #[cfg(feature = "vulkan-portability")]
-                vulkan: instance
-                    .vulkan
-                    .as_ref()
-                    .map(|inst| inst.create_surface_from_ns_view(ns_view)),
-                metal: instance
-                    .metal
-                    .create_surface_from_nsview(ns_view, cfg!(debug_assertions)),
-            }
-        }
-        #[cfg(all(
-            unix,
-            not(target_os = "android"),
-            not(target_os = "ios"),
-            not(target_os = "macos")
-        ))]
-        Rwh::Xlib(h) => core::instance::Surface {
-            vulkan: instance
-                .vulkan
-                .as_ref()
-                .map(|inst| inst.create_surface_from_xlib(h.display as _, h.window as _)),
-        },
-        #[cfg(all(
-            unix,
-            not(target_os = "android"),
-            not(target_os = "ios"),
-            not(target_os = "macos")
-        ))]
-        Rwh::Wayland(h) => core::instance::Surface {
-            vulkan: instance
-                .vulkan
-                .as_ref()
-                .map(|inst| inst.create_surface_from_wayland(h.display, h.surface)),
-        },
-        #[cfg(target_os = "android")]
-        Rwh::Android(h) => core::instance::Surface {
-            vulkan: instance
-                .vulkan
-                .as_ref()
-                .map(|inst| inst.create_surface_android(h.a_native_window)),
-        },
-        #[cfg(windows)]
-        Rwh::Windows(h) => core::instance::Surface {
-            vulkan: instance
-                .vulkan
-                .as_ref()
-                .map(|inst| inst.create_surface_from_hwnd(std::ptr::null_mut(), h.hwnd)),
-            dx12: instance
-                .dx12
-                .as_ref()
-                .map(|inst| inst.create_surface_from_hwnd(h.hwnd)),
-            dx11: instance.dx11.create_surface_from_hwnd(h.hwnd),
-        },
-        _ => panic!("Unsupported window handle"),
-    };
-
-    let mut token = Token::root();
-    GLOBAL
-        .surfaces
-        .register_identity(PhantomData, surface, &mut token)
+    GLOBAL.instance_create_surface(raw_handle, PhantomData)
 }
 
 #[cfg(all(
@@ -150,7 +67,7 @@ pub extern "C" fn wgpu_create_surface_from_android(
 pub extern "C" fn wgpu_create_surface_from_metal_layer(
     layer: *mut std::ffi::c_void,
 ) -> id::SurfaceId {
-    let surface = core::instance::Surface {
+    let surface = wgc::instance::Surface {
         #[cfg(feature = "vulkan-portability")]
         vulkan: None, //TODO: currently requires `NSView`
         metal: GLOBAL
@@ -180,7 +97,7 @@ pub extern "C" fn wgpu_create_surface_from_windows_hwnd(
 }
 
 pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
-    GLOBAL.enumerate_adapters(core::instance::AdapterInputs::Mask(mask, || PhantomData))
+    GLOBAL.enumerate_adapters(wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData))
 }
 
 /// # Safety
@@ -188,28 +105,38 @@ pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
 /// This function is unsafe as it calls an unsafe extern callback.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_request_adapter_async(
-    desc: Option<&core::instance::RequestAdapterOptions>,
+    desc: Option<&wgc::instance::RequestAdapterOptions>,
     mask: BackendBit,
     callback: RequestAdapterCallback,
     userdata: *mut std::ffi::c_void,
 ) {
     let id = GLOBAL.pick_adapter(
         &desc.cloned().unwrap_or_default(),
-        core::instance::AdapterInputs::Mask(mask, || PhantomData),
+        wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
     );
     callback(id, userdata);
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_adapter_request_device(
+pub unsafe extern "C" fn wgpu_adapter_request_device(
     adapter_id: id::AdapterId,
     desc: Option<&DeviceDescriptor>,
+    trace_path: *const std::os::raw::c_char,
 ) -> id::DeviceId {
     let desc = &desc.cloned().unwrap_or_default();
-    gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, desc, PhantomData))
+    let trace_cstr = if trace_path.is_null() {
+        None
+    } else {
+        Some(std::ffi::CStr::from_ptr(trace_path))
+    };
+    let trace_cow = trace_cstr.as_ref().map(|cstr| cstr.to_string_lossy());
+    let trace_path = trace_cow
+        .as_ref()
+        .map(|cow| std::path::Path::new(cow.as_ref()));
+    gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, desc, trace_path, PhantomData))
 }
 
-pub fn adapter_get_info(adapter_id: id::AdapterId) -> core::instance::AdapterInfo {
+pub fn adapter_get_info(adapter_id: id::AdapterId) -> wgc::instance::AdapterInfo {
     gfx_select!(adapter_id => GLOBAL.adapter_get_info(adapter_id))
 }
 
@@ -226,7 +153,7 @@ pub extern "C" fn wgpu_device_get_limits(_device_id: id::DeviceId, limits: &mut 
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_buffer(
     device_id: id::DeviceId,
-    desc: &wgt::BufferDescriptor,
+    desc: &wgt::BufferDescriptor<Label>,
 ) -> id::BufferId {
     gfx_select!(device_id => GLOBAL.device_create_buffer(device_id, desc, PhantomData))
 }
@@ -238,7 +165,7 @@ pub extern "C" fn wgpu_device_create_buffer(
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_device_create_buffer_mapped(
     device_id: id::DeviceId,
-    desc: &wgt::BufferDescriptor,
+    desc: &wgt::BufferDescriptor<Label>,
     mapped_ptr_out: *mut *mut u8,
 ) -> id::BufferId {
     let (id, ptr) =
@@ -255,7 +182,7 @@ pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId) {
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_texture(
     device_id: id::DeviceId,
-    desc: &wgt::TextureDescriptor,
+    desc: &wgt::TextureDescriptor<Label>,
 ) -> id::TextureId {
     gfx_select!(device_id => GLOBAL.device_create_texture(device_id, desc, PhantomData))
 }
@@ -268,7 +195,7 @@ pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId) {
 #[no_mangle]
 pub extern "C" fn wgpu_texture_create_view(
     texture_id: id::TextureId,
-    desc: Option<&wgt::TextureViewDescriptor>,
+    desc: Option<&wgt::TextureViewDescriptor<Label>>,
 ) -> id::TextureViewId {
     gfx_select!(texture_id => GLOBAL.texture_create_view(texture_id, desc, PhantomData))
 }
@@ -281,7 +208,7 @@ pub extern "C" fn wgpu_texture_view_destroy(texture_view_id: id::TextureViewId) 
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_sampler(
     device_id: id::DeviceId,
-    desc: &wgt::SamplerDescriptor,
+    desc: &wgt::SamplerDescriptor<Label>,
 ) -> id::SamplerId {
     gfx_select!(device_id => GLOBAL.device_create_sampler(device_id, desc, PhantomData))
 }
@@ -294,7 +221,7 @@ pub extern "C" fn wgpu_sampler_destroy(sampler_id: id::SamplerId) {
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_bind_group_layout(
     device_id: id::DeviceId,
-    desc: &core::binding_model::BindGroupLayoutDescriptor,
+    desc: &wgc::binding_model::BindGroupLayoutDescriptor,
 ) -> id::BindGroupLayoutId {
     gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, desc, PhantomData))
 }
@@ -302,7 +229,7 @@ pub extern "C" fn wgpu_device_create_bind_group_layout(
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_pipeline_layout(
     device_id: id::DeviceId,
-    desc: &core::binding_model::PipelineLayoutDescriptor,
+    desc: &wgc::binding_model::PipelineLayoutDescriptor,
 ) -> id::PipelineLayoutId {
     gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, desc, PhantomData))
 }
@@ -310,7 +237,7 @@ pub extern "C" fn wgpu_device_create_pipeline_layout(
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_bind_group(
     device_id: id::DeviceId,
-    desc: &core::binding_model::BindGroupDescriptor,
+    desc: &wgc::binding_model::BindGroupDescriptor,
 ) -> id::BindGroupId {
     gfx_select!(device_id => GLOBAL.device_create_bind_group(device_id, desc, PhantomData))
 }
@@ -323,7 +250,7 @@ pub extern "C" fn wgpu_bind_group_destroy(bind_group_id: id::BindGroupId) {
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_shader_module(
     device_id: id::DeviceId,
-    desc: &core::pipeline::ShaderModuleDescriptor,
+    desc: &wgc::pipeline::ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
     gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, desc, PhantomData))
 }
@@ -369,7 +296,7 @@ pub unsafe extern "C" fn wgpu_queue_submit(
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_render_pipeline(
     device_id: id::DeviceId,
-    desc: &core::pipeline::RenderPipelineDescriptor,
+    desc: &wgc::pipeline::RenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
     gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, desc, PhantomData))
 }
@@ -377,7 +304,7 @@ pub extern "C" fn wgpu_device_create_render_pipeline(
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_compute_pipeline(
     device_id: id::DeviceId,
-    desc: &core::pipeline::ComputePipelineDescriptor,
+    desc: &wgc::pipeline::ComputePipelineDescriptor,
 ) -> id::ComputePipelineId {
     gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, desc, PhantomData))
 }
@@ -406,10 +333,10 @@ pub extern "C" fn wgpu_buffer_map_read_async(
     buffer_id: id::BufferId,
     start: wgt::BufferAddress,
     size: wgt::BufferAddress,
-    callback: core::device::BufferMapReadCallback,
+    callback: wgc::device::BufferMapReadCallback,
     userdata: *mut u8,
 ) {
-    let operation = core::resource::BufferMapOperation::Read { callback, userdata };
+    let operation = wgc::resource::BufferMapOperation::Read { callback, userdata };
 
     gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
 }
@@ -419,10 +346,10 @@ pub extern "C" fn wgpu_buffer_map_write_async(
     buffer_id: id::BufferId,
     start: wgt::BufferAddress,
     size: wgt::BufferAddress,
-    callback: core::device::BufferMapWriteCallback,
+    callback: wgc::device::BufferMapWriteCallback,
     userdata: *mut u8,
 ) {
-    let operation = core::resource::BufferMapOperation::Write { callback, userdata };
+    let operation = wgc::resource::BufferMapOperation::Write { callback, userdata };
 
     gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
 }
@@ -435,9 +362,9 @@ pub extern "C" fn wgpu_buffer_unmap(buffer_id: id::BufferId) {
 #[no_mangle]
 pub extern "C" fn wgpu_swap_chain_get_next_texture(
     swap_chain_id: id::SwapChainId,
-) -> core::swap_chain::SwapChainOutput {
+) -> wgc::swap_chain::SwapChainOutput {
     gfx_select!(swap_chain_id => GLOBAL.swap_chain_get_next_texture(swap_chain_id, PhantomData))
-        .unwrap_or(core::swap_chain::SwapChainOutput { view_id: None })
+        .unwrap_or(wgc::swap_chain::SwapChainOutput { view_id: None })
 }
 
 #[no_mangle]
