@@ -813,8 +813,6 @@ void wgpu_compute_pass_dispatch_indirect(WGPURawPass *pass,
 
 void wgpu_compute_pass_end_pass(WGPUComputePassId pass_id);
 
-const uint8_t *wgpu_compute_pass_finish(WGPURawPass *pass, uintptr_t *length);
-
 void wgpu_compute_pass_insert_debug_marker(WGPURawPass *_pass, WGPURawString _label);
 
 void wgpu_compute_pass_pop_debug_group(WGPURawPass *_pass);
@@ -835,11 +833,11 @@ void wgpu_compute_pass_set_bind_group(WGPURawPass *pass,
 
 void wgpu_compute_pass_set_pipeline(WGPURawPass *pass, WGPUComputePipelineId pipeline_id);
 
+WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
+
 WGPUSurfaceId wgpu_create_surface_from_metal_layer(void *layer);
 
 WGPUSurfaceId wgpu_create_surface_from_wayland(void *surface, void *display);
-
-WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
 
 WGPUSurfaceId wgpu_create_surface_from_windows_hwnd(void *_hinstance, void *hwnd);
 
@@ -939,8 +937,6 @@ void wgpu_render_pass_end_pass(WGPURenderPassId pass_id);
 void wgpu_render_pass_execute_bundles(WGPURawPass *_pass,
                                       const WGPURenderBundleId *_bundles,
                                       uintptr_t _bundles_length);
-
-const uint8_t *wgpu_render_pass_finish(WGPURawPass *pass, uintptr_t *length);
 
 void wgpu_render_pass_insert_debug_marker(WGPURawPass *_pass, WGPURawString _label);
 
