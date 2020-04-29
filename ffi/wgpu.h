@@ -289,6 +289,16 @@ typedef enum {
   WGPUVertexFormat_Int4 = 29,
 } WGPUVertexFormat;
 
+/**
+ * The internal enum mirrored from `BufferUsage`. The values don't have to match!
+ */
+typedef struct WGPUBufferUse WGPUBufferUse;
+
+/**
+ * The internal enum mirrored from `TextureUsage`. The values don't have to match!
+ */
+typedef struct WGPUTextureUse WGPUTextureUse;
+
 typedef WGPUNonZeroU64 WGPUId_Adapter_Dummy;
 
 typedef WGPUId_Adapter_Dummy WGPUAdapterId;
@@ -521,8 +531,6 @@ typedef uint32_t WGPUBufferUsage;
 #define WGPUBufferUsage_UNIFORM 64
 #define WGPUBufferUsage_STORAGE 128
 #define WGPUBufferUsage_INDIRECT 256
-#define WGPUBufferUsage_STORAGE_READ 512
-#define WGPUBufferUsage_NONE 0
 
 typedef struct {
   const char *label;
@@ -674,8 +682,6 @@ typedef uint32_t WGPUTextureUsage;
 #define WGPUTextureUsage_SAMPLED 4
 #define WGPUTextureUsage_STORAGE 8
 #define WGPUTextureUsage_OUTPUT_ATTACHMENT 16
-#define WGPUTextureUsage_NONE 0
-#define WGPUTextureUsage_UNINITIALIZED 65535
 
 typedef struct {
   WGPUTextureUsage usage;
@@ -727,6 +733,34 @@ typedef struct {
   uint32_t base_array_layer;
   uint32_t array_layer_count;
 } WGPUTextureViewDescriptor;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
 
@@ -835,11 +869,11 @@ void wgpu_compute_pass_set_bind_group(WGPURawPass *pass,
 
 void wgpu_compute_pass_set_pipeline(WGPURawPass *pass, WGPUComputePipelineId pipeline_id);
 
+WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
+
 WGPUSurfaceId wgpu_create_surface_from_metal_layer(void *layer);
 
 WGPUSurfaceId wgpu_create_surface_from_wayland(void *surface, void *display);
-
-WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
 
 WGPUSurfaceId wgpu_create_surface_from_windows_hwnd(void *_hinstance, void *hwnd);
 
