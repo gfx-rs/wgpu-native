@@ -411,7 +411,7 @@ pub extern "C" fn wgpu_buffer_map_read_async(
 ) {
     let operation = core::resource::BufferMapOperation::Read { callback, userdata };
 
-    gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, wgt::BufferUsage::MAP_READ, start .. start + size, operation))
+    gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
 }
 
 #[no_mangle]
@@ -424,7 +424,7 @@ pub extern "C" fn wgpu_buffer_map_write_async(
 ) {
     let operation = core::resource::BufferMapOperation::Write { callback, userdata };
 
-    gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, wgt::BufferUsage::MAP_WRITE, start .. start + size, operation))
+    gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
 }
 
 #[no_mangle]

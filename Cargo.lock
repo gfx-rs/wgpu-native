@@ -612,7 +612,7 @@ checksum = "daf76fe7d25ac79748a37538b7daeed1c7a6867c92d3245c12c6222e4a20d639"
 [[package]]
 name = "wgpu-core"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu#6b0751f1f859e08b2e76a22580a73c9f3e920d2d"
+source = "git+https://github.com/gfx-rs/wgpu#d45323505c63dc9b5b61c720948f4b20fb0e8a66"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -652,7 +652,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/wgpu#6b0751f1f859e08b2e76a22580a73c9f3e920d2d"
+source = "git+https://github.com/gfx-rs/wgpu#d45323505c63dc9b5b61c720948f4b20fb0e8a66"
 dependencies = [
  "bitflags",
  "peek-poke",
