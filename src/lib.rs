@@ -15,10 +15,9 @@ lazy_static::lazy_static! {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_get_version() -> *const std::os::raw::c_char {
-    let version = env!("CARGO_PKG_VERSION");
-    let version_c = std::ffi::CString::new(version).unwrap();
-    let version_p = version_c.as_ptr();
-    std::mem::forget(version_c); // see https://thefullsnack.com/en/string-ffi-rust.html
-    return version_p;
+pub unsafe extern "C" fn wgpu_get_version() -> std::os::raw::c_uint {
+    let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap();
+    let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse().unwrap();
+    let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse().unwrap();
+    return (major << 16) + (minor << 8) + patch;
 }

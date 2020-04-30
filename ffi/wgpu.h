@@ -928,7 +928,7 @@ void wgpu_device_get_limits(WGPUDeviceId _device_id, WGPULimits *limits);
 
 void wgpu_device_poll(WGPUDeviceId device_id, bool force_wait);
 
-const char *wgpu_get_version(void);
+unsigned int wgpu_get_version(void);
 
 /**
  * # Safety
