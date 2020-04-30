@@ -1,0 +1,168 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches-ignore: [ staging.tmp ]
+  pull_request:
+    branches-ignore: [ staging.tmp ]
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [
+          MacOS Stable,
+          MacOS Nightly,
+          Ubuntu Stable,
+          Ubuntu Nightly,
+          Windows Stable,
+          Windows Nightly
+        ]
+        include:
+          - os: macos-10.15
+            name: MacOS Stable
+            channel: stable
+            build_command: cargo clippy
+            make_command: make package
+          - os: macos-10.15
+            name: MacOS Nightly
+            channel: nightly
+            build_command: cargo check
+            install_deps_command: brew install cmake glfw3
+            make_command: make VERBOSE=1
+          - os: ubuntu-18.04
+            name: Ubuntu Stable
+            channel: stable
+            build_command: cargo clippy
+            make_command: make package
+          - os: ubuntu-18.04
+            name: Ubuntu Nightly
+            channel: nightly
+            build_command: cargo check
+            install_deps_command: |
+                                sudo apt install -f -y cmake
+                                GLFW_DIR="$GITHUB_WORKSPACE/libglfw3"
+                                mkdir $GLFW_DIR
+                                curl -o $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3-dev_3.3.2-1_amd64.deb
+                                curl -o $GLFW_DIR/libglfw3_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3_3.3.2-1_amd64.deb
+                                sudo apt install -f -y $GLFW_DIR/libglfw3_3.3.2-1_amd64.deb
+                                sudo apt install -f -y $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb
+                                rm -rf $GLFW_DIR
+            make_command: make VERBOSE=1
+          - os: windows-2019
+            name: Windows Stable
+            channel: stable
+            build_command: rustup default stable-msvc; cargo clippy
+            make_command: make package
+          - os: windows-2019
+            name: Windows Nightly
+            channel: nightly
+            build_command: rustup default nightly-msvc; cargo check
+            install_deps_command: |
+                                # choco exit with code 1 after successful install ¯\_(ツ)_/¯
+                                choco install -y --force cmake make | exit 0
+                                curl -sL -o glfw.zip https://github.com/glfw/glfw/archive/3.3.zip
+                                unzip -qq glfw.zip -d $GITHUB_WORKSPACE
+                                cd $GITHUB_WORKSPACE/glfw-3.3/
+                                export GLFW3_INCLUDE_DIR=`pwd`/include
+                                export GLFW3_INSTALL_DIR=`pwd`/install
+                                cmake . -DCMAKE_INSTALL_PREFIX=$GLFW3_INSTALL_DIR -DCMAKE_GENERATOR_PLATFORM=x64
+                                cmake --build . --target install
+            make_command: CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/glfw-3.3/install make VERBOSE=1
+    steps:
+      - uses: actions/checkout@v2
+      - if: matrix.channel == 'nightly'
+        name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+      - if: contains(matrix.build_command, 'clippy')
+        run: rustup component add clippy
+      - name: Install dependencies
+        run: ${{ matrix.install_deps_command }}
+        shell: bash
+      - name: cargo test
+        run: cargo test
+      - if: contains(matrix.build_command, 'clippy')
+        name: cargo clippy
+        run: ${{ matrix.build_command }}
+      - if: matrix.channel == 'nightly'
+        run: cargo +nightly install cbindgen
+      - run: ${{ matrix.make_command }}
+        shell: bash
+      - if: matrix.channel == 'stable' && contains(github.ref, 'tags/v')
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifact
+          path: dist/wgpu-*.zip
+
+  publish:
+    if: contains(github.ref, 'tags/v')
+    needs: [build]
+    name: Publish release artifacts
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: artifact
+          path: $GITHUB_WORKSPACE/wgpu-release/
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          # TODO
+          body:
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset
+        # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
+        uses: csexton/release-asset-action@v2
+        with:
+          pattern: "$GITHUB_WORKSPACE/wgpu-release/*.zip"
+          release-url: ${{ steps.create_release.outputs.upload_url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  ios-build:
+    name: iOS Stable
+    runs-on: macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - run: rustup target add aarch64-apple-ios
+      - run: cargo clippy --target aarch64-apple-ios
+
+  android-build:
+    name: Android Stable
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - name: Install dependencies
+        run: |
+          curl -LO https://dl.google.com/android/repository/android-ndk-r21b-linux-x86_64.zip
+          unzip -qq android-ndk-r21b-linux-x86_64.zip -d $GITHUB_WORKSPACE
+          export NDK_HOME_BIN=$GITHUB_WORKSPACE/android-ndk-r21b/toolchains/llvm/prebuilt/linux-x86_64/bin
+          ln -s $NDK_HOME_BIN/aarch64-linux-android21-clang $NDK_HOME_BIN/aarch64-linux-android-clang
+          echo "::add-path::$NDK_HOME_BIN"
+      - run: rustup target add aarch64-linux-android
+      - run: cargo clippy --target aarch64-linux-android
+
+  macos-vulkan-portability:
+    name: MacOS Stable (Vulkan)
+    runs-on: macos-10.15
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - run: cargo clippy --features vulkan-portability
