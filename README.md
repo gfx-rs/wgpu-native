@@ -13,6 +13,10 @@ The C API header is generated at `ffi/wgpu.h` by [cbindgen](https://github.com/e
 - [porky11/wgpu](https://nest.pijul.com/porky11/wgpu) - experimental [Scopes](http://scopes.rocks) wrapper
 - [cshenton/WebGPU.jl](https://github.com/cshenton/WebGPU.jl) - experimental Julia wrapper
 
+## Pre-built binaries
+
+- [korijn/wgpu-bin](https://github.com/Korijn/wgpu-bin) - manylinux compatible wgpu-native binaries
+
 ## Usage
 
 This repository contains C-language examples that link to the native library targets and perform basic rendering and computation. Please refer to our [Getting Started](https://github.com/gfx-rs/wgpu/wiki/Getting-Started#getting-started) page at the wiki for more information.
