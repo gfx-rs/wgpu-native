@@ -15,7 +15,7 @@ The C API header is generated at `ffi/wgpu.h` by [cbindgen](https://github.com/e
 
 ## Pre-built binaries
 
-- [korijn/wgpu-bin](https://github.com/Korijn/wgpu-bin) - manylinux compatible wgpu-native binaries
+- [korijn/wgpu-bin](https://github.com/Korijn/wgpu-bin) - 32 and 64-bit wgpu-native binaries for MacOS, Windows and [Manylinux1](https://www.python.org/dev/peps/pep-0513/)
 
 ## Usage
 
