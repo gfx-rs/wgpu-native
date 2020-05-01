@@ -521,6 +521,8 @@ typedef struct {
   uintptr_t entries_length;
 } WGPUBindGroupLayoutDescriptor;
 
+typedef const char *WGPULabel;
+
 typedef uint32_t WGPUBufferUsage;
 #define WGPUBufferUsage_MAP_READ 1
 #define WGPUBufferUsage_MAP_WRITE 2
@@ -533,7 +535,7 @@ typedef uint32_t WGPUBufferUsage;
 #define WGPUBufferUsage_INDIRECT 256
 
 typedef struct {
-  const char *label;
+  WGPULabel label;
   WGPUBufferAddress size;
   WGPUBufferUsage usage;
 } WGPUBufferDescriptor;
@@ -652,6 +654,7 @@ typedef struct {
 } WGPURenderPipelineDescriptor;
 
 typedef struct {
+  WGPULabel label;
   WGPUAddressMode address_mode_u;
   WGPUAddressMode address_mode_v;
   WGPUAddressMode address_mode_w;
@@ -692,7 +695,7 @@ typedef struct {
 } WGPUSwapChainDescriptor;
 
 typedef struct {
-  const char *label;
+  WGPULabel label;
   WGPUExtent3d size;
   uint32_t mip_level_count;
   uint32_t sample_count;
@@ -725,6 +728,7 @@ typedef struct {
 } WGPUSwapChainOutput;
 
 typedef struct {
+  WGPULabel label;
   WGPUTextureFormat format;
   WGPUTextureViewDimension dimension;
   WGPUTextureAspect aspect;

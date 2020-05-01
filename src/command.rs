@@ -1,8 +1,8 @@
 use crate::GLOBAL;
 
-pub use core::command::{compute_ffi::*, render_ffi::*};
+pub use wgc::command::{compute_ffi::*, render_ffi::*};
 
-use core::{gfx_select, id};
+use wgc::{gfx_select, id};
 
 #[no_mangle]
 pub extern "C" fn wgpu_command_encoder_finish(
@@ -33,8 +33,8 @@ pub extern "C" fn wgpu_command_encoder_copy_buffer_to_buffer(
 #[no_mangle]
 pub extern "C" fn wgpu_command_encoder_copy_buffer_to_texture(
     command_encoder_id: id::CommandEncoderId,
-    source: &core::command::BufferCopyView,
-    destination: &core::command::TextureCopyView,
+    source: &wgc::command::BufferCopyView,
+    destination: &wgc::command::TextureCopyView,
     copy_size: wgt::Extent3d,
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_buffer_to_texture(
@@ -47,8 +47,8 @@ pub extern "C" fn wgpu_command_encoder_copy_buffer_to_texture(
 #[no_mangle]
 pub extern "C" fn wgpu_command_encoder_copy_texture_to_buffer(
     command_encoder_id: id::CommandEncoderId,
-    source: &core::command::TextureCopyView,
-    destination: &core::command::BufferCopyView,
+    source: &wgc::command::TextureCopyView,
+    destination: &wgc::command::BufferCopyView,
     copy_size: wgt::Extent3d,
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_buffer(
@@ -61,8 +61,8 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_buffer(
 #[no_mangle]
 pub extern "C" fn wgpu_command_encoder_copy_texture_to_texture(
     command_encoder_id: id::CommandEncoderId,
-    source: &core::command::TextureCopyView,
-    destination: &core::command::TextureCopyView,
+    source: &wgc::command::TextureCopyView,
+    destination: &wgc::command::TextureCopyView,
     copy_size: wgt::Extent3d,
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_texture(
@@ -80,9 +80,9 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_texture(
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_command_encoder_begin_render_pass(
     encoder_id: id::CommandEncoderId,
-    desc: &core::command::RenderPassDescriptor,
-) -> *mut core::command::RawPass {
-    let pass = core::command::RawPass::new_render(encoder_id, desc);
+    desc: &wgc::command::RenderPassDescriptor,
+) -> *mut wgc::command::RawPass {
+    let pass = wgc::command::RawPass::new_render(encoder_id, desc);
     Box::into_raw(Box::new(pass))
 }
 
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn wgpu_render_pass_end_pass(pass_id: id::RenderPassId) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut core::command::RawPass) {
+pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut wgc::command::RawPass) {
     let _ = Box::from_raw(pass).into_vec();
 }
 
@@ -110,9 +110,9 @@ pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut core::command::RawP
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_command_encoder_begin_compute_pass(
     encoder_id: id::CommandEncoderId,
-    _desc: Option<&core::command::ComputePassDescriptor>,
-) -> *mut core::command::RawPass {
-    let pass = core::command::RawPass::new_compute(encoder_id);
+    _desc: Option<&wgc::command::ComputePassDescriptor>,
+) -> *mut wgc::command::RawPass {
+    let pass = wgc::command::RawPass::new_compute(encoder_id);
     Box::into_raw(Box::new(pass))
 }
 
@@ -123,6 +123,6 @@ pub unsafe extern "C" fn wgpu_compute_pass_end_pass(pass_id: id::ComputePassId) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: *mut core::command::RawPass) {
+pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: *mut wgc::command::RawPass) {
     let _ = Box::from_raw(pass).into_vec();
 }

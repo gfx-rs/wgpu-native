@@ -18,17 +18,16 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [features]
 default = []
 #metal-auto-capture = ["gfx-backend-metal/auto-capture"]
-vulkan-portability = ["core/gfx-backend-vulkan"]
+vulkan-portability = ["wgc/gfx-backend-vulkan"]
 
-[dependencies.core]
+[dependencies.wgc]
 package = "wgpu-core"
-#path = "../wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
 version = "0.5"
+features = ["raw-window-handle", "trace"]
 
 [dependencies.wgt]
 package = "wgpu-types"
-#path = "../wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
 version = "0.5"
 
@@ -39,6 +38,3 @@ lazy_static = "1.1"
 parking_lot = "0.10"
 raw-window-handle = "0.3"
 libc = {version="0.2", features=[]}
-
-[target.'cfg(target_os = "macos")'.dependencies]
-objc = "0.2.7"

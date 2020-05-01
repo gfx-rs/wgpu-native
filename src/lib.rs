@@ -8,10 +8,10 @@ pub use self::command::*;
 pub use self::device::*;
 pub use self::logging::*;
 
-type Global = core::hub::Global<core::hub::IdentityManagerFactory>;
+type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
 lazy_static::lazy_static! {
-    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", core::hub::IdentityManagerFactory));
+    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory));
 }
 
 #[no_mangle]

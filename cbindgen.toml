@@ -20,6 +20,12 @@ language = "C"
 prefix = "WGPU"
 exclude = ["Option_AdapterId", "Option_SurfaceId", "Option_TextureViewId"]
 
+[export.rename]
+"BufferDescriptor_Label" = "BufferDescriptor"
+"TextureDescriptor_Label" = "TextureDescriptor"
+"TextureViewDescriptor_Label" = "TextureViewDescriptor"
+"SamplerDescriptor_Label" = "SamplerDescriptor"
+
 [parse]
 parse_deps = true
 include = ["wgpu-core", "wgpu-types"]
