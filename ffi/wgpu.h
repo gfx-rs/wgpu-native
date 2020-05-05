@@ -769,7 +769,8 @@ typedef struct {
 void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
 
 WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
-                                         const WGPUDeviceDescriptor *desc);
+                                         const WGPUDeviceDescriptor *desc,
+                                         const char *trace_path);
 
 void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
 
