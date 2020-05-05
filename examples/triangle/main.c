@@ -107,7 +107,8 @@ int main() {
                 {
                     .max_bind_groups = 1,
                 },
-        });
+        },
+        NULL);
 
     WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,
         &(WGPUShaderModuleDescriptor){

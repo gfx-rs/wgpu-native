@@ -59,7 +59,7 @@ int main(
         (void *) &adapter
     );
 
-    WGPUDeviceId device = wgpu_adapter_request_device(adapter, NULL);
+    WGPUDeviceId device = wgpu_adapter_request_device(adapter, NULL, NULL);
 
     uint8_t *staging_memory;
 
