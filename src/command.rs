@@ -99,7 +99,7 @@ pub unsafe extern "C" fn wgpu_render_pass_end_pass(pass_id: id::RenderPassId) {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut wgc::command::RawPass) {
-    let _ = Box::from_raw(pass).into_vec();
+    let _ = Box::from_raw(pass).finish_render();
 }
 
 /// # Safety
@@ -124,5 +124,5 @@ pub unsafe extern "C" fn wgpu_compute_pass_end_pass(pass_id: id::ComputePassId) 
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: *mut wgc::command::RawPass) {
-    let _ = Box::from_raw(pass).into_vec();
+    let _ = Box::from_raw(pass).finish_compute();
 }
