@@ -8,8 +8,16 @@ use std::{marker::PhantomData, slice};
 pub type RequestAdapterCallback =
     unsafe extern "C" fn(id: Option<id::AdapterId>, userdata: *mut std::ffi::c_void);
 
+// see https://github.com/rust-windowing/raw-window-handle/issues/49
+struct PseudoRwh(raw_window_handle::RawWindowHandle);
+unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
+    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+        self.0.clone()
+    }
+}
+
 pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
-    GLOBAL.instance_create_surface(raw_handle, PhantomData)
+    GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData)
 }
 
 #[cfg(all(
@@ -281,8 +289,24 @@ pub extern "C" fn wgpu_device_get_default_queue(device_id: id::DeviceId) -> id::
 
 /// # Safety
 ///
-/// This function is unsafe as there is no guarantee that the given pointer is
-/// valid for `command_buffers_length` elements.
+/// This function is unsafe as there is no guarantee that the given `data`
+/// pointer is valid for `data_length` elements.
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_queue_write_buffer(
+    queue_id: id::QueueId,
+    data: *const u8,
+    data_length: usize,
+    buffer_id: id::BufferId,
+    buffer_offset: wgt::BufferAddress,
+) {
+    let slice = slice::from_raw_parts(data, data_length);
+    gfx_select!(queue_id => GLOBAL.queue_write_buffer(queue_id, slice, buffer_id, buffer_offset))
+}
+
+/// # Safety
+///
+/// This function is unsafe as there is no guarantee that the given `command_buffers`
+/// pointer is valid for `command_buffers_length` elements.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_queue_submit(
     queue_id: id::QueueId,

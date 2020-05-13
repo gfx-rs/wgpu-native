@@ -936,12 +936,24 @@ unsigned int wgpu_get_version(void);
 /**
  * # Safety
  *
- * This function is unsafe as there is no guarantee that the given pointer is
- * valid for `command_buffers_length` elements.
+ * This function is unsafe as there is no guarantee that the given `command_buffers`
+ * pointer is valid for `command_buffers_length` elements.
  */
 void wgpu_queue_submit(WGPUQueueId queue_id,
                        const WGPUCommandBufferId *command_buffers,
                        uintptr_t command_buffers_length);
+
+/**
+ * # Safety
+ *
+ * This function is unsafe as there is no guarantee that the given `data`
+ * pointer is valid for `data_length` elements.
+ */
+void wgpu_queue_write_buffer(WGPUQueueId queue_id,
+                             const uint8_t *data,
+                             uintptr_t data_length,
+                             WGPUBufferId buffer_id,
+                             WGPUBufferAddress buffer_offset);
 
 void wgpu_render_pass_destroy(WGPURawPass *pass);
 
