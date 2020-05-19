@@ -9,20 +9,30 @@ on:
     branches-ignore: [ staging.tmp ]
 
 jobs:
-  build:
+
+  # Prepare a file containing the commit sha, to be included in the releases
+  prepare:
+    name: Prepare for builds
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Create commit-sha file
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+          echo $GITHUB_SHA > commit-sha
+    - name: Publish commit-sha
+      uses: actions/upload-artifact@v2
+      with:
+        path: commit-sha
+        name: dist
+
+  # Builds to test that the package can be build on various platforms
+  test-build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        name: [
-          MacOS Stable,
-          MacOS Nightly,
-          Ubuntu Stable,
-          Ubuntu Nightly,
-          Windows Stable,
-          Windows Nightly
-        ]
         include:
           - os: macos-10.15
             name: MacOS Stable
@@ -96,43 +106,97 @@ jobs:
         run: cargo +nightly install cbindgen
       - run: ${{ matrix.make_command }}
         shell: bash
-      - if: matrix.channel == 'stable' && contains(github.ref, 'tags/v')
-        uses: actions/upload-artifact@v2
-        with:
-          name: artifact
-          path: dist/wgpu-*.zip
 
-  publish:
-    if: contains(github.ref, 'tags/v')
-    needs: [build]
-    name: Publish release artifacts
-    runs-on: ubuntu-18.04
+  # Builds for binary releases.
+  # Also build on non-tag commits; it also functions as a test.
+  # The Linux builds are performed on a "manylinux2010" container. This container
+  # is designed such that that the resulting binary has minimal dependencies on system
+  # libraries, and thus works on as may linuxes as possible. It's a thing from the
+  # Python world, but generally useful.
+  release-build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - name: Linux-64
+            os: ubuntu-18.04
+            RUST_TOOLCHAIN: stable
+            ARCH: 64
+            OS_NAME: linux
+            IMAGE: manylinux2010_x86_64
+          - name: Linux-32
+            os: ubuntu-18.04
+            RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
+            ARCH: 32
+            OS_NAME: linux
+            IMAGE: manylinux2010_i686
+          - name: MacOS-64
+            os: macOS-10.14
+            RUST_TOOLCHAIN: stable
+            ARCH: 64
+            OS_NAME: macos
+            MACOSX_DEPLOYMENT_TARGET: '10.13'
+          - name: Windows-64
+            os: vs2017-win2016
+            RUST_TOOLCHAIN: stable-msvc
+            ARCH: 64
+            OS_NAME: windows
+          - name: Windows-32
+            os: vs2017-win2016
+            RUST_TOOLCHAIN: stable-i686-pc-windows-msvc
+            ARCH: 32
+            OS_NAME: windows
     steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: artifact
-          path: $GITHUB_WORKSPACE/wgpu-release/
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          # TODO
-          body:
-          draft: false
-          prerelease: false
-      - name: Upload Release Asset
-        id: upload-release-asset
-        # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
-        uses: csexton/release-asset-action@v2
-        with:
-          pattern: "$GITHUB_WORKSPACE/wgpu-release/*.zip"
-          release-url: ${{ steps.create_release.outputs.upload_url }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v2
+    - name: Docker build
+      if: success() && matrix.OS_NAME == 'Linux'
+      env:
+        IMAGE: ${{ matrix.IMAGE }}
+        RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
+      run: |
+          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro quay.io/pypa/$IMAGE bash -c "\
+            cp -r /tmp/src/. . && \
+            rm -rf ./dist && \
+            export PATH=/root/.cargo/bin:\$PATH && \
+            export USER=root && \
+            curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
+            rustup toolchain install --no-self-update $RUST_TOOLCHAIN && \
+            rustup default $RUST_TOOLCHAIN && \
+            yum install zip -y && \
+            make package")
+          docker start -ai $CID
+          mkdir -p dist
+          docker cp $CID:/tmp/wgpu-native/dist/. dist/.
+          docker rm $CID
+    - name: Host build
+      if: success() && matrix.OS_NAME != 'Linux'
+      env:
+        RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
+        MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
+      run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
+          export PATH=$HOME/.cargo/bin:$PATH
+          rustup toolchain install --no-self-update $RUST_TOOLCHAIN
+          rustup default $RUST_TOOLCHAIN
+          make package
+      shell: bash
+    - name: Pre-publish
+      env:
+        OS_NAME: ${{ matrix.OS_NAME }}
+        ARCH: ${{ matrix.ARCH }}
+      run: |
+          mkdir -p ./dist
+          mv dist/*debug*.zip ./dist/wgpu-$OS_NAME-$ARCH-debug.zip
+          mv dist/*release*.zip ./dist/wgpu-$OS_NAME-$ARCH-release.zip
+      shell: bash
+    - name: Publish
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # Some smaller test builds
 
   ios-build:
     name: iOS Stable
@@ -166,3 +230,33 @@ jobs:
       - uses: actions/checkout@v2
       - run: rustup component add clippy
       - run: cargo clippy --features vulkan-portability
+
+  # Create a Github release and upload the binary libs that we just built
+  publish:
+    needs: [release-build]
+    runs-on: ubuntu-18.04
+    if: success() && github.event_name == 'tag'
+    steps:
+    - uses: actions/checkout@v2
+    - name: Download assets
+      uses: actions/download-artifact@v1.0.0
+      with:
+        name: dist
+    - name: Create release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+            Autogenerated binary modules.
+        draft: false
+        prerelease: false
+    - name: Upload Release Assets
+      # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
+      uses: AButler/upload-release-assets@v2.0
+      with:
+        release-tag: ${{ github.ref }}
+        files: 'dist/*.zip;dist/commit-sha'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
