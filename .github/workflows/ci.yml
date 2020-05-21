@@ -10,22 +10,6 @@ on:
 
 jobs:
 
-  # Prepare a file containing the commit sha, to be included in the releases
-  prepare:
-    name: Prepare for builds
-    runs-on: ubuntu-18.04
-    steps:
-    - name: Create commit-sha file
-      env:
-        GITHUB_SHA: ${{ github.sha }}
-      run: |
-          echo $GITHUB_SHA > commit-sha
-    - name: Publish commit-sha
-      uses: actions/upload-artifact@v2
-      with:
-        path: commit-sha
-        name: dist
-
   # Builds to test that the package can be build on various platforms
   test-build:
     name: ${{ matrix.name }}
@@ -114,7 +98,6 @@ jobs:
   # libraries, and thus works on as many linuxes as possible. It's a thing from the
   # Python world, but generally useful.
   release-build:
-    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
