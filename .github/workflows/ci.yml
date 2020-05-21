@@ -12,7 +12,7 @@ jobs:
 
   # Builds to test that the package can be build on various platforms
   test-build:
-    name: ${{ matrix.name }}
+    name: test-build - ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -98,6 +98,7 @@ jobs:
   # libraries, and thus works on as many linuxes as possible. It's a thing from the
   # Python world, but generally useful.
   release-build:
+    name: release-build - ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -218,6 +219,7 @@ jobs:
   # There should be a release and debug build for each os (win32, win64, MacOS, Linux),
   # plus a file containing the commit sha.
   publish:
+    name: Publish Github release
     needs: [release-build]
     runs-on: ubuntu-18.04
     if: success() && github.event_name == 'tag'
