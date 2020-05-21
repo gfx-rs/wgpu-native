@@ -216,7 +216,7 @@ jobs:
       - run: cargo clippy --features vulkan-portability
 
   # Create a Github release and upload the binary libs that we just built.
-  # There should be a release and debug build for each os (win32, win64, MacOS, Linux),
+  # There should be a release and debug build for each os (win32, win64, MacOS64, Linux32, Linux64),
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
@@ -229,6 +229,11 @@ jobs:
       uses: actions/download-artifact@v1.0.0
       with:
         name: dist
+    - name: Create commit-sha file
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo $GITHUB_SHA > dist/commit-sha
     - name: Create release
       uses: actions/create-release@v1
       env:
