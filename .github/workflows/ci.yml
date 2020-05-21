@@ -116,7 +116,7 @@ jobs:
             OS_NAME: linux
             IMAGE: manylinux2010_i686
           - name: MacOS-64
-            os: macOS-10.14
+            os: macOS-10.15
             RUST_TOOLCHAIN: stable
             ARCH: 64
             OS_NAME: macos
