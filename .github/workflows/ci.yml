@@ -92,7 +92,6 @@ jobs:
         shell: bash
 
   # Builds for binary releases.
-  # Also build on non-tag commits; it also functions as a test.
   # The Linux builds are performed on a "manylinux2010" container. This container
   # is designed such that that the resulting binary has minimal dependencies on system
   # libraries, and thus works on as many linuxes as possible. It's a thing from the
