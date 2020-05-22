@@ -99,6 +99,7 @@ jobs:
   # Python world, but generally useful.
   release-build:
     name: release-build - ${{ matrix.name }}
+    if: contains(github.ref, 'tags/v')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
