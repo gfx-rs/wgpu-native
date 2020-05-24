@@ -289,16 +289,6 @@ typedef enum {
   WGPUVertexFormat_Int4 = 29,
 } WGPUVertexFormat;
 
-/**
- * The internal enum mirrored from `BufferUsage`. The values don't have to match!
- */
-typedef struct WGPUBufferUse WGPUBufferUse;
-
-/**
- * The internal enum mirrored from `TextureUsage`. The values don't have to match!
- */
-typedef struct WGPUTextureUse WGPUTextureUse;
-
 typedef WGPUNonZeroU64 WGPUId_Adapter_Dummy;
 
 typedef WGPUId_Adapter_Dummy WGPUAdapterId;
@@ -397,10 +387,14 @@ typedef struct {
 } WGPURenderPassDescriptor;
 
 typedef struct {
-  WGPUBufferId buffer;
   WGPUBufferAddress offset;
   uint32_t bytes_per_row;
   uint32_t rows_per_image;
+} WGPUTextureDataLayout;
+
+typedef struct {
+  WGPUBufferId buffer;
+  WGPUTextureDataLayout layout;
 } WGPUBufferCopyView;
 
 typedef WGPUNonZeroU64 WGPUId_Texture_Dummy;
@@ -417,7 +411,6 @@ typedef struct {
 typedef struct {
   WGPUTextureId texture;
   uint32_t mip_level;
-  uint32_t array_layer;
   WGPUOrigin3d origin;
 } WGPUTextureCopyView;
 
@@ -822,17 +815,17 @@ void wgpu_command_encoder_copy_buffer_to_buffer(WGPUCommandEncoderId command_enc
 void wgpu_command_encoder_copy_buffer_to_texture(WGPUCommandEncoderId command_encoder_id,
                                                  const WGPUBufferCopyView *source,
                                                  const WGPUTextureCopyView *destination,
-                                                 WGPUExtent3d copy_size);
+                                                 const WGPUExtent3d *copy_size);
 
 void wgpu_command_encoder_copy_texture_to_buffer(WGPUCommandEncoderId command_encoder_id,
                                                  const WGPUTextureCopyView *source,
                                                  const WGPUBufferCopyView *destination,
-                                                 WGPUExtent3d copy_size);
+                                                 const WGPUExtent3d *copy_size);
 
 void wgpu_command_encoder_copy_texture_to_texture(WGPUCommandEncoderId command_encoder_id,
                                                   const WGPUTextureCopyView *source,
                                                   const WGPUTextureCopyView *destination,
-                                                  WGPUExtent3d copy_size);
+                                                  const WGPUExtent3d *copy_size);
 
 void wgpu_command_encoder_destroy(WGPUCommandEncoderId command_encoder_id);
 
@@ -950,10 +943,23 @@ void wgpu_queue_submit(WGPUQueueId queue_id,
  * pointer is valid for `data_length` elements.
  */
 void wgpu_queue_write_buffer(WGPUQueueId queue_id,
-                             const uint8_t *data,
-                             uintptr_t data_length,
                              WGPUBufferId buffer_id,
-                             WGPUBufferAddress buffer_offset);
+                             WGPUBufferAddress buffer_offset,
+                             const uint8_t *data,
+                             uintptr_t data_length);
+
+/**
+ * # Safety
+ *
+ * This function is unsafe as there is no guarantee that the given `data`
+ * pointer is valid for `data_length` elements.
+ */
+void wgpu_queue_write_texture(WGPUQueueId queue_id,
+                              const WGPUTextureCopyView *texture,
+                              const uint8_t *data,
+                              uintptr_t data_length,
+                              const WGPUTextureDataLayout *data_layout,
+                              const WGPUExtent3d *size);
 
 void wgpu_render_pass_destroy(WGPURawPass *pass);
 
