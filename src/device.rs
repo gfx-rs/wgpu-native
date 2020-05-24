@@ -294,13 +294,30 @@ pub extern "C" fn wgpu_device_get_default_queue(device_id: id::DeviceId) -> id::
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_queue_write_buffer(
     queue_id: id::QueueId,
-    data: *const u8,
-    data_length: usize,
     buffer_id: id::BufferId,
     buffer_offset: wgt::BufferAddress,
+    data: *const u8,
+    data_length: usize,
 ) {
     let slice = slice::from_raw_parts(data, data_length);
-    gfx_select!(queue_id => GLOBAL.queue_write_buffer(queue_id, slice, buffer_id, buffer_offset))
+    gfx_select!(queue_id => GLOBAL.queue_write_buffer(queue_id, buffer_id, buffer_offset, slice))
+}
+
+/// # Safety
+///
+/// This function is unsafe as there is no guarantee that the given `data`
+/// pointer is valid for `data_length` elements.
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_queue_write_texture(
+    queue_id: id::QueueId,
+    texture: &wgc::command::TextureCopyView,
+    data: *const u8,
+    data_length: usize,
+    data_layout: &wgt::TextureDataLayout,
+    size: &wgt::Extent3d,
+) {
+    let slice = slice::from_raw_parts(data, data_length);
+    gfx_select!(queue_id => GLOBAL.queue_write_texture(queue_id, texture, slice, data_layout, size))
 }
 
 /// # Safety

@@ -35,7 +35,7 @@ pub extern "C" fn wgpu_command_encoder_copy_buffer_to_texture(
     command_encoder_id: id::CommandEncoderId,
     source: &wgc::command::BufferCopyView,
     destination: &wgc::command::TextureCopyView,
-    copy_size: wgt::Extent3d,
+    copy_size: &wgt::Extent3d,
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_buffer_to_texture(
         command_encoder_id,
@@ -49,7 +49,7 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_buffer(
     command_encoder_id: id::CommandEncoderId,
     source: &wgc::command::TextureCopyView,
     destination: &wgc::command::BufferCopyView,
-    copy_size: wgt::Extent3d,
+    copy_size: &wgt::Extent3d,
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_buffer(
         command_encoder_id,
@@ -63,7 +63,7 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_texture(
     command_encoder_id: id::CommandEncoderId,
     source: &wgc::command::TextureCopyView,
     destination: &wgc::command::TextureCopyView,
-    copy_size: wgt::Extent3d,
+    copy_size: &wgt::Extent3d,
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_texture(
         command_encoder_id,

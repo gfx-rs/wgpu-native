@@ -18,7 +18,16 @@ language = "C"
 
 [export]
 prefix = "WGPU"
-exclude = ["Option_AdapterId", "Option_SurfaceId", "Option_TextureViewId", "wgpu_render_pass_finish", "wgpu_compute_pass_finish"]
+exclude = [
+	"BufferUse",
+	"TextureUse",
+	"Option_AdapterId",
+	"Option_BufferId",
+	"Option_SurfaceId",
+	"Option_TextureViewId",
+	"wgpu_render_pass_finish",
+	"wgpu_compute_pass_finish",
+]
 
 [export.rename]
 "BufferDescriptor_Label" = "BufferDescriptor"
@@ -29,7 +38,6 @@ exclude = ["Option_AdapterId", "Option_SurfaceId", "Option_TextureViewId", "wgpu
 [parse]
 parse_deps = true
 include = ["wgpu-core", "wgpu-types"]
-
 extra_bindings = ["wgpu-core", "wgpu-types"]
 
 [fn]
@@ -45,6 +53,7 @@ derive_helper_methods = true
 bitflags = true
 
 [defines]
+#"target_os = android" = "WGPU_TARGET_ANDROID"
 #"target_os = ios" = "WGPU_TARGET_IOS"
 #"target_os = macos" = "WGPU_TARGET_MACOS"
 #"unix" = "WGPU_TARGET_FAMILY_UNIX"
