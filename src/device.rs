@@ -405,7 +405,6 @@ pub extern "C" fn wgpu_swap_chain_get_next_texture(
     swap_chain_id: id::SwapChainId,
 ) -> wgc::swap_chain::SwapChainOutput {
     gfx_select!(swap_chain_id => GLOBAL.swap_chain_get_next_texture(swap_chain_id, PhantomData))
-        .unwrap_or(wgc::swap_chain::SwapChainOutput { view_id: None })
 }
 
 #[no_mangle]

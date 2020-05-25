@@ -1,4 +1,4 @@
-/* Generated with cbindgen:0.14.1 */
+/* Generated with cbindgen:0.14.2 */
 
 /* DO NOT MODIFY THIS MANUALLY! This file was generated using cbindgen.
  * To generate this file:
@@ -187,6 +187,15 @@ typedef enum {
   WGPUStoreOp_Clear = 0,
   WGPUStoreOp_Store = 1,
 } WGPUStoreOp;
+
+typedef enum {
+  WGPUSwapChainStatus_Good,
+  WGPUSwapChainStatus_Suboptimal,
+  WGPUSwapChainStatus_Timeout,
+  WGPUSwapChainStatus_Outdated,
+  WGPUSwapChainStatus_Lost,
+  WGPUSwapChainStatus_OutOfMemory,
+} WGPUSwapChainStatus;
 
 typedef enum {
   WGPUTextureAspect_All,
@@ -717,6 +726,7 @@ typedef void (*WGPURequestAdapterCallback)(WGPUOption_AdapterId id, void *userda
 typedef void (*WGPULogCallback)(int level, const char *msg);
 
 typedef struct {
+  WGPUSwapChainStatus status;
   WGPUOption_TextureViewId view_id;
 } WGPUSwapChainOutput;
 
