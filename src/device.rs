@@ -235,11 +235,21 @@ pub extern "C" fn wgpu_device_create_bind_group_layout(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpu_bind_group_layout_destroy(bind_group_layout_id: id::BindGroupLayoutId) {
+    gfx_select!(bind_group_layout_id => GLOBAL.bind_group_layout_destroy(bind_group_layout_id))
+}
+
+#[no_mangle]
 pub extern "C" fn wgpu_device_create_pipeline_layout(
     device_id: id::DeviceId,
     desc: &wgc::binding_model::PipelineLayoutDescriptor,
 ) -> id::PipelineLayoutId {
     gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, desc, PhantomData))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_pipeline_layout_destroy(pipeline_layout_id: id::PipelineLayoutId) {
+    gfx_select!(pipeline_layout_id => GLOBAL.pipeline_layout_destroy(pipeline_layout_id))
 }
 
 #[no_mangle]
@@ -261,6 +271,11 @@ pub extern "C" fn wgpu_device_create_shader_module(
     desc: &wgc::pipeline::ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
     gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, desc, PhantomData))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_shader_module_destroy(shader_module_id: id::ShaderModuleId) {
+    gfx_select!(shader_module_id => GLOBAL.shader_module_destroy(shader_module_id))
 }
 
 #[no_mangle]
@@ -343,11 +358,21 @@ pub extern "C" fn wgpu_device_create_render_pipeline(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpu_render_pipeline_destroy(render_pipeline_id: id::RenderPipelineId) {
+    gfx_select!(render_pipeline_id => GLOBAL.render_pipeline_destroy(render_pipeline_id))
+}
+
+#[no_mangle]
 pub extern "C" fn wgpu_device_create_compute_pipeline(
     device_id: id::DeviceId,
     desc: &wgc::pipeline::ComputePipelineDescriptor,
 ) -> id::ComputePipelineId {
     gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, desc, PhantomData))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_compute_pipeline_destroy(compute_pipeline_id: id::ComputePipelineId) {
+    gfx_select!(compute_pipeline_id => GLOBAL.compute_pipeline_destroy(compute_pipeline_id))
 }
 
 #[no_mangle]

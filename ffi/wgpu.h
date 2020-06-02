@@ -323,6 +323,10 @@ typedef WGPUNonZeroU64 WGPUId_BindGroup_Dummy;
 
 typedef WGPUId_BindGroup_Dummy WGPUBindGroupId;
 
+typedef WGPUNonZeroU64 WGPUId_BindGroupLayout_Dummy;
+
+typedef WGPUId_BindGroupLayout_Dummy WGPUBindGroupLayoutId;
+
 typedef WGPUNonZeroU64 WGPUId_Buffer_Dummy;
 
 typedef WGPUId_Buffer_Dummy WGPUBufferId;
@@ -446,10 +450,6 @@ typedef WGPUId_ComputePipeline_Dummy WGPUComputePipelineId;
 typedef WGPUNonZeroU64 WGPUId_Surface;
 
 typedef WGPUId_Surface WGPUSurfaceId;
-
-typedef WGPUNonZeroU64 WGPUId_BindGroupLayout_Dummy;
-
-typedef WGPUId_BindGroupLayout_Dummy WGPUBindGroupLayoutId;
 
 typedef struct {
   WGPUBufferId buffer;
@@ -777,6 +777,8 @@ WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
 
 void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
 
+void wgpu_bind_group_layout_destroy(WGPUBindGroupLayoutId bind_group_layout_id);
+
 void wgpu_buffer_destroy(WGPUBufferId buffer_id);
 
 void wgpu_buffer_map_read_async(WGPUBufferId buffer_id,
@@ -875,6 +877,8 @@ void wgpu_compute_pass_set_bind_group(WGPURawPass *pass,
 
 void wgpu_compute_pass_set_pipeline(WGPURawPass *pass, WGPUComputePipelineId pipeline_id);
 
+void wgpu_compute_pipeline_destroy(WGPUComputePipelineId compute_pipeline_id);
+
 WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
 
 WGPUSurfaceId wgpu_create_surface_from_metal_layer(void *layer);
@@ -935,6 +939,8 @@ void wgpu_device_get_limits(WGPUDeviceId _device_id, WGPULimits *limits);
 void wgpu_device_poll(WGPUDeviceId device_id, bool force_wait);
 
 unsigned int wgpu_get_version(void);
+
+void wgpu_pipeline_layout_destroy(WGPUPipelineLayoutId pipeline_layout_id);
 
 /**
  * # Safety
@@ -1056,6 +1062,8 @@ void wgpu_render_pass_set_viewport(WGPURawPass *pass,
                                    float depth_min,
                                    float depth_max);
 
+void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
+
 /**
  * # Safety
  *
@@ -1071,6 +1079,8 @@ void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
 void wgpu_set_log_callback(WGPULogCallback callback);
 
 int wgpu_set_log_level(WGPULogLevel level);
+
+void wgpu_shader_module_destroy(WGPUShaderModuleId shader_module_id);
 
 WGPUSwapChainOutput wgpu_swap_chain_get_next_texture(WGPUSwapChainId swap_chain_id);
 
