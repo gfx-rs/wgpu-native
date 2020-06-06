@@ -93,20 +93,15 @@ int main() {
             .compatible_surface = surface,
         },
         2 | 4 | 8,
+        false,
         request_adapter_callback,
         (void *) &adapter
     );
 
     WGPUDeviceId device = wgpu_adapter_request_device(adapter,
-        &(WGPUDeviceDescriptor){
-            .extensions =
-                {
-                    .anisotropic_filtering = false,
-                },
-            .limits =
-                {
-                    .max_bind_groups = 1,
-                },
+        0,
+        &(WGPUCLimits){
+            .max_bind_groups = 1,
         },
         NULL);
 
