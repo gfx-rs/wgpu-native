@@ -18,17 +18,7 @@ void request_adapter_callback(WGPUAdapterId received, void *userdata) {
 
 void read_buffer_map(
     WGPUBufferMapAsyncStatus status,
-    const uint8_t *data,
     uint8_t *userdata) {
-    (void)userdata;
-    if (status == WGPUBufferMapAsyncStatus_Success) {
-        uint32_t *times = (uint32_t *) data;
-        printf("Times: [%d, %d, %d, %d]\n",
-            times[0],
-            times[1],
-            times[2],
-            times[3]);
-    }
 }
 
 int main(
@@ -55,24 +45,39 @@ int main(
     wgpu_request_adapter_async(
         NULL,
         2 | 4 | 8,
+        false,
         request_adapter_callback,
         (void *) &adapter
     );
 
-    WGPUDeviceId device = wgpu_adapter_request_device(adapter, NULL, NULL);
+    WGPUDeviceId device = wgpu_adapter_request_device(adapter,
+            0,
+            &(WGPUCLimits){
+                .max_bind_groups = 1
+            },
+             NULL);
 
-    uint8_t *staging_memory;
-
-    WGPUBufferId buffer = wgpu_device_create_buffer_mapped(device,
+    WGPUBufferId staging_buffer = wgpu_device_create_buffer(device,
             &(WGPUBufferDescriptor){
-                .label = "buffer",
+                .label = "",
                 .size = size,
-				.usage = WGPUBufferUsage_STORAGE | WGPUBufferUsage_MAP_READ},
-            &staging_memory);
+				.usage = WGPUBufferUsage_MAP_READ | WGPUBufferUsage_COPY_DST,
+                .mapped_at_creation = false}
+            );
 
-	memcpy((uint32_t *) staging_memory, numbers, size);
+    WGPUBufferId storage_buffer = wgpu_device_create_buffer(device,
+            &(WGPUBufferDescriptor){
+                .label = "",
+                .size = size,
+                .usage = WGPUBufferUsage_STORAGE | WGPUBufferUsage_COPY_DST | WGPUBufferUsage_COPY_SRC,
+                .mapped_at_creation = true}
+            );
 
-	wgpu_buffer_unmap(buffer);
+    uint8_t *storage_data = wgpu_buffer_get_mapped_range(storage_buffer, 0, size);
+
+	memcpy((uint32_t *) storage_data, numbers, size);
+
+	wgpu_buffer_unmap(storage_buffer);
 
     WGPUBindGroupLayoutId bind_group_layout =
         wgpu_device_create_bind_group_layout(device,
@@ -87,7 +92,7 @@ int main(
 	WGPUBindingResource resource = {
 		.tag = WGPUBindingResource_Buffer,
         .buffer = {(WGPUBufferBinding){
-            .buffer = buffer,
+            .buffer = storage_buffer,
 			.size = size,
 			.offset = 0}}};
 
@@ -111,7 +116,7 @@ int main(
 
     WGPUShaderModuleId shader_module = wgpu_device_create_shader_module(device,
         &(WGPUShaderModuleDescriptor){
-            .code = read_file("./../../data/collatz.comp.spv")});
+            .code = read_file("./../data/collatz.comp.spv")});
 
     WGPUComputePipelineId compute_pipeline =
         wgpu_device_create_compute_pipeline(device,
@@ -139,11 +144,23 @@ int main(
 
     WGPUCommandBufferId command_buffer = wgpu_command_encoder_finish(encoder, NULL);
 
+    wgpu_command_encoder_copy_buffer_to_buffer(encoder, storage_buffer, 0, staging_buffer, 0, size);
+
     wgpu_queue_submit(queue, &command_buffer, 1);
 
-    wgpu_buffer_map_read_async(buffer, 0, size, read_buffer_map, NULL);
+    wgpu_buffer_map_read_async(staging_buffer, 0, size, read_buffer_map, NULL);
 
     wgpu_device_poll(device, true);
+
+    uint32_t *times = (uint32_t *) wgpu_buffer_get_mapped_range(staging_buffer, 0, size);
+
+    printf("Times: [%d, %d, %d, %d]\n",
+        times[0],
+        times[1],
+        times[2],
+        times[3]);
+
+    wgpu_buffer_unmap(staging_buffer);
 
     return 0;
 }

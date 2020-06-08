@@ -1,6 +1,6 @@
 use crate::GLOBAL;
 
-use wgc::{device::Label, gfx_select, hub::Token, id};
+use wgc::{device::HostMap, device::Label, gfx_select, hub::Token, id};
 use wgt::{BackendBit, DeviceDescriptor, Limits};
 
 use std::{marker::PhantomData, slice};
@@ -104,8 +104,17 @@ pub extern "C" fn wgpu_create_surface_from_windows_hwnd(
     ))
 }
 
-pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
-    GLOBAL.enumerate_adapters(wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData))
+pub fn wgpu_enumerate_adapters(mask: BackendBit, allow_unsafe: bool) -> Vec<id::AdapterId> {
+    let unsafe_extensions = if allow_unsafe {
+        unsafe { wgt::UnsafeExtensions::allow() }
+    } else {
+        wgt::UnsafeExtensions::disallow()
+    };
+
+    GLOBAL.enumerate_adapters(
+        unsafe_extensions,
+        wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
+    )
 }
 
 /// # Safety
@@ -115,23 +124,43 @@ pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
 pub unsafe extern "C" fn wgpu_request_adapter_async(
     desc: Option<&wgc::instance::RequestAdapterOptions>,
     mask: BackendBit,
+    allow_unsafe: bool,
     callback: RequestAdapterCallback,
     userdata: *mut std::ffi::c_void,
 ) {
+    let unsafe_extensions = if allow_unsafe {
+        wgt::UnsafeExtensions::allow()
+    } else {
+        wgt::UnsafeExtensions::disallow()
+    };
+
     let id = GLOBAL.pick_adapter(
         &desc.cloned().unwrap_or_default(),
+        unsafe_extensions,
         wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
     );
     callback(id, userdata);
 }
 
+#[repr(C)]
+pub struct CLimits {
+    max_bind_groups: u32,
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_adapter_request_device(
     adapter_id: id::AdapterId,
-    desc: Option<&DeviceDescriptor>,
+    extensions: wgt::Extensions,
+    limits: &CLimits,
     trace_path: *const std::os::raw::c_char,
 ) -> id::DeviceId {
-    let desc = &desc.cloned().unwrap_or_default();
+    let desc = DeviceDescriptor {
+        extensions,
+        limits: Limits {
+            max_bind_groups: limits.max_bind_groups,
+            ..Limits::default()
+        },
+    };
     let trace_cstr = if trace_path.is_null() {
         None
     } else {
@@ -141,7 +170,7 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
     let trace_path = trace_cow
         .as_ref()
         .map(|cow| std::path::Path::new(cow.as_ref()));
-    gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, desc, trace_path, PhantomData))
+    gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, &desc, trace_path, PhantomData))
 }
 
 pub fn adapter_get_info(adapter_id: id::AdapterId) -> wgc::instance::AdapterInfo {
@@ -154,8 +183,10 @@ pub extern "C" fn wgpu_adapter_destroy(adapter_id: id::AdapterId) {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_get_limits(_device_id: id::DeviceId, limits: &mut Limits) {
-    *limits = Limits::default(); // TODO
+pub extern "C" fn wgpu_device_get_limits(_device_id: id::DeviceId, limits: &mut CLimits) {
+    let default_limits = Limits::default(); // TODO
+
+    limits.max_bind_groups = default_limits.max_bind_groups;
 }
 
 #[no_mangle]
@@ -164,22 +195,6 @@ pub extern "C" fn wgpu_device_create_buffer(
     desc: &wgt::BufferDescriptor<Label>,
 ) -> id::BufferId {
     gfx_select!(device_id => GLOBAL.device_create_buffer(device_id, desc, PhantomData))
-}
-
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given pointer
-/// dereferenced in this function is valid.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_buffer_mapped(
-    device_id: id::DeviceId,
-    desc: &wgt::BufferDescriptor<Label>,
-    mapped_ptr_out: *mut *mut u8,
-) -> id::BufferId {
-    let (id, ptr) =
-        gfx_select!(device_id => GLOBAL.device_create_buffer_mapped(device_id, desc, PhantomData));
-    *mapped_ptr_out = ptr;
-    id
 }
 
 #[no_mangle]
@@ -399,10 +414,14 @@ pub extern "C" fn wgpu_buffer_map_read_async(
     buffer_id: id::BufferId,
     start: wgt::BufferAddress,
     size: wgt::BufferAddress,
-    callback: wgc::device::BufferMapReadCallback,
-    userdata: *mut u8,
+    callback: wgc::resource::BufferMapCallback,
+    user_data: *mut u8,
 ) {
-    let operation = wgc::resource::BufferMapOperation::Read { callback, userdata };
+    let operation = wgc::resource::BufferMapOperation {
+        host: HostMap::Read,
+        callback,
+        user_data,
+    };
 
     gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
 }
@@ -412,10 +431,14 @@ pub extern "C" fn wgpu_buffer_map_write_async(
     buffer_id: id::BufferId,
     start: wgt::BufferAddress,
     size: wgt::BufferAddress,
-    callback: wgc::device::BufferMapWriteCallback,
-    userdata: *mut u8,
+    callback: wgc::resource::BufferMapCallback,
+    user_data: *mut u8,
 ) {
-    let operation = wgc::resource::BufferMapOperation::Write { callback, userdata };
+    let operation = wgc::resource::BufferMapOperation {
+        host: HostMap::Write,
+        callback,
+        user_data,
+    };
 
     gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
 }
@@ -435,4 +458,13 @@ pub extern "C" fn wgpu_swap_chain_get_next_texture(
 #[no_mangle]
 pub extern "C" fn wgpu_swap_chain_present(swap_chain_id: id::SwapChainId) {
     gfx_select!(swap_chain_id => GLOBAL.swap_chain_present(swap_chain_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_buffer_get_mapped_range(
+    buffer_id: id::BufferId,
+    start: wgt::BufferAddress,
+    size: wgt::BufferSize,
+) -> *mut u8 {
+    gfx_select!(buffer_id => GLOBAL.buffer_get_mapped_range(buffer_id, start, size))
 }

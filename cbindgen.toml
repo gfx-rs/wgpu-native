@@ -27,6 +27,8 @@ exclude = [
 	"Option_TextureViewId",
 	"wgpu_render_pass_finish",
 	"wgpu_compute_pass_finish",
+	"NonExhaustive",
+	"Limits"
 ]
 
 [export.rename]

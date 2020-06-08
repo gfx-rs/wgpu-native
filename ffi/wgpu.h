@@ -23,23 +23,25 @@ typedef unsigned long long WGPUOption_TextureViewId;
  */
 #define WGPUBIND_BUFFER_ALIGNMENT 256
 
+/**
+ * Buffer-Texture copies on command encoders have to have the `bytes_per_row`
+ * aligned to this number.
+ *
+ * This doesn't apply to `Queue::write_texture`.
+ */
+#define WGPUCOPY_BYTES_PER_ROW_ALIGNMENT 256
+
 #define WGPUDEFAULT_BIND_GROUPS 4
 
 #define WGPUDESIRED_NUM_FRAMES 3
 
-#define WGPUMAX_BIND_GROUPS 4
+#define WGPUMAX_ANISOTROPY 16
 
 #define WGPUMAX_COLOR_TARGETS 4
 
 #define WGPUMAX_MIP_LEVELS 16
 
 #define WGPUMAX_VERTEX_BUFFERS 16
-
-typedef enum {
-  WGPUAddressMode_ClampToEdge = 0,
-  WGPUAddressMode_Repeat = 1,
-  WGPUAddressMode_MirrorRepeat = 2,
-} WGPUAddressMode;
 
 typedef enum {
   WGPUBindingType_UniformBuffer = 0,
@@ -100,11 +102,6 @@ typedef enum {
   WGPUCullMode_Front = 1,
   WGPUCullMode_Back = 2,
 } WGPUCullMode;
-
-typedef enum {
-  WGPUFilterMode_Nearest = 0,
-  WGPUFilterMode_Linear = 1,
-} WGPUFilterMode;
 
 typedef enum {
   WGPUFrontFace_Ccw = 0,
@@ -298,6 +295,8 @@ typedef enum {
   WGPUVertexFormat_Int4 = 29,
 } WGPUVertexFormat;
 
+typedef struct WGPUSamplerDescriptor WGPUSamplerDescriptor;
+
 typedef WGPUNonZeroU64 WGPUId_Adapter_Dummy;
 
 typedef WGPUId_Adapter_Dummy WGPUAdapterId;
@@ -306,18 +305,30 @@ typedef WGPUNonZeroU64 WGPUId_Device_Dummy;
 
 typedef WGPUId_Device_Dummy WGPUDeviceId;
 
-typedef struct {
-  bool anisotropic_filtering;
-} WGPUExtensions;
+typedef uint64_t WGPUExtensions;
+/**
+ * This is a native only extension. Support is planned to be added to webgpu,
+ * but it is not yet implemented.
+ *
+ * https://github.com/gpuweb/gpuweb/issues/696
+ */
+#define WGPUExtensions_ANISOTROPIC_FILTERING 65536
+/**
+ * Extensions which are part of the upstream webgpu standard
+ */
+#define WGPUExtensions_ALL_WEBGPU 65535
+/**
+ * Extensions that require activating the unsafe extension flag
+ */
+#define WGPUExtensions_ALL_UNSAFE 18446462598732840960ULL
+/**
+ * Extensions that are only available when targeting native (not web)
+ */
+#define WGPUExtensions_ALL_NATIVE 18446744073709486080ULL
 
 typedef struct {
   uint32_t max_bind_groups;
-} WGPULimits;
-
-typedef struct {
-  WGPUExtensions extensions;
-  WGPULimits limits;
-} WGPUDeviceDescriptor;
+} WGPUCLimits;
 
 typedef WGPUNonZeroU64 WGPUId_BindGroup_Dummy;
 
@@ -333,9 +344,9 @@ typedef WGPUId_Buffer_Dummy WGPUBufferId;
 
 typedef uint64_t WGPUBufferAddress;
 
-typedef void (*WGPUBufferMapReadCallback)(WGPUBufferMapAsyncStatus status, const uint8_t *data, uint8_t *userdata);
+typedef uint64_t WGPUBufferSize;
 
-typedef void (*WGPUBufferMapWriteCallback)(WGPUBufferMapAsyncStatus status, uint8_t *data, uint8_t *userdata);
+typedef void (*WGPUBufferMapCallback)(WGPUBufferMapAsyncStatus status, uint8_t *userdata);
 
 typedef WGPUNonZeroU64 WGPUId_CommandBuffer_Dummy;
 
@@ -386,9 +397,11 @@ typedef struct {
   WGPULoadOp depth_load_op;
   WGPUStoreOp depth_store_op;
   float clear_depth;
+  bool depth_read_only;
   WGPULoadOp stencil_load_op;
   WGPUStoreOp stencil_store_op;
   uint32_t clear_stencil;
+  bool stencil_read_only;
 } WGPURenderPassDepthStencilAttachmentDescriptorBase_TextureViewId;
 
 typedef WGPURenderPassDepthStencilAttachmentDescriptorBase_TextureViewId WGPURenderPassDepthStencilAttachmentDescriptor;
@@ -454,7 +467,7 @@ typedef WGPUId_Surface WGPUSurfaceId;
 typedef struct {
   WGPUBufferId buffer;
   WGPUBufferAddress offset;
-  WGPUBufferAddress size;
+  WGPUBufferSize size;
 } WGPUBufferBinding;
 
 typedef WGPUNonZeroU64 WGPUId_Sampler_Dummy;
@@ -540,6 +553,7 @@ typedef struct {
   WGPULabel label;
   WGPUBufferAddress size;
   WGPUBufferUsage usage;
+  bool mapped_at_creation;
 } WGPUBufferDescriptor;
 
 typedef struct {
@@ -656,19 +670,6 @@ typedef struct {
 } WGPURenderPipelineDescriptor;
 
 typedef struct {
-  WGPULabel label;
-  WGPUAddressMode address_mode_u;
-  WGPUAddressMode address_mode_v;
-  WGPUAddressMode address_mode_w;
-  WGPUFilterMode mag_filter;
-  WGPUFilterMode min_filter;
-  WGPUFilterMode mipmap_filter;
-  float lod_min_clamp;
-  float lod_max_clamp;
-  WGPUCompareFunction compare;
-} WGPUSamplerDescriptor;
-
-typedef struct {
   const uint32_t *bytes;
   uintptr_t length;
 } WGPUU32Array;
@@ -769,10 +770,13 @@ typedef struct {
 
 
 
+
+
 void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
 
 WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
-                                         const WGPUDeviceDescriptor *desc,
+                                         WGPUExtensions extensions,
+                                         const WGPUCLimits *limits,
                                          const char *trace_path);
 
 void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
@@ -781,17 +785,21 @@ void wgpu_bind_group_layout_destroy(WGPUBindGroupLayoutId bind_group_layout_id);
 
 void wgpu_buffer_destroy(WGPUBufferId buffer_id);
 
+uint8_t *wgpu_buffer_get_mapped_range(WGPUBufferId buffer_id,
+                                      WGPUBufferAddress start,
+                                      WGPUBufferSize size);
+
 void wgpu_buffer_map_read_async(WGPUBufferId buffer_id,
                                 WGPUBufferAddress start,
                                 WGPUBufferAddress size,
-                                WGPUBufferMapReadCallback callback,
-                                uint8_t *userdata);
+                                WGPUBufferMapCallback callback,
+                                uint8_t *user_data);
 
 void wgpu_buffer_map_write_async(WGPUBufferId buffer_id,
                                  WGPUBufferAddress start,
                                  WGPUBufferAddress size,
-                                 WGPUBufferMapWriteCallback callback,
-                                 uint8_t *userdata);
+                                 WGPUBufferMapCallback callback,
+                                 uint8_t *user_data);
 
 void wgpu_buffer_unmap(WGPUBufferId buffer_id);
 
@@ -897,16 +905,6 @@ WGPUBindGroupLayoutId wgpu_device_create_bind_group_layout(WGPUDeviceId device_i
 
 WGPUBufferId wgpu_device_create_buffer(WGPUDeviceId device_id, const WGPUBufferDescriptor *desc);
 
-/**
- * # Safety
- *
- * This function is unsafe as there is no guarantee that the given pointer
- * dereferenced in this function is valid.
- */
-WGPUBufferId wgpu_device_create_buffer_mapped(WGPUDeviceId device_id,
-                                              const WGPUBufferDescriptor *desc,
-                                              uint8_t **mapped_ptr_out);
-
 WGPUCommandEncoderId wgpu_device_create_command_encoder(WGPUDeviceId device_id,
                                                         const WGPUCommandEncoderDescriptor *desc);
 
@@ -934,7 +932,7 @@ void wgpu_device_destroy(WGPUDeviceId device_id);
 
 WGPUQueueId wgpu_device_get_default_queue(WGPUDeviceId device_id);
 
-void wgpu_device_get_limits(WGPUDeviceId _device_id, WGPULimits *limits);
+void wgpu_device_get_limits(WGPUDeviceId _device_id, WGPUCLimits *limits);
 
 void wgpu_device_poll(WGPUDeviceId device_id, bool force_wait);
 
@@ -1036,7 +1034,7 @@ void wgpu_render_pass_set_blend_color(WGPURawPass *pass, const WGPUColor *color)
 void wgpu_render_pass_set_index_buffer(WGPURawPass *pass,
                                        WGPUBufferId buffer_id,
                                        WGPUBufferAddress offset,
-                                       WGPUBufferAddress size);
+                                       WGPUBufferSize size);
 
 void wgpu_render_pass_set_pipeline(WGPURawPass *pass, WGPURenderPipelineId pipeline_id);
 
@@ -1052,7 +1050,7 @@ void wgpu_render_pass_set_vertex_buffer(WGPURawPass *pass,
                                         uint32_t slot,
                                         WGPUBufferId buffer_id,
                                         WGPUBufferAddress offset,
-                                        WGPUBufferAddress size);
+                                        WGPUBufferSize size);
 
 void wgpu_render_pass_set_viewport(WGPURawPass *pass,
                                    float x,
@@ -1071,6 +1069,7 @@ void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
  */
 void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
                                 WGPUBackendBit mask,
+                                bool allow_unsafe,
                                 WGPURequestAdapterCallback callback,
                                 void *userdata);
 
