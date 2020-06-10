@@ -97,10 +97,10 @@ example-compute: lib-native $(FFI_DIR)/wgpu.h examples/compute/main.c
 	cd examples/compute && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-compute: example-compute
-	cd examples/compute/build && ./compute 1 2 3 4
+	cd examples/compute && build/compute 1 2 3 4
 
 example-triangle: lib-native $(FFI_DIR)/wgpu.h examples/triangle/main.c
 	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-triangle: example-triangle
-	cd examples/triangle/build && ./triangle
+	cd examples/triangle && build/triangle

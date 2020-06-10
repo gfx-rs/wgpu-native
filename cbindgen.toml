@@ -6,7 +6,10 @@ autogen_warning = """/* DO NOT MODIFY THIS MANUALLY! This file was generated usi
  */
 
 typedef unsigned long long WGPUNonZeroU64;
+typedef unsigned long WGPUOption_NonZeroU32;
 typedef unsigned long long WGPUOption_AdapterId;
+typedef unsigned long long WGPUOption_BufferId;
+typedef unsigned long long WGPUOption_SamplerId;
 typedef unsigned long long WGPUOption_SurfaceId;
 typedef unsigned long long WGPUOption_TextureViewId;
 
@@ -29,8 +32,10 @@ exclude = [
 	"TextureUse",
 	"Option_AdapterId",
 	"Option_BufferId",
+	"Option_SamplerId",
 	"Option_SurfaceId",
 	"Option_TextureViewId",
+	"Option_NonZeroU32",
 	"wgpu_render_pass_finish",
 	"wgpu_compute_pass_finish",
 	"NonExhaustive",
@@ -39,6 +44,7 @@ exclude = [
 
 [export.rename]
 "BufferDescriptor_Label" = "BufferDescriptor"
+"CommandEncoderDescriptor_Label" = "CommandEncoderDescriptor"
 "TextureDescriptor_Label" = "TextureDescriptor"
 "TextureViewDescriptor_Label" = "TextureViewDescriptor"
 "SamplerDescriptor_Label" = "SamplerDescriptor"

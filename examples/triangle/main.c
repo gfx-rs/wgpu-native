@@ -103,17 +103,18 @@ int main() {
         &(WGPUCLimits){
             .max_bind_groups = 1,
         },
+        true,
         NULL);
 
     WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,
         &(WGPUShaderModuleDescriptor){
-            .code = read_file("./../../data/triangle.vert.spv"),
+            .code = read_file("./../data/triangle.vert.spv"),
         });
 
     WGPUShaderModuleId fragment_shader =
         wgpu_device_create_shader_module(device,
             &(WGPUShaderModuleDescriptor){
-                .code = read_file("./../../data/triangle.frag.spv"),
+                .code = read_file("./../data/triangle.frag.spv"),
             });
 
     WGPUBindGroupLayoutId bind_group_layout =

@@ -1,13 +1,10 @@
-use crate::{follow_chain, ChainedStruct, SType, GLOBAL};
-
-use libc::c_char;
-use std::ptr;
+use crate::{follow_chain, ChainedStruct, OwnedLabel, SType, GLOBAL};
 
 use wgc::{device::HostMap, device::Label, gfx_select, hub::Token, id, instance::DeviceType};
 use wgt::{Backend, BackendBit, DeviceDescriptor, Limits};
 
-use std::ffi::CString;
-use std::{marker::PhantomData, slice};
+use libc::c_char;
+use std::{ffi::CString, marker::PhantomData, num::NonZeroU32, ptr, slice};
 
 pub type RequestAdapterCallback =
     unsafe extern "C" fn(id: Option<id::AdapterId>, userdata: *mut std::ffi::c_void);
@@ -18,6 +15,33 @@ unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
     fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
         self.0.clone()
     }
+}
+
+#[repr(C)]
+pub struct RenderBundleEncoderDescriptor {
+    label: Label,
+    color_formats: *const wgt::TextureFormat,
+    color_formats_length: usize,
+    depth_stencil_format: *const wgt::TextureFormat,
+    sample_count: u32,
+}
+
+#[repr(C)]
+pub struct BindGroupEntry {
+    pub binding: u32,
+    pub buffer: Option<id::BufferId>,
+    pub offset: wgt::BufferAddress,
+    pub size: wgt::BufferSize,
+    pub sampler: Option<id::SamplerId>,
+    pub texture_view: Option<id::TextureViewId>,
+}
+
+#[repr(C)]
+pub struct BindGroupDescriptor {
+    pub label: Label,
+    pub layout: id::BindGroupLayoutId,
+    pub entries: *const BindGroupEntry,
+    pub entries_length: usize,
 }
 
 pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
@@ -206,6 +230,7 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
     adapter_id: id::AdapterId,
     extensions: wgt::Extensions,
     limits: &CLimits,
+    shader_validation: bool,
     trace_path: *const std::os::raw::c_char,
 ) -> id::DeviceId {
     let desc = DeviceDescriptor {
@@ -214,6 +239,7 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
             max_bind_groups: limits.max_bind_groups,
             ..Limits::default()
         },
+        shader_validation,
     };
     let trace_cstr = if trace_path.is_null() {
         None
@@ -354,12 +380,96 @@ pub extern "C" fn wgpu_sampler_destroy(sampler_id: id::SamplerId) {
     gfx_select!(sampler_id => GLOBAL.sampler_destroy(sampler_id))
 }
 
+#[repr(u32)]
+pub enum BindingType {
+    UniformBuffer = 0,
+    StorageBuffer = 1,
+    ReadonlyStorageBuffer = 2,
+    Sampler = 3,
+    ComparisonSampler = 4,
+    SampledTexture = 5,
+    ReadonlyStorageTexture = 6,
+    WriteonlyStorageTexture = 7,
+}
+
+#[repr(C)]
+pub struct BindGroupLayoutEntry {
+    pub binding: u32,
+    pub visibility: wgt::ShaderStage,
+    pub ty: BindingType,
+    pub has_dynamic_offset: bool,
+    pub min_buffer_binding_size: wgt::BufferSize,
+    pub multisampled: bool,
+    pub view_dimension: wgt::TextureViewDimension,
+    pub texture_component_type: wgt::TextureComponentType,
+    pub storage_texture_format: wgt::TextureFormat,
+    pub count: Option<NonZeroU32>,
+}
+
+#[repr(C)]
+pub struct BindGroupLayoutDescriptor {
+    pub label: Label,
+    pub entries: *const BindGroupLayoutEntry,
+    pub entries_length: usize,
+}
+
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_bind_group_layout(
+pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
     device_id: id::DeviceId,
-    desc: &wgc::binding_model::BindGroupLayoutDescriptor,
+    desc: &BindGroupLayoutDescriptor,
 ) -> id::BindGroupLayoutId {
-    gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, desc, PhantomData))
+    let mut entries = Vec::new();
+    for entry in slice::from_raw_parts(desc.entries, desc.entries_length) {
+        let ty = match entry.ty {
+            BindingType::UniformBuffer => wgt::BindingType::UniformBuffer {
+                dynamic: entry.has_dynamic_offset,
+                //min_binding_size: entry.min_buffer_binding_size,
+            },
+            BindingType::StorageBuffer => wgt::BindingType::StorageBuffer {
+                dynamic: entry.has_dynamic_offset,
+                //min_binding_size: entry.min_buffer_binding_size,
+                readonly: false,
+            },
+            BindingType::ReadonlyStorageBuffer => wgt::BindingType::StorageBuffer {
+                dynamic: entry.has_dynamic_offset,
+                //min_binding_size: entry.min_buffer_binding_size,
+                readonly: true,
+            },
+            BindingType::Sampler => wgt::BindingType::Sampler { comparison: false },
+            BindingType::ComparisonSampler => wgt::BindingType::Sampler { comparison: true },
+            BindingType::SampledTexture => wgt::BindingType::SampledTexture {
+                dimension: entry.view_dimension,
+                component_type: entry.texture_component_type,
+                multisampled: entry.multisampled,
+            },
+            BindingType::ReadonlyStorageTexture => wgt::BindingType::StorageTexture {
+                dimension: entry.view_dimension,
+                format: entry.storage_texture_format,
+                component_type: entry.texture_component_type,
+                readonly: true,
+            },
+            BindingType::WriteonlyStorageTexture => wgt::BindingType::StorageTexture {
+                dimension: entry.view_dimension,
+                format: entry.storage_texture_format,
+                component_type: entry.texture_component_type,
+                readonly: false,
+            },
+        };
+        entries.push(wgt::BindGroupLayoutEntry {
+            binding: entry.binding,
+            visibility: entry.visibility,
+            ty,
+            count: entry.count.map(|count| count.get()),
+            ..Default::default()
+        });
+    }
+    let label = OwnedLabel::new(desc.label);
+    let desc = wgt::BindGroupLayoutDescriptor {
+        label: label.as_ref(),
+        bindings: &entries,
+    };
+    gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, &desc, PhantomData))
+        .unwrap()
 }
 
 #[no_mangle]
@@ -373,6 +483,7 @@ pub extern "C" fn wgpu_device_create_pipeline_layout(
     desc: &wgc::binding_model::PipelineLayoutDescriptor,
 ) -> id::PipelineLayoutId {
     gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, desc, PhantomData))
+        .unwrap()
 }
 
 #[no_mangle]
@@ -381,11 +492,36 @@ pub extern "C" fn wgpu_pipeline_layout_destroy(pipeline_layout_id: id::PipelineL
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_bind_group(
+pub unsafe extern "C" fn wgpu_device_create_bind_group(
     device_id: id::DeviceId,
-    desc: &wgc::binding_model::BindGroupDescriptor,
+    desc: &BindGroupDescriptor,
 ) -> id::BindGroupId {
-    gfx_select!(device_id => GLOBAL.device_create_bind_group(device_id, desc, PhantomData))
+    let entries = slice::from_raw_parts(desc.entries, desc.entries_length)
+        .iter()
+        .map(|entry| wgc::binding_model::BindGroupEntry {
+            binding: entry.binding,
+            resource: if let Some(id) = entry.buffer {
+                wgc::binding_model::BindingResource::Buffer(wgc::binding_model::BufferBinding {
+                    buffer: id,
+                    offset: entry.offset,
+                    size: entry.size,
+                })
+            } else if let Some(id) = entry.sampler {
+                wgc::binding_model::BindingResource::Sampler(id)
+            } else if let Some(id) = entry.texture_view {
+                wgc::binding_model::BindingResource::TextureView(id)
+            } else {
+                panic!("Unknown binding!");
+            },
+        })
+        .collect::<Vec<_>>();
+    let label = OwnedLabel::new(desc.label);
+    let desc = wgc::binding_model::BindGroupDescriptor {
+        label: label.as_ref(),
+        layout: desc.layout,
+        bindings: &entries,
+    };
+    gfx_select!(device_id => GLOBAL.device_create_bind_group(device_id, &desc, PhantomData))
 }
 
 #[no_mangle]
@@ -409,9 +545,11 @@ pub extern "C" fn wgpu_shader_module_destroy(shader_module_id: id::ShaderModuleI
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_command_encoder(
     device_id: id::DeviceId,
-    desc: Option<&wgt::CommandEncoderDescriptor>,
+    desc: Option<&wgt::CommandEncoderDescriptor<Label>>,
 ) -> id::CommandEncoderId {
-    let desc = &desc.cloned().unwrap_or_default();
+    let desc = &desc
+        .cloned()
+        .unwrap_or(wgt::CommandEncoderDescriptor { label: ptr::null() });
     gfx_select!(device_id => GLOBAL.device_create_command_encoder(device_id, desc, PhantomData))
 }
 
@@ -423,6 +561,48 @@ pub extern "C" fn wgpu_command_encoder_destroy(command_encoder_id: id::CommandEn
 #[no_mangle]
 pub extern "C" fn wgpu_command_buffer_destroy(command_buffer_id: id::CommandBufferId) {
     gfx_select!(command_buffer_id => GLOBAL.command_buffer_destroy(command_buffer_id))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_device_create_render_bundle_encoder(
+    device_id: id::DeviceId,
+    desc: &RenderBundleEncoderDescriptor,
+) -> id::RenderBundleEncoderId {
+    let label = OwnedLabel::new(desc.label);
+    let desc = wgt::RenderBundleEncoderDescriptor {
+        label: label.as_ref(),
+        color_formats: if desc.color_formats_length != 0 {
+            slice::from_raw_parts(desc.color_formats, desc.color_formats_length)
+        } else {
+            &[]
+        },
+        depth_stencil_format: desc.depth_stencil_format.as_ref().cloned(),
+        sample_count: desc.sample_count,
+    };
+    GLOBAL.device_create_render_bundle_encoder(device_id, &desc)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_render_bundle_encoder_destroy(
+    bundle_encoder_id: id::RenderBundleEncoderId,
+) {
+    let bundle = *Box::from_raw(bundle_encoder_id);
+    GLOBAL.render_bundle_encoder_destroy(bundle)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_render_bundle_encoder_finish(
+    bundle_encoder_id: id::RenderBundleEncoderId,
+    desc: Option<&wgt::RenderBundleDescriptor<Label>>,
+) -> id::RenderBundleId {
+    let bundle = *Box::from_raw(bundle_encoder_id);
+    let desc = desc.unwrap_or(&wgt::RenderBundleDescriptor { label: ptr::null() });
+    gfx_select!(bundle.parent() => GLOBAL.render_bundle_encoder_finish(bundle, desc, PhantomData))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_render_bundle_destroy(render_bundle_id: id::RenderBundleId) {
+    gfx_select!(render_bundle_id => GLOBAL.render_bundle_destroy(render_bundle_id))
 }
 
 #[no_mangle]
@@ -483,6 +663,7 @@ pub extern "C" fn wgpu_device_create_render_pipeline(
     desc: &wgc::pipeline::RenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
     gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, desc, PhantomData))
+        .unwrap()
 }
 
 #[no_mangle]
@@ -496,6 +677,7 @@ pub extern "C" fn wgpu_device_create_compute_pipeline(
     desc: &wgc::pipeline::ComputePipelineDescriptor,
 ) -> id::ComputePipelineId {
     gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, desc, PhantomData))
+        .unwrap()
 }
 
 #[no_mangle]
