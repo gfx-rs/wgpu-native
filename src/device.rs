@@ -1,4 +1,4 @@
-use crate::GLOBAL;
+use crate::{follow_chain, ChainedStruct, SType, GLOBAL};
 
 use wgc::{device::HostMap, device::Label, gfx_select, hub::Token, id};
 use wgt::{BackendBit, DeviceDescriptor, Limits};
@@ -147,6 +147,14 @@ pub struct CLimits {
     max_bind_groups: u32,
 }
 
+impl From<wgt::Limits> for CLimits {
+    fn from(other: Limits) -> Self {
+        Self {
+            max_bind_groups: other.max_bind_groups,
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_adapter_request_device(
     adapter_id: id::AdapterId,
@@ -173,6 +181,16 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
     gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, &desc, trace_path, PhantomData))
 }
 
+#[no_mangle]
+pub extern "C" fn wgpu_adapter_extensions(adapter_id: id::AdapterId) -> wgt::Extensions {
+    gfx_select!(adapter_id => GLOBAL.adapter_extensions(adapter_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_adapter_limits(adapter_id: id::AdapterId) -> CLimits {
+    gfx_select!(adapter_id => GLOBAL.adapter_limits(adapter_id)).into()
+}
+
 pub fn adapter_get_info(adapter_id: id::AdapterId) -> wgc::instance::AdapterInfo {
     gfx_select!(adapter_id => GLOBAL.adapter_get_info(adapter_id))
 }
@@ -183,10 +201,13 @@ pub extern "C" fn wgpu_adapter_destroy(adapter_id: id::AdapterId) {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_get_limits(_device_id: id::DeviceId, limits: &mut CLimits) {
-    let default_limits = Limits::default(); // TODO
+pub extern "C" fn wgpu_device_extensions(device_id: id::DeviceId) -> wgt::Extensions {
+    gfx_select!(device_id => GLOBAL.device_extensions(device_id))
+}
 
-    limits.max_bind_groups = default_limits.max_bind_groups;
+#[no_mangle]
+pub extern "C" fn wgpu_device_limits(device_id: id::DeviceId) -> CLimits {
+    gfx_select!(device_id => GLOBAL.device_limits(device_id)).into()
 }
 
 #[no_mangle]
@@ -228,12 +249,58 @@ pub extern "C" fn wgpu_texture_view_destroy(texture_view_id: id::TextureViewId) 
     gfx_select!(texture_view_id => GLOBAL.texture_view_destroy(texture_view_id))
 }
 
+#[repr(C)]
+pub struct AnisotropicSamplerDescriptorExt<'c> {
+    pub next_in_chain: Option<&'c ChainedStruct<'c>>,
+    pub s_type: SType,
+    pub anisotropic_clamp: u8,
+}
+
+#[repr(C)]
+pub struct SamplerDescriptor<'c> {
+    pub next_in_chain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+    pub address_mode_u: wgt::AddressMode,
+    pub address_mode_v: wgt::AddressMode,
+    pub address_mode_w: wgt::AddressMode,
+    pub mag_filter: wgt::FilterMode,
+    pub min_filter: wgt::FilterMode,
+    pub mipmap_filter: wgt::FilterMode,
+    pub lod_min_clamp: f32,
+    pub lod_max_clamp: f32,
+    pub compare: wgt::CompareFunction,
+}
+
+fn map_sampler_descriptor(
+    base: &SamplerDescriptor,
+    anisotropic: Option<&AnisotropicSamplerDescriptorExt>,
+) -> wgt::SamplerDescriptor<Label> {
+    wgt::SamplerDescriptor {
+        label: base.label,
+        address_mode_u: base.address_mode_u,
+        address_mode_v: base.address_mode_v,
+        address_mode_w: base.address_mode_w,
+        mag_filter: base.mag_filter,
+        min_filter: base.min_filter,
+        mipmap_filter: base.mipmap_filter,
+        lod_min_clamp: base.lod_min_clamp,
+        lod_max_clamp: base.lod_max_clamp,
+        compare: match base.compare {
+            wgt::CompareFunction::Undefined => None,
+            cf => Some(cf),
+        },
+        anisotropy_clamp: anisotropic.map(|a| a.anisotropic_clamp),
+        _non_exhaustive: unsafe { wgt::NonExhaustive::new() },
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_sampler(
+pub unsafe extern "C" fn wgpu_device_create_sampler(
     device_id: id::DeviceId,
-    desc: &wgt::SamplerDescriptor<Label>,
+    desc: &SamplerDescriptor,
 ) -> id::SamplerId {
-    gfx_select!(device_id => GLOBAL.device_create_sampler(device_id, desc, PhantomData))
+    let full_desc = follow_chain!(map_sampler_descriptor(desc, AnisotropicFiltering => AnisotropicSamplerDescriptorExt));
+    gfx_select!(device_id => GLOBAL.device_create_sampler(device_id, &full_desc, PhantomData))
 }
 
 #[no_mangle]

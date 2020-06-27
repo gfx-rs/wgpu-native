@@ -9,15 +9,21 @@ typedef unsigned long long WGPUNonZeroU64;
 typedef unsigned long long WGPUOption_AdapterId;
 typedef unsigned long long WGPUOption_SurfaceId;
 typedef unsigned long long WGPUOption_TextureViewId;
+
+typedef struct WGPUChainedStruct WGPUChainedStruct;
 """
 include_version = true
 braces = "SameLine"
 line_length = 100
 tab_width = 2
 language = "C"
+style = "both"
 
 [export]
 prefix = "WGPU"
+include = [
+    "AnisotropicSamplerDescriptorExt"
+]
 exclude = [
 	"BufferUse",
 	"TextureUse",
