@@ -1,8 +1,12 @@
 use crate::{follow_chain, ChainedStruct, SType, GLOBAL};
 
-use wgc::{device::HostMap, device::Label, gfx_select, hub::Token, id};
-use wgt::{BackendBit, DeviceDescriptor, Limits};
+use libc::c_char;
+use std::ptr;
 
+use wgc::{device::HostMap, device::Label, gfx_select, hub::Token, id, instance::DeviceType};
+use wgt::{Backend, BackendBit, DeviceDescriptor, Limits};
+
+use std::ffi::CString;
 use std::{marker::PhantomData, slice};
 
 pub type RequestAdapterCallback =
@@ -153,6 +157,48 @@ impl From<wgt::Limits> for CLimits {
             max_bind_groups: other.max_bind_groups,
         }
     }
+}
+
+#[repr(u8)]
+pub enum CDeviceType {
+    /// Other.
+    Other = 0,
+    /// Integrated GPU with shared CPU/GPU memory.
+    IntegratedGpu,
+    /// Discrete GPU with separate CPU/GPU memory.
+    DiscreteGpu,
+    /// Virtual / Hosted.
+    VirtualGpu,
+    /// Cpu / Software Rendering.
+    Cpu,
+}
+
+impl From<DeviceType> for CDeviceType {
+    fn from(other: DeviceType) -> Self {
+        match other {
+            DeviceType::Other => CDeviceType::Other,
+            DeviceType::IntegratedGpu => CDeviceType::IntegratedGpu,
+            DeviceType::DiscreteGpu => CDeviceType::DiscreteGpu,
+            DeviceType::VirtualGpu => CDeviceType::VirtualGpu,
+            DeviceType::Cpu => CDeviceType::Cpu,
+        }
+    }
+}
+
+#[repr(C)]
+pub struct CAdapterInfo {
+    /// Adapter name
+    pub name: *mut c_char,
+    /// Length of the adapter name
+    pub name_length: usize,
+    /// Vendor PCI id of the adapter
+    pub vendor: usize,
+    /// PCI id of the adapter
+    pub device: usize,
+    /// Type of device
+    pub device_type: CDeviceType,
+    /// Backend used for device
+    pub backend: Backend,
 }
 
 #[no_mangle]
@@ -534,4 +580,39 @@ pub extern "C" fn wgpu_buffer_get_mapped_range(
     size: wgt::BufferSize,
 ) -> *mut u8 {
     gfx_select!(buffer_id => GLOBAL.buffer_get_mapped_range(buffer_id, start, size))
+}
+
+/// Fills the given `info` struct with the adapter info.
+///
+/// # Safety
+///
+/// The field `info.name` is expected to point to a pre-allocated memory
+/// location. This function is unsafe as there is no guarantee that the
+/// pointer is valid and big enough to hold the adapter name.
+#[no_mangle]
+pub unsafe extern "C" fn wgpu_adapter_get_info(adapter_id: id::AdapterId, info: &mut CAdapterInfo) {
+    let adapter_info = gfx_select!(adapter_id => GLOBAL.adapter_get_info(adapter_id));
+    let adapter_name = CString::new(adapter_info.name).unwrap();
+
+    info.device = adapter_info.device;
+    info.vendor = adapter_info.vendor;
+    info.device_type = CDeviceType::from(adapter_info.device_type);
+    info.backend = adapter_info.backend;
+
+    let string_bytes = adapter_name.as_bytes_with_nul();
+    let cpy_length = match std::cmp::min(info.name_length, string_bytes.len()) {
+        len if len > 0 => len,
+        _ => return,
+    };
+
+    // Copies the string bytes owned into a the pre-allocated memory location
+    // pointed by `info.name`.
+    // NOTE: this is obviousy unsafe and the caller **must** ensure the
+    // memory is allocated.
+    ptr::copy(string_bytes.as_ptr(), info.name as *mut u8, cpy_length - 1);
+    // Manually appends the null terminator. Depending on user input length,
+    // we may not copy the entire string.
+    info.name
+        .offset((cpy_length - 1) as isize)
+        .write('\0' as c_char);
 }

@@ -51,6 +51,17 @@ typedef enum WGPUAddressMode {
   WGPUAddressMode_MirrorRepeat = 2,
 } WGPUAddressMode;
 
+enum WGPUBackend {
+  WGPUBackend_Empty = 0,
+  WGPUBackend_Vulkan = 1,
+  WGPUBackend_Metal = 2,
+  WGPUBackend_Dx12 = 3,
+  WGPUBackend_Dx11 = 4,
+  WGPUBackend_Gl = 5,
+  WGPUBackend_BrowserWebGpu = 6,
+};
+typedef uint8_t WGPUBackend;
+
 typedef enum WGPUBindingType {
   WGPUBindingType_UniformBuffer = 0,
   WGPUBindingType_StorageBuffer = 1,
@@ -92,6 +103,30 @@ typedef enum WGPUBufferMapAsyncStatus {
   WGPUBufferMapAsyncStatus_Unknown,
   WGPUBufferMapAsyncStatus_ContextLost,
 } WGPUBufferMapAsyncStatus;
+
+enum WGPUCDeviceType {
+  /**
+   * Other.
+   */
+  WGPUCDeviceType_Other = 0,
+  /**
+   * Integrated GPU with shared CPU/GPU memory.
+   */
+  WGPUCDeviceType_IntegratedGpu,
+  /**
+   * Discrete GPU with separate CPU/GPU memory.
+   */
+  WGPUCDeviceType_DiscreteGpu,
+  /**
+   * Virtual / Hosted.
+   */
+  WGPUCDeviceType_VirtualGpu,
+  /**
+   * Cpu / Software Rendering.
+   */
+  WGPUCDeviceType_Cpu,
+};
+typedef uint8_t WGPUCDeviceType;
 
 typedef enum WGPUCompareFunction {
   WGPUCompareFunction_Undefined = 0,
@@ -348,6 +383,33 @@ typedef uint64_t WGPUExtensions;
  * Extensions that are only available when targeting native (not web)
  */
 #define WGPUExtensions_ALL_NATIVE 18446744073709486080ULL
+
+typedef struct WGPUCAdapterInfo {
+  /**
+   * Adapter name
+   */
+  char *name;
+  /**
+   * Length of the adapter name
+   */
+  uintptr_t name_length;
+  /**
+   * Vendor PCI id of the adapter
+   */
+  uintptr_t vendor;
+  /**
+   * PCI id of the adapter
+   */
+  uintptr_t device;
+  /**
+   * Type of device
+   */
+  WGPUCDeviceType device_type;
+  /**
+   * Backend used for device
+   */
+  WGPUBackend backend;
+} WGPUCAdapterInfo;
 
 typedef struct WGPUCLimits {
   uint32_t max_bind_groups;
@@ -827,6 +889,17 @@ typedef struct WGPUAnisotropicSamplerDescriptorExt {
 void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
 
 WGPUExtensions wgpu_adapter_extensions(WGPUAdapterId adapter_id);
+
+/**
+ * Fills the given `info` struct with the adapter info.
+ *
+ * # Safety
+ *
+ * The field `info.name` is expected to point to a pre-allocated memory
+ * location. This function is unsafe as there is no guarantee that the
+ * pointer is valid and big enough to hold the adapter name.
+ */
+void wgpu_adapter_get_info(WGPUAdapterId adapter_id, WGPUCAdapterInfo *info);
 
 WGPUCLimits wgpu_adapter_limits(WGPUAdapterId adapter_id);
 
