@@ -103,6 +103,7 @@ int main() {
         &(WGPUCLimits){
             .max_bind_groups = 1,
         },
+        false,
         NULL);
 
     WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,

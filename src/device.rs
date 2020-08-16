@@ -206,6 +206,7 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
     adapter_id: id::AdapterId,
     extensions: wgt::Extensions,
     limits: &CLimits,
+    shader_validation: bool,
     trace_path: *const std::os::raw::c_char,
 ) -> id::DeviceId {
     let desc = DeviceDescriptor {
@@ -214,6 +215,7 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
             max_bind_groups: limits.max_bind_groups,
             ..Limits::default()
         },
+        shader_validation,
     };
     let trace_cstr = if trace_path.is_null() {
         None

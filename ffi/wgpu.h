@@ -1,4 +1,4 @@
-/* Generated with cbindgen:0.14.2 */
+/* Generated with cbindgen:0.14.3 */
 
 /* DO NOT MODIFY THIS MANUALLY! This file was generated using cbindgen.
  * To generate this file:
@@ -370,19 +370,19 @@ typedef uint64_t WGPUExtensions;
  *
  * https://github.com/gpuweb/gpuweb/issues/696
  */
-#define WGPUExtensions_ANISOTROPIC_FILTERING 65536
+#define WGPUExtensions_ANISOTROPIC_FILTERING (uint64_t)65536
 /**
  * Extensions which are part of the upstream webgpu standard
  */
-#define WGPUExtensions_ALL_WEBGPU 65535
+#define WGPUExtensions_ALL_WEBGPU (uint64_t)65535
 /**
  * Extensions that require activating the unsafe extension flag
  */
-#define WGPUExtensions_ALL_UNSAFE 18446462598732840960ULL
+#define WGPUExtensions_ALL_UNSAFE (uint64_t)18446462598732840960ULL
 /**
  * Extensions that are only available when targeting native (not web)
  */
-#define WGPUExtensions_ALL_NATIVE 18446744073709486080ULL
+#define WGPUExtensions_ALL_NATIVE (uint64_t)18446744073709486080ULL
 
 typedef struct WGPUCAdapterInfo {
   /**
@@ -603,10 +603,10 @@ typedef struct WGPUBindGroupDescriptor {
 } WGPUBindGroupDescriptor;
 
 typedef uint32_t WGPUShaderStage;
-#define WGPUShaderStage_NONE 0
-#define WGPUShaderStage_VERTEX 1
-#define WGPUShaderStage_FRAGMENT 2
-#define WGPUShaderStage_COMPUTE 4
+#define WGPUShaderStage_NONE (uint32_t)0
+#define WGPUShaderStage_VERTEX (uint32_t)1
+#define WGPUShaderStage_FRAGMENT (uint32_t)2
+#define WGPUShaderStage_COMPUTE (uint32_t)4
 
 typedef struct WGPUBindGroupLayoutEntry {
   uint32_t binding;
@@ -628,15 +628,15 @@ typedef struct WGPUBindGroupLayoutDescriptor {
 typedef const char *WGPULabel;
 
 typedef uint32_t WGPUBufferUsage;
-#define WGPUBufferUsage_MAP_READ 1
-#define WGPUBufferUsage_MAP_WRITE 2
-#define WGPUBufferUsage_COPY_SRC 4
-#define WGPUBufferUsage_COPY_DST 8
-#define WGPUBufferUsage_INDEX 16
-#define WGPUBufferUsage_VERTEX 32
-#define WGPUBufferUsage_UNIFORM 64
-#define WGPUBufferUsage_STORAGE 128
-#define WGPUBufferUsage_INDIRECT 256
+#define WGPUBufferUsage_MAP_READ (uint32_t)1
+#define WGPUBufferUsage_MAP_WRITE (uint32_t)2
+#define WGPUBufferUsage_COPY_SRC (uint32_t)4
+#define WGPUBufferUsage_COPY_DST (uint32_t)8
+#define WGPUBufferUsage_INDEX (uint32_t)16
+#define WGPUBufferUsage_VERTEX (uint32_t)32
+#define WGPUBufferUsage_UNIFORM (uint32_t)64
+#define WGPUBufferUsage_STORAGE (uint32_t)128
+#define WGPUBufferUsage_INDIRECT (uint32_t)256
 
 typedef struct WGPUBufferDescriptor {
   WGPULabel label;
@@ -691,12 +691,12 @@ typedef struct WGPUBlendDescriptor {
 } WGPUBlendDescriptor;
 
 typedef uint32_t WGPUColorWrite;
-#define WGPUColorWrite_RED 1
-#define WGPUColorWrite_GREEN 2
-#define WGPUColorWrite_BLUE 4
-#define WGPUColorWrite_ALPHA 8
-#define WGPUColorWrite_COLOR 7
-#define WGPUColorWrite_ALL 15
+#define WGPUColorWrite_RED (uint32_t)1
+#define WGPUColorWrite_GREEN (uint32_t)2
+#define WGPUColorWrite_BLUE (uint32_t)4
+#define WGPUColorWrite_ALPHA (uint32_t)8
+#define WGPUColorWrite_COLOR (uint32_t)7
+#define WGPUColorWrite_ALL (uint32_t)15
 
 typedef struct WGPUColorStateDescriptor {
   WGPUTextureFormat format;
@@ -791,11 +791,11 @@ typedef WGPUNonZeroU64 WGPUId_SwapChain_Dummy;
 typedef WGPUId_SwapChain_Dummy WGPUSwapChainId;
 
 typedef uint32_t WGPUTextureUsage;
-#define WGPUTextureUsage_COPY_SRC 1
-#define WGPUTextureUsage_COPY_DST 2
-#define WGPUTextureUsage_SAMPLED 4
-#define WGPUTextureUsage_STORAGE 8
-#define WGPUTextureUsage_OUTPUT_ATTACHMENT 16
+#define WGPUTextureUsage_COPY_SRC (uint32_t)1
+#define WGPUTextureUsage_COPY_DST (uint32_t)2
+#define WGPUTextureUsage_SAMPLED (uint32_t)4
+#define WGPUTextureUsage_STORAGE (uint32_t)8
+#define WGPUTextureUsage_OUTPUT_ATTACHMENT (uint32_t)16
 
 typedef struct WGPUSwapChainDescriptor {
   WGPUTextureUsage usage;
@@ -906,6 +906,7 @@ WGPUCLimits wgpu_adapter_limits(WGPUAdapterId adapter_id);
 WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
                                          WGPUExtensions extensions,
                                          const WGPUCLimits *limits,
+                                         bool shader_validation,
                                          const char *trace_path);
 
 void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);

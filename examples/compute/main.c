@@ -55,6 +55,7 @@ int main(
             &(WGPUCLimits){
                 .max_bind_groups = 1
             },
+            false,
              NULL);
 
     WGPUBufferId staging_buffer = wgpu_device_create_buffer(device,
