@@ -268,6 +268,7 @@ dependencies = [
  "raw-window-handle",
  "smallvec",
  "winapi",
+ "x11",
 ]
 
 [[package]]
@@ -471,6 +472,12 @@ dependencies = [
  "synstructure",
  "unicode-xid",
 ]
+
+[[package]]
+name = "pkg-config"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d36492546b6af1463394d46f0c834346f31548646f6ba10849802c9c9a27ac33"
 
 [[package]]
 name = "proc-macro2"
@@ -714,6 +721,7 @@ name = "wgpu-native"
 version = "0.5.0"
 dependencies = [
  "arrayvec",
+ "gfx-backend-vulkan",
  "lazy_static",
  "libc",
  "log",
@@ -762,4 +770,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d129932f4644ac2396cb456385cbf9e63b5b30c6e8dc4820bdca4eb082037a5"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "x11"
+version = "2.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ecd092546cb16f25783a5451538e73afc8d32e242648d54f4ae5459ba1e773"
+dependencies = [
+ "libc",
+ "pkg-config",
 ]
