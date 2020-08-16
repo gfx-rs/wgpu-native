@@ -359,7 +359,7 @@ pub extern "C" fn wgpu_device_create_bind_group_layout(
     device_id: id::DeviceId,
     desc: &wgc::binding_model::BindGroupLayoutDescriptor,
 ) -> id::BindGroupLayoutId {
-    gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, desc, PhantomData))
+    gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, desc, PhantomData)).expect("Creation of pipeline layout failed")
 }
 
 #[no_mangle]
@@ -372,7 +372,7 @@ pub extern "C" fn wgpu_device_create_pipeline_layout(
     device_id: id::DeviceId,
     desc: &wgc::binding_model::PipelineLayoutDescriptor,
 ) -> id::PipelineLayoutId {
-    gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, desc, PhantomData))
+    gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, desc, PhantomData)).expect("Creation of pipeline layout failed")
 }
 
 #[no_mangle]
@@ -495,7 +495,7 @@ pub extern "C" fn wgpu_device_create_compute_pipeline(
     device_id: id::DeviceId,
     desc: &wgc::pipeline::ComputePipelineDescriptor,
 ) -> id::ComputePipelineId {
-    gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, desc, PhantomData))
+    gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, desc, PhantomData)).expect("Creation of compute pipeline failed")
 }
 
 #[no_mangle]
