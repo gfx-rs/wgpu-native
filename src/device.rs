@@ -484,7 +484,7 @@ pub extern "C" fn wgpu_device_create_render_pipeline(
     device_id: id::DeviceId,
     desc: &wgc::pipeline::RenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
-    gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, desc, PhantomData))
+    gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, desc, PhantomData)).expect("Creation of render pipeline failed")
 }
 
 #[no_mangle]
