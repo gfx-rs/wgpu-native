@@ -26,6 +26,11 @@ typedef struct WGPUChainedStruct WGPUChainedStruct;
 #define WGPUBIND_BUFFER_ALIGNMENT 256
 
 /**
+ * Buffer to buffer copy offsets and sizes must be aligned to this number
+ */
+#define WGPUCOPY_BUFFER_ALIGNMENT 4
+
+/**
  * Buffer-Texture copies on command encoders have to have the `bytes_per_row`
  * aligned to this number.
  *
@@ -365,12 +370,25 @@ typedef WGPUId_Adapter_Dummy WGPUAdapterId;
 
 typedef uint64_t WGPUExtensions;
 /**
+ * Allow anisotropic filtering in samplers.
+ *
  * This is a native only extension. Support is planned to be added to webgpu,
  * but it is not yet implemented.
  *
  * https://github.com/gpuweb/gpuweb/issues/696
  */
 #define WGPUExtensions_ANISOTROPIC_FILTERING (uint64_t)65536
+/**
+ * Webgpu only allows the MAP_READ and MAP_WRITE buffer usage to be matched with
+ * COPY_DST and COPY_SRC respectively. This removes this requirement.
+ *
+ * This is only beneficial on systems that share memory between CPU and GPU. If enabled
+ * on a system that doesn't, this can severely hinder performance. Only use if you understand
+ * the consequences.
+ *
+ * This is a native only extension.
+ */
+#define WGPUExtensions_MAPPABLE_PRIMARY_BUFFERS (uint64_t)131072
 /**
  * Extensions which are part of the upstream webgpu standard
  */
