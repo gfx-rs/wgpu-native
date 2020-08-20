@@ -55,13 +55,14 @@ int main(
             &(WGPUCLimits){
                 .max_bind_groups = 1
             },
+            true,
              NULL);
 
     WGPUBufferId staging_buffer = wgpu_device_create_buffer(device,
             &(WGPUBufferDescriptor){
                 .label = "",
                 .size = size,
-				.usage = WGPUBufferUsage_MAP_READ | WGPUBufferUsage_COPY_DST,
+                .usage = WGPUBufferUsage_MAP_READ | WGPUBufferUsage_COPY_DST,
                 .mapped_at_creation = false}
             );
 
@@ -75,37 +76,32 @@ int main(
 
     uint8_t *storage_data = wgpu_buffer_get_mapped_range(storage_buffer, 0, size);
 
-	memcpy((uint32_t *) storage_data, numbers, size);
+    memcpy((uint32_t *) storage_data, numbers, size);
 
-	wgpu_buffer_unmap(storage_buffer);
+    wgpu_buffer_unmap(storage_buffer);
 
     WGPUBindGroupLayoutId bind_group_layout =
         wgpu_device_create_bind_group_layout(device,
             &(WGPUBindGroupLayoutDescriptor){
                 .label = "bind group layout",
                 .entries = &(WGPUBindGroupLayoutEntry){
-					.binding = 0,
+                    .binding = 0,
                     .visibility = WGPUShaderStage_COMPUTE,
                     .ty = WGPUBindingType_StorageBuffer},
                 .entries_length = BIND_ENTRIES_LENGTH});
-
-	WGPUBindingResource resource = {
-		.tag = WGPUBindingResource_Buffer,
-        .buffer = {(WGPUBufferBinding){
-            .buffer = storage_buffer,
-			.size = size,
-			.offset = 0}}};
 
     WGPUBindGroupId bind_group = wgpu_device_create_bind_group(device,
             &(WGPUBindGroupDescriptor){
                 .label = "bind group",
                 .layout = bind_group_layout,
                 .entries = &(WGPUBindGroupEntry){
-					.binding = 0,
-					.resource = resource},
+                    .binding = 0,
+                    .buffer = storage_buffer,
+                    .offset = 0,
+                    .size = size},
                 .entries_length = BIND_ENTRIES_LENGTH});
 
-	WGPUBindGroupLayoutId bind_group_layouts[BIND_GROUP_LAYOUTS_LENGTH] = {
+    WGPUBindGroupLayoutId bind_group_layouts[BIND_GROUP_LAYOUTS_LENGTH] = {
         bind_group_layout};
 
     WGPUPipelineLayoutId pipeline_layout =
@@ -121,10 +117,10 @@ int main(
     WGPUComputePipelineId compute_pipeline =
         wgpu_device_create_compute_pipeline(device,
             &(WGPUComputePipelineDescriptor){
-				.layout = pipeline_layout,
+                .layout = pipeline_layout,
                 .compute_stage = (WGPUProgrammableStageDescriptor){
                     .module = shader_module,
-					.entry_point = "main"
+                    .entry_point = "main"
                 }});
 
     WGPUCommandEncoderId encoder = wgpu_device_create_command_encoder(

@@ -10,6 +10,24 @@ pub use self::logging::*;
 
 type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
+struct OwnedLabel(Option<String>);
+impl OwnedLabel {
+    fn new(label: wgc::device::Label) -> Self {
+        OwnedLabel(if label.is_null() {
+            None
+        } else {
+            Some(
+                unsafe { std::ffi::CStr::from_ptr(label) }
+                    .to_string_lossy()
+                    .to_string(),
+            )
+        })
+    }
+    fn as_ref(&self) -> Option<&str> {
+        self.0.as_ref().map(|s| s.as_str())
+    }
+}
+
 lazy_static::lazy_static! {
     static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory));
 }

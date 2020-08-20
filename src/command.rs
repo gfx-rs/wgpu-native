@@ -1,6 +1,6 @@
 use crate::GLOBAL;
 
-pub use wgc::command::{compute_ffi::*, render_ffi::*};
+pub use wgc::command::{bundle_ffi::*, compute_ffi::*, render_ffi::*};
 
 use wgc::{gfx_select, id};
 
@@ -81,7 +81,7 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_texture(
 pub unsafe extern "C" fn wgpu_command_encoder_begin_render_pass(
     encoder_id: id::CommandEncoderId,
     desc: &wgc::command::RenderPassDescriptor,
-) -> *mut wgc::command::RawPass {
+) -> id::RenderPassId {
     let pass = wgc::command::RawPass::new_render(encoder_id, desc);
     Box::into_raw(Box::new(pass))
 }
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn wgpu_render_pass_end_pass(pass_id: id::RenderPassId) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut wgc::command::RawPass) {
+pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: id::RenderPassId) {
     let _ = Box::from_raw(pass).finish_render();
 }
 
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut wgc::command::RawPa
 pub unsafe extern "C" fn wgpu_command_encoder_begin_compute_pass(
     encoder_id: id::CommandEncoderId,
     _desc: Option<&wgc::command::ComputePassDescriptor>,
-) -> *mut wgc::command::RawPass {
+) -> id::ComputePassId {
     let pass = wgc::command::RawPass::new_compute(encoder_id);
     Box::into_raw(Box::new(pass))
 }
@@ -123,6 +123,6 @@ pub unsafe extern "C" fn wgpu_compute_pass_end_pass(pass_id: id::ComputePassId) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: *mut wgc::command::RawPass) {
+pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: id::ComputePassId) {
     let _ = Box::from_raw(pass).finish_compute();
 }
