@@ -110,9 +110,9 @@ int main(
                     .bind_group_layouts = bind_group_layouts,
                     .bind_group_layouts_length = BIND_GROUP_LAYOUTS_LENGTH});
 
-    WGPUShaderModuleId shader_module = wgpu_device_create_shader_module(device,
-        &(WGPUShaderModuleDescriptor){
-            .code = read_file("./../data/collatz.comp.spv")});
+    WGPUShaderModuleId shader_module = wgpu_device_create_shader_module(
+        device,
+        read_file("./../data/collatz.comp.spv"));
 
     WGPUComputePipelineId compute_pipeline =
         wgpu_device_create_compute_pipeline(device,
@@ -128,7 +128,7 @@ int main(
             .label = "command encoder",
         });
 
-    WGPUComputePassId command_pass =
+    WGPUComputePass* command_pass =
         wgpu_command_encoder_begin_compute_pass(encoder, NULL);
     wgpu_compute_pass_set_pipeline(command_pass, compute_pipeline);
 

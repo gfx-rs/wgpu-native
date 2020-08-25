@@ -107,15 +107,10 @@ int main() {
         NULL);
 
     WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,
-        &(WGPUShaderModuleDescriptor){
-            .code = read_file("./../data/triangle.vert.spv"),
-        });
+            read_file("./../data/triangle.vert.spv"));
 
-    WGPUShaderModuleId fragment_shader =
-        wgpu_device_create_shader_module(device,
-            &(WGPUShaderModuleDescriptor){
-                .code = read_file("./../data/triangle.frag.spv"),
-            });
+    WGPUShaderModuleId fragment_shader = wgpu_device_create_shader_module(device,
+            read_file("./../data/triangle.frag.spv"));
 
     WGPUBindGroupLayoutId bind_group_layout =
         wgpu_device_create_bind_group_layout(device,
@@ -239,13 +234,17 @@ int main() {
             color_attachments[ATTACHMENTS_LENGTH] = {
                 {
                     .attachment = next_texture.view_id,
-                    .load_op = WGPULoadOp_Clear,
-                    .store_op = WGPUStoreOp_Store,
-                    .clear_color = WGPUColor_GREEN,
+                    .resolve_target = 0,
+                    .channel = {
+                        .load_op = WGPULoadOp_Clear,
+                        .store_op = WGPUStoreOp_Store,
+                        .clear_value = WGPUColor_GREEN,
+                        .read_only = false,
+                    } 
                 },
             };
 
-        WGPURenderPassId rpass =
+        WGPURenderPass* rpass =
             wgpu_command_encoder_begin_render_pass(cmd_encoder,
                 &(WGPURenderPassDescriptor){
                     .color_attachments = color_attachments,
