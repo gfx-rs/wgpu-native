@@ -1,10 +1,18 @@
 use crate::{follow_chain, ChainedStruct, OwnedLabel, SType, GLOBAL};
 
-use wgc::{device::HostMap, device::Label, gfx_select, hub::Token, id, instance::DeviceType};
+use wgc::{
+    device::HostMap, device::Label, gfx_select, hub::Token, id, instance::DeviceType,
+    pipeline::ShaderModuleSource,
+};
 use wgt::{Backend, BackendBit, DeviceDescriptor, Limits};
 
 use libc::c_char;
-use std::{ffi::CString, marker::PhantomData, num::NonZeroU32, ptr, slice};
+use std::{
+    ffi::CString,
+    marker::PhantomData,
+    num::{NonZeroU32, NonZeroU64},
+    ptr, slice,
+};
 
 pub type RequestAdapterCallback =
     unsafe extern "C" fn(id: Option<id::AdapterId>, userdata: *mut std::ffi::c_void);
@@ -109,7 +117,8 @@ pub extern "C" fn wgpu_create_surface_from_metal_layer(
         metal: GLOBAL
             .instance
             .metal
-            .create_surface_from_layer(layer as *mut _, cfg!(debug_assertions)),
+            .as_ref()
+            .map(|m| m.create_surface_from_layer(layer as *mut _, cfg!(debug_assertions))),
     };
 
     GLOBAL
@@ -132,15 +141,15 @@ pub extern "C" fn wgpu_create_surface_from_windows_hwnd(
     ))
 }
 
-pub fn wgpu_enumerate_adapters(mask: BackendBit, allow_unsafe: bool) -> Vec<id::AdapterId> {
-    let unsafe_extensions = if allow_unsafe {
-        unsafe { wgt::UnsafeExtensions::allow() }
+pub fn wgpu_enumerate_adapters(allow_unsafe: bool, mask: BackendBit) -> Vec<id::AdapterId> {
+    let unsafe_features = if allow_unsafe {
+        unsafe { wgt::UnsafeFeatures::allow() }
     } else {
-        wgt::UnsafeExtensions::disallow()
+        wgt::UnsafeFeatures::disallow()
     };
 
     GLOBAL.enumerate_adapters(
-        unsafe_extensions,
+        unsafe_features,
         wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
     )
 }
@@ -156,15 +165,15 @@ pub unsafe extern "C" fn wgpu_request_adapter_async(
     callback: RequestAdapterCallback,
     userdata: *mut std::ffi::c_void,
 ) {
-    let unsafe_extensions = if allow_unsafe {
-        wgt::UnsafeExtensions::allow()
+    let unsafe_features = if allow_unsafe {
+        wgt::UnsafeFeatures::allow()
     } else {
-        wgt::UnsafeExtensions::disallow()
+        wgt::UnsafeFeatures::disallow()
     };
 
     let id = GLOBAL.pick_adapter(
         &desc.cloned().unwrap_or_default(),
-        unsafe_extensions,
+        unsafe_features,
         wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
     );
     callback(id, userdata);
@@ -228,13 +237,13 @@ pub struct CAdapterInfo {
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_adapter_request_device(
     adapter_id: id::AdapterId,
-    extensions: wgt::Extensions,
+    features: wgt::Features,
     limits: &CLimits,
     shader_validation: bool,
     trace_path: *const std::os::raw::c_char,
 ) -> id::DeviceId {
     let desc = DeviceDescriptor {
-        extensions,
+        features,
         limits: Limits {
             max_bind_groups: limits.max_bind_groups,
             ..Limits::default()
@@ -254,8 +263,8 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_adapter_extensions(adapter_id: id::AdapterId) -> wgt::Extensions {
-    gfx_select!(adapter_id => GLOBAL.adapter_extensions(adapter_id))
+pub extern "C" fn wgpu_adapter_features(adapter_id: id::AdapterId) -> wgt::Features {
+    gfx_select!(adapter_id => GLOBAL.adapter_features(adapter_id))
 }
 
 #[no_mangle]
@@ -273,8 +282,8 @@ pub extern "C" fn wgpu_adapter_destroy(adapter_id: id::AdapterId) {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_extensions(device_id: id::DeviceId) -> wgt::Extensions {
-    gfx_select!(device_id => GLOBAL.device_extensions(device_id))
+pub extern "C" fn wgpu_device_features(device_id: id::DeviceId) -> wgt::Features {
+    gfx_select!(device_id => GLOBAL.device_features(device_id))
 }
 
 #[no_mangle]
@@ -398,7 +407,7 @@ pub struct BindGroupLayoutEntry {
     pub visibility: wgt::ShaderStage,
     pub ty: BindingType,
     pub has_dynamic_offset: bool,
-    pub min_buffer_binding_size: wgt::BufferSize,
+    pub min_buffer_binding_size: Option<NonZeroU64>,
     pub multisampled: bool,
     pub view_dimension: wgt::TextureViewDimension,
     pub texture_component_type: wgt::TextureComponentType,
@@ -423,16 +432,16 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
         let ty = match entry.ty {
             BindingType::UniformBuffer => wgt::BindingType::UniformBuffer {
                 dynamic: entry.has_dynamic_offset,
-                //min_binding_size: entry.min_buffer_binding_size,
+                min_binding_size: entry.min_buffer_binding_size,
             },
             BindingType::StorageBuffer => wgt::BindingType::StorageBuffer {
                 dynamic: entry.has_dynamic_offset,
-                //min_binding_size: entry.min_buffer_binding_size,
+                min_binding_size: entry.min_buffer_binding_size,
                 readonly: false,
             },
             BindingType::ReadonlyStorageBuffer => wgt::BindingType::StorageBuffer {
                 dynamic: entry.has_dynamic_offset,
-                //min_binding_size: entry.min_buffer_binding_size,
+                min_binding_size: entry.min_buffer_binding_size,
                 readonly: true,
             },
             BindingType::Sampler => wgt::BindingType::Sampler { comparison: false },
@@ -445,23 +454,19 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
             BindingType::ReadonlyStorageTexture => wgt::BindingType::StorageTexture {
                 dimension: entry.view_dimension,
                 format: entry.storage_texture_format,
-                component_type: entry.texture_component_type,
                 readonly: true,
             },
             BindingType::WriteonlyStorageTexture => wgt::BindingType::StorageTexture {
                 dimension: entry.view_dimension,
                 format: entry.storage_texture_format,
-                component_type: entry.texture_component_type,
                 readonly: false,
             },
         };
-        entries.push(wgt::BindGroupLayoutEntry {
-            binding: entry.binding,
-            visibility: entry.visibility,
+        entries.push(wgt::BindGroupLayoutEntry::new(
+            entry.binding,
+            entry.visibility,
             ty,
-            count: entry.count.map(|count| count.get()),
-            ..Default::default()
-        });
+        ));
     }
     let label = OwnedLabel::new(desc.label);
     let desc = wgt::BindGroupLayoutDescriptor {
@@ -502,9 +507,9 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group(
             binding: entry.binding,
             resource: if let Some(id) = entry.buffer {
                 wgc::binding_model::BindingResource::Buffer(wgc::binding_model::BufferBinding {
-                    buffer: id,
+                    buffer_id: id,
                     offset: entry.offset,
-                    size: entry.size,
+                    size: Some(entry.size),
                 })
             } else if let Some(id) = entry.sampler {
                 wgc::binding_model::BindingResource::Sampler(id)
@@ -522,6 +527,7 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group(
         bindings: &entries,
     };
     gfx_select!(device_id => GLOBAL.device_create_bind_group(device_id, &desc, PhantomData))
+        .expect("Unable to create bind group")
 }
 
 #[no_mangle]
@@ -529,12 +535,26 @@ pub extern "C" fn wgpu_bind_group_destroy(bind_group_id: id::BindGroupId) {
     gfx_select!(bind_group_id => GLOBAL.bind_group_destroy(bind_group_id))
 }
 
+#[repr(C)]
+pub struct ShaderSource {
+    bytes: *const u32,
+    length: usize,
+}
+
+impl<'a> Into<ShaderModuleSource<'a>> for ShaderSource {
+    fn into(self) -> ShaderModuleSource<'a> {
+        let slice = unsafe { std::slice::from_raw_parts(self.bytes, self.length) };
+
+        ShaderModuleSource::SpirV(slice)
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn wgpu_device_create_shader_module(
     device_id: id::DeviceId,
-    desc: &wgc::pipeline::ShaderModuleDescriptor,
+    source: ShaderSource,
 ) -> id::ShaderModuleId {
-    gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, desc, PhantomData))
+    gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, source.into(), PhantomData))
 }
 
 #[no_mangle]
@@ -580,14 +600,6 @@ pub unsafe extern "C" fn wgpu_device_create_render_bundle_encoder(
         sample_count: desc.sample_count,
     };
     GLOBAL.device_create_render_bundle_encoder(device_id, &desc)
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_render_bundle_encoder_destroy(
-    bundle_encoder_id: id::RenderBundleEncoderId,
-) {
-    let bundle = *Box::from_raw(bundle_encoder_id);
-    GLOBAL.render_bundle_encoder_destroy(bundle)
 }
 
 #[no_mangle]
@@ -761,7 +773,7 @@ pub extern "C" fn wgpu_buffer_get_mapped_range(
     start: wgt::BufferAddress,
     size: wgt::BufferSize,
 ) -> *mut u8 {
-    gfx_select!(buffer_id => GLOBAL.buffer_get_mapped_range(buffer_id, start, size))
+    gfx_select!(buffer_id => GLOBAL.buffer_get_mapped_range(buffer_id, start, Some(size)))
 }
 
 /// Fills the given `info` struct with the adapter info.

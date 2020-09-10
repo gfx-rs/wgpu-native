@@ -7,6 +7,7 @@ autogen_warning = """/* DO NOT MODIFY THIS MANUALLY! This file was generated usi
 
 typedef unsigned long long WGPUNonZeroU64;
 typedef unsigned long WGPUOption_NonZeroU32;
+typedef unsigned long WGPUOption_NonZeroU64;
 typedef unsigned long long WGPUOption_AdapterId;
 typedef unsigned long long WGPUOption_BufferId;
 typedef unsigned long long WGPUOption_SamplerId;
@@ -36,6 +37,7 @@ exclude = [
 	"Option_SurfaceId",
 	"Option_TextureViewId",
 	"Option_NonZeroU32",
+	"Option_NonZeroU64",
 	"wgpu_render_pass_finish",
 	"wgpu_compute_pass_finish",
 	"NonExhaustive",

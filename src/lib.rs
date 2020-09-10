@@ -29,7 +29,7 @@ impl OwnedLabel {
 }
 
 lazy_static::lazy_static! {
-    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory));
+    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::BackendBit::PRIMARY));
 }
 
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.
