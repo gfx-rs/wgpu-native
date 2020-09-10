@@ -39,6 +39,7 @@ jobs:
             channel: nightly
             build_command: cargo check
             install_deps_command: |
+                                sudo apt-get update
                                 sudo apt install -f -y cmake
                                 GLFW_DIR="$GITHUB_WORKSPACE/libglfw3"
                                 mkdir $GLFW_DIR
