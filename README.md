@@ -14,6 +14,8 @@ The C API header is generated at `ffi/wgpu.h` by [cbindgen](https://github.com/e
 - [cshenton/WebGPU.jl](https://github.com/cshenton/WebGPU.jl) - experimental Julia wrapper
 - [kgpu/wgpuj](https://github.com/kgpu/kgpu/tree/master/wgpuj) - Java/Kotlin wrapper
 
+Note: the version numbers of `wgpu-native` are not aligned with versions of `wgpu` or other crates!
+
 ## Pre-built binaries
 
 - Automated 32 and 64-bit builds for MacOS, Windows and Linux are available as Github [releases](https://github.com/gfx-rs/wgpu-native/releases).
