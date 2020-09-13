@@ -40,3 +40,6 @@ lazy_static = "1.1"
 parking_lot = "0.10"
 raw-window-handle = "0.3"
 libc = {version="0.2", features=[]}
+
+[target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
+gfx-backend-vulkan = { version = "0.5", features = ["x11"] }
