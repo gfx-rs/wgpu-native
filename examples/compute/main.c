@@ -45,7 +45,6 @@ int main(
     wgpu_request_adapter_async(
         NULL,
         2 | 4 | 8,
-        false,
         request_adapter_callback,
         (void *) &adapter
     );
@@ -110,9 +109,10 @@ int main(
                     .bind_group_layouts = bind_group_layouts,
                     .bind_group_layouts_length = BIND_GROUP_LAYOUTS_LENGTH});
 
+    WGPUShaderSource source = read_file("./../data/collatz.comp.spv");
     WGPUShaderModuleId shader_module = wgpu_device_create_shader_module(
         device,
-        read_file("./../data/collatz.comp.spv"));
+        &source);
 
     WGPUComputePipelineId compute_pipeline =
         wgpu_device_create_compute_pipeline(device,
@@ -137,11 +137,8 @@ int main(
     wgpu_compute_pass_end_pass(command_pass);
 
     WGPUQueueId queue = wgpu_device_get_default_queue(device);
-
-    WGPUCommandBufferId command_buffer = wgpu_command_encoder_finish(encoder, NULL);
-
     wgpu_command_encoder_copy_buffer_to_buffer(encoder, storage_buffer, 0, staging_buffer, 0, size);
-
+    WGPUCommandBufferId command_buffer = wgpu_command_encoder_finish(encoder, NULL);
     wgpu_queue_submit(queue, &command_buffer, 1);
 
     wgpu_buffer_map_read_async(staging_buffer, 0, size, read_buffer_map, NULL);

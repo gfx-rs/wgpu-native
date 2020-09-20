@@ -78,5 +78,5 @@ pub unsafe extern "C" fn wgpu_set_log_level(level: LogLevel) -> c_int {
         LogLevel::Trace => LevelFilter::Trace,
     };
     log::set_max_level(level_filter);
-    return 0;
+    0
 }
