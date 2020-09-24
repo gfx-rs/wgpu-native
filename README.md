@@ -10,6 +10,7 @@ The C API header is generated at `ffi/wgpu.h` by [cbindgen](https://github.com/e
 
 - [gfx-rs/wgpu-rs](https://github.com/gfx-rs/wgpu-rs) - idiomatic Rust wrapper with [a few more examples](https://github.com/gfx-rs/wgpu-rs/tree/master/examples) to get a feel of the API
 - [pygfx/wgpu-py](https://github.com/pygfx/wgpu-py) - Python wrapper
+- [bindc-wgpu](https://github.com/gecko0307/bindbc-wgpu) - D wrapper ([package](https://code.dlang.org/packages/bindbc-wgpu))
 - [porky11/wgpu](https://gitlab.com/scopes-libraries/wgpu) - experimental [Scopes](http://scopes.rocks) wrapper
 - [cshenton/WebGPU.jl](https://github.com/cshenton/WebGPU.jl) - experimental Julia wrapper
 - [kgpu/wgpuj](https://github.com/kgpu/kgpu/tree/master/wgpuj) - Java/Kotlin wrapper
