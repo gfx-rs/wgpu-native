@@ -13,6 +13,7 @@ typedef unsigned long long WGPUOption_BufferId;
 typedef unsigned long long WGPUOption_SamplerId;
 typedef unsigned long long WGPUOption_SurfaceId;
 typedef unsigned long long WGPUOption_TextureViewId;
+typedef unsigned long long WGPUOption_BufferSize;
 
 typedef struct WGPUChainedStruct WGPUChainedStruct;
 """
@@ -35,6 +36,7 @@ exclude = [
 	"Option_BufferId",
 	"Option_SamplerId",
 	"Option_SurfaceId",
+	"Option_BufferSize",
 	"Option_TextureViewId",
 	"Option_NonZeroU32",
 	"Option_NonZeroU64",

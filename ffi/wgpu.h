@@ -1,4 +1,4 @@
-/* Generated with cbindgen:0.14.4 */
+/* Generated with cbindgen:0.14.6 */
 
 /* DO NOT MODIFY THIS MANUALLY! This file was generated using cbindgen.
  * To generate this file:
@@ -15,6 +15,7 @@ typedef unsigned long long WGPUOption_BufferId;
 typedef unsigned long long WGPUOption_SamplerId;
 typedef unsigned long long WGPUOption_SurfaceId;
 typedef unsigned long long WGPUOption_TextureViewId;
+typedef unsigned long long WGPUOption_BufferSize;
 
 typedef struct WGPUChainedStruct WGPUChainedStruct;
 
@@ -840,8 +841,6 @@ typedef enum WGPUVertexFormat {
 } WGPUVertexFormat;
 
 typedef struct WGPUComputePass WGPUComputePass;
-
-typedef struct WGPUOption_BufferSize WGPUOption_BufferSize;
 
 typedef struct WGPURenderBundleEncoder WGPURenderBundleEncoder;
 
