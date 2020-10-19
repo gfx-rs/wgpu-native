@@ -141,17 +141,8 @@ pub extern "C" fn wgpu_create_surface_from_windows_hwnd(
     ))
 }
 
-pub fn wgpu_enumerate_adapters(allow_unsafe: bool, mask: BackendBit) -> Vec<id::AdapterId> {
-    let unsafe_features = if allow_unsafe {
-        unsafe { wgt::UnsafeFeatures::allow() }
-    } else {
-        wgt::UnsafeFeatures::disallow()
-    };
-
-    GLOBAL.enumerate_adapters(
-        unsafe_features,
-        wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
-    )
+pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
+    GLOBAL.enumerate_adapters(wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData))
 }
 
 /// # Safety
@@ -161,19 +152,11 @@ pub fn wgpu_enumerate_adapters(allow_unsafe: bool, mask: BackendBit) -> Vec<id::
 pub unsafe extern "C" fn wgpu_request_adapter_async(
     desc: Option<&wgc::instance::RequestAdapterOptions>,
     mask: BackendBit,
-    allow_unsafe: bool,
     callback: RequestAdapterCallback,
     userdata: *mut std::ffi::c_void,
 ) {
-    let unsafe_features = if allow_unsafe {
-        wgt::UnsafeFeatures::allow()
-    } else {
-        wgt::UnsafeFeatures::disallow()
-    };
-
     let id = GLOBAL.pick_adapter(
         &desc.cloned().unwrap_or_default(),
-        unsafe_features,
         wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
     );
     callback(id, userdata);

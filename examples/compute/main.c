@@ -45,7 +45,6 @@ int main(
     wgpu_request_adapter_async(
         NULL,
         2 | 4 | 8,
-        false,
         request_adapter_callback,
         (void *) &adapter
     );

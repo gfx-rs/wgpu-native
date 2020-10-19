@@ -973,10 +973,6 @@ typedef uint64_t WGPUFeatures;
  */
 #define WGPUFeatures_ALL_WEBGPU (uint64_t)65535
 /**
- * Features that require activating the unsafe feature flag
- */
-#define WGPUFeatures_ALL_UNSAFE (uint64_t)18446462598732840960ULL
-/**
  * Features that are only available when targeting native (not web)
  */
 #define WGPUFeatures_ALL_NATIVE (uint64_t)18446744073709486080ULL
@@ -2288,7 +2284,6 @@ void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
  */
 void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
                                 WGPUBackendBit mask,
-                                bool allow_unsafe,
                                 WGPURequestAdapterCallback callback,
                                 void *userdata);
 

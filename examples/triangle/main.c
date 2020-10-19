@@ -93,7 +93,6 @@ int main() {
             .compatible_surface = surface,
         },
         2 | 4 | 8,
-        false,
         request_adapter_callback,
         (void *) &adapter
     );
@@ -240,7 +239,7 @@ int main() {
                         .store_op = WGPUStoreOp_Store,
                         .clear_value = WGPUColor_GREEN,
                         .read_only = false,
-                    } 
+                    }
                 },
             };
 
