@@ -260,6 +260,7 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
         .as_ref()
         .map(|cow| std::path::Path::new(cow.as_ref()));
     gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, &desc, trace_path, PhantomData))
+        .unwrap()
 }
 
 #[no_mangle]
