@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 
 mod command;
@@ -10,9 +11,11 @@ pub use self::logging::*;
 
 type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
+pub type Label = *const libc::c_char;
+
 struct OwnedLabel(Option<String>);
 impl OwnedLabel {
-    fn new(label: wgc::device::Label) -> Self {
+    fn new(label: Label) -> Self {
         OwnedLabel(if label.is_null() {
             None
         } else {
@@ -23,8 +26,11 @@ impl OwnedLabel {
             )
         })
     }
-    fn as_ref(&self) -> Option<&str> {
-        self.0.as_ref().map(|s| s.as_str())
+    fn as_cow(&self) -> Option<Cow<str>> {
+        self.0.as_ref().map(|s| Cow::Borrowed(s.as_str()))
+    }
+    fn into_cow<'a>(self) -> Option<Cow<'a, str>> {
+        self.0.map(|s| Cow::Owned(s))
     }
 }
 
@@ -118,5 +124,5 @@ pub unsafe extern "C" fn wgpu_get_version() -> std::os::raw::c_uint {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap();
     let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse().unwrap();
     let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse().unwrap();
-    return (major << 16) + (minor << 8) + patch;
+    (major << 16) + (minor << 8) + patch
 }

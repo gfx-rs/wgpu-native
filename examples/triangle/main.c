@@ -93,7 +93,6 @@ int main() {
             .compatible_surface = surface,
         },
         2 | 4 | 8,
-        false,
         request_adapter_callback,
         (void *) &adapter
     );
@@ -106,11 +105,13 @@ int main() {
         true,
         NULL);
 
+    WGPUShaderSource vertex_source = read_file("./../data/triangle.vert.spv");
     WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,
-            read_file("./../data/triangle.vert.spv"));
+            &vertex_source);
 
+    WGPUShaderSource fragment_source = read_file("./../data/triangle.frag.spv");
     WGPUShaderModuleId fragment_shader = wgpu_device_create_shader_module(device,
-            read_file("./../data/triangle.frag.spv"));
+            &fragment_source);
 
     WGPUBindGroupLayoutId bind_group_layout =
         wgpu_device_create_bind_group_layout(device,
@@ -220,9 +221,9 @@ int main() {
                 });
         }
 
-        WGPUSwapChainOutput next_texture =
-            wgpu_swap_chain_get_next_texture(swap_chain);
-        if (!next_texture.view_id) {
+        WGPUOption_TextureViewId next_texture =
+            wgpu_swap_chain_get_current_texture_view(swap_chain);
+        if (!next_texture) {
             printf("Cannot acquire next swap chain texture");
             return 1;
         }
@@ -230,10 +231,10 @@ int main() {
         WGPUCommandEncoderId cmd_encoder = wgpu_device_create_command_encoder(
             device, &(WGPUCommandEncoderDescriptor){.label = "command encoder"});
 
-        WGPURenderPassColorAttachmentDescriptor
+        WGPUColorAttachmentDescriptor
             color_attachments[ATTACHMENTS_LENGTH] = {
                 {
-                    .attachment = next_texture.view_id,
+                    .attachment = next_texture,
                     .resolve_target = 0,
                     .channel = {
                         .load_op = WGPULoadOp_Clear,

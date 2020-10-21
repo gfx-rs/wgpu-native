@@ -14,6 +14,7 @@ typedef unsigned long long WGPUOption_SamplerId;
 typedef unsigned long long WGPUOption_SurfaceId;
 typedef unsigned long long WGPUOption_TextureViewId;
 typedef unsigned long long WGPUOption_BufferSize;
+typedef unsigned long long WGPUOption_PipelineLayoutId;
 
 typedef struct WGPUChainedStruct WGPUChainedStruct;
 """
@@ -27,7 +28,8 @@ style = "both"
 [export]
 prefix = "WGPU"
 include = [
-    "AnisotropicSamplerDescriptorExt"
+    "AnisotropicSamplerDescriptorExt",
+    "SamplerBorderColor"
 ]
 exclude = [
 	"BufferUse",
@@ -38,8 +40,12 @@ exclude = [
 	"Option_SurfaceId",
 	"Option_BufferSize",
 	"Option_TextureViewId",
+	"Option_PipelineLayoutId",
 	"Option_NonZeroU32",
 	"Option_NonZeroU64",
+	"Option_SamplerBorderColor",
+	"Option_TextureViewDimension",
+	"Option_TextureFormat",
 	"wgpu_render_pass_finish",
 	"wgpu_compute_pass_finish",
 	"NonExhaustive",
@@ -52,6 +58,12 @@ exclude = [
 "TextureDescriptor_Label" = "TextureDescriptor"
 "TextureViewDescriptor_Label" = "TextureViewDescriptor"
 "SamplerDescriptor_Label" = "SamplerDescriptor"
+"BufferCopyViewC" = "BufferCopyView"
+"TextureCopyViewC" = "TextureCopyView"
+"RequestAdapterOptions_SurfaceId" = "RequestAdapterOptions"
+"Option_SamplerBorderColor" = "SamplerBorderColor"
+"Option_TextureViewDimension" = "TextureViewDimension"
+"Option_TextureFormat" = "TextureFormat"
 
 [parse]
 parse_deps = true

@@ -1,4 +1,4 @@
-/* Generated with cbindgen:0.14.6 */
+/* Generated with cbindgen:0.15.0 */
 
 /* DO NOT MODIFY THIS MANUALLY! This file was generated using cbindgen.
  * To generate this file:
@@ -16,6 +16,7 @@ typedef unsigned long long WGPUOption_SamplerId;
 typedef unsigned long long WGPUOption_SurfaceId;
 typedef unsigned long long WGPUOption_TextureViewId;
 typedef unsigned long long WGPUOption_BufferSize;
+typedef unsigned long long WGPUOption_PipelineLayoutId;
 
 typedef struct WGPUChainedStruct WGPUChainedStruct;
 
@@ -24,6 +25,20 @@ typedef struct WGPUChainedStruct WGPUChainedStruct;
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+#define WGPUMAX_BIND_GROUPS 8
+
+#define WGPUMAX_COLOR_TARGETS 4
+
+#define WGPUMAX_MIP_LEVELS 16
+
+#define WGPUMAX_VERTEX_BUFFERS 16
+
+#define WGPUMAX_ANISOTROPY 16
+
+#define WGPUSHADER_STAGE_COUNT 3
+
+#define WGPUDESIRED_NUM_FRAMES 3
 
 /**
  * Buffer-Texture copies must have [`bytes_per_row`] aligned to this number.
@@ -34,15 +49,10 @@ typedef struct WGPUChainedStruct WGPUChainedStruct;
  */
 #define WGPUCOPY_BYTES_PER_ROW_ALIGNMENT 256
 
-#define WGPUDESIRED_NUM_FRAMES 3
-
-#define WGPUMAX_ANISOTROPY 16
-
-#define WGPUMAX_COLOR_TARGETS 4
-
-#define WGPUMAX_MIP_LEVELS 16
-
-#define WGPUMAX_VERTEX_BUFFERS 16
+/**
+ * Alignment all push constants need
+ */
+#define WGPUPUSH_CONSTANT_ALIGNMENT 4
 
 /**
  * How edges should be handled in texture addressing.
@@ -69,6 +79,14 @@ typedef enum WGPUAddressMode {
    * 1.25 -> 0.75
    */
   WGPUAddressMode_MirrorRepeat = 2,
+  /**
+   * Clamp the value to the border of the texture
+   * Requires feature [`Features::ADDRESS_MODE_CLAMP_TO_BORDER`]
+   *
+   * -0.25 -> border
+   * 1.25 -> border
+   */
+  WGPUAddressMode_ClampToBorder = 3,
 } WGPUAddressMode;
 
 /**
@@ -162,47 +180,18 @@ enum WGPUCDeviceType {
 };
 typedef uint8_t WGPUCDeviceType;
 
-/**
- * Comparison function used for depth and stencil operations.
- */
-typedef enum WGPUCompareFunction {
-  /**
-   * Invalid value, do not use
-   */
-  WGPUCompareFunction_Undefined = 0,
-  /**
-   * Function never passes
-   */
-  WGPUCompareFunction_Never = 1,
-  /**
-   * Function passes if new value less than existing value
-   */
-  WGPUCompareFunction_Less = 2,
-  /**
-   * Function passes if new value is equal to existing value
-   */
-  WGPUCompareFunction_Equal = 3,
-  /**
-   * Function passes if new value is less than or equal to existing value
-   */
-  WGPUCompareFunction_LessEqual = 4,
-  /**
-   * Function passes if new value is greater than existing value
-   */
-  WGPUCompareFunction_Greater = 5,
-  /**
-   * Function passes if new value is not equal to existing value
-   */
-  WGPUCompareFunction_NotEqual = 6,
-  /**
-   * Function passes if new value is greater than or equal to existing value
-   */
-  WGPUCompareFunction_GreaterEqual = 7,
-  /**
-   * Function always passes
-   */
-  WGPUCompareFunction_Always = 8,
-} WGPUCompareFunction;
+enum WGPUCompareFunction {
+  WGPUCompareFunction_Undefined,
+  WGPUCompareFunction_Never,
+  WGPUCompareFunction_Less,
+  WGPUCompareFunction_LessEqual,
+  WGPUCompareFunction_Greater,
+  WGPUCompareFunction_GreaterEqual,
+  WGPUCompareFunction_Equal,
+  WGPUCompareFunction_NotEqual,
+  WGPUCompareFunction_Always,
+};
+typedef uint32_t WGPUCompareFunction;
 
 /**
  * Type of faces to be culled.
@@ -310,21 +299,35 @@ typedef enum WGPULogLevel {
 } WGPULogLevel;
 
 /**
+ * Type of drawing mode for polygons
+ */
+typedef enum WGPUPolygonMode {
+  /**
+   * Polygons are filled
+   */
+  WGPUPolygonMode_Fill = 0,
+  /**
+   * Polygons are draw as line segments
+   */
+  WGPUPolygonMode_Line = 1,
+  /**
+   * Polygons are draw as points
+   */
+  WGPUPolygonMode_Point = 2,
+} WGPUPolygonMode;
+
+/**
  * Power Preference when choosing a physical adapter.
  */
 typedef enum WGPUPowerPreference {
   /**
-   * Prefer low power when on battery, high performance when on mains.
-   */
-  WGPUPowerPreference_Default = 0,
-  /**
    * Adapter that uses the least possible power. This is often an integerated GPU.
    */
-  WGPUPowerPreference_LowPower = 1,
+  WGPUPowerPreference_LowPower = 0,
   /**
    * Adapter that has the highest performance. This is often a discrete GPU.
    */
-  WGPUPowerPreference_HighPerformance = 2,
+  WGPUPowerPreference_HighPerformance = 1,
 } WGPUPowerPreference;
 
 /**
@@ -404,6 +407,15 @@ enum WGPUSType {
 typedef uint32_t WGPUSType;
 
 /**
+ * Color variation to use when sampler addressing mode is [`AddressMode::ClampToBorder`]
+ */
+typedef enum WGPUSamplerBorderColor {
+  WGPUSamplerBorderColor_TransparentBlack,
+  WGPUSamplerBorderColor_OpaqueBlack,
+  WGPUSamplerBorderColor_OpaqueWhite,
+} WGPUSamplerBorderColor;
+
+/**
  * Operation to perform on the stencil value.
  */
 typedef enum WGPUStencilOperation {
@@ -464,7 +476,6 @@ typedef enum WGPUSwapChainStatus {
   WGPUSwapChainStatus_Timeout,
   WGPUSwapChainStatus_Outdated,
   WGPUSwapChainStatus_Lost,
-  WGPUSwapChainStatus_OutOfMemory,
 } WGPUSwapChainStatus;
 
 /**
@@ -503,6 +514,10 @@ typedef enum WGPUTextureComponentType {
    * They see it as a unsigned integer `utexture1D`, `utexture2D` etc
    */
   WGPUTextureComponentType_Uint,
+  /**
+   * They see it as a floating point 0-1 result of comparison, i.e. `shadowTexture2D`
+   */
+  WGPUTextureComponentType_DepthComparison,
 } WGPUTextureComponentType;
 
 /**
@@ -631,7 +646,7 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Rgb10a2Unorm = 24,
   /**
-   * Red, green, and blue channels. 11 bit float with no sign bit for RG channels. 10 bit float with no sign bti for blue channel. Float in shader.
+   * Red, green, and blue channels. 11 bit float with no sign bit for RG channels. 10 bit float with no sign bit for blue channel. Float in shader.
    */
   WGPUTextureFormat_Rg11b10Float = 25,
   /**
@@ -682,6 +697,130 @@ typedef enum WGPUTextureFormat {
    * Special depth/stencil format with at least 24 bit integer depth and 8 bits integer stencil.
    */
   WGPUTextureFormat_Depth24PlusStencil8 = 37,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 4 color + alpha pallet. 5 bit R + 6 bit G + 5 bit B + 1 bit alpha.
+   * [0, 64] ([0, 1] for alpha) converted to/from float [0, 1] in shader.
+   *
+   * Also known as DXT1.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc1RgbaUnorm = 38,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 4 color + alpha pallet. 5 bit R + 6 bit G + 5 bit B + 1 bit alpha.
+   * Srgb-color [0, 64] ([0, 16] for alpha) converted to/from linear-color float [0, 1] in shader.
+   *
+   * Also known as DXT1.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc1RgbaUnormSrgb = 39,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet. 5 bit R + 6 bit G + 5 bit B + 4 bit alpha.
+   * [0, 64] ([0, 16] for alpha) converted to/from float [0, 1] in shader.
+   *
+   * Also known as DXT3.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc2RgbaUnorm = 40,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet. 5 bit R + 6 bit G + 5 bit B + 4 bit alpha.
+   * Srgb-color [0, 64] ([0, 256] for alpha) converted to/from linear-color float [0, 1] in shader.
+   *
+   * Also known as DXT3.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc2RgbaUnormSrgb = 41,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet + 8 alpha pallet. 5 bit R + 6 bit G + 5 bit B + 8 bit alpha.
+   * [0, 64] ([0, 256] for alpha) converted to/from float [0, 1] in shader.
+   *
+   * Also known as DXT5.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc3RgbaUnorm = 42,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet + 8 alpha pallet. 5 bit R + 6 bit G + 5 bit B + 8 bit alpha.
+   * Srgb-color [0, 64] ([0, 256] for alpha) converted to/from linear-color float [0, 1] in shader.
+   *
+   * Also known as DXT5.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc3RgbaUnormSrgb = 43,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 8 color pallet. 8 bit R.
+   * [0, 256] converted to/from float [0, 1] in shader.
+   *
+   * Also known as RGTC1.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc4RUnorm = 44,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 8 color pallet. 8 bit R.
+   * [-127, 127] converted to/from float [-1, 1] in shader.
+   *
+   * Also known as RGTC1.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc4RSnorm = 45,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). 8 color red pallet + 8 color green pallet. 8 bit RG.
+   * [0, 256] converted to/from float [0, 1] in shader.
+   *
+   * Also known as RGTC2.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc5RgUnorm = 46,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). 8 color red pallet + 8 color green pallet. 8 bit RG.
+   * [-127, 127] converted to/from float [-1, 1] in shader.
+   *
+   * Also known as RGTC2.
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc5RgSnorm = 47,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 16 bit unsigned float RGB. Float in shader.
+   *
+   * Also known as BPTC (float).
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc6hRgbUfloat = 48,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 16 bit signed float RGB. Float in shader.
+   *
+   * Also known as BPTC (float).
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc6hRgbSfloat = 49,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 8 bit integer RGBA.
+   * [0, 256] converted to/from float [0, 1] in shader.
+   *
+   * Also known as BPTC (unorm).
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc7RgbaUnorm = 50,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * Also known as BPTC (unorm).
+   *
+   * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Bc7RgbaUnormSrgb = 51,
 } WGPUTextureFormat;
 
 /**
@@ -759,11 +898,11 @@ typedef enum WGPUVertexFormat {
    */
   WGPUVertexFormat_Ushort4 = 9,
   /**
-   * Two unsigned shorts (i16). `ivec2` in shaders.
+   * Two signed shorts (i16). `ivec2` in shaders.
    */
   WGPUVertexFormat_Short2 = 10,
   /**
-   * Four unsigned shorts (i16). `ivec4` in shaders.
+   * Four signed shorts (i16). `ivec4` in shaders.
    */
   WGPUVertexFormat_Short4 = 11,
   /**
@@ -846,9 +985,264 @@ typedef struct WGPURenderBundleEncoder WGPURenderBundleEncoder;
 
 typedef struct WGPURenderPass WGPURenderPass;
 
+typedef WGPUNonZeroU64 WGPUId_CommandBuffer_Dummy;
+
+typedef WGPUId_CommandBuffer_Dummy WGPUCommandBufferId;
+
+typedef WGPUCommandBufferId WGPUCommandEncoderId;
+
+typedef const char *WGPULabel;
+
+typedef struct WGPUCommandBufferDescriptor {
+  WGPULabel label;
+} WGPUCommandBufferDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_Buffer_Dummy;
+
+typedef WGPUId_Buffer_Dummy WGPUBufferId;
+
+/**
+ * Integral type used for buffer offsets.
+ */
+typedef uint64_t WGPUBufferAddress;
+
+/**
+ * Layout of a texture in a buffer's memory.
+ */
+typedef struct WGPUTextureDataLayout {
+  /**
+   * Offset into the buffer that is the start of the texture. Must be a multiple of texture block size.
+   * For non-compressed textures, this is 1.
+   */
+  WGPUBufferAddress offset;
+  /**
+   * Bytes per "row" of the image. This represents one row of pixels in the x direction. Compressed
+   * textures include multiple rows of pixels in each "row". May be 0 for 1D texture copies.
+   *
+   * Must be a multiple of 256 for [`CommandEncoder::copy_buffer_to_texture`] and [`CommandEncoder::copy_texture_to_buffer`].
+   * [`Queue::write_texture`] does not have this requirement.
+   *
+   * Must be a multiple of the texture block size. For non-compressed textures, this is 1.
+   */
+  uint32_t bytes_per_row;
+  /**
+   * Rows that make up a single "image". Each "image" is one layer in the z direction of a 3D image. May be larger
+   * than `copy_size.y`.
+   *
+   * May be 0 for 2D texture copies.
+   */
+  uint32_t rows_per_image;
+} WGPUTextureDataLayout;
+
+typedef struct WGPUBufferCopyView {
+  WGPUTextureDataLayout layout;
+  WGPUBufferId buffer;
+} WGPUBufferCopyView;
+
+typedef WGPUNonZeroU64 WGPUId_Texture_Dummy;
+
+typedef WGPUId_Texture_Dummy WGPUTextureId;
+
+/**
+ * Origin of a copy to/from a texture.
+ */
+typedef struct WGPUOrigin3d {
+  uint32_t x;
+  uint32_t y;
+  uint32_t z;
+} WGPUOrigin3d;
+#define WGPUOrigin3d_ZERO (WGPUOrigin3d){ .x = 0, .y = 0, .z = 0 }
+
+typedef struct WGPUTextureCopyView {
+  WGPUTextureId texture;
+  uint32_t mip_level;
+  WGPUOrigin3d origin;
+} WGPUTextureCopyView;
+
+/**
+ * Extent of a texture related operation.
+ */
+typedef struct WGPUExtent3d {
+  uint32_t width;
+  uint32_t height;
+  uint32_t depth;
+} WGPUExtent3d;
+
+typedef WGPUNonZeroU64 WGPUId_TextureView_Dummy;
+
+typedef WGPUId_TextureView_Dummy WGPUTextureViewId;
+
+/**
+ * RGBA double precision color.
+ *
+ * This is not to be used as a generic color type, only for specific wgpu interfaces.
+ */
+typedef struct WGPUColor {
+  double r;
+  double g;
+  double b;
+  double a;
+} WGPUColor;
+#define WGPUColor_TRANSPARENT (WGPUColor){ .r = 0.0, .g = 0.0, .b = 0.0, .a = 0.0 }
+#define WGPUColor_BLACK (WGPUColor){ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }
+#define WGPUColor_WHITE (WGPUColor){ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }
+#define WGPUColor_RED (WGPUColor){ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }
+#define WGPUColor_GREEN (WGPUColor){ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }
+#define WGPUColor_BLUE (WGPUColor){ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }
+
+/**
+ * Describes an individual channel within a render pass, such as color, depth, or stencil.
+ */
+typedef struct WGPUPassChannel_Color {
+  /**
+   * Operation to perform to the output attachment at the start of a renderpass. This must be clear if it
+   * is the first renderpass rendering to a swap chain image.
+   */
+  WGPULoadOp load_op;
+  /**
+   * Operation to perform to the output attachment at the end of a renderpass.
+   */
+  WGPUStoreOp store_op;
+  /**
+   * If load_op is [`LoadOp::Clear`], the attachement will be cleared to this color.
+   */
+  WGPUColor clear_value;
+  /**
+   * If true, the relevant channel is not changed by a renderpass, and the corresponding attachment
+   * can be used inside the pass by other read-only usages.
+   */
+  bool read_only;
+} WGPUPassChannel_Color;
+
+/**
+ * Describes a color attachment to a render pass.
+ */
+typedef struct WGPUColorAttachmentDescriptor {
+  /**
+   * The view to use as an attachment.
+   */
+  WGPUTextureViewId attachment;
+  /**
+   * The view that will receive the resolved output if multisampling is used.
+   */
+  WGPUOption_TextureViewId resolve_target;
+  /**
+   * What operations will be performed on this color attachment.
+   */
+  WGPUPassChannel_Color channel;
+} WGPUColorAttachmentDescriptor;
+
+/**
+ * Describes an individual channel within a render pass, such as color, depth, or stencil.
+ */
+typedef struct WGPUPassChannel_f32 {
+  /**
+   * Operation to perform to the output attachment at the start of a renderpass. This must be clear if it
+   * is the first renderpass rendering to a swap chain image.
+   */
+  WGPULoadOp load_op;
+  /**
+   * Operation to perform to the output attachment at the end of a renderpass.
+   */
+  WGPUStoreOp store_op;
+  /**
+   * If load_op is [`LoadOp::Clear`], the attachement will be cleared to this color.
+   */
+  float clear_value;
+  /**
+   * If true, the relevant channel is not changed by a renderpass, and the corresponding attachment
+   * can be used inside the pass by other read-only usages.
+   */
+  bool read_only;
+} WGPUPassChannel_f32;
+
+/**
+ * Describes an individual channel within a render pass, such as color, depth, or stencil.
+ */
+typedef struct WGPUPassChannel_u32 {
+  /**
+   * Operation to perform to the output attachment at the start of a renderpass. This must be clear if it
+   * is the first renderpass rendering to a swap chain image.
+   */
+  WGPULoadOp load_op;
+  /**
+   * Operation to perform to the output attachment at the end of a renderpass.
+   */
+  WGPUStoreOp store_op;
+  /**
+   * If load_op is [`LoadOp::Clear`], the attachement will be cleared to this color.
+   */
+  uint32_t clear_value;
+  /**
+   * If true, the relevant channel is not changed by a renderpass, and the corresponding attachment
+   * can be used inside the pass by other read-only usages.
+   */
+  bool read_only;
+} WGPUPassChannel_u32;
+
+/**
+ * Describes a depth/stencil attachment to a render pass.
+ */
+typedef struct WGPUDepthStencilAttachmentDescriptor {
+  /**
+   * The view to use as an attachment.
+   */
+  WGPUTextureViewId attachment;
+  /**
+   * What operations will be performed on the depth part of the attachment.
+   */
+  WGPUPassChannel_f32 depth;
+  /**
+   * What operations will be performed on the stencil part of the attachment.
+   */
+  WGPUPassChannel_u32 stencil;
+} WGPUDepthStencilAttachmentDescriptor;
+
+typedef struct WGPURenderPassDescriptor {
+  const WGPUColorAttachmentDescriptor *color_attachments;
+  uintptr_t color_attachments_length;
+  const WGPUDepthStencilAttachmentDescriptor *depth_stencil_attachment;
+} WGPURenderPassDescriptor;
+
+typedef struct WGPUComputePassDescriptor {
+  uint32_t todo;
+} WGPUComputePassDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_Surface;
+
+typedef WGPUId_Surface WGPUSurfaceId;
+
+/**
+ * Options for requesting adapter.
+ */
+typedef struct WGPURequestAdapterOptions {
+  /**
+   * Power preference for the adapter.
+   */
+  WGPUPowerPreference power_preference;
+  /**
+   * Surface that is required to be presentable with the requested adapter. This does not
+   * create the surface, only guarantees that the adapter can present to said surface.
+   */
+  WGPUOption_SurfaceId compatible_surface;
+} WGPURequestAdapterOptions;
+
+typedef WGPURequestAdapterOptions WGPURequestAdapterOptions;
+
+/**
+ * Represents the backends that wgpu will use.
+ */
+typedef uint32_t WGPUBackendBit;
+
 typedef WGPUNonZeroU64 WGPUId_Adapter_Dummy;
 
 typedef WGPUId_Adapter_Dummy WGPUAdapterId;
+
+typedef void (*WGPURequestAdapterCallback)(WGPUAdapterId id, void *userdata);
+
+typedef WGPUNonZeroU64 WGPUId_Device_Dummy;
+
+typedef WGPUId_Device_Dummy WGPUDeviceId;
 
 /**
  * Features that are not guaranteed to be supported.
@@ -861,6 +1255,33 @@ typedef WGPUId_Adapter_Dummy WGPUAdapterId;
  * will panic.
  */
 typedef uint64_t WGPUFeatures;
+/**
+ * By default, polygon depth is clipped to 0-1 range. Anything outside of that range
+ * is rejected, and respective fragments are not touched.
+ *
+ * With this extension, we can force clamping of the polygon depth to 0-1. That allows
+ * shadow map occluders to be rendered into a tighter depth range.
+ *
+ * Supported platforms:
+ * - desktops
+ * - some mobile chips
+ *
+ * This is a web and native feature.
+ */
+#define WGPUFeatures_DEPTH_CLAMPING (uint64_t)1
+/**
+ * Enables BCn family of compressed textures. All BCn textures use 4x4 pixel blocks
+ * with 8 or 16 bytes per block.
+ *
+ * Compressed textures sacrifice some quality in exchange for signifigantly reduced
+ * bandwidth usage.
+ *
+ * Supported Platforms:
+ * - desktops
+ *
+ * This is a web and native feature.
+ */
+#define WGPUFeatures_TEXTURE_COMPRESSION_BC (uint64_t)2
 /**
  * Webgpu only allows the MAP_READ and MAP_WRITE buffer usage to be matched with
  * COPY_DST and COPY_SRC respectively. This removes this requirement.
@@ -914,6 +1335,14 @@ typedef uint64_t WGPUFeatures;
  * In order to use this capability, the corresponding GLSL extension must be enabled like so:
  *
  * `#extension GL_EXT_nonuniform_qualifier : require`
+ *
+ * and then used either as `nonuniformEXT` qualifier in variable declaration:
+ *
+ * eg. `layout(location = 0) nonuniformEXT flat in int vertex_data;`
+ *
+ * or as `nonuniformEXT` constructor:
+ *
+ * eg. `texture_array[nonuniformEXT(vertex_data)]`
  *
  * HLSL does not need any extension.
  *
@@ -969,378 +1398,61 @@ typedef uint64_t WGPUFeatures;
  */
 #define WGPUFeatures_MULTI_DRAW_INDIRECT_COUNT (uint64_t)4194304
 /**
- * Features which are part of the upstream webgpu standard
+ * Allows the use of push constants: small, fast bits of memory that can be updated
+ * inside a [`RenderPass`].
+ *
+ * Allows the user to call [`RenderPass::set_push_constants`], provide a non-empty array
+ * to [`PipelineLayoutDescriptor`], and provide a non-zero limit to [`Limits::max_push_constant_size`].
+ *
+ * A block of push constants can be declared with `layout(push_constant) uniform Name {..}` in shaders.
+ *
+ * Supported platforms:
+ * - DX12
+ * - Vulkan
+ * - Metal
+ * - DX11 (emulated with uniforms)
+ * - OpenGL (emulated with uniforms)
+ *
+ * This is a native only feature.
+ */
+#define WGPUFeatures_PUSH_CONSTANTS (uint64_t)8388608
+/**
+ * Allows the use of [`AddressMode::ClampToBorder`].
+ *
+ * Supported platforms:
+ * - DX12
+ * - Vulkan
+ * - Metal (macOS 10.12+ only)
+ * - DX11
+ * - OpenGL
+ *
+ * This is a web and native feature.
+ */
+#define WGPUFeatures_ADDRESS_MODE_CLAMP_TO_BORDER (uint64_t)16777216
+/**
+ * Allows the user to set a non-fill polygon mode in [`RasterizationStateDescriptor::polygon_mode`]
+ *
+ * This allows drawing polygons/triangles as lines (wireframe) or points instead of filled
+ *
+ * Supported platforms:
+ * - DX12
+ * - Vulkan
+ *
+ * This is a native only feature.
+ */
+#define WGPUFeatures_NON_FILL_POLYGON_MODE (uint64_t)33554432
+/**
+ * Features which are part of the upstream WebGPU standard.
  */
 #define WGPUFeatures_ALL_WEBGPU (uint64_t)65535
 /**
- * Features that require activating the unsafe feature flag
- */
-#define WGPUFeatures_ALL_UNSAFE (uint64_t)18446462598732840960ULL
-/**
- * Features that are only available when targeting native (not web)
+ * Features that are only available when targeting native (not web).
  */
 #define WGPUFeatures_ALL_NATIVE (uint64_t)18446744073709486080ULL
-
-typedef struct WGPUCAdapterInfo {
-  /**
-   * Adapter name
-   */
-  char *name;
-  /**
-   * Length of the adapter name
-   */
-  uintptr_t name_length;
-  /**
-   * Vendor PCI id of the adapter
-   */
-  uintptr_t vendor;
-  /**
-   * PCI id of the adapter
-   */
-  uintptr_t device;
-  /**
-   * Type of device
-   */
-  WGPUCDeviceType device_type;
-  /**
-   * Backend used for device
-   */
-  WGPUBackend backend;
-} WGPUCAdapterInfo;
 
 typedef struct WGPUCLimits {
   uint32_t max_bind_groups;
 } WGPUCLimits;
-
-typedef WGPUNonZeroU64 WGPUId_Device_Dummy;
-
-typedef WGPUId_Device_Dummy WGPUDeviceId;
-
-typedef WGPUNonZeroU64 WGPUId_BindGroup_Dummy;
-
-typedef WGPUId_BindGroup_Dummy WGPUBindGroupId;
-
-typedef WGPUNonZeroU64 WGPUId_BindGroupLayout_Dummy;
-
-typedef WGPUId_BindGroupLayout_Dummy WGPUBindGroupLayoutId;
-
-typedef WGPUNonZeroU64 WGPUId_Buffer_Dummy;
-
-typedef WGPUId_Buffer_Dummy WGPUBufferId;
-
-/**
- * Integral type used for buffer offsets.
- */
-typedef uint64_t WGPUBufferAddress;
-
-/**
- * Integral type used for buffer slice sizes.
- */
-typedef WGPUNonZeroU64 WGPUBufferSize;
-
-typedef void (*WGPUBufferMapCallback)(WGPUBufferMapAsyncStatus status, uint8_t *userdata);
-
-typedef WGPUNonZeroU64 WGPUId_CommandBuffer_Dummy;
-
-typedef WGPUId_CommandBuffer_Dummy WGPUCommandBufferId;
-
-typedef WGPUCommandBufferId WGPUCommandEncoderId;
-
-typedef struct WGPUComputePassDescriptor {
-  uint32_t todo;
-} WGPUComputePassDescriptor;
-
-typedef WGPUNonZeroU64 WGPUId_TextureView_Dummy;
-
-typedef WGPUId_TextureView_Dummy WGPUTextureViewId;
-
-/**
- * RGBA double precision color.
- *
- * This is not to be used as a generic color type, only for specific wgpu interfaces.
- */
-typedef struct WGPUColor {
-  double r;
-  double g;
-  double b;
-  double a;
-} WGPUColor;
-#define WGPUColor_TRANSPARENT (WGPUColor){ .r = 0.0, .g = 0.0, .b = 0.0, .a = 0.0 }
-#define WGPUColor_BLACK (WGPUColor){ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 }
-#define WGPUColor_WHITE (WGPUColor){ .r = 1.0, .g = 1.0, .b = 1.0, .a = 1.0 }
-#define WGPUColor_RED (WGPUColor){ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 }
-#define WGPUColor_GREEN (WGPUColor){ .r = 0.0, .g = 1.0, .b = 0.0, .a = 1.0 }
-#define WGPUColor_BLUE (WGPUColor){ .r = 0.0, .g = 0.0, .b = 1.0, .a = 1.0 }
-
-/**
- * Describes an individual channel within a render pass, such as color, depth, or stencil.
- */
-typedef struct WGPUPassChannel_Color {
-  /**
-   * Operation to perform to the output attachment at the start of a renderpass. This must be clear if it
-   * is the first renderpass rendering to a swap chain image.
-   */
-  WGPULoadOp load_op;
-  /**
-   * Operation to perform to the output attachment at the end of a renderpass.
-   */
-  WGPUStoreOp store_op;
-  /**
-   * If load_op is [`LoadOp::Clear`], the attachement will be cleared to this color.
-   */
-  WGPUColor clear_value;
-  /**
-   * If true, the relevant channel is not changed by a renderpass, and the corresponding attachment
-   * can be used inside the pass by other read-only usages.
-   */
-  bool read_only;
-} WGPUPassChannel_Color;
-
-/**
- * Describes a color attachment to a [`RenderPass`].
- */
-typedef struct WGPURenderPassColorAttachmentDescriptorBase_TextureViewId {
-  /**
-   * Texture attachment to render to. Must contain [`TextureUsage::OUTPUT_ATTACHMENT`].
-   */
-  WGPUTextureViewId attachment;
-  /**
-   * MSAA resolve target. Must contain [`TextureUsage::OUTPUT_ATTACHMENT`]. Must be `None` if
-   * attachment has 1 sample (does not have MSAA). This is not mandatory for rendering with multisampling,
-   * you can choose to resolve later or manually.
-   */
-  WGPUOption_TextureViewId resolve_target;
-  /**
-   * Color channel.
-   */
-  WGPUPassChannel_Color channel;
-} WGPURenderPassColorAttachmentDescriptorBase_TextureViewId;
-
-typedef WGPURenderPassColorAttachmentDescriptorBase_TextureViewId WGPURenderPassColorAttachmentDescriptor;
-
-/**
- * Describes an individual channel within a render pass, such as color, depth, or stencil.
- */
-typedef struct WGPUPassChannel_f32 {
-  /**
-   * Operation to perform to the output attachment at the start of a renderpass. This must be clear if it
-   * is the first renderpass rendering to a swap chain image.
-   */
-  WGPULoadOp load_op;
-  /**
-   * Operation to perform to the output attachment at the end of a renderpass.
-   */
-  WGPUStoreOp store_op;
-  /**
-   * If load_op is [`LoadOp::Clear`], the attachement will be cleared to this color.
-   */
-  float clear_value;
-  /**
-   * If true, the relevant channel is not changed by a renderpass, and the corresponding attachment
-   * can be used inside the pass by other read-only usages.
-   */
-  bool read_only;
-} WGPUPassChannel_f32;
-
-/**
- * Describes an individual channel within a render pass, such as color, depth, or stencil.
- */
-typedef struct WGPUPassChannel_u32 {
-  /**
-   * Operation to perform to the output attachment at the start of a renderpass. This must be clear if it
-   * is the first renderpass rendering to a swap chain image.
-   */
-  WGPULoadOp load_op;
-  /**
-   * Operation to perform to the output attachment at the end of a renderpass.
-   */
-  WGPUStoreOp store_op;
-  /**
-   * If load_op is [`LoadOp::Clear`], the attachement will be cleared to this color.
-   */
-  uint32_t clear_value;
-  /**
-   * If true, the relevant channel is not changed by a renderpass, and the corresponding attachment
-   * can be used inside the pass by other read-only usages.
-   */
-  bool read_only;
-} WGPUPassChannel_u32;
-
-/**
- * Describes a depth/stencil attachment to a [`RenderPass`].
- */
-typedef struct WGPURenderPassDepthStencilAttachmentDescriptorBase_TextureViewId {
-  /**
-   * Texture attachment to render to. Must contain [`TextureUsage::OUTPUT_ATTACHMENT`] and be a valid
-   * texture type for a depth/stencil attachment.
-   */
-  WGPUTextureViewId attachment;
-  /**
-   * Depth channel.
-   */
-  WGPUPassChannel_f32 depth;
-  /**
-   * Stencil channel.
-   */
-  WGPUPassChannel_u32 stencil;
-} WGPURenderPassDepthStencilAttachmentDescriptorBase_TextureViewId;
-
-typedef WGPURenderPassDepthStencilAttachmentDescriptorBase_TextureViewId WGPURenderPassDepthStencilAttachmentDescriptor;
-
-typedef struct WGPURenderPassDescriptor {
-  const WGPURenderPassColorAttachmentDescriptor *color_attachments;
-  uintptr_t color_attachments_length;
-  const WGPURenderPassDepthStencilAttachmentDescriptor *depth_stencil_attachment;
-} WGPURenderPassDescriptor;
-
-/**
- * Layout of a texture in a buffer's memory.
- */
-typedef struct WGPUTextureDataLayout {
-  /**
-   * Offset into the buffer that is the start of the texture. Must be a multiple of texture block size.
-   * For non-compressed textures, this is 1.
-   */
-  WGPUBufferAddress offset;
-  /**
-   * Bytes per "row" of the image. This represents one row of pixels in the x direction. Compressed
-   * textures include multiple rows of pixels in each "row". May be 0 for 1D texture copies.
-   *
-   * Must be a multiple of 256 for [`CommandEncoder::copy_buffer_to_texture`] and [`CommandEncoder::copy_texture_to_buffer`].
-   * [`Queue::write_texture`] does not have this requirement.
-   *
-   * Must be a multiple of the texture block size. For non-compressed textures, this is 1.
-   */
-  uint32_t bytes_per_row;
-  /**
-   * Rows that make up a single "image". Each "image" is one layer in the z direction of a 3D image. May be larger
-   * than `copy_size.y`.
-   *
-   * May be 0 for 2D texture copies.
-   */
-  uint32_t rows_per_image;
-} WGPUTextureDataLayout;
-
-typedef struct WGPUBufferCopyView {
-  WGPUBufferId buffer;
-  WGPUTextureDataLayout layout;
-} WGPUBufferCopyView;
-
-typedef WGPUNonZeroU64 WGPUId_Texture_Dummy;
-
-typedef WGPUId_Texture_Dummy WGPUTextureId;
-
-/**
- * Origin of a copy to/from a texture.
- */
-typedef struct WGPUOrigin3d {
-  uint32_t x;
-  uint32_t y;
-  uint32_t z;
-} WGPUOrigin3d;
-#define WGPUOrigin3d_ZERO (WGPUOrigin3d){ .x = 0, .y = 0, .z = 0 }
-
-typedef struct WGPUTextureCopyView {
-  WGPUTextureId texture;
-  uint32_t mip_level;
-  WGPUOrigin3d origin;
-} WGPUTextureCopyView;
-
-/**
- * Extent of a texture related operation.
- */
-typedef struct WGPUExtent3d {
-  uint32_t width;
-  uint32_t height;
-  uint32_t depth;
-} WGPUExtent3d;
-
-/**
- * Describes a [`CommandBuffer`].
- */
-typedef struct WGPUCommandBufferDescriptor {
-  /**
-   * Set this member to zero
-   */
-  uint32_t todo;
-} WGPUCommandBufferDescriptor;
-
-typedef const char *WGPURawString;
-
-/**
- * Integral type used for dynamic bind group offsets.
- */
-typedef uint32_t WGPUDynamicOffset;
-
-typedef WGPUNonZeroU64 WGPUId_ComputePipeline_Dummy;
-
-typedef WGPUId_ComputePipeline_Dummy WGPUComputePipelineId;
-
-typedef WGPUNonZeroU64 WGPUId_Surface;
-
-typedef WGPUId_Surface WGPUSurfaceId;
-
-typedef const char *WGPULabel;
-
-typedef struct WGPUBindGroupEntry {
-  uint32_t binding;
-  WGPUOption_BufferId buffer;
-  WGPUBufferAddress offset;
-  WGPUBufferSize size;
-  WGPUOption_SamplerId sampler;
-  WGPUOption_TextureViewId texture_view;
-} WGPUBindGroupEntry;
-
-typedef struct WGPUBindGroupDescriptor {
-  WGPULabel label;
-  WGPUBindGroupLayoutId layout;
-  const WGPUBindGroupEntry *entries;
-  uintptr_t entries_length;
-} WGPUBindGroupDescriptor;
-
-/**
- * Describes the shader stages that a binding will be visible from.
- *
- * These can be combined so something that is visible from both vertex and fragment shaders can be defined as:
- *
- * `ShaderStage::VERTEX | ShaderStage::FRAGMENT`
- */
-typedef uint32_t WGPUShaderStage;
-/**
- * Binding is not visible from any shader stage
- */
-#define WGPUShaderStage_NONE (uint32_t)0
-/**
- * Binding is visible from the vertex shader of a render pipeline
- */
-#define WGPUShaderStage_VERTEX (uint32_t)1
-/**
- * Binding is visible from the fragment shader of a render pipeline
- */
-#define WGPUShaderStage_FRAGMENT (uint32_t)2
-/**
- * Binding is visible from the compute shader of a compute pipeline
- */
-#define WGPUShaderStage_COMPUTE (uint32_t)4
-
-typedef struct WGPUBindGroupLayoutEntry {
-  uint32_t binding;
-  WGPUShaderStage visibility;
-  WGPUBindingType ty;
-  bool has_dynamic_offset;
-  WGPUOption_NonZeroU64 min_buffer_binding_size;
-  bool multisampled;
-  WGPUTextureViewDimension view_dimension;
-  WGPUTextureComponentType texture_component_type;
-  WGPUTextureFormat storage_texture_format;
-  WGPUOption_NonZeroU32 count;
-} WGPUBindGroupLayoutEntry;
-
-typedef struct WGPUBindGroupLayoutDescriptor {
-  WGPULabel label;
-  const WGPUBindGroupLayoutEntry *entries;
-  uintptr_t entries_length;
-} WGPUBindGroupLayoutDescriptor;
 
 /**
  * Different ways that you can use a buffer.
@@ -1371,7 +1483,7 @@ typedef uint32_t WGPUBufferUsage;
  */
 #define WGPUBufferUsage_COPY_SRC (uint32_t)4
 /**
- * Allow a buffer to be the source buffer for a [`CommandEncoder::copy_buffer_to_buffer`], [`CommandEncoder::copy_buffer_to_texture`],
+ * Allow a buffer to be the destination buffer for a [`CommandEncoder::copy_buffer_to_buffer`], [`CommandEncoder::copy_texture_to_buffer`],
  * or [`Queue::write_buffer`] operation.
  */
 #define WGPUBufferUsage_COPY_DST (uint32_t)8
@@ -1421,6 +1533,198 @@ typedef struct WGPUBufferDescriptor {
 } WGPUBufferDescriptor;
 
 /**
+ * Different ways that you can use a texture.
+ *
+ * The usages determine what kind of memory the texture is allocated from and what
+ * actions the texture can partake in.
+ */
+typedef uint32_t WGPUTextureUsage;
+/**
+ * Allows a texture to be the source in a [`CommandEncoder::copy_texture_to_buffer`] or
+ * [`CommandEncoder::copy_texture_to_texture`] operation.
+ */
+#define WGPUTextureUsage_COPY_SRC (uint32_t)1
+/**
+ * Allows a texture to be the destination in a  [`CommandEncoder::copy_texture_to_buffer`],
+ * [`CommandEncoder::copy_texture_to_texture`], or [`Queue::write_texture`] operation.
+ */
+#define WGPUTextureUsage_COPY_DST (uint32_t)2
+/**
+ * Allows a texture to be a [`BindingType::SampledTexture`] in a bind group.
+ */
+#define WGPUTextureUsage_SAMPLED (uint32_t)4
+/**
+ * Allows a texture to be a [`BindingType::StorageTexture`] in a bind group.
+ */
+#define WGPUTextureUsage_STORAGE (uint32_t)8
+/**
+ * Allows a texture to be a output attachment of a renderpass.
+ */
+#define WGPUTextureUsage_OUTPUT_ATTACHMENT (uint32_t)16
+
+/**
+ * Describes a [`Texture`].
+ */
+typedef struct WGPUTextureDescriptor {
+  /**
+   * Debug label of the texture. This will show up in graphics debuggers for easy identification.
+   */
+  WGPULabel label;
+  /**
+   * Size of the texture. For a regular 1D/2D texture, the unused sizes will be 1. For 2DArray textures, Z is the
+   * number of 2D textures in that array.
+   */
+  WGPUExtent3d size;
+  /**
+   * Mip count of texture. For a texture with no extra mips, this must be 1.
+   */
+  uint32_t mip_level_count;
+  /**
+   * Sample count of texture. If this is not 1, texture must have [`BindingType::SampledTexture::multisampled`] set to true.
+   */
+  uint32_t sample_count;
+  /**
+   * Dimensions of the texture.
+   */
+  WGPUTextureDimension dimension;
+  /**
+   * Format of the texture.
+   */
+  WGPUTextureFormat format;
+  /**
+   * Allowed usages of the texture. If used in other ways, the operation will panic.
+   */
+  WGPUTextureUsage usage;
+} WGPUTextureDescriptor;
+
+typedef struct WGPUTextureViewDescriptor {
+  WGPULabel label;
+  WGPUTextureFormat format;
+  WGPUTextureViewDimension dimension;
+  WGPUTextureAspect aspect;
+  uint32_t base_mip_level;
+  uint32_t level_count;
+  uint32_t base_array_layer;
+  uint32_t array_layer_count;
+} WGPUTextureViewDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_Sampler_Dummy;
+
+typedef WGPUId_Sampler_Dummy WGPUSamplerId;
+
+typedef struct WGPUChainedStruct {
+  const WGPUChainedStruct *next;
+  WGPUSType s_type;
+} WGPUChainedStruct;
+
+typedef struct WGPUSamplerDescriptor {
+  const WGPUChainedStruct *next_in_chain;
+  WGPULabel label;
+  WGPUAddressMode address_mode_u;
+  WGPUAddressMode address_mode_v;
+  WGPUAddressMode address_mode_w;
+  WGPUFilterMode mag_filter;
+  WGPUFilterMode min_filter;
+  WGPUFilterMode mipmap_filter;
+  float lod_min_clamp;
+  float lod_max_clamp;
+  WGPUCompareFunction compare;
+  WGPUSamplerBorderColor border_color;
+} WGPUSamplerDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_BindGroupLayout_Dummy;
+
+typedef WGPUId_BindGroupLayout_Dummy WGPUBindGroupLayoutId;
+
+/**
+ * Describes the shader stages that a binding will be visible from.
+ *
+ * These can be combined so something that is visible from both vertex and fragment shaders can be defined as:
+ *
+ * `ShaderStage::VERTEX | ShaderStage::FRAGMENT`
+ */
+typedef uint32_t WGPUShaderStage;
+/**
+ * Binding is not visible from any shader stage.
+ */
+#define WGPUShaderStage_NONE (uint32_t)0
+/**
+ * Binding is visible from the vertex shader of a render pipeline.
+ */
+#define WGPUShaderStage_VERTEX (uint32_t)1
+/**
+ * Binding is visible from the fragment shader of a render pipeline.
+ */
+#define WGPUShaderStage_FRAGMENT (uint32_t)2
+/**
+ * Binding is visible from the compute shader of a compute pipeline.
+ */
+#define WGPUShaderStage_COMPUTE (uint32_t)4
+
+typedef struct WGPUBindGroupLayoutEntry {
+  uint32_t binding;
+  WGPUShaderStage visibility;
+  WGPUBindingType ty;
+  bool has_dynamic_offset;
+  uint64_t min_buffer_binding_size;
+  bool multisampled;
+  WGPUTextureViewDimension view_dimension;
+  WGPUTextureComponentType texture_component_type;
+  WGPUTextureFormat storage_texture_format;
+  uint32_t count;
+} WGPUBindGroupLayoutEntry;
+
+typedef struct WGPUBindGroupLayoutDescriptor {
+  WGPULabel label;
+  const WGPUBindGroupLayoutEntry *entries;
+  uintptr_t entries_length;
+} WGPUBindGroupLayoutDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_PipelineLayout_Dummy;
+
+typedef WGPUId_PipelineLayout_Dummy WGPUPipelineLayoutId;
+
+typedef struct WGPUPipelineLayoutDescriptor {
+  WGPULabel label;
+  const WGPUBindGroupLayoutId *bind_group_layouts;
+  uintptr_t bind_group_layouts_length;
+} WGPUPipelineLayoutDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_BindGroup_Dummy;
+
+typedef WGPUId_BindGroup_Dummy WGPUBindGroupId;
+
+/**
+ * Integral type used for buffer slice sizes.
+ */
+typedef WGPUNonZeroU64 WGPUBufferSize;
+
+typedef struct WGPUBindGroupEntry {
+  uint32_t binding;
+  WGPUOption_BufferId buffer;
+  WGPUBufferAddress offset;
+  WGPUBufferSize size;
+  WGPUOption_SamplerId sampler;
+  WGPUOption_TextureViewId texture_view;
+} WGPUBindGroupEntry;
+
+typedef struct WGPUBindGroupDescriptor {
+  WGPULabel label;
+  WGPUBindGroupLayoutId layout;
+  const WGPUBindGroupEntry *entries;
+  uintptr_t entries_length;
+} WGPUBindGroupDescriptor;
+
+typedef WGPUNonZeroU64 WGPUId_ShaderModule_Dummy;
+
+typedef WGPUId_ShaderModule_Dummy WGPUShaderModuleId;
+
+typedef struct WGPUShaderSource {
+  const uint32_t *bytes;
+  uintptr_t length;
+} WGPUShaderSource;
+
+/**
  * Describes a [`CommandEncoder`].
  */
 typedef struct WGPUCommandEncoderDescriptor {
@@ -1429,29 +1733,6 @@ typedef struct WGPUCommandEncoderDescriptor {
    */
   WGPULabel label;
 } WGPUCommandEncoderDescriptor;
-
-typedef WGPUNonZeroU64 WGPUId_PipelineLayout_Dummy;
-
-typedef WGPUId_PipelineLayout_Dummy WGPUPipelineLayoutId;
-
-typedef WGPUNonZeroU64 WGPUId_ShaderModule_Dummy;
-
-typedef WGPUId_ShaderModule_Dummy WGPUShaderModuleId;
-
-typedef struct WGPUProgrammableStageDescriptor {
-  WGPUShaderModuleId module;
-  WGPURawString entry_point;
-} WGPUProgrammableStageDescriptor;
-
-typedef struct WGPUComputePipelineDescriptor {
-  WGPUPipelineLayoutId layout;
-  WGPUProgrammableStageDescriptor compute_stage;
-} WGPUComputePipelineDescriptor;
-
-typedef struct WGPUPipelineLayoutDescriptor {
-  const WGPUBindGroupLayoutId *bind_group_layouts;
-  uintptr_t bind_group_layouts_length;
-} WGPUPipelineLayoutDescriptor;
 
 typedef WGPURenderBundleEncoder *WGPURenderBundleEncoderId;
 
@@ -1463,9 +1744,30 @@ typedef struct WGPURenderBundleEncoderDescriptor {
   uint32_t sample_count;
 } WGPURenderBundleEncoderDescriptor;
 
+typedef WGPUNonZeroU64 WGPUId_RenderBundle;
+
+typedef WGPUId_RenderBundle WGPURenderBundleId;
+
+/**
+ * Describes a [`RenderBundle`].
+ */
+typedef struct WGPURenderBundleDescriptor_Label {
+  /**
+   * Debug label of the render bundle encoder. This will show up in graphics debuggers for easy identification.
+   */
+  WGPULabel label;
+} WGPURenderBundleDescriptor_Label;
+
+typedef WGPUDeviceId WGPUQueueId;
+
 typedef WGPUNonZeroU64 WGPUId_RenderPipeline_Dummy;
 
 typedef WGPUId_RenderPipeline_Dummy WGPURenderPipelineId;
+
+typedef struct WGPUProgrammableStageDescriptor {
+  WGPUShaderModuleId module;
+  WGPULabel entry_point;
+} WGPUProgrammableStageDescriptor;
 
 /**
  * Describes the state of the rasterizer in a render pipeline.
@@ -1473,6 +1775,18 @@ typedef WGPUId_RenderPipeline_Dummy WGPURenderPipelineId;
 typedef struct WGPURasterizationStateDescriptor {
   WGPUFrontFace front_face;
   WGPUCullMode cull_mode;
+  /**
+   * Controls the way each polygon is rasterized. Can be either `Fill` (default), `Line` or `Point`
+   *
+   * Setting this to something other than `Fill` requires `Features::NON_FILL_POLYGON_MODE` to be enabled.
+   */
+  WGPUPolygonMode polygon_mode;
+  /**
+   * If enabled polygon depth is clamped to 0-1 range instead of being clipped.
+   *
+   * Requires `Features::DEPTH_CLAMPING` enabled.
+   */
+  bool clamp_depth;
   int32_t depth_bias;
   float depth_bias_slope_scale;
   float depth_bias_clamp;
@@ -1565,6 +1879,25 @@ typedef struct WGPUStencilStateFaceDescriptor {
   WGPUStencilOperation pass_op;
 } WGPUStencilStateFaceDescriptor;
 
+typedef struct WGPUStencilStateDescriptor {
+  /**
+   * Front face mode.
+   */
+  WGPUStencilStateFaceDescriptor front;
+  /**
+   * Back face mode.
+   */
+  WGPUStencilStateFaceDescriptor back;
+  /**
+   * Stencil values are AND'd with this mask when reading and writing from the stencil buffer. Only low 8 bits are used.
+   */
+  uint32_t read_mask;
+  /**
+   * Stencil values are AND'd with this mask when writing to the stencil buffer. Only low 8 bits are used.
+   */
+  uint32_t write_mask;
+} WGPUStencilStateDescriptor;
+
 /**
  * Describes the depth/stencil state in a render pipeline.
  */
@@ -1582,22 +1915,7 @@ typedef struct WGPUDepthStencilStateDescriptor {
    * Comparison function used to compare depth values in the depth test.
    */
   WGPUCompareFunction depth_compare;
-  /**
-   * Stencil state used for front faces.
-   */
-  WGPUStencilStateFaceDescriptor stencil_front;
-  /**
-   * Stencil state used for back faces.
-   */
-  WGPUStencilStateFaceDescriptor stencil_back;
-  /**
-   * Stencil values are AND'd with this mask when reading and writing from the stencil buffer. Only low 8 bits are used.
-   */
-  uint32_t stencil_read_mask;
-  /**
-   * Stencil values are AND'd with this mask when writing to the stencil buffer. Only low 8 bits are used.
-   */
-  uint32_t stencil_write_mask;
+  WGPUStencilStateDescriptor stencil;
 } WGPUDepthStencilStateDescriptor;
 
 /**
@@ -1625,95 +1943,48 @@ typedef struct WGPUVertexAttributeDescriptor {
   WGPUShaderLocation shader_location;
 } WGPUVertexAttributeDescriptor;
 
-typedef struct WGPUVertexBufferLayoutDescriptor {
-  WGPUBufferAddress array_stride;
+typedef struct WGPUVertexBufferDescriptor {
+  WGPUBufferAddress stride;
   WGPUInputStepMode step_mode;
   const WGPUVertexAttributeDescriptor *attributes;
   uintptr_t attributes_length;
-} WGPUVertexBufferLayoutDescriptor;
+} WGPUVertexBufferDescriptor;
 
 typedef struct WGPUVertexStateDescriptor {
   WGPUIndexFormat index_format;
-  const WGPUVertexBufferLayoutDescriptor *vertex_buffers;
+  const WGPUVertexBufferDescriptor *vertex_buffers;
   uintptr_t vertex_buffers_length;
 } WGPUVertexStateDescriptor;
 
 typedef struct WGPURenderPipelineDescriptor {
-  WGPUPipelineLayoutId layout;
+  WGPULabel label;
+  WGPUOption_PipelineLayoutId layout;
   WGPUProgrammableStageDescriptor vertex_stage;
   const WGPUProgrammableStageDescriptor *fragment_stage;
-  WGPUPrimitiveTopology primitive_topology;
   const WGPURasterizationStateDescriptor *rasterization_state;
+  WGPUPrimitiveTopology primitive_topology;
   const WGPUColorStateDescriptor *color_states;
   uintptr_t color_states_length;
   const WGPUDepthStencilStateDescriptor *depth_stencil_state;
   WGPUVertexStateDescriptor vertex_state;
   uint32_t sample_count;
   uint32_t sample_mask;
-  bool alpha_to_coverage_enabled;
+  bool alpha_to_coverage;
 } WGPURenderPipelineDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_Sampler_Dummy;
+typedef WGPUNonZeroU64 WGPUId_ComputePipeline_Dummy;
 
-typedef WGPUId_Sampler_Dummy WGPUSamplerId;
+typedef WGPUId_ComputePipeline_Dummy WGPUComputePipelineId;
 
-typedef struct WGPUChainedStruct {
-  const WGPUChainedStruct *next;
-  WGPUSType s_type;
-} WGPUChainedStruct;
-
-typedef struct WGPUSamplerDescriptor {
-  const WGPUChainedStruct *next_in_chain;
+typedef struct WGPUComputePipelineDescriptor {
   WGPULabel label;
-  WGPUAddressMode address_mode_u;
-  WGPUAddressMode address_mode_v;
-  WGPUAddressMode address_mode_w;
-  WGPUFilterMode mag_filter;
-  WGPUFilterMode min_filter;
-  WGPUFilterMode mipmap_filter;
-  float lod_min_clamp;
-  float lod_max_clamp;
-  WGPUCompareFunction compare;
-} WGPUSamplerDescriptor;
-
-typedef struct WGPUShaderSource {
-  const uint32_t *bytes;
-  uintptr_t length;
-} WGPUShaderSource;
+  WGPUOption_PipelineLayoutId layout;
+  WGPUProgrammableStageDescriptor compute_stage;
+} WGPUComputePipelineDescriptor;
 
 typedef WGPUNonZeroU64 WGPUId_SwapChain_Dummy;
 
 typedef WGPUId_SwapChain_Dummy WGPUSwapChainId;
-
-/**
- * Different ways that you can use a texture.
- *
- * The usages determine what kind of memory the texture is allocated from and what
- * actions the texture can partake in.
- */
-typedef uint32_t WGPUTextureUsage;
-/**
- * Allows a texture to be the source in a [`CommandEncoder::copy_texture_to_buffer`] or
- * [`CommandEncoder::copy_texture_to_texture`] operation.
- */
-#define WGPUTextureUsage_COPY_SRC (uint32_t)1
-/**
- * Allows a texture to be the destination in a  [`CommandEncoder::copy_texture_to_buffer`],
- * [`CommandEncoder::copy_texture_to_texture`], or [`Queue::write_texture`] operation.
- */
-#define WGPUTextureUsage_COPY_DST (uint32_t)2
-/**
- * Allows a texture to be a [`BindingType::SampledTexture`] in a bind group.
- */
-#define WGPUTextureUsage_SAMPLED (uint32_t)4
-/**
- * Allows a texture to be a [`BindingType::StorageTexture`] in a bind group.
- */
-#define WGPUTextureUsage_STORAGE (uint32_t)8
-/**
- * Allows a texture to be a output attachment of a renderpass.
- */
-#define WGPUTextureUsage_OUTPUT_ATTACHMENT (uint32_t)16
 
 /**
  * Describes a [`SwapChain`].
@@ -1743,114 +2014,43 @@ typedef struct WGPUSwapChainDescriptor {
   WGPUPresentMode present_mode;
 } WGPUSwapChainDescriptor;
 
-/**
- * Describes a [`Texture`].
- */
-typedef struct WGPUTextureDescriptor {
-  /**
-   * Debug label of the texture. This will show up in graphics debuggers for easy identification.
-   */
-  WGPULabel label;
-  /**
-   * Size of the texture. For a regular 1D/2D texture, the unused sizes will be 1. For 2DArray textures, Z is the
-   * number of 2D textures in that array.
-   */
-  WGPUExtent3d size;
-  /**
-   * Mip count of texture. For a texture with no extra mips, this must be 1.
-   */
-  uint32_t mip_level_count;
-  /**
-   * Sample count of texture. If this is not 1, texture must have [`BindingType::SampledTexture::multisampled`] set to true.
-   */
-  uint32_t sample_count;
-  /**
-   * Dimensions of the texture.
-   */
-  WGPUTextureDimension dimension;
-  /**
-   * Format of the texture.
-   */
-  WGPUTextureFormat format;
-  /**
-   * Allowed usages of the texture. If used in other ways, the operation will panic.
-   */
-  WGPUTextureUsage usage;
-} WGPUTextureDescriptor;
+typedef void (*WGPUBufferMapCallback)(WGPUBufferMapAsyncStatus status, uint8_t *userdata);
 
-typedef WGPUDeviceId WGPUQueueId;
-
-typedef WGPUNonZeroU64 WGPUId_RenderBundle;
-
-typedef WGPUId_RenderBundle WGPURenderBundleId;
-
-/**
- * Describes a [`RenderBundle`].
- */
-typedef struct WGPURenderBundleDescriptor_Label {
+typedef struct WGPUCAdapterInfo {
   /**
-   * Debug label of the render bundle encoder. This will show up in graphics debuggers for easy identification.
+   * Adapter name
    */
-  WGPULabel label;
-} WGPURenderBundleDescriptor_Label;
-
-typedef struct WGPURequestAdapterOptions {
-  WGPUPowerPreference power_preference;
-  WGPUOption_SurfaceId compatible_surface;
-} WGPURequestAdapterOptions;
-
-/**
- * Represents the backends that wgpu will use.
- */
-typedef uint32_t WGPUBackendBit;
-
-typedef void (*WGPURequestAdapterCallback)(WGPUOption_AdapterId id, void *userdata);
+  char *name;
+  /**
+   * Length of the adapter name
+   */
+  uintptr_t name_length;
+  /**
+   * Vendor PCI id of the adapter
+   */
+  uintptr_t vendor;
+  /**
+   * PCI id of the adapter
+   */
+  uintptr_t device;
+  /**
+   * Type of device
+   */
+  WGPUCDeviceType device_type;
+  /**
+   * Backend used for device
+   */
+  WGPUBackend backend;
+} WGPUCAdapterInfo;
 
 typedef void (*WGPULogCallback)(int level, const char *msg);
 
-typedef struct WGPUSwapChainOutput {
-  WGPUSwapChainStatus status;
-  WGPUOption_TextureViewId view_id;
-} WGPUSwapChainOutput;
-
 /**
- * Describes a [`TextureView`].
+ * Integral type used for dynamic bind group offsets.
  */
-typedef struct WGPUTextureViewDescriptor {
-  /**
-   * Debug label of the texture view. This will show up in graphics debuggers for easy identification.
-   */
-  WGPULabel label;
-  /**
-   * Format of the texture view. At this time, it must be the same as the underlying format of the texture.
-   */
-  WGPUTextureFormat format;
-  /**
-   * The dimension of the texture view. For 1D textures, this must be `1D`. For 2D textures it must be one of
-   * `D2`, `D2Array`, `Cube`, and `CubeArray`. For 3D textures it must be `3D`
-   */
-  WGPUTextureViewDimension dimension;
-  /**
-   * Aspect of the texture. Color textures must be [`TextureAspect::All`].
-   */
-  WGPUTextureAspect aspect;
-  /**
-   * Base mip level.
-   */
-  uint32_t base_mip_level;
-  /**
-   * Mip level count. Must be at least one. base_mip_level + level_count must be less or equal to underlying texture mip count.
-   */
-  uint32_t level_count;
-  /**
-   * Base array layer.
-   */
-  uint32_t base_array_layer;
-  /**
-   * Layer count. Must be at least one. base_array_layer + array_layer_count must be less or equal to the underlying array count.
-   */
-  uint32_t array_layer_count;
-} WGPUTextureViewDescriptor;
+typedef uint32_t WGPUDynamicOffset;
+
+typedef const char *WGPURawString;
 
 typedef struct WGPUAnisotropicSamplerDescriptorExt {
   const WGPUChainedStruct *next_in_chain;
@@ -1888,74 +2088,25 @@ typedef struct WGPUAnisotropicSamplerDescriptorExt {
 
 
 
-void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
-
-WGPUFeatures wgpu_adapter_features(WGPUAdapterId adapter_id);
+/**
+ * Bound uniform/storage buffer offsets must be aligned to this number.
+ */
+#define WGPUBIND_BUFFER_ALIGNMENT 256
 
 /**
- * Fills the given `info` struct with the adapter info.
- *
- * # Safety
- *
- * The field `info.name` is expected to point to a pre-allocated memory
- * location. This function is unsafe as there is no guarantee that the
- * pointer is valid and big enough to hold the adapter name.
+ * Buffer to buffer copy offsets and sizes must be aligned to this number.
  */
-void wgpu_adapter_get_info(WGPUAdapterId adapter_id, WGPUCAdapterInfo *info);
-
-WGPUCLimits wgpu_adapter_limits(WGPUAdapterId adapter_id);
-
-WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
-                                         WGPUFeatures features,
-                                         const WGPUCLimits *limits,
-                                         bool shader_validation,
-                                         const char *trace_path);
-
-void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
-
-void wgpu_bind_group_layout_destroy(WGPUBindGroupLayoutId bind_group_layout_id);
-
-void wgpu_buffer_destroy(WGPUBufferId buffer_id);
-
-uint8_t *wgpu_buffer_get_mapped_range(WGPUBufferId buffer_id,
-                                      WGPUBufferAddress start,
-                                      WGPUBufferSize size);
-
-void wgpu_buffer_map_read_async(WGPUBufferId buffer_id,
-                                WGPUBufferAddress start,
-                                WGPUBufferAddress size,
-                                WGPUBufferMapCallback callback,
-                                uint8_t *user_data);
-
-void wgpu_buffer_map_write_async(WGPUBufferId buffer_id,
-                                 WGPUBufferAddress start,
-                                 WGPUBufferAddress size,
-                                 WGPUBufferMapCallback callback,
-                                 uint8_t *user_data);
-
-void wgpu_buffer_unmap(WGPUBufferId buffer_id);
-
-void wgpu_command_buffer_destroy(WGPUCommandBufferId command_buffer_id);
+#define WGPUCOPY_BUFFER_ALIGNMENT 4
 
 /**
- * # Safety
- *
- * This function is unsafe because improper use may lead to memory
- * problems. For example, a double-free may occur if the function is called
- * twice on the same raw pointer.
+ * Vertex buffer strides have to be aligned to this number.
  */
-WGPUComputePass *wgpu_command_encoder_begin_compute_pass(WGPUCommandEncoderId encoder_id,
-                                                         const WGPUComputePassDescriptor *_desc);
+#define WGPUVERTEX_STRIDE_ALIGNMENT 4
 
-/**
- * # Safety
- *
- * This function is unsafe because improper use may lead to memory
- * problems. For example, a double-free may occur if the function is called
- * twice on the same raw pointer.
- */
-WGPURenderPass *wgpu_command_encoder_begin_render_pass(WGPUCommandEncoderId encoder_id,
-                                                       const WGPURenderPassDescriptor *desc);
+unsigned int wgpu_get_version(void);
+
+WGPUCommandBufferId wgpu_command_encoder_finish(WGPUCommandEncoderId encoder_id,
+                                                const WGPUCommandBufferDescriptor *desc_base);
 
 void wgpu_command_encoder_copy_buffer_to_buffer(WGPUCommandEncoderId command_encoder_id,
                                                 WGPUBufferId source,
@@ -1979,115 +2130,130 @@ void wgpu_command_encoder_copy_texture_to_texture(WGPUCommandEncoderId command_e
                                                   const WGPUTextureCopyView *destination,
                                                   const WGPUExtent3d *copy_size);
 
-void wgpu_command_encoder_destroy(WGPUCommandEncoderId command_encoder_id);
-
-WGPUCommandBufferId wgpu_command_encoder_finish(WGPUCommandEncoderId encoder_id,
-                                                const WGPUCommandBufferDescriptor *desc);
-
-void wgpu_compute_pass_destroy(WGPUComputePass *pass);
-
-void wgpu_compute_pass_dispatch(WGPUComputePass *pass,
-                                uint32_t groups_x,
-                                uint32_t groups_y,
-                                uint32_t groups_z);
-
-void wgpu_compute_pass_dispatch_indirect(WGPUComputePass *pass,
-                                         WGPUBufferId buffer_id,
-                                         WGPUBufferAddress offset);
-
-void wgpu_compute_pass_end_pass(WGPUComputePass *pass);
-
-void wgpu_compute_pass_insert_debug_marker(WGPUComputePass *pass,
-                                           WGPURawString label,
-                                           uint32_t color);
-
-void wgpu_compute_pass_pop_debug_group(WGPUComputePass *pass);
-
-void wgpu_compute_pass_push_debug_group(WGPUComputePass *pass, WGPURawString label, uint32_t color);
+/**
+ * # Safety
+ *
+ * This function is unsafe because improper use may lead to memory
+ * problems. For example, a double-free may occur if the function is called
+ * twice on the same raw pointer.
+ */
+WGPURenderPass *wgpu_command_encoder_begin_render_pass(WGPUCommandEncoderId encoder_id,
+                                                       const WGPURenderPassDescriptor *desc);
 
 /**
  * # Safety
  *
- * This function is unsafe as there is no guarantee that the given pointer is
- * valid for `offset_length` elements.
+ * This function is unsafe because improper use may lead to memory
+ * problems. For example, a double-free may occur if the function is called
+ * twice on the same raw pointer.
  */
-void wgpu_compute_pass_set_bind_group(WGPUComputePass *pass,
-                                      uint32_t index,
-                                      WGPUBindGroupId bind_group_id,
-                                      const WGPUDynamicOffset *offsets,
-                                      uintptr_t offset_length);
+void wgpu_render_pass_end_pass(WGPURenderPass *pass);
 
-void wgpu_compute_pass_set_pipeline(WGPUComputePass *pass, WGPUComputePipelineId pipeline_id);
+void wgpu_render_pass_destroy(WGPURenderPass *pass);
 
-void wgpu_compute_pipeline_destroy(WGPUComputePipelineId compute_pipeline_id);
+/**
+ * # Safety
+ *
+ * This function is unsafe because improper use may lead to memory
+ * problems. For example, a double-free may occur if the function is called
+ * twice on the same raw pointer.
+ */
+WGPUComputePass *wgpu_command_encoder_begin_compute_pass(WGPUCommandEncoderId encoder_id,
+                                                         const WGPUComputePassDescriptor *_desc);
+
+void wgpu_compute_pass_end_pass(WGPUComputePass *pass);
+
+void wgpu_compute_pass_destroy(WGPUComputePass *pass);
+
+WGPUSurfaceId wgpu_create_surface_from_xlib(const void **display, unsigned long window);
+
+WGPUSurfaceId wgpu_create_surface_from_wayland(void *surface, void *display);
 
 WGPUSurfaceId wgpu_create_surface_from_android(void *a_native_window);
 
 WGPUSurfaceId wgpu_create_surface_from_metal_layer(void *layer);
 
-WGPUSurfaceId wgpu_create_surface_from_wayland(void *surface, void *display);
-
 WGPUSurfaceId wgpu_create_surface_from_windows_hwnd(void *_hinstance, void *hwnd);
-
-WGPUSurfaceId wgpu_create_surface_from_xlib(const void **display, unsigned long window);
-
-WGPUBindGroupId wgpu_device_create_bind_group(WGPUDeviceId device_id,
-                                              const WGPUBindGroupDescriptor *desc);
-
-WGPUBindGroupLayoutId wgpu_device_create_bind_group_layout(WGPUDeviceId device_id,
-                                                           const WGPUBindGroupLayoutDescriptor *desc);
-
-WGPUBufferId wgpu_device_create_buffer(WGPUDeviceId device_id, const WGPUBufferDescriptor *desc);
-
-WGPUCommandEncoderId wgpu_device_create_command_encoder(WGPUDeviceId device_id,
-                                                        const WGPUCommandEncoderDescriptor *desc);
-
-WGPUComputePipelineId wgpu_device_create_compute_pipeline(WGPUDeviceId device_id,
-                                                          const WGPUComputePipelineDescriptor *desc);
-
-WGPUPipelineLayoutId wgpu_device_create_pipeline_layout(WGPUDeviceId device_id,
-                                                        const WGPUPipelineLayoutDescriptor *desc);
-
-WGPURenderBundleEncoderId wgpu_device_create_render_bundle_encoder(WGPUDeviceId device_id,
-                                                                   const WGPURenderBundleEncoderDescriptor *desc);
-
-WGPURenderPipelineId wgpu_device_create_render_pipeline(WGPUDeviceId device_id,
-                                                        const WGPURenderPipelineDescriptor *desc);
-
-WGPUSamplerId wgpu_device_create_sampler(WGPUDeviceId device_id, const WGPUSamplerDescriptor *desc);
-
-WGPUShaderModuleId wgpu_device_create_shader_module(WGPUDeviceId device_id,
-                                                    WGPUShaderSource source);
-
-WGPUSwapChainId wgpu_device_create_swap_chain(WGPUDeviceId device_id,
-                                              WGPUSurfaceId surface_id,
-                                              const WGPUSwapChainDescriptor *desc);
-
-WGPUTextureId wgpu_device_create_texture(WGPUDeviceId device_id, const WGPUTextureDescriptor *desc);
-
-void wgpu_device_destroy(WGPUDeviceId device_id);
-
-WGPUFeatures wgpu_device_features(WGPUDeviceId device_id);
-
-WGPUQueueId wgpu_device_get_default_queue(WGPUDeviceId device_id);
-
-WGPUCLimits wgpu_device_limits(WGPUDeviceId device_id);
-
-void wgpu_device_poll(WGPUDeviceId device_id, bool force_wait);
-
-unsigned int wgpu_get_version(void);
-
-void wgpu_pipeline_layout_destroy(WGPUPipelineLayoutId pipeline_layout_id);
 
 /**
  * # Safety
  *
- * This function is unsafe as there is no guarantee that the given `command_buffers`
- * pointer is valid for `command_buffers_length` elements.
+ * This function is unsafe as it calls an unsafe extern callback.
  */
-void wgpu_queue_submit(WGPUQueueId queue_id,
-                       const WGPUCommandBufferId *command_buffers,
-                       uintptr_t command_buffers_length);
+void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
+                                WGPUBackendBit mask,
+                                WGPURequestAdapterCallback callback,
+                                void *userdata);
+
+WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
+                                         WGPUFeatures features,
+                                         const WGPUCLimits *limits,
+                                         bool shader_validation,
+                                         const char *trace_path);
+
+WGPUFeatures wgpu_adapter_features(WGPUAdapterId adapter_id);
+
+WGPUCLimits wgpu_adapter_limits(WGPUAdapterId adapter_id);
+
+void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
+
+WGPUFeatures wgpu_device_features(WGPUDeviceId device_id);
+
+WGPUCLimits wgpu_device_limits(WGPUDeviceId device_id);
+
+WGPUBufferId wgpu_device_create_buffer(WGPUDeviceId device_id, const WGPUBufferDescriptor *desc);
+
+void wgpu_buffer_destroy(WGPUBufferId buffer_id, bool now);
+
+WGPUTextureId wgpu_device_create_texture(WGPUDeviceId device_id, const WGPUTextureDescriptor *desc);
+
+void wgpu_texture_destroy(WGPUTextureId texture_id, bool wait);
+
+WGPUTextureViewId wgpu_texture_create_view(WGPUTextureId texture_id,
+                                           const WGPUTextureViewDescriptor *desc);
+
+void wgpu_texture_view_destroy(WGPUTextureViewId texture_view_id);
+
+WGPUSamplerId wgpu_device_create_sampler(WGPUDeviceId device_id, const WGPUSamplerDescriptor *desc);
+
+void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
+
+WGPUBindGroupLayoutId wgpu_device_create_bind_group_layout(WGPUDeviceId device_id,
+                                                           const WGPUBindGroupLayoutDescriptor *desc);
+
+void wgpu_bind_group_layout_destroy(WGPUBindGroupLayoutId bind_group_layout_id);
+
+WGPUPipelineLayoutId wgpu_device_create_pipeline_layout(WGPUDeviceId device_id,
+                                                        const WGPUPipelineLayoutDescriptor *desc_base);
+
+void wgpu_pipeline_layout_destroy(WGPUPipelineLayoutId pipeline_layout_id);
+
+WGPUBindGroupId wgpu_device_create_bind_group(WGPUDeviceId device_id,
+                                              const WGPUBindGroupDescriptor *desc);
+
+void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
+
+WGPUShaderModuleId wgpu_device_create_shader_module(WGPUDeviceId device_id,
+                                                    const WGPUShaderSource *source);
+
+void wgpu_shader_module_destroy(WGPUShaderModuleId shader_module_id);
+
+WGPUCommandEncoderId wgpu_device_create_command_encoder(WGPUDeviceId device_id,
+                                                        const WGPUCommandEncoderDescriptor *desc);
+
+void wgpu_command_encoder_destroy(WGPUCommandEncoderId command_encoder_id);
+
+void wgpu_command_buffer_destroy(WGPUCommandBufferId command_buffer_id);
+
+WGPURenderBundleEncoderId wgpu_device_create_render_bundle_encoder(WGPUDeviceId device_id,
+                                                                   const WGPURenderBundleEncoderDescriptor *desc);
+
+WGPURenderBundleId wgpu_render_bundle_encoder_finish(WGPURenderBundleEncoderId bundle_encoder_id,
+                                                     const WGPURenderBundleDescriptor_Label *desc);
+
+void wgpu_render_bundle_destroy(WGPURenderBundleId render_bundle_id);
+
+WGPUQueueId wgpu_device_get_default_queue(WGPUDeviceId device_id);
 
 /**
  * # Safety
@@ -2114,7 +2280,102 @@ void wgpu_queue_write_texture(WGPUQueueId queue_id,
                               const WGPUTextureDataLayout *data_layout,
                               const WGPUExtent3d *size);
 
-void wgpu_render_bundle_destroy(WGPURenderBundleId render_bundle_id);
+/**
+ * # Safety
+ *
+ * This function is unsafe as there is no guarantee that the given `command_buffers`
+ * pointer is valid for `command_buffers_length` elements.
+ */
+void wgpu_queue_submit(WGPUQueueId queue_id,
+                       const WGPUCommandBufferId *command_buffers,
+                       uintptr_t command_buffers_length);
+
+WGPURenderPipelineId wgpu_device_create_render_pipeline(WGPUDeviceId device_id,
+                                                        const WGPURenderPipelineDescriptor *desc_base);
+
+void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
+
+WGPUComputePipelineId wgpu_device_create_compute_pipeline(WGPUDeviceId device_id,
+                                                          const WGPUComputePipelineDescriptor *desc);
+
+void wgpu_compute_pipeline_destroy(WGPUComputePipelineId compute_pipeline_id);
+
+WGPUSwapChainId wgpu_device_create_swap_chain(WGPUDeviceId device_id,
+                                              WGPUSurfaceId surface_id,
+                                              const WGPUSwapChainDescriptor *desc);
+
+void wgpu_device_poll(WGPUDeviceId device_id, bool force_wait);
+
+void wgpu_device_destroy(WGPUDeviceId device_id);
+
+void wgpu_buffer_map_read_async(WGPUBufferId buffer_id,
+                                WGPUBufferAddress start,
+                                WGPUBufferAddress size,
+                                WGPUBufferMapCallback callback,
+                                uint8_t *user_data);
+
+void wgpu_buffer_map_write_async(WGPUBufferId buffer_id,
+                                 WGPUBufferAddress start,
+                                 WGPUBufferAddress size,
+                                 WGPUBufferMapCallback callback,
+                                 uint8_t *user_data);
+
+void wgpu_buffer_unmap(WGPUBufferId buffer_id);
+
+WGPUOption_TextureViewId wgpu_swap_chain_get_current_texture_view(WGPUSwapChainId swap_chain_id);
+
+WGPUSwapChainStatus wgpu_swap_chain_present(WGPUSwapChainId swap_chain_id);
+
+uint8_t *wgpu_buffer_get_mapped_range(WGPUBufferId buffer_id,
+                                      WGPUBufferAddress start,
+                                      WGPUBufferSize size);
+
+/**
+ * Fills the given `info` struct with the adapter info.
+ *
+ * # Safety
+ *
+ * The field `info.name` is expected to point to a pre-allocated memory
+ * location. This function is unsafe as there is no guarantee that the
+ * pointer is valid and big enough to hold the adapter name.
+ */
+void wgpu_adapter_get_info(WGPUAdapterId adapter_id, WGPUCAdapterInfo *info);
+
+void wgpu_set_log_callback(WGPULogCallback callback);
+
+int wgpu_set_log_level(WGPULogLevel level);
+
+/**
+ * # Safety
+ *
+ * This function is unsafe as there is no guarantee that the given pointer is
+ * valid for `offset_length` elements.
+ */
+void wgpu_render_bundle_set_bind_group(WGPURenderBundleEncoder *bundle,
+                                       uint32_t index,
+                                       WGPUBindGroupId bind_group_id,
+                                       const WGPUDynamicOffset *offsets,
+                                       uintptr_t offset_length);
+
+void wgpu_render_bundle_set_pipeline(WGPURenderBundleEncoder *bundle,
+                                     WGPURenderPipelineId pipeline_id);
+
+void wgpu_render_bundle_set_index_buffer(WGPURenderBundleEncoder *bundle,
+                                         WGPUBufferId buffer_id,
+                                         WGPUBufferAddress offset,
+                                         WGPUOption_BufferSize size);
+
+void wgpu_render_bundle_set_vertex_buffer(WGPURenderBundleEncoder *bundle,
+                                          uint32_t slot,
+                                          WGPUBufferId buffer_id,
+                                          WGPUBufferAddress offset,
+                                          WGPUOption_BufferSize size);
+
+void wgpu_render_bundle_set_push_constants(WGPURenderBundleEncoder *pass,
+                                           WGPUShaderStage stages,
+                                           uint32_t offset,
+                                           uint32_t size_bytes,
+                                           const uint8_t *data);
 
 void wgpu_render_bundle_draw(WGPURenderBundleEncoder *bundle,
                              uint32_t vertex_count,
@@ -2133,14 +2394,15 @@ void wgpu_render_bundle_draw_indirect(WGPURenderBundleEncoder *bundle,
                                       WGPUBufferId buffer_id,
                                       WGPUBufferAddress offset);
 
-WGPURenderBundleId wgpu_render_bundle_encoder_finish(WGPURenderBundleEncoderId bundle_encoder_id,
-                                                     const WGPURenderBundleDescriptor_Label *desc);
+void wgpu_render_pass_bundle_indexed_indirect(WGPURenderBundleEncoder *bundle,
+                                              WGPUBufferId buffer_id,
+                                              WGPUBufferAddress offset);
 
-void wgpu_render_bundle_insert_debug_marker(WGPURenderBundleEncoder *_bundle, WGPURawString _label);
+void wgpu_render_bundle_push_debug_group(WGPURenderBundleEncoder *_bundle, WGPURawString _label);
 
 void wgpu_render_bundle_pop_debug_group(WGPURenderBundleEncoder *_bundle);
 
-void wgpu_render_bundle_push_debug_group(WGPURenderBundleEncoder *_bundle, WGPURawString _label);
+void wgpu_render_bundle_insert_debug_marker(WGPURenderBundleEncoder *_bundle, WGPURawString _label);
 
 /**
  * # Safety
@@ -2148,31 +2410,84 @@ void wgpu_render_bundle_push_debug_group(WGPURenderBundleEncoder *_bundle, WGPUR
  * This function is unsafe as there is no guarantee that the given pointer is
  * valid for `offset_length` elements.
  */
-void wgpu_render_bundle_set_bind_group(WGPURenderBundleEncoder *bundle,
-                                       uint32_t index,
-                                       WGPUBindGroupId bind_group_id,
-                                       const WGPUDynamicOffset *offsets,
-                                       uintptr_t offset_length);
+void wgpu_compute_pass_set_bind_group(WGPUComputePass *pass,
+                                      uint32_t index,
+                                      WGPUBindGroupId bind_group_id,
+                                      const WGPUDynamicOffset *offsets,
+                                      uintptr_t offset_length);
 
-void wgpu_render_bundle_set_index_buffer(WGPURenderBundleEncoder *bundle,
+void wgpu_compute_pass_set_pipeline(WGPUComputePass *pass, WGPUComputePipelineId pipeline_id);
+
+void wgpu_compute_pass_set_push_constant(WGPUComputePass *pass,
+                                         uint32_t offset,
+                                         uint32_t size_bytes,
+                                         const uint8_t *data);
+
+void wgpu_compute_pass_dispatch(WGPUComputePass *pass,
+                                uint32_t groups_x,
+                                uint32_t groups_y,
+                                uint32_t groups_z);
+
+void wgpu_compute_pass_dispatch_indirect(WGPUComputePass *pass,
                                          WGPUBufferId buffer_id,
-                                         WGPUBufferAddress offset,
-                                         WGPUOption_BufferSize size);
+                                         WGPUBufferAddress offset);
 
-void wgpu_render_bundle_set_pipeline(WGPURenderBundleEncoder *bundle,
-                                     WGPURenderPipelineId pipeline_id);
+void wgpu_compute_pass_push_debug_group(WGPUComputePass *pass, WGPURawString label, uint32_t color);
 
-void wgpu_render_bundle_set_vertex_buffer(WGPURenderBundleEncoder *bundle,
-                                          uint32_t slot,
-                                          WGPUBufferId buffer_id,
-                                          WGPUBufferAddress offset,
-                                          WGPUOption_BufferSize size);
+void wgpu_compute_pass_pop_debug_group(WGPUComputePass *pass);
 
-void wgpu_render_pass_bundle_indexed_indirect(WGPURenderBundleEncoder *bundle,
-                                              WGPUBufferId buffer_id,
-                                              WGPUBufferAddress offset);
+void wgpu_compute_pass_insert_debug_marker(WGPUComputePass *pass,
+                                           WGPURawString label,
+                                           uint32_t color);
 
-void wgpu_render_pass_destroy(WGPURenderPass *pass);
+/**
+ * # Safety
+ *
+ * This function is unsafe as there is no guarantee that the given pointer is
+ * valid for `offset_length` elements.
+ */
+void wgpu_render_pass_set_bind_group(WGPURenderPass *pass,
+                                     uint32_t index,
+                                     WGPUBindGroupId bind_group_id,
+                                     const WGPUDynamicOffset *offsets,
+                                     uintptr_t offset_length);
+
+void wgpu_render_pass_set_pipeline(WGPURenderPass *pass, WGPURenderPipelineId pipeline_id);
+
+void wgpu_render_pass_set_index_buffer(WGPURenderPass *pass,
+                                       WGPUBufferId buffer_id,
+                                       WGPUBufferAddress offset,
+                                       WGPUOption_BufferSize size);
+
+void wgpu_render_pass_set_vertex_buffer(WGPURenderPass *pass,
+                                        uint32_t slot,
+                                        WGPUBufferId buffer_id,
+                                        WGPUBufferAddress offset,
+                                        WGPUOption_BufferSize size);
+
+void wgpu_render_pass_set_blend_color(WGPURenderPass *pass, const WGPUColor *color);
+
+void wgpu_render_pass_set_stencil_reference(WGPURenderPass *pass, uint32_t value);
+
+void wgpu_render_pass_set_viewport(WGPURenderPass *pass,
+                                   float x,
+                                   float y,
+                                   float w,
+                                   float h,
+                                   float depth_min,
+                                   float depth_max);
+
+void wgpu_render_pass_set_scissor_rect(WGPURenderPass *pass,
+                                       uint32_t x,
+                                       uint32_t y,
+                                       uint32_t w,
+                                       uint32_t h);
+
+void wgpu_render_pass_set_push_constants(WGPURenderPass *pass,
+                                         WGPUShaderStage stages,
+                                         uint32_t offset,
+                                         uint32_t size_bytes,
+                                         const uint8_t *data);
 
 void wgpu_render_pass_draw(WGPURenderPass *pass,
                            uint32_t vertex_count,
@@ -2187,43 +2502,23 @@ void wgpu_render_pass_draw_indexed(WGPURenderPass *pass,
                                    int32_t base_vertex,
                                    uint32_t first_instance);
 
-void wgpu_render_pass_draw_indexed_indirect(WGPURenderPass *pass,
-                                            WGPUBufferId buffer_id,
-                                            WGPUBufferAddress offset);
-
 void wgpu_render_pass_draw_indirect(WGPURenderPass *pass,
                                     WGPUBufferId buffer_id,
                                     WGPUBufferAddress offset);
 
-/**
- * # Safety
- *
- * This function is unsafe because improper use may lead to memory
- * problems. For example, a double-free may occur if the function is called
- * twice on the same raw pointer.
- */
-void wgpu_render_pass_end_pass(WGPURenderPass *pass);
-
-void wgpu_render_pass_insert_debug_marker(WGPURenderPass *pass,
-                                          WGPURawString label,
-                                          uint32_t color);
-
-void wgpu_render_pass_multi_draw_indexed_indirect(WGPURenderPass *pass,
-                                                  WGPUBufferId buffer_id,
-                                                  WGPUBufferAddress offset,
-                                                  uint32_t count);
-
-void wgpu_render_pass_multi_draw_indexed_indirect_count(WGPURenderPass *pass,
-                                                        WGPUBufferId buffer_id,
-                                                        WGPUBufferAddress offset,
-                                                        WGPUBufferId count_buffer_id,
-                                                        WGPUBufferAddress count_buffer_offset,
-                                                        uint32_t max_count);
+void wgpu_render_pass_draw_indexed_indirect(WGPURenderPass *pass,
+                                            WGPUBufferId buffer_id,
+                                            WGPUBufferAddress offset);
 
 void wgpu_render_pass_multi_draw_indirect(WGPURenderPass *pass,
                                           WGPUBufferId buffer_id,
                                           WGPUBufferAddress offset,
                                           uint32_t count);
+
+void wgpu_render_pass_multi_draw_indexed_indirect(WGPURenderPass *pass,
+                                                  WGPUBufferId buffer_id,
+                                                  WGPUBufferAddress offset,
+                                                  uint32_t count);
 
 void wgpu_render_pass_multi_draw_indirect_count(WGPURenderPass *pass,
                                                 WGPUBufferId buffer_id,
@@ -2232,81 +2527,17 @@ void wgpu_render_pass_multi_draw_indirect_count(WGPURenderPass *pass,
                                                 WGPUBufferAddress count_buffer_offset,
                                                 uint32_t max_count);
 
-void wgpu_render_pass_pop_debug_group(WGPURenderPass *pass);
+void wgpu_render_pass_multi_draw_indexed_indirect_count(WGPURenderPass *pass,
+                                                        WGPUBufferId buffer_id,
+                                                        WGPUBufferAddress offset,
+                                                        WGPUBufferId count_buffer_id,
+                                                        WGPUBufferAddress count_buffer_offset,
+                                                        uint32_t max_count);
 
 void wgpu_render_pass_push_debug_group(WGPURenderPass *pass, WGPURawString label, uint32_t color);
 
-/**
- * # Safety
- *
- * This function is unsafe as there is no guarantee that the given pointer is
- * valid for `offset_length` elements.
- */
-void wgpu_render_pass_set_bind_group(WGPURenderPass *pass,
-                                     uint32_t index,
-                                     WGPUBindGroupId bind_group_id,
-                                     const WGPUDynamicOffset *offsets,
-                                     uintptr_t offset_length);
+void wgpu_render_pass_pop_debug_group(WGPURenderPass *pass);
 
-void wgpu_render_pass_set_blend_color(WGPURenderPass *pass, const WGPUColor *color);
-
-void wgpu_render_pass_set_index_buffer(WGPURenderPass *pass,
-                                       WGPUBufferId buffer_id,
-                                       WGPUBufferAddress offset,
-                                       WGPUOption_BufferSize size);
-
-void wgpu_render_pass_set_pipeline(WGPURenderPass *pass, WGPURenderPipelineId pipeline_id);
-
-void wgpu_render_pass_set_scissor_rect(WGPURenderPass *pass,
-                                       uint32_t x,
-                                       uint32_t y,
-                                       uint32_t w,
-                                       uint32_t h);
-
-void wgpu_render_pass_set_stencil_reference(WGPURenderPass *pass, uint32_t value);
-
-void wgpu_render_pass_set_vertex_buffer(WGPURenderPass *pass,
-                                        uint32_t slot,
-                                        WGPUBufferId buffer_id,
-                                        WGPUBufferAddress offset,
-                                        WGPUOption_BufferSize size);
-
-void wgpu_render_pass_set_viewport(WGPURenderPass *pass,
-                                   float x,
-                                   float y,
-                                   float w,
-                                   float h,
-                                   float depth_min,
-                                   float depth_max);
-
-void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
-
-/**
- * # Safety
- *
- * This function is unsafe as it calls an unsafe extern callback.
- */
-void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
-                                WGPUBackendBit mask,
-                                bool allow_unsafe,
-                                WGPURequestAdapterCallback callback,
-                                void *userdata);
-
-void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
-
-void wgpu_set_log_callback(WGPULogCallback callback);
-
-int wgpu_set_log_level(WGPULogLevel level);
-
-void wgpu_shader_module_destroy(WGPUShaderModuleId shader_module_id);
-
-WGPUSwapChainOutput wgpu_swap_chain_get_next_texture(WGPUSwapChainId swap_chain_id);
-
-void wgpu_swap_chain_present(WGPUSwapChainId swap_chain_id);
-
-WGPUTextureViewId wgpu_texture_create_view(WGPUTextureId texture_id,
-                                           const WGPUTextureViewDescriptor *desc);
-
-void wgpu_texture_destroy(WGPUTextureId texture_id);
-
-void wgpu_texture_view_destroy(WGPUTextureViewId texture_view_id);
+void wgpu_render_pass_insert_debug_marker(WGPURenderPass *pass,
+                                          WGPURawString label,
+                                          uint32_t color);
