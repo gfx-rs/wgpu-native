@@ -89,15 +89,6 @@ checksum = "f6da2b592f5a2e590c3d94c44313bab369f2286cfe1e4134c830bf3317814866"
 
 [[package]]
 name = "cloudabi"
-version = "0.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
-dependencies = [
- "bitflags",
-]
-
-[[package]]
-name = "cloudabi"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4344512281c643ae7638bbabc3af17a11307803ec8f0fcad9fae512a8bf36467"
@@ -202,7 +193,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ec012a32036c6439180b688b15a24dc8a3fbdb3b1cd02eb55266201db4c1b0f"
 dependencies = [
  "fxhash",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "spirv_cross",
 ]
 
@@ -214,10 +205,10 @@ checksum = "6c7fd31dcf0f8496fc94fe44b285a0bfeeb33b5a8ec0f59ea5f8fa64428071b4"
 dependencies = [
  "bitflags",
  "gfx-auxil",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "libloading",
  "log",
- "parking_lot 0.11.0",
+ "parking_lot",
  "range-alloc",
  "raw-window-handle",
  "smallvec",
@@ -236,7 +227,7 @@ dependencies = [
  "bitflags",
  "d3d12",
  "gfx-auxil",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "log",
  "range-alloc",
  "raw-window-handle",
@@ -251,7 +242,7 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2085227c12b78f6657a900c829f2d0deb46a9be3eaf86844fde263cdc218f77c"
 dependencies = [
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "log",
  "raw-window-handle",
 ]
@@ -269,37 +260,17 @@ dependencies = [
  "copyless",
  "foreign-types",
  "gfx-auxil",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "lazy_static",
  "log",
  "metal",
  "objc",
- "parking_lot 0.11.0",
+ "parking_lot",
  "range-alloc",
  "raw-window-handle",
  "smallvec",
  "spirv_cross",
  "storage-map",
-]
-
-[[package]]
-name = "gfx-backend-vulkan"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aec9c919cfc236d2c36aaa38609c1906a92f2df99a3c7f53022b01936f98275a"
-dependencies = [
- "arrayvec",
- "ash",
- "byteorder",
- "core-graphics-types",
- "gfx-hal 0.5.3",
- "lazy_static",
- "log",
- "objc",
- "raw-window-handle",
- "smallvec",
- "winapi",
- "x11",
 ]
 
 [[package]]
@@ -312,7 +283,7 @@ dependencies = [
  "ash",
  "byteorder",
  "core-graphics-types",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "inplace_it",
  "lazy_static",
  "log",
@@ -320,6 +291,7 @@ dependencies = [
  "raw-window-handle",
  "smallvec",
  "winapi",
+ "x11",
 ]
 
 [[package]]
@@ -330,18 +302,8 @@ checksum = "cd8c7afcd000f279d541a490e27117e61037537279b9342279abf4938fe60c6b"
 dependencies = [
  "arrayvec",
  "fxhash",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "log",
-]
-
-[[package]]
-name = "gfx-hal"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a18534b23d4c262916231511309bc1f307c74cda8dcb68b93a10ca213a22814b"
-dependencies = [
- "bitflags",
- "raw-window-handle",
 ]
 
 [[package]]
@@ -362,7 +324,7 @@ checksum = "dccdda5d2b39412f4ca2cb15c70b5a82783a86b0606f5e985342754c8ed88f05"
 dependencies = [
  "bit-set",
  "fxhash",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "log",
  "slab",
 ]
@@ -436,15 +398,6 @@ checksum = "3557c9384f7f757f6d139cd3a4c62ef4e850696c16bf27924a5538c8a09717a1"
 dependencies = [
  "cfg-if",
  "winapi",
-]
-
-[[package]]
-name = "lock_api"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4da24a77a3d8a6d4862d95f72e6fdb9c09a643ecdb402d754004a557f2bec75"
-dependencies = [
- "scopeguard",
 ]
 
 [[package]]
@@ -532,37 +485,13 @@ dependencies = [
 
 [[package]]
 name = "parking_lot"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3a704eb390aafdc107b0e392f56a82b668e3a71366993b5340f5833fd62505e"
-dependencies = [
- "lock_api 0.3.4",
- "parking_lot_core 0.7.2",
-]
-
-[[package]]
-name = "parking_lot"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4893845fa2ca272e647da5d0e46660a314ead9c2fdd9a883aabc32e481a8733"
 dependencies = [
  "instant",
- "lock_api 0.4.1",
- "parking_lot_core 0.8.0",
-]
-
-[[package]]
-name = "parking_lot_core"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d58c7c768d4ba344e3e8d72518ac13e259d7c7ade24167003b8488e10b6740a3"
-dependencies = [
- "cfg-if",
- "cloudabi 0.0.3",
- "libc",
- "redox_syscall",
- "smallvec",
- "winapi",
+ "lock_api",
+ "parking_lot_core",
 ]
 
 [[package]]
@@ -572,7 +501,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c361aa727dd08437f2f1447be8b59a33b0edd15e0fcee698f935613d9efbca9b"
 dependencies = [
  "cfg-if",
- "cloudabi 0.1.0",
+ "cloudabi",
  "instant",
  "libc",
  "redox_syscall",
@@ -717,7 +646,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "418bb14643aa55a7841d5303f72cf512cfb323b8cc221d51580500a1ca75206c"
 dependencies = [
- "lock_api 0.4.1",
+ "lock_api",
 ]
 
 [[package]]
@@ -845,12 +774,12 @@ dependencies = [
  "gfx-backend-dx12",
  "gfx-backend-empty",
  "gfx-backend-metal",
- "gfx-backend-vulkan 0.6.5",
+ "gfx-backend-vulkan",
  "gfx-descriptor",
- "gfx-hal 0.6.0",
+ "gfx-hal",
  "gfx-memory",
  "naga",
- "parking_lot 0.11.0",
+ "parking_lot",
  "raw-window-handle",
  "ron",
  "serde",
@@ -865,11 +794,11 @@ name = "wgpu-native"
 version = "0.6.0"
 dependencies = [
  "arrayvec",
- "gfx-backend-vulkan 0.5.11",
+ "gfx-backend-vulkan",
  "lazy_static",
  "libc",
  "log",
- "parking_lot 0.10.2",
+ "parking_lot",
  "raw-window-handle",
  "wgpu-core",
  "wgpu-types",
