@@ -115,6 +115,8 @@ pub unsafe extern "C" fn wgpu_create_surface_from_metal_layer(
             .metal
             .as_ref()
             .map(|inst| inst.create_surface_from_layer(std::mem::transmute(layer))),
+        #[cfg(target_os = "macos")]
+        gl: None,
     };
 
     let id = GLOBAL.surfaces.process_id(PhantomData);
