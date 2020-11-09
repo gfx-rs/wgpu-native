@@ -1558,9 +1558,9 @@ typedef uint32_t WGPUTextureUsage;
  */
 #define WGPUTextureUsage_STORAGE (uint32_t)8
 /**
- * Allows a texture to be a output attachment of a renderpass.
+ * Allows a texture to be an output attachment of a renderpass.
  */
-#define WGPUTextureUsage_OUTPUT_ATTACHMENT (uint32_t)16
+#define WGPUTextureUsage_RENDER_ATTACHMENT (uint32_t)16
 
 /**
  * Describes a [`Texture`].
@@ -1991,7 +1991,7 @@ typedef WGPUId_SwapChain_Dummy WGPUSwapChainId;
  */
 typedef struct WGPUSwapChainDescriptor {
   /**
-   * The usage of the swap chain. The only supported usage is OUTPUT_ATTACHMENT
+   * The usage of the swap chain. The only supported usage is `RENDER_ATTACHMENT`.
    */
   WGPUTextureUsage usage;
   /**
