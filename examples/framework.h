@@ -3,7 +3,7 @@
 #include "wgpu.h"
 #endif
 
-WGPUShaderSource read_file(const char *name);
+WGPUShaderModuleDescriptor read_file(const char *name);
 
 void read_buffer_map(
     WGPUBufferMapAsyncStatus status,

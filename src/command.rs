@@ -1,12 +1,13 @@
-use crate::{Label, OwnedLabel, GLOBAL};
+use crate::{check_error, Label, OwnedLabel, GLOBAL};
 
 pub use wgc::command::{
-    bundle_ffi::*, compute_ffi::*, render_ffi::*, ColorAttachmentDescriptor, ComputePass,
-    DepthStencilAttachmentDescriptor, RenderPass,
+    bundle_ffi, compute_ffi, render_ffi, ColorAttachmentDescriptor, ComputePass,
+    DepthStencilAttachmentDescriptor, RenderBundleEncoder, RenderCommand, RenderPass,
 };
 
 use std::borrow::Cow;
 use wgc::{gfx_select, id};
+use wgt::{BufferAddress, BufferSize};
 
 #[repr(C)]
 pub struct CommandBufferDescriptor {
@@ -22,8 +23,7 @@ pub unsafe extern "C" fn wgpu_command_encoder_finish(
         label: desc_base.and_then(|c| OwnedLabel::new(c.label).into_cow()),
     };
 
-    gfx_select!(encoder_id => GLOBAL.command_encoder_finish(encoder_id, &desc))
-        .expect("Unable to finish command encoder")
+    check_error(gfx_select!(encoder_id => GLOBAL.command_encoder_finish(encoder_id, &desc)))
 }
 
 #[no_mangle]
@@ -198,4 +198,40 @@ pub unsafe extern "C" fn wgpu_compute_pass_end_pass(pass: *mut ComputePass) {
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: *mut ComputePass) {
     let _ = Box::from_raw(pass);
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_render_pass_set_index_buffer(
+    pass: &mut RenderPass,
+    buffer_id: id::BufferId,
+    index_format: super::IndexFormat,
+    offset: BufferAddress,
+    size: Option<BufferSize>,
+) {
+    pass.set_index_buffer(
+        buffer_id,
+        index_format
+            .into_wgpu()
+            .expect("IndexFormat cannot be undefined"),
+        offset,
+        size,
+    );
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_render_bundle_set_index_buffer(
+    bundle: &mut RenderBundleEncoder,
+    buffer_id: id::BufferId,
+    index_format: super::IndexFormat,
+    offset: BufferAddress,
+    size: Option<BufferSize>,
+) {
+    bundle.set_index_buffer(
+        buffer_id,
+        index_format
+            .into_wgpu()
+            .expect("IndexFormat cannot be undefined"),
+        offset,
+        size,
+    );
 }
