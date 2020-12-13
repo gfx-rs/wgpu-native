@@ -98,18 +98,21 @@ int main() {
     );
 
     WGPUDeviceId device = wgpu_adapter_request_device(adapter,
-        0,
-        &(WGPUCLimits){
-            .max_bind_groups = 1,
-        },
-        true,
-        NULL);
+        &(WGPUDeviceDescriptor) {
+            .label = "",
+            0,
+            (WGPUCLimits) {
+                .max_bind_groups = 1
+            },
+            true,
+            NULL}
+        );
 
-    WGPUShaderSource vertex_source = read_file("./../data/triangle.vert.spv");
+    WGPUShaderModuleDescriptor vertex_source = read_file("./../data/triangle.vert.spv");
     WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,
             &vertex_source);
 
-    WGPUShaderSource fragment_source = read_file("./../data/triangle.frag.spv");
+    WGPUShaderModuleDescriptor fragment_source = read_file("./../data/triangle.frag.spv");
     WGPUShaderModuleId fragment_shader = wgpu_device_create_shader_module(device,
             &fragment_source);
 
@@ -183,7 +186,7 @@ int main() {
                 .depth_stencil_state = NULL,
                 .vertex_state =
                     (WGPUVertexStateDescriptor){
-                        .index_format = WGPUIndexFormat_Uint16,
+                        .index_format = WGPUIndexFormat_Undefined,
                         .vertex_buffers = NULL,
                         .vertex_buffers_length = 0,
                     },

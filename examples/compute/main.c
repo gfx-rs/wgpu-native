@@ -50,12 +50,15 @@ int main(
     );
 
     WGPUDeviceId device = wgpu_adapter_request_device(adapter,
+        &(WGPUDeviceDescriptor) {
+            .label = "",
             0,
-            &(WGPUCLimits){
+            (WGPUCLimits) {
                 .max_bind_groups = 1
             },
             true,
-             NULL);
+            NULL}
+        );
 
     WGPUBufferId staging_buffer = wgpu_device_create_buffer(device,
             &(WGPUBufferDescriptor){
@@ -109,7 +112,7 @@ int main(
                     .bind_group_layouts = bind_group_layouts,
                     .bind_group_layouts_length = BIND_GROUP_LAYOUTS_LENGTH});
 
-    WGPUShaderSource source = read_file("./../data/collatz.comp.spv");
+    WGPUShaderModuleDescriptor source = read_file("./../data/collatz.comp.spv");
     WGPUShaderModuleId shader_module = wgpu_device_create_shader_module(
         device,
         &source);

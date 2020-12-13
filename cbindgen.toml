@@ -60,6 +60,7 @@ exclude = [
 "SamplerDescriptor_Label" = "SamplerDescriptor"
 "BufferCopyViewC" = "BufferCopyView"
 "TextureCopyViewC" = "TextureCopyView"
+"CDeviceDescriptor" = "DeviceDescriptor"
 "RequestAdapterOptions_SurfaceId" = "RequestAdapterOptions"
 "Option_SamplerBorderColor" = "SamplerBorderColor"
 "Option_TextureViewDimension" = "TextureViewDimension"

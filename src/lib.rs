@@ -119,6 +119,32 @@ pub struct ChainedStruct<'c> {
     s_type: SType,
 }
 
+#[track_caller]
+pub fn check_error<I, E: std::fmt::Debug>(input: (I, Option<E>)) -> I {
+    if let Some(error) = input.1 {
+        panic!("{:?}", error);
+    }
+
+    input.0
+}
+
+#[repr(u32)]
+pub enum IndexFormat {
+    Undefined = 0,
+    Uint16 = 1,
+    Uint32 = 2,
+}
+
+impl IndexFormat {
+    fn into_wgpu(&self) -> Option<wgt::IndexFormat> {
+        match self {
+            IndexFormat::Undefined => None,
+            IndexFormat::Uint16 => Some(wgt::IndexFormat::Uint16),
+            IndexFormat::Uint32 => Some(wgt::IndexFormat::Uint32),
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_get_version() -> std::os::raw::c_uint {
     let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap();

@@ -33,6 +33,10 @@ jobs:
             name: Ubuntu Stable
             channel: stable
             build_command: cargo clippy
+            install_deps_command: |
+                    sudo apt-get update
+                    sudo apt-get install -f -y libegl1-mesa-dev
+                    sudo apt-get install -f -y mesa-vulkan-drivers
             make_command: make package
           - os: ubuntu-18.04
             name: Ubuntu Nightly
@@ -41,6 +45,8 @@ jobs:
             install_deps_command: |
                                 sudo apt-get update
                                 sudo apt install -f -y cmake
+                                sudo apt-get install -f -y libegl1-mesa-dev
+                                sudo apt-get install -f -y mesa-vulkan-drivers
                                 GLFW_DIR="$GITHUB_WORKSPACE/libglfw3"
                                 mkdir $GLFW_DIR
                                 curl -o $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3-dev_3.3.2-1_amd64.deb
@@ -195,16 +201,16 @@ jobs:
   android-build:
     name: Android Stable
     runs-on: ubuntu-18.04
+    env:
+      PKG_CONFIG_ALLOW_CROSS: 1
     steps:
       - uses: actions/checkout@v2
       - run: rustup component add clippy
       - name: Install dependencies
         run: |
-          curl -LO https://dl.google.com/android/repository/android-ndk-r21b-linux-x86_64.zip
-          unzip -qq android-ndk-r21b-linux-x86_64.zip -d $GITHUB_WORKSPACE
-          export NDK_HOME_BIN=$GITHUB_WORKSPACE/android-ndk-r21b/toolchains/llvm/prebuilt/linux-x86_64/bin
-          ln -s $NDK_HOME_BIN/aarch64-linux-android21-clang $NDK_HOME_BIN/aarch64-linux-android-clang
-          echo "::add-path::$NDK_HOME_BIN"
+          sudo apt-get update -y -qq
+          sudo apt-get install -y -qq libegl1-mesa-dev
+          echo "$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
       - run: rustup target add aarch64-linux-android
       - run: cargo clippy --target aarch64-linux-android
 

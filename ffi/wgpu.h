@@ -247,19 +247,12 @@ typedef enum WGPUFrontFace {
   WGPUFrontFace_Cw = 1,
 } WGPUFrontFace;
 
-/**
- * Format of indices used with pipeline.
- */
-typedef enum WGPUIndexFormat {
-  /**
-   * Indices are 16 bit unsigned integers.
-   */
-  WGPUIndexFormat_Uint16 = 0,
-  /**
-   * Indices are 32 bit unsigned integers.
-   */
-  WGPUIndexFormat_Uint32 = 1,
-} WGPUIndexFormat;
+enum WGPUIndexFormat {
+  WGPUIndexFormat_Undefined = 0,
+  WGPUIndexFormat_Uint16 = 1,
+  WGPUIndexFormat_Uint32 = 2,
+};
+typedef uint32_t WGPUIndexFormat;
 
 /**
  * Rate that determines when vertex data is advanced.
@@ -496,29 +489,13 @@ typedef enum WGPUTextureAspect {
   WGPUTextureAspect_DepthOnly,
 } WGPUTextureAspect;
 
-/**
- * Type of data shaders will read from a texture.
- *
- * Only relevant for [`BindingType::SampledTexture`] bindings. See [`TextureFormat`] for more information.
- */
-typedef enum WGPUTextureComponentType {
-  /**
-   * They see it as a floating point number `texture1D`, `texture2D` etc
-   */
-  WGPUTextureComponentType_Float,
-  /**
-   * They see it as a signed integer `itexture1D`, `itexture2D` etc
-   */
-  WGPUTextureComponentType_Sint,
-  /**
-   * They see it as a unsigned integer `utexture1D`, `utexture2D` etc
-   */
-  WGPUTextureComponentType_Uint,
-  /**
-   * They see it as a floating point 0-1 result of comparison, i.e. `shadowTexture2D`
-   */
-  WGPUTextureComponentType_DepthComparison,
-} WGPUTextureComponentType;
+enum WGPUTextureComponentType {
+  WGPUTextureComponentType_Float = 0,
+  WGPUTextureComponentType_Sint = 1,
+  WGPUTextureComponentType_Uint = 2,
+  WGPUTextureComponentType_DepthComparison = 3,
+};
+typedef uint32_t WGPUTextureComponentType;
 
 /**
  * Dimensionality of a texture.
@@ -699,7 +676,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Depth24PlusStencil8 = 37,
   /**
    * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 4 color + alpha pallet. 5 bit R + 6 bit G + 5 bit B + 1 bit alpha.
-   * [0, 64] ([0, 1] for alpha) converted to/from float [0, 1] in shader.
+   * [0, 63] ([0, 1] for alpha) converted to/from float [0, 1] in shader.
    *
    * Also known as DXT1.
    *
@@ -708,7 +685,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Bc1RgbaUnorm = 38,
   /**
    * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 4 color + alpha pallet. 5 bit R + 6 bit G + 5 bit B + 1 bit alpha.
-   * Srgb-color [0, 64] ([0, 16] for alpha) converted to/from linear-color float [0, 1] in shader.
+   * Srgb-color [0, 63] ([0, 15] for alpha) converted to/from linear-color float [0, 1] in shader.
    *
    * Also known as DXT1.
    *
@@ -717,7 +694,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Bc1RgbaUnormSrgb = 39,
   /**
    * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet. 5 bit R + 6 bit G + 5 bit B + 4 bit alpha.
-   * [0, 64] ([0, 16] for alpha) converted to/from float [0, 1] in shader.
+   * [0, 63] ([0, 15] for alpha) converted to/from float [0, 1] in shader.
    *
    * Also known as DXT3.
    *
@@ -726,7 +703,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Bc2RgbaUnorm = 40,
   /**
    * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet. 5 bit R + 6 bit G + 5 bit B + 4 bit alpha.
-   * Srgb-color [0, 64] ([0, 256] for alpha) converted to/from linear-color float [0, 1] in shader.
+   * Srgb-color [0, 63] ([0, 255] for alpha) converted to/from linear-color float [0, 1] in shader.
    *
    * Also known as DXT3.
    *
@@ -735,7 +712,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Bc2RgbaUnormSrgb = 41,
   /**
    * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet + 8 alpha pallet. 5 bit R + 6 bit G + 5 bit B + 8 bit alpha.
-   * [0, 64] ([0, 256] for alpha) converted to/from float [0, 1] in shader.
+   * [0, 63] ([0, 255] for alpha) converted to/from float [0, 1] in shader.
    *
    * Also known as DXT5.
    *
@@ -744,7 +721,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Bc3RgbaUnorm = 42,
   /**
    * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 4 color pallet + 8 alpha pallet. 5 bit R + 6 bit G + 5 bit B + 8 bit alpha.
-   * Srgb-color [0, 64] ([0, 256] for alpha) converted to/from linear-color float [0, 1] in shader.
+   * Srgb-color [0, 63] ([0, 255] for alpha) converted to/from linear-color float [0, 1] in shader.
    *
    * Also known as DXT5.
    *
@@ -753,7 +730,7 @@ typedef enum WGPUTextureFormat {
   WGPUTextureFormat_Bc3RgbaUnormSrgb = 43,
   /**
    * 4x4 block compressed texture. 8 bytes per block (4 bit/px). 8 color pallet. 8 bit R.
-   * [0, 256] converted to/from float [0, 1] in shader.
+   * [0, 255] converted to/from float [0, 1] in shader.
    *
    * Also known as RGTC1.
    *
@@ -770,8 +747,8 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Bc4RSnorm = 45,
   /**
-   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). 8 color red pallet + 8 color green pallet. 8 bit RG.
-   * [0, 256] converted to/from float [0, 1] in shader.
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 8 color red pallet + 8 color green pallet. 8 bit RG.
+   * [0, 255] converted to/from float [0, 1] in shader.
    *
    * Also known as RGTC2.
    *
@@ -779,7 +756,7 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Bc5RgUnorm = 46,
   /**
-   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). 8 color red pallet + 8 color green pallet. 8 bit RG.
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). 8 color red pallet + 8 color green pallet. 8 bit RG.
    * [-127, 127] converted to/from float [-1, 1] in shader.
    *
    * Also known as RGTC2.
@@ -788,7 +765,7 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Bc5RgSnorm = 47,
   /**
-   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 16 bit unsigned float RGB. Float in shader.
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Variable sized pallet. 16 bit unsigned float RGB. Float in shader.
    *
    * Also known as BPTC (float).
    *
@@ -796,7 +773,7 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Bc6hRgbUfloat = 48,
   /**
-   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 16 bit signed float RGB. Float in shader.
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Variable sized pallet. 16 bit signed float RGB. Float in shader.
    *
    * Also known as BPTC (float).
    *
@@ -804,8 +781,8 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Bc6hRgbSfloat = 49,
   /**
-   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 8 bit integer RGBA.
-   * [0, 256] converted to/from float [0, 1] in shader.
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Variable sized pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
    *
    * Also known as BPTC (unorm).
    *
@@ -813,7 +790,7 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Bc7RgbaUnorm = 50,
   /**
-   * 4x4 block compressed texture. 16 bytes per block (16 bit/px). Variable sized pallet. 8 bit integer RGBA.
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Variable sized pallet. 8 bit integer RGBA.
    * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
    *
    * Also known as BPTC (unorm).
@@ -821,6 +798,272 @@ typedef enum WGPUTextureFormat {
    * [`Features::TEXTURE_COMPRESSION_BC`] must be enabled to use this texture format.
    */
   WGPUTextureFormat_Bc7RgbaUnormSrgb = 51,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). Complex pallet. 8 bit integer RGB.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Etc2RgbUnorm = 52,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). Complex pallet. 8 bit integer RGB.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Etc2RgbUnormSrgb = 53,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). Complex pallet. 8 bit integer RGB + 1 bit alpha.
+   * [0, 255] ([0, 1] for alpha) converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Etc2RgbA1Unorm = 54,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). Complex pallet. 8 bit integer RGB + 1 bit alpha.
+   * Srgb-color [0, 255] ([0, 1] for alpha) converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Etc2RgbA1UnormSrgb = 55,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Complex pallet. 8 bit integer RGB + 8 bit alpha.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Etc2RgbA8Unorm = 56,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Complex pallet. 8 bit integer RGB + 8 bit alpha.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Etc2RgbA8UnormSrgb = 57,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). Complex pallet. 8 bit integer R.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_EacRUnorm = 58,
+  /**
+   * 4x4 block compressed texture. 8 bytes per block (4 bit/px). Complex pallet. 8 bit integer R.
+   * [-127, 127] converted to/from float [-1, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_EacRSnorm = 59,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Complex pallet. 8 bit integer R + 8 bit integer G.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_EtcRgUnorm = 60,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Complex pallet. 8 bit integer R + 8 bit integer G.
+   * [-127, 127] converted to/from float [-1, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ETC2`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_EtcRgSnorm = 61,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc4x4RgbaUnorm = 62,
+  /**
+   * 4x4 block compressed texture. 16 bytes per block (8 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc4x4RgbaUnormSrgb = 63,
+  /**
+   * 5x4 block compressed texture. 16 bytes per block (6.4 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc5x4RgbaUnorm = 64,
+  /**
+   * 5x4 block compressed texture. 16 bytes per block (6.4 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc5x4RgbaUnormSrgb = 65,
+  /**
+   * 5x5 block compressed texture. 16 bytes per block (5.12 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc5x5RgbaUnorm = 66,
+  /**
+   * 5x5 block compressed texture. 16 bytes per block (5.12 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc5x5RgbaUnormSrgb = 67,
+  /**
+   * 6x5 block compressed texture. 16 bytes per block (4.27 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc6x5RgbaUnorm = 68,
+  /**
+   * 6x5 block compressed texture. 16 bytes per block (4.27 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc6x5RgbaUnormSrgb = 69,
+  /**
+   * 6x6 block compressed texture. 16 bytes per block (3.56 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc6x6RgbaUnorm = 70,
+  /**
+   * 6x6 block compressed texture. 16 bytes per block (3.56 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc6x6RgbaUnormSrgb = 71,
+  /**
+   * 8x5 block compressed texture. 16 bytes per block (3.2 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc8x5RgbaUnorm = 72,
+  /**
+   * 8x5 block compressed texture. 16 bytes per block (3.2 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc8x5RgbaUnormSrgb = 73,
+  /**
+   * 8x6 block compressed texture. 16 bytes per block (2.67 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc8x6RgbaUnorm = 74,
+  /**
+   * 8x6 block compressed texture. 16 bytes per block (2.67 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc8x6RgbaUnormSrgb = 75,
+  /**
+   * 10x5 block compressed texture. 16 bytes per block (2.56 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x5RgbaUnorm = 76,
+  /**
+   * 10x5 block compressed texture. 16 bytes per block (2.56 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x5RgbaUnormSrgb = 77,
+  /**
+   * 10x6 block compressed texture. 16 bytes per block (2.13 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x6RgbaUnorm = 78,
+  /**
+   * 10x6 block compressed texture. 16 bytes per block (2.13 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x6RgbaUnormSrgb = 79,
+  /**
+   * 8x8 block compressed texture. 16 bytes per block (2 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc8x8RgbaUnorm = 80,
+  /**
+   * 8x8 block compressed texture. 16 bytes per block (2 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc8x8RgbaUnormSrgb = 81,
+  /**
+   * 10x8 block compressed texture. 16 bytes per block (1.6 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x8RgbaUnorm = 82,
+  /**
+   * 10x8 block compressed texture. 16 bytes per block (1.6 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x8RgbaUnormSrgb = 83,
+  /**
+   * 10x10 block compressed texture. 16 bytes per block (1.28 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x10RgbaUnorm = 84,
+  /**
+   * 10x10 block compressed texture. 16 bytes per block (1.28 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc10x10RgbaUnormSrgb = 85,
+  /**
+   * 12x10 block compressed texture. 16 bytes per block (1.07 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc12x10RgbaUnorm = 86,
+  /**
+   * 12x10 block compressed texture. 16 bytes per block (1.07 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc12x10RgbaUnormSrgb = 87,
+  /**
+   * 12x12 block compressed texture. 16 bytes per block (0.89 bit/px). Complex pallet. 8 bit integer RGBA.
+   * [0, 255] converted to/from float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc12x12RgbaUnorm = 88,
+  /**
+   * 12x12 block compressed texture. 16 bytes per block (0.89 bit/px). Complex pallet. 8 bit integer RGBA.
+   * Srgb-color [0, 255] converted to/from linear-color float [0, 1] in shader.
+   *
+   * [`Features::TEXTURE_COMPRESSION_ASTC_LDR`] must be enabled to use this texture format.
+   */
+  WGPUTextureFormat_Astc12x12RgbaUnormSrgb = 89,
 } WGPUTextureFormat;
 
 /**
@@ -1273,7 +1516,7 @@ typedef uint64_t WGPUFeatures;
  * Enables BCn family of compressed textures. All BCn textures use 4x4 pixel blocks
  * with 8 or 16 bytes per block.
  *
- * Compressed textures sacrifice some quality in exchange for signifigantly reduced
+ * Compressed textures sacrifice some quality in exchange for significantly reduced
  * bandwidth usage.
  *
  * Supported Platforms:
@@ -1442,6 +1685,34 @@ typedef uint64_t WGPUFeatures;
  */
 #define WGPUFeatures_NON_FILL_POLYGON_MODE (uint64_t)33554432
 /**
+ * Enables ETC family of compressed textures. All ETC textures use 4x4 pixel blocks.
+ * ETC2 RGB and RGBA1 are 8 bytes per block. RTC2 RGBA8 and EAC are 16 bytes per block.
+ *
+ * Compressed textures sacrifice some quality in exchange for significantly reduced
+ * bandwidth usage.
+ *
+ * Supported Platforms:
+ * - Intel/Vulkan
+ * - Mobile (some)
+ *
+ * This is a native-only feature.
+ */
+#define WGPUFeatures_TEXTURE_COMPRESSION_ETC2 (uint64_t)67108864
+/**
+ * Enables ASTC family of compressed textures. ASTC textures use pixel blocks varying from 4x4 to 12x12.
+ * Blocks are always 16 bytes.
+ *
+ * Compressed textures sacrifice some quality in exchange for significantly reduced
+ * bandwidth usage.
+ *
+ * Supported Platforms:
+ * - Intel/Vulkan
+ * - Mobile (some)
+ *
+ * This is a native-only feature.
+ */
+#define WGPUFeatures_TEXTURE_COMPRESSION_ASTC_LDR (uint64_t)134217728
+/**
  * Features which are part of the upstream WebGPU standard.
  */
 #define WGPUFeatures_ALL_WEBGPU (uint64_t)65535
@@ -1453,6 +1724,14 @@ typedef uint64_t WGPUFeatures;
 typedef struct WGPUCLimits {
   uint32_t max_bind_groups;
 } WGPUCLimits;
+
+typedef struct WGPUDeviceDescriptor {
+  WGPULabel label;
+  WGPUFeatures features;
+  WGPUCLimits limits;
+  bool shader_validation;
+  const char *trace_path;
+} WGPUDeviceDescriptor;
 
 /**
  * Different ways that you can use a buffer.
@@ -1496,11 +1775,11 @@ typedef uint32_t WGPUBufferUsage;
  */
 #define WGPUBufferUsage_VERTEX (uint32_t)32
 /**
- * Allow a buffer to be a [`BindingType::UniformBuffer`] inside a bind group.
+ * Allow a buffer to be a [`BufferBindingType::Uniform`] inside a bind group.
  */
 #define WGPUBufferUsage_UNIFORM (uint32_t)64
 /**
- * Allow a buffer to be a [`BindingType::StorageBuffer`] inside a bind group.
+ * Allow a buffer to be a [`BufferBindingType::Storage`] inside a bind group.
  */
 #define WGPUBufferUsage_STORAGE (uint32_t)128
 /**
@@ -1550,7 +1829,7 @@ typedef uint32_t WGPUTextureUsage;
  */
 #define WGPUTextureUsage_COPY_DST (uint32_t)2
 /**
- * Allows a texture to be a [`BindingType::SampledTexture`] in a bind group.
+ * Allows a texture to be a [`BindingType::Texture`] in a bind group.
  */
 #define WGPUTextureUsage_SAMPLED (uint32_t)4
 /**
@@ -1580,7 +1859,7 @@ typedef struct WGPUTextureDescriptor {
    */
   uint32_t mip_level_count;
   /**
-   * Sample count of texture. If this is not 1, texture must have [`BindingType::SampledTexture::multisampled`] set to true.
+   * Sample count of texture. If this is not 1, texture must have [`BindingType::Texture::multisampled`] set to true.
    */
   uint32_t sample_count;
   /**
@@ -1668,6 +1947,7 @@ typedef struct WGPUBindGroupLayoutEntry {
   bool has_dynamic_offset;
   uint64_t min_buffer_binding_size;
   bool multisampled;
+  bool filtering;
   WGPUTextureViewDimension view_dimension;
   WGPUTextureComponentType texture_component_type;
   WGPUTextureFormat storage_texture_format;
@@ -1719,10 +1999,11 @@ typedef WGPUNonZeroU64 WGPUId_ShaderModule_Dummy;
 
 typedef WGPUId_ShaderModule_Dummy WGPUShaderModuleId;
 
-typedef struct WGPUShaderSource {
+typedef struct WGPUShaderModuleDescriptor {
+  WGPULabel label;
   const uint32_t *bytes;
   uintptr_t length;
-} WGPUShaderSource;
+} WGPUShaderModuleDescriptor;
 
 /**
  * Describes a [`CommandEncoder`].
@@ -2165,6 +2446,18 @@ void wgpu_compute_pass_end_pass(WGPUComputePass *pass);
 
 void wgpu_compute_pass_destroy(WGPUComputePass *pass);
 
+void wgpu_render_pass_set_index_buffer(WGPURenderPass *pass,
+                                       WGPUBufferId buffer_id,
+                                       WGPUIndexFormat index_format,
+                                       WGPUBufferAddress offset,
+                                       WGPUOption_BufferSize size);
+
+void wgpu_render_bundle_set_index_buffer(WGPURenderBundleEncoder *bundle,
+                                         WGPUBufferId buffer_id,
+                                         WGPUIndexFormat index_format,
+                                         WGPUBufferAddress offset,
+                                         WGPUOption_BufferSize size);
+
 WGPUSurfaceId wgpu_create_surface_from_xlib(const void **display, unsigned long window);
 
 WGPUSurfaceId wgpu_create_surface_from_wayland(void *surface, void *display);
@@ -2186,10 +2479,7 @@ void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
                                 void *userdata);
 
 WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
-                                         WGPUFeatures features,
-                                         const WGPUCLimits *limits,
-                                         bool shader_validation,
-                                         const char *trace_path);
+                                         const WGPUDeviceDescriptor *desc);
 
 WGPUFeatures wgpu_adapter_features(WGPUAdapterId adapter_id);
 
@@ -2234,7 +2524,7 @@ WGPUBindGroupId wgpu_device_create_bind_group(WGPUDeviceId device_id,
 void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
 
 WGPUShaderModuleId wgpu_device_create_shader_module(WGPUDeviceId device_id,
-                                                    const WGPUShaderSource *source);
+                                                    const WGPUShaderModuleDescriptor *desc);
 
 void wgpu_shader_module_destroy(WGPUShaderModuleId shader_module_id);
 
@@ -2360,11 +2650,6 @@ void wgpu_render_bundle_set_bind_group(WGPURenderBundleEncoder *bundle,
 void wgpu_render_bundle_set_pipeline(WGPURenderBundleEncoder *bundle,
                                      WGPURenderPipelineId pipeline_id);
 
-void wgpu_render_bundle_set_index_buffer(WGPURenderBundleEncoder *bundle,
-                                         WGPUBufferId buffer_id,
-                                         WGPUBufferAddress offset,
-                                         WGPUOption_BufferSize size);
-
 void wgpu_render_bundle_set_vertex_buffer(WGPURenderBundleEncoder *bundle,
                                           uint32_t slot,
                                           WGPUBufferId buffer_id,
@@ -2453,11 +2738,6 @@ void wgpu_render_pass_set_bind_group(WGPURenderPass *pass,
                                      uintptr_t offset_length);
 
 void wgpu_render_pass_set_pipeline(WGPURenderPass *pass, WGPURenderPipelineId pipeline_id);
-
-void wgpu_render_pass_set_index_buffer(WGPURenderPass *pass,
-                                       WGPUBufferId buffer_id,
-                                       WGPUBufferAddress offset,
-                                       WGPUOption_BufferSize size);
 
 void wgpu_render_pass_set_vertex_buffer(WGPURenderPass *pass,
                                         uint32_t slot,
