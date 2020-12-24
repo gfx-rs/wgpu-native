@@ -56,7 +56,6 @@ int main(
             (WGPUCLimits) {
                 .max_bind_groups = 1
             },
-            true,
             NULL}
         );
 
@@ -132,7 +131,7 @@ int main(
         });
 
     WGPUComputePass* command_pass =
-        wgpu_command_encoder_begin_compute_pass(encoder, NULL);
+        wgpu_command_encoder_begin_compute_pass(encoder, &(WGPUComputePassDescriptor) { .label = "" });
     wgpu_compute_pass_set_pipeline(command_pass, compute_pipeline);
 
     wgpu_compute_pass_set_bind_group(command_pass, 0, bind_group, NULL, 0);

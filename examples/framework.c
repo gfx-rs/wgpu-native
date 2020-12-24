@@ -21,5 +21,6 @@ WGPUShaderModuleDescriptor read_file(const char *name) {
     return (WGPUShaderModuleDescriptor){
         .bytes = (uint32_t*) bytes,
         .length = length / 4,
+        .flags = WGPUShaderFlags_VALIDATION,
     };
 }
