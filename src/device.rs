@@ -1,9 +1,9 @@
 use crate::{check_error, follow_chain, ChainedStruct, Label, OwnedLabel, SType, GLOBAL};
 
 use wgc::{
-    device::HostMap, gfx_select, hub::Token, id, instance::DeviceType, pipeline::ShaderModuleSource,
+    device::HostMap, gfx_select, hub::Token, id, pipeline::ShaderModuleSource,
 };
-use wgt::{Backend, BackendBit, Limits};
+use wgt::{Backend, BackendBit, DeviceType, Limits};
 
 use libc::c_char;
 use std::{
@@ -225,7 +225,6 @@ pub struct CDeviceDescriptor {
     label: Label,
     features: wgt::Features,
     limits: CLimits,
-    shader_validation: bool,
     trace_path: *const std::os::raw::c_char,
 }
 
@@ -250,7 +249,6 @@ pub unsafe extern "C" fn wgpu_adapter_request_device(
             max_bind_groups: desc.limits.max_bind_groups,
             ..Limits::default()
         },
-        shader_validation: desc.shader_validation,
     };
     check_error(
         gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, &desc, trace_path, PhantomData)),
@@ -270,7 +268,7 @@ pub extern "C" fn wgpu_adapter_limits(adapter_id: id::AdapterId) -> CLimits {
         .into()
 }
 
-pub fn adapter_get_info(adapter_id: id::AdapterId) -> wgc::instance::AdapterInfo {
+pub fn adapter_get_info(adapter_id: id::AdapterId) -> wgt::AdapterInfo {
     gfx_select!(adapter_id => GLOBAL.adapter_get_info(adapter_id))
         .expect("Unable to get adapter info")
 }
@@ -653,6 +651,7 @@ pub struct ShaderModuleDescriptor {
     label: Label,
     bytes: *const u32,
     length: usize,
+    flags: wgt::ShaderFlags,
 }
 
 #[no_mangle]
@@ -664,7 +663,7 @@ pub extern "C" fn wgpu_device_create_shader_module(
     let src = ShaderModuleSource::SpirV(Cow::Borrowed(slice));
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: OwnedLabel::new(desc.label).into_cow(),
-        experimental_translation: false,
+        flags: desc.flags,
     };
     check_error(
         gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, &desc, src, PhantomData)),

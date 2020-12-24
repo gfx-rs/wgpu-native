@@ -126,6 +126,7 @@ pub struct RenderPassDescriptor<'a> {
     color_attachments: &'a ColorAttachmentDescriptor,
     color_attachments_length: usize,
     depth_stencil_attachment: Option<&'a DepthStencilAttachmentDescriptor>,
+    label: Label,
 }
 
 impl<'a> RenderPassDescriptor<'a> {
@@ -137,6 +138,20 @@ impl<'a> RenderPassDescriptor<'a> {
         wgc::command::RenderPassDescriptor {
             color_attachments,
             depth_stencil_attachment: self.depth_stencil_attachment,
+            label: OwnedLabel::new(self.label).into_cow(),
+        }
+    }
+}
+
+#[repr(C)]
+pub struct ComputePassDescriptor {
+    label: Label,
+}
+
+impl<'a> ComputePassDescriptor {
+    fn to_wgpu_type(&self) -> wgc::command::ComputePassDescriptor {
+        wgc::command::ComputePassDescriptor {
+            label: OwnedLabel::new(self.label).into_cow(),
         }
     }
 }
@@ -151,7 +166,7 @@ pub unsafe extern "C" fn wgpu_command_encoder_begin_render_pass(
     encoder_id: id::CommandEncoderId,
     desc: &RenderPassDescriptor,
 ) -> *mut RenderPass {
-    let pass = wgc::command::RenderPass::new(encoder_id, desc.to_wgpu_type());
+    let pass = wgc::command::RenderPass::new(encoder_id, &desc.to_wgpu_type());
     Box::into_raw(Box::new(pass))
 }
 
@@ -181,9 +196,9 @@ pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut RenderPass) {
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_command_encoder_begin_compute_pass(
     encoder_id: id::CommandEncoderId,
-    _desc: Option<&wgc::command::ComputePassDescriptor>,
+    desc: &ComputePassDescriptor,
 ) -> *mut ComputePass {
-    let pass = wgc::command::ComputePass::new(encoder_id);
+    let pass = wgc::command::ComputePass::new(encoder_id, &desc.to_wgpu_type());
     Box::into_raw(Box::new(pass))
 }
 

@@ -104,7 +104,6 @@ int main() {
             (WGPUCLimits) {
                 .max_bind_groups = 1
             },
-            true,
             NULL}
         );
 

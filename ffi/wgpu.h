@@ -1445,10 +1445,11 @@ typedef struct WGPURenderPassDescriptor {
   const WGPUColorAttachmentDescriptor *color_attachments;
   uintptr_t color_attachments_length;
   const WGPUDepthStencilAttachmentDescriptor *depth_stencil_attachment;
+  WGPULabel label;
 } WGPURenderPassDescriptor;
 
 typedef struct WGPUComputePassDescriptor {
-  uint32_t todo;
+  WGPULabel label;
 } WGPUComputePassDescriptor;
 
 typedef WGPUNonZeroU64 WGPUId_Surface;
@@ -1729,7 +1730,6 @@ typedef struct WGPUDeviceDescriptor {
   WGPULabel label;
   WGPUFeatures features;
   WGPUCLimits limits;
-  bool shader_validation;
   const char *trace_path;
 } WGPUDeviceDescriptor;
 
@@ -1999,10 +1999,25 @@ typedef WGPUNonZeroU64 WGPUId_ShaderModule_Dummy;
 
 typedef WGPUId_ShaderModule_Dummy WGPUShaderModuleId;
 
+typedef uint32_t WGPUShaderFlags;
+/**
+ * If enabled, `wgpu` will parse the shader with `Naga`
+ * and validate it both internally and with regards to
+ * the given pipeline interface.
+ */
+#define WGPUShaderFlags_VALIDATION (uint32_t)1
+/**
+ * If enabled, `wgpu` will attempt to operate on `Naga`'s internal
+ * representation of the shader module for both validation and translation
+ * into the backend shader language, on backends where `gfx-hal` supports this.
+ */
+#define WGPUShaderFlags_EXPERIMENTAL_TRANSLATION (uint32_t)2
+
 typedef struct WGPUShaderModuleDescriptor {
   WGPULabel label;
   const uint32_t *bytes;
   uintptr_t length;
+  WGPUShaderFlags flags;
 } WGPUShaderModuleDescriptor;
 
 /**
@@ -2440,7 +2455,7 @@ void wgpu_render_pass_destroy(WGPURenderPass *pass);
  * twice on the same raw pointer.
  */
 WGPUComputePass *wgpu_command_encoder_begin_compute_pass(WGPUCommandEncoderId encoder_id,
-                                                         const WGPUComputePassDescriptor *_desc);
+                                                         const WGPUComputePassDescriptor *desc);
 
 void wgpu_compute_pass_end_pass(WGPUComputePass *pass);
 
