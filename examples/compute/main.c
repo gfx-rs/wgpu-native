@@ -53,7 +53,7 @@ int main(
         &(WGPUDeviceDescriptor) {
             .label = "",
             0,
-            (WGPUCLimits) {
+            (WGPULimits) {
                 .max_bind_groups = 1
             },
             NULL}

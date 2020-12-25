@@ -49,7 +49,6 @@ exclude = [
 	"wgpu_render_pass_finish",
 	"wgpu_compute_pass_finish",
 	"NonExhaustive",
-	"Limits"
 ]
 
 [export.rename]
@@ -60,7 +59,10 @@ exclude = [
 "SamplerDescriptor_Label" = "SamplerDescriptor"
 "BufferCopyViewC" = "BufferCopyView"
 "TextureCopyViewC" = "TextureCopyView"
+"CAdapterInfo" = "AdapterInfo"
 "CDeviceDescriptor" = "DeviceDescriptor"
+"CDeviceType" = "DeviceType"
+"CLimits" = "Limits"
 "RequestAdapterOptions_SurfaceId" = "RequestAdapterOptions"
 "Option_SamplerBorderColor" = "SamplerBorderColor"
 "Option_TextureViewDimension" = "TextureViewDimension"
