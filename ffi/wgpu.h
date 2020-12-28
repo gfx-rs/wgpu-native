@@ -156,29 +156,29 @@ typedef enum WGPUBufferMapAsyncStatus {
   WGPUBufferMapAsyncStatus_ContextLost,
 } WGPUBufferMapAsyncStatus;
 
-enum WGPUCDeviceType {
+enum WGPUDeviceType {
   /**
    * Other.
    */
-  WGPUCDeviceType_Other = 0,
+  WGPUDeviceType_Other = 0,
   /**
    * Integrated GPU with shared CPU/GPU memory.
    */
-  WGPUCDeviceType_IntegratedGpu,
+  WGPUDeviceType_IntegratedGpu,
   /**
    * Discrete GPU with separate CPU/GPU memory.
    */
-  WGPUCDeviceType_DiscreteGpu,
+  WGPUDeviceType_DiscreteGpu,
   /**
    * Virtual / Hosted.
    */
-  WGPUCDeviceType_VirtualGpu,
+  WGPUDeviceType_VirtualGpu,
   /**
    * Cpu / Software Rendering.
    */
-  WGPUCDeviceType_Cpu,
+  WGPUDeviceType_Cpu,
 };
-typedef uint8_t WGPUCDeviceType;
+typedef uint8_t WGPUDeviceType;
 
 enum WGPUCompareFunction {
   WGPUCompareFunction_Undefined,
@@ -1722,14 +1722,14 @@ typedef uint64_t WGPUFeatures;
  */
 #define WGPUFeatures_ALL_NATIVE (uint64_t)18446744073709486080ULL
 
-typedef struct WGPUCLimits {
+typedef struct WGPULimits {
   uint32_t max_bind_groups;
-} WGPUCLimits;
+} WGPULimits;
 
 typedef struct WGPUDeviceDescriptor {
   WGPULabel label;
   WGPUFeatures features;
-  WGPUCLimits limits;
+  WGPULimits limits;
   const char *trace_path;
 } WGPUDeviceDescriptor;
 
@@ -2312,7 +2312,7 @@ typedef struct WGPUSwapChainDescriptor {
 
 typedef void (*WGPUBufferMapCallback)(WGPUBufferMapAsyncStatus status, uint8_t *userdata);
 
-typedef struct WGPUCAdapterInfo {
+typedef struct WGPUAdapterInfo {
   /**
    * Adapter name
    */
@@ -2332,12 +2332,12 @@ typedef struct WGPUCAdapterInfo {
   /**
    * Type of device
    */
-  WGPUCDeviceType device_type;
+  WGPUDeviceType device_type;
   /**
    * Backend used for device
    */
   WGPUBackend backend;
-} WGPUCAdapterInfo;
+} WGPUAdapterInfo;
 
 typedef void (*WGPULogCallback)(int level, const char *msg);
 
@@ -2498,13 +2498,13 @@ WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
 
 WGPUFeatures wgpu_adapter_features(WGPUAdapterId adapter_id);
 
-WGPUCLimits wgpu_adapter_limits(WGPUAdapterId adapter_id);
+WGPULimits wgpu_adapter_limits(WGPUAdapterId adapter_id);
 
 void wgpu_adapter_destroy(WGPUAdapterId adapter_id);
 
 WGPUFeatures wgpu_device_features(WGPUDeviceId device_id);
 
-WGPUCLimits wgpu_device_limits(WGPUDeviceId device_id);
+WGPULimits wgpu_device_limits(WGPUDeviceId device_id);
 
 WGPUBufferId wgpu_device_create_buffer(WGPUDeviceId device_id, const WGPUBufferDescriptor *desc);
 
@@ -2644,7 +2644,7 @@ uint8_t *wgpu_buffer_get_mapped_range(WGPUBufferId buffer_id,
  * location. This function is unsafe as there is no guarantee that the
  * pointer is valid and big enough to hold the adapter name.
  */
-void wgpu_adapter_get_info(WGPUAdapterId adapter_id, WGPUCAdapterInfo *info);
+void wgpu_adapter_get_info(WGPUAdapterId adapter_id, WGPUAdapterInfo *info);
 
 void wgpu_set_log_callback(WGPULogCallback callback);
 

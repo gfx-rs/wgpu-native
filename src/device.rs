@@ -264,7 +264,7 @@ pub extern "C" fn wgpu_adapter_features(adapter_id: id::AdapterId) -> wgt::Featu
 #[no_mangle]
 pub extern "C" fn wgpu_adapter_limits(adapter_id: id::AdapterId) -> CLimits {
     gfx_select!(adapter_id => GLOBAL.adapter_limits(adapter_id))
-        .expect("Unable to get adapter limis")
+        .expect("Unable to get adapter limits")
         .into()
 }
 
