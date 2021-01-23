@@ -192,22 +192,22 @@ dependencies = [
 [[package]]
 name = "gfx-auxil"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "fxhash",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "spirv_cross",
 ]
 
 [[package]]
 name = "gfx-backend-dx11"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "arrayvec",
  "bitflags",
  "gfx-auxil",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "libloading",
  "log",
  "parking_lot",
@@ -223,14 +223,14 @@ dependencies = [
 [[package]]
 name = "gfx-backend-dx12"
 version = "0.6.2"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "arrayvec",
  "bit-set",
  "bitflags",
  "d3d12",
  "gfx-auxil",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "log",
  "parking_lot",
  "range-alloc",
@@ -243,9 +243,9 @@ dependencies = [
 [[package]]
 name = "gfx-backend-empty"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "log",
  "raw-window-handle",
 ]
@@ -253,12 +253,12 @@ dependencies = [
 [[package]]
 name = "gfx-backend-gl"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "arrayvec",
  "bitflags",
  "gfx-auxil",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "glow",
  "js-sys",
  "khronos-egl",
@@ -267,7 +267,6 @@ dependencies = [
  "naga",
  "parking_lot",
  "raw-window-handle",
- "smallvec",
  "spirv_cross",
  "wasm-bindgen",
  "web-sys",
@@ -276,7 +275,7 @@ dependencies = [
 [[package]]
 name = "gfx-backend-metal"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -285,8 +284,7 @@ dependencies = [
  "copyless",
  "foreign-types",
  "gfx-auxil",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
- "lazy_static",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "log",
  "metal",
  "naga",
@@ -322,18 +320,18 @@ dependencies = [
 [[package]]
 name = "gfx-backend-vulkan"
 version = "0.6.5"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "arrayvec",
  "ash",
  "byteorder",
  "core-graphics-types",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "inplace_it",
- "lazy_static",
  "log",
  "naga",
  "objc",
+ "parking_lot",
  "raw-window-handle",
  "smallvec",
  "winapi",
@@ -352,7 +350,7 @@ dependencies = [
 [[package]]
 name = "gfx-hal"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 dependencies = [
  "bitflags",
  "naga",
@@ -362,9 +360,9 @@ dependencies = [
 
 [[package]]
 name = "glow"
-version = "0.6.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1625b792e2f9267116dd41eb7d325e0ea2572ceba5069451906745e04f852f33"
+checksum = "072136d2c3783f3a92f131acb227bc806d3886278e2a4dc1e9990ec89ef9e70b"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -375,16 +373,17 @@ dependencies = [
 [[package]]
 name = "gpu-alloc"
 version = "0.2.1"
-source = "git+https://github.com/zakarumych/gpu-alloc?rev=d07be73f9439a37c89f5b72f2500cbf0eb4ff613#d07be73f9439a37c89f5b72f2500cbf0eb4ff613"
+source = "git+https://github.com/zakarumych/gpu-alloc?rev=915d0dad0db340a4d37d5abd597b8b796e7f35f6#915d0dad0db340a4d37d5abd597b8b796e7f35f6"
 dependencies = [
  "bitflags",
  "gpu-alloc-types",
+ "tracing",
 ]
 
 [[package]]
 name = "gpu-alloc-types"
 version = "0.1.0"
-source = "git+https://github.com/zakarumych/gpu-alloc?rev=d07be73f9439a37c89f5b72f2500cbf0eb4ff613#d07be73f9439a37c89f5b72f2500cbf0eb4ff613"
+source = "git+https://github.com/zakarumych/gpu-alloc?rev=915d0dad0db340a4d37d5abd597b8b796e7f35f6#915d0dad0db340a4d37d5abd597b8b796e7f35f6"
 dependencies = [
  "bitflags",
 ]
@@ -392,7 +391,7 @@ dependencies = [
 [[package]]
 name = "gpu-descriptor"
 version = "0.1.0"
-source = "git+https://github.com/zakarumych/gpu-descriptor?rev=df74fd8c7bea03149058a41aab0e4fe04077b266#df74fd8c7bea03149058a41aab0e4fe04077b266"
+source = "git+https://github.com/zakarumych/gpu-descriptor?rev=aa092613889f03f8254d6f7278d08c655324c7c7#aa092613889f03f8254d6f7278d08c655324c7c7"
 dependencies = [
  "bitflags",
  "gpu-descriptor-types",
@@ -403,7 +402,7 @@ dependencies = [
 [[package]]
 name = "gpu-descriptor-types"
 version = "0.1.0"
-source = "git+https://github.com/zakarumych/gpu-descriptor?rev=df74fd8c7bea03149058a41aab0e4fe04077b266#df74fd8c7bea03149058a41aab0e4fe04077b266"
+source = "git+https://github.com/zakarumych/gpu-descriptor?rev=aa092613889f03f8254d6f7278d08c655324c7c7#aa092613889f03f8254d6f7278d08c655324c7c7"
 dependencies = [
  "bitflags",
 ]
@@ -463,7 +462,7 @@ dependencies = [
 [[package]]
 name = "khronos-egl"
 version = "3.0.0-beta"
-source = "git+https://github.com/timothee-haudebourg/khronos-egl?rev=9568b2ee3b02f2c17cc9479f824db16daecf1664#9568b2ee3b02f2c17cc9479f824db16daecf1664"
+source = "git+https://github.com/timothee-haudebourg/khronos-egl?rev=4b769b8f2d068fa78db9285a8557cd11365fa314#4b769b8f2d068fa78db9285a8557cd11365fa314"
 dependencies = [
  "libc",
  "libloading",
@@ -520,9 +519,8 @@ dependencies = [
 
 [[package]]
 name = "metal"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c4e8a431536529327e28c9ba6992f2cb0c15d4222f0602a16e6d7695ff3bccf"
+version = "0.20.1"
+source = "git+https://github.com/gfx-rs/metal-rs?rev=ba08f5f98c70ab941020b8997936c9c75363b9aa#ba08f5f98c70ab941020b8997936c9c75363b9aa"
 dependencies = [
  "bitflags",
  "block",
@@ -535,8 +533,9 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.2.0"
-source = "git+https://github.com/gfx-rs/naga?tag=gfx-5#583f218c9dbca08daa6bf3efda60e80ecada63bb"
+source = "git+https://github.com/gfx-rs/naga?tag=gfx-6#6f5ff27701112abba35fa61e429e2916a157b0a1"
 dependencies = [
+ "bit-set",
  "bitflags",
  "fxhash",
  "log",
@@ -643,7 +642,7 @@ dependencies = [
 [[package]]
 name = "range-alloc"
 version = "0.1.1"
-source = "git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a#0244e3401e9f127617cb8636397048584e7bfe8a"
+source = "git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1#2d454c77ddbaae05ba222ca369c16afae0c10cd1"
 
 [[package]]
 name = "raw-window-handle"
@@ -711,9 +710,9 @@ checksum = "ae524f056d7d770e174287294f562e95044c68e88dec909a00d2094805db9d75"
 
 [[package]]
 name = "spirv_cross"
-version = "0.22.2"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ebd49af36be83ecd6290b57147e2a0e26145b832634b17146d934b197ca3713"
+checksum = "06db6bd7b6518f761593783e2896eefe55e90455efc5f44511078ce0426ed418"
 dependencies = [
  "cc",
  "js-sys",
@@ -784,7 +783,19 @@ checksum = "9f47026cdc4080c07e49b37087de021820269d996f581aac150ef9e5583eefe3"
 dependencies = [
  "cfg-if 1.0.0",
  "pin-project-lite",
+ "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-attributes"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80e0ccfc3378da0cce270c946b676a376943f5cd16aeba64568e7939806f4ada"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -869,7 +880,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=aded4054797d21228f700fd881dfd43dd562c54b#aded4054797d21228f700fd881dfd43dd562c54b"
+source = "git+https://github.com/gfx-rs/wgpu?rev=b23ece55e7abb8d449fcae09398b2402b0efee99#b23ece55e7abb8d449fcae09398b2402b0efee99"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -881,8 +892,8 @@ dependencies = [
  "gfx-backend-empty",
  "gfx-backend-gl",
  "gfx-backend-metal",
- "gfx-backend-vulkan 0.6.5 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
- "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=0244e3401e9f127617cb8636397048584e7bfe8a)",
+ "gfx-backend-vulkan 0.6.5 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
+ "gfx-hal 0.6.0 (git+https://github.com/gfx-rs/gfx?rev=2d454c77ddbaae05ba222ca369c16afae0c10cd1)",
  "gpu-alloc",
  "gpu-descriptor",
  "naga",
@@ -914,7 +925,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.6.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=aded4054797d21228f700fd881dfd43dd562c54b#aded4054797d21228f700fd881dfd43dd562c54b"
+source = "git+https://github.com/gfx-rs/wgpu?rev=b23ece55e7abb8d449fcae09398b2402b0efee99#b23ece55e7abb8d449fcae09398b2402b0efee99"
 dependencies = [
  "bitflags",
  "serde",
