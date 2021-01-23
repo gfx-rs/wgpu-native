@@ -2013,7 +2013,7 @@ typedef uint32_t WGPUShaderStage;
 typedef struct WGPUBindGroupLayoutEntry {
   uint32_t binding;
   WGPUShaderStage visibility;
-  struct WGPUBindingType ty;
+  WGPUBindingType ty;
   bool has_dynamic_offset;
   uint64_t min_buffer_binding_size;
   bool multisampled;
