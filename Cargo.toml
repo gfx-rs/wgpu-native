@@ -45,3 +45,8 @@ libc = {version="0.2", features=[]}
 
 [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
 gfx-backend-vulkan = { version = "0.6", features = ["x11"] }
+
+[workspace]
+members = [
+	"examples/helper"
+]
