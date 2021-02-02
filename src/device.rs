@@ -673,7 +673,7 @@ pub extern "C" fn wgpu_device_create_shader_module(
     desc: &ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
     let chain = desc.next_in_chain.expect("shader required");
-    let src = match &chain.s_type {
+    let src = match chain.s_type {
         SType::ShaderModuleSPIRVDescriptor => {
             let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
             let slice = unsafe { std::slice::from_raw_parts(desc.code, desc.code_size as usize) };
