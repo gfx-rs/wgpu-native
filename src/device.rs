@@ -319,8 +319,8 @@ pub extern "C" fn wgpu_device_create_texture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId, wait: bool) {
-    gfx_select!(texture_id => GLOBAL.texture_drop(texture_id, wait))
+pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId, now: bool) {
+    gfx_select!(texture_id => GLOBAL.texture_drop(texture_id, now))
 }
 
 #[repr(C)]
@@ -359,8 +359,8 @@ pub extern "C" fn wgpu_texture_create_view(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_texture_view_destroy(texture_view_id: id::TextureViewId) {
-    gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id))
+pub extern "C" fn wgpu_texture_view_destroy(texture_view_id: id::TextureViewId, now: bool) {
+    gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id, now))
         .expect("Unable to destroy texture view")
 }
 
