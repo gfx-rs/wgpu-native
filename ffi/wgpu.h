@@ -1,4 +1,4 @@
-/* Generated with cbindgen:0.16.0 */
+/* Generated with cbindgen:0.17.0 */
 
 /* DO NOT MODIFY THIS MANUALLY! This file was generated using cbindgen.
  * To generate this file:
@@ -7,9 +7,6 @@
  *   2. Run `cbindgen --config cbindgen.toml --crate wgpu-native --output ffi/wgpu.h`
  */
 
-typedef unsigned long long WGPUNonZeroU64;
-typedef unsigned long WGPUOption_NonZeroU32;
-typedef unsigned long WGPUOption_NonZeroU64;
 typedef unsigned long long WGPUOption_AdapterId;
 typedef unsigned long long WGPUOption_BufferId;
 typedef unsigned long long WGPUOption_SamplerId;
@@ -1238,7 +1235,7 @@ typedef struct WGPURenderBundleEncoder WGPURenderBundleEncoder;
 
 typedef struct WGPURenderPass WGPURenderPass;
 
-typedef WGPUNonZeroU64 WGPUId_CommandBuffer_Dummy;
+typedef uint64_t WGPUId_CommandBuffer_Dummy;
 
 typedef WGPUId_CommandBuffer_Dummy WGPUCommandBufferId;
 
@@ -1250,7 +1247,7 @@ typedef struct WGPUCommandBufferDescriptor {
   WGPULabel label;
 } WGPUCommandBufferDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_Buffer_Dummy;
+typedef uint64_t WGPUId_Buffer_Dummy;
 
 typedef WGPUId_Buffer_Dummy WGPUBufferId;
 
@@ -1292,7 +1289,7 @@ typedef struct WGPUBufferCopyView {
   WGPUBufferId buffer;
 } WGPUBufferCopyView;
 
-typedef WGPUNonZeroU64 WGPUId_Texture_Dummy;
+typedef uint64_t WGPUId_Texture_Dummy;
 
 typedef WGPUId_Texture_Dummy WGPUTextureId;
 
@@ -1321,7 +1318,7 @@ typedef struct WGPUExtent3d {
   uint32_t depth;
 } WGPUExtent3d;
 
-typedef WGPUNonZeroU64 WGPUId_TextureView_Dummy;
+typedef uint64_t WGPUId_TextureView_Dummy;
 
 typedef WGPUId_TextureView_Dummy WGPUTextureViewId;
 
@@ -1462,7 +1459,7 @@ typedef struct WGPUComputePassDescriptor {
   WGPULabel label;
 } WGPUComputePassDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_Surface;
+typedef uint64_t WGPUId_Surface;
 
 typedef WGPUId_Surface WGPUSurfaceId;
 
@@ -1488,13 +1485,13 @@ typedef struct WGPURequestAdapterOptions WGPURequestAdapterOptions;
  */
 typedef uint32_t WGPUBackendBit;
 
-typedef WGPUNonZeroU64 WGPUId_Adapter_Dummy;
+typedef uint64_t WGPUId_Adapter_Dummy;
 
 typedef WGPUId_Adapter_Dummy WGPUAdapterId;
 
 typedef void (*WGPURequestAdapterCallback)(WGPUAdapterId id, void *userdata);
 
-typedef WGPUNonZeroU64 WGPUId_Device_Dummy;
+typedef uint64_t WGPUId_Device_Dummy;
 
 typedef WGPUId_Device_Dummy WGPUDeviceId;
 
@@ -1957,7 +1954,7 @@ typedef struct WGPUTextureViewDescriptor {
   uint32_t array_layer_count;
 } WGPUTextureViewDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_Sampler_Dummy;
+typedef uint64_t WGPUId_Sampler_Dummy;
 
 typedef WGPUId_Sampler_Dummy WGPUSamplerId;
 
@@ -1981,7 +1978,7 @@ typedef struct WGPUSamplerDescriptor {
   WGPUSamplerBorderColor border_color;
 } WGPUSamplerDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_BindGroupLayout_Dummy;
+typedef uint64_t WGPUId_BindGroupLayout_Dummy;
 
 typedef WGPUId_BindGroupLayout_Dummy WGPUBindGroupLayoutId;
 
@@ -2030,7 +2027,7 @@ typedef struct WGPUBindGroupLayoutDescriptor {
   uintptr_t entries_length;
 } WGPUBindGroupLayoutDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_PipelineLayout_Dummy;
+typedef uint64_t WGPUId_PipelineLayout_Dummy;
 
 typedef WGPUId_PipelineLayout_Dummy WGPUPipelineLayoutId;
 
@@ -2040,14 +2037,14 @@ typedef struct WGPUPipelineLayoutDescriptor {
   uintptr_t bind_group_layouts_length;
 } WGPUPipelineLayoutDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_BindGroup_Dummy;
+typedef uint64_t WGPUId_BindGroup_Dummy;
 
 typedef WGPUId_BindGroup_Dummy WGPUBindGroupId;
 
 /**
  * Integral type used for buffer slice sizes.
  */
-typedef WGPUNonZeroU64 WGPUBufferSize;
+typedef uint64_t WGPUBufferSize;
 
 typedef struct WGPUBindGroupEntry {
   uint32_t binding;
@@ -2065,7 +2062,7 @@ typedef struct WGPUBindGroupDescriptor {
   uintptr_t entries_length;
 } WGPUBindGroupDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_ShaderModule_Dummy;
+typedef uint64_t WGPUId_ShaderModule_Dummy;
 
 typedef WGPUId_ShaderModule_Dummy WGPUShaderModuleId;
 
@@ -2110,7 +2107,7 @@ typedef struct WGPURenderBundleEncoderDescriptor {
   uint32_t sample_count;
 } WGPURenderBundleEncoderDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_RenderBundle;
+typedef uint64_t WGPUId_RenderBundle;
 
 typedef WGPUId_RenderBundle WGPURenderBundleId;
 
@@ -2126,7 +2123,7 @@ typedef struct WGPURenderBundleDescriptor_Label {
 
 typedef WGPUDeviceId WGPUQueueId;
 
-typedef WGPUNonZeroU64 WGPUId_RenderPipeline_Dummy;
+typedef uint64_t WGPUId_RenderPipeline_Dummy;
 
 typedef WGPUId_RenderPipeline_Dummy WGPURenderPipelineId;
 
@@ -2338,7 +2335,7 @@ typedef struct WGPURenderPipelineDescriptor {
   bool alpha_to_coverage;
 } WGPURenderPipelineDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_ComputePipeline_Dummy;
+typedef uint64_t WGPUId_ComputePipeline_Dummy;
 
 typedef WGPUId_ComputePipeline_Dummy WGPUComputePipelineId;
 
@@ -2348,7 +2345,7 @@ typedef struct WGPUComputePipelineDescriptor {
   struct WGPUProgrammableStageDescriptor compute_stage;
 } WGPUComputePipelineDescriptor;
 
-typedef WGPUNonZeroU64 WGPUId_SwapChain_Dummy;
+typedef uint64_t WGPUId_SwapChain_Dummy;
 
 typedef WGPUId_SwapChain_Dummy WGPUSwapChainId;
 
@@ -2418,7 +2415,7 @@ typedef uint32_t WGPUDynamicOffset;
 
 typedef const char *WGPURawString;
 
-typedef WGPUNonZeroU64 WGPUId_QuerySet_Dummy;
+typedef uint64_t WGPUId_QuerySet_Dummy;
 
 typedef WGPUId_QuerySet_Dummy WGPUQuerySetId;
 
