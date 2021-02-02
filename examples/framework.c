@@ -18,9 +18,17 @@ WGPUShaderModuleDescriptor read_file(const char *name) {
     fseek(file, 0, SEEK_SET);
     fread(bytes, 1, length, file);
     fclose(file);
-    return (WGPUShaderModuleDescriptor){
-        .bytes = (uint32_t*) bytes,
-        .length = length / 4,
+
+    WGPUShaderModuleSPIRVDescriptor *spirvDescriptor = malloc(sizeof(WGPUShaderModuleSPIRVDescriptor));
+    spirvDescriptor->chain = (WGPUChainedStruct) {
+        .next = NULL,
+        .s_type = WGPUSType_ShaderModuleSPIRVDescriptor
+    };
+    spirvDescriptor->code = (uint32_t *) bytes;
+    spirvDescriptor->code_size = length / 4;
+    return (WGPUShaderModuleDescriptor) {
+        .nextInChain = (const WGPUChainedStruct *) spirvDescriptor,
+        .label = NULL,
         .flags = WGPUShaderFlags_VALIDATION,
     };
 }

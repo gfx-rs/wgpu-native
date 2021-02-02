@@ -2081,11 +2081,21 @@ typedef uint32_t WGPUShaderFlags;
 #define WGPUShaderFlags_EXPERIMENTAL_TRANSLATION (uint32_t)2
 
 typedef struct WGPUShaderModuleDescriptor {
-  WGPULabel label;
-  const uint32_t *bytes;
-  uintptr_t length;
+    WGPUChainedStruct const * nextInChain;
+    char const * label;
   WGPUShaderFlags flags;
 } WGPUShaderModuleDescriptor;
+
+typedef struct WGPUShaderModuleSPIRVDescriptor {
+    WGPUChainedStruct chain;
+    uint32_t code_size;
+    const uint32_t *code;
+} WGPUShaderModuleSPIRVDescriptor;
+
+typedef struct WGPUShaderModuleWGSLDescriptor {
+    WGPUChainedStruct chain;
+    const char *source;
+} WGPUShaderModuleWGSLDescriptor;
 
 /**
  * Describes a [`CommandEncoder`].
