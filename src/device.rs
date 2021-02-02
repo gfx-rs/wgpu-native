@@ -9,6 +9,7 @@ use libc::c_char;
 use std::{
     borrow::Cow, ffi::CString, marker::PhantomData, num::NonZeroU32, num::NonZeroU64, ptr, slice,
 };
+use std::ffi::CStr;
 
 pub type RequestAdapterCallback =
     unsafe extern "C" fn(id: id::AdapterId, userdata: *mut std::ffi::c_void);
@@ -647,11 +648,23 @@ pub extern "C" fn wgpu_bind_group_destroy(bind_group_id: id::BindGroupId) {
 }
 
 #[repr(C)]
-pub struct ShaderModuleDescriptor {
+pub struct ShaderModuleDescriptor<'c> {
+    next_in_chain: Option<&'c ChainedStruct<'c>>,
     label: Label,
-    bytes: *const u32,
-    length: usize,
     flags: wgt::ShaderFlags,
+}
+
+#[repr(C)]
+pub struct ShaderModuleSPIRVDescriptor<'c> {
+    chain: ChainedStruct<'c>,
+    code_size: u32,
+    code: *const u32,
+}
+
+#[repr(C)]
+pub struct ShaderModuleWGSLDescriptor<'c> {
+    chain: ChainedStruct<'c>,
+    source: *const c_char
 }
 
 #[no_mangle]
@@ -659,8 +672,21 @@ pub extern "C" fn wgpu_device_create_shader_module(
     device_id: id::DeviceId,
     desc: &ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
-    let slice = unsafe { std::slice::from_raw_parts(desc.bytes, desc.length) };
-    let src = ShaderModuleSource::SpirV(Cow::Borrowed(slice));
+    let chain = desc.next_in_chain.expect("shader required");
+    let src = match chain.s_type {
+        SType::ShaderModuleSPIRVDescriptor => {
+            let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
+            let slice = unsafe { std::slice::from_raw_parts(desc.code, desc.code_size as usize) };
+            ShaderModuleSource::SpirV(Cow::Borrowed(slice))
+        }
+        SType::ShaderModuleWGSLDescriptor => {
+            let desc: &ShaderModuleWGSLDescriptor = unsafe { std::mem::transmute(chain) };
+            let c_str: &CStr = unsafe { CStr::from_ptr(desc.source) };
+            let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+            ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
+        }
+        _ => panic!("invalid type"),
+    };
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: OwnedLabel::new(desc.label).into_cow(),
         flags: desc.flags,

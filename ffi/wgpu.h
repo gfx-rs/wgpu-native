@@ -2081,9 +2081,8 @@ typedef uint32_t WGPUShaderFlags;
 #define WGPUShaderFlags_EXPERIMENTAL_TRANSLATION (uint32_t)2
 
 typedef struct WGPUShaderModuleDescriptor {
+  const struct WGPUChainedStruct *next_in_chain;
   WGPULabel label;
-  const uint32_t *bytes;
-  uintptr_t length;
   WGPUShaderFlags flags;
 } WGPUShaderModuleDescriptor;
 
@@ -2424,6 +2423,17 @@ typedef struct WGPUAnisotropicSamplerDescriptorExt {
   WGPUSType s_type;
   uint8_t anisotropic_clamp;
 } WGPUAnisotropicSamplerDescriptorExt;
+
+typedef struct WGPUShaderModuleSPIRVDescriptor {
+  struct WGPUChainedStruct chain;
+  uint32_t code_size;
+  const uint32_t *code;
+} WGPUShaderModuleSPIRVDescriptor;
+
+typedef struct WGPUShaderModuleWGSLDescriptor {
+  struct WGPUChainedStruct chain;
+  const char *source;
+} WGPUShaderModuleWGSLDescriptor;
 
 
 
