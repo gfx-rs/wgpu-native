@@ -161,7 +161,7 @@ int main(
             buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height);
 
     const char *filename = "red.png";
-    save_png(filename, ret, buffer_dimensions);
+    save_png(filename, ret, &buffer_dimensions);
 
     wgpu_buffer_unmap(output_buffer);
 

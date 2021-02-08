@@ -145,51 +145,48 @@ int main() {
         wgpu_device_create_render_pipeline(device,
             &(WGPURenderPipelineDescriptor){
                 .layout = pipeline_layout,
-                .vertex_stage =
-                    (WGPUProgrammableStageDescriptor){
-                        .module = vertex_shader,
+                .vertex = (WGPUVertexState){
+                    .stage = (WGPUProgrammableStageDescriptor) {
                         .entry_point = "main",
+                        .module = vertex_shader
                     },
-                .fragment_stage =
-                    &(WGPUProgrammableStageDescriptor){
-                        .module = fragment_shader,
-                        .entry_point = "main",
+                    .buffers = NULL,
+                    .buffer_count = 0
+                },
+                .primitive = (WGPUPrimitiveState) {
+                    .front_face = WGPUFrontFace_Ccw,
+                    .cull_mode = WGPUCullMode_None,
+                    .polygon_mode = WGPUPolygonMode_Fill, // todo: double check
+                    .topology = WGPUPrimitiveTopology_TriangleList,
+                    .strip_index_format = 2 // todo
                     },
-                .rasterization_state =
-                    &(WGPURasterizationStateDescriptor){
-                        .front_face = WGPUFrontFace_Ccw,
-                        .cull_mode = WGPUCullMode_None,
-                        .depth_bias = 0,
-                        .depth_bias_slope_scale = 0.0,
-                        .depth_bias_clamp = 0.0,
+                .depth_stencil = NULL,
+                .multisample = (WGPUMultisampleState) {
+                    .alpha_to_coverage_enabled = false,
+                    .count = 1,
+                    .mask = 0
                     },
-                .primitive_topology = WGPUPrimitiveTopology_TriangleList,
-                .color_states =
-                    &(WGPUColorStateDescriptor){
+                .fragment = &(WGPUFragmentState) {
+                    .stage = (WGPUProgrammableStageDescriptor) {
+                            .entry_point = "main",
+                            .module = fragment_shader
+                    },
+                    .targets = &(WGPUColorTargetState) {
+                        .alpha_blend = (WGPUBlendState) {
+                                .src_factor = WGPUBlendFactor_One,
+                                .dst_factor = WGPUBlendFactor_Zero,
+                                .operation = WGPUBlendOperation_Add,
+                        },
+                        .color_blend = (WGPUBlendState) {
+                                .src_factor = WGPUBlendFactor_One,
+                                .dst_factor = WGPUBlendFactor_Zero,
+                                .operation = WGPUBlendOperation_Add,
+                            },
                         .format = WGPUTextureFormat_Bgra8Unorm,
-                        .alpha_blend =
-                            (WGPUBlendDescriptor){
-                                .src_factor = WGPUBlendFactor_One,
-                                .dst_factor = WGPUBlendFactor_Zero,
-                                .operation = WGPUBlendOperation_Add,
-                            },
-                        .color_blend =
-                            (WGPUBlendDescriptor){
-                                .src_factor = WGPUBlendFactor_One,
-                                .dst_factor = WGPUBlendFactor_Zero,
-                                .operation = WGPUBlendOperation_Add,
-                            },
-                        .write_mask = WGPUColorWrite_ALL,
+                        .write_mask = WGPUColorWrite_ALL
                     },
-                .color_states_length = 1,
-                .depth_stencil_state = NULL,
-                .vertex_state =
-                    (WGPUVertexStateDescriptor){
-                        .index_format = WGPUIndexFormat_Undefined,
-                        .vertex_buffers = NULL,
-                        .vertex_buffers_length = 0,
-                    },
-                .sample_count = 1,
+                    .target_count = 1
+                }
             });
 
     int prev_width = 0;
@@ -243,7 +240,7 @@ int main() {
                         .store_op = WGPUStoreOp_Store,
                         .clear_value = WGPUColor_GREEN,
                         .read_only = false,
-                    } 
+                    }
                 },
             };
 

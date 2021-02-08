@@ -835,35 +835,61 @@ impl<'a> ProgrammableStageDescriptor {
 }
 
 #[repr(C)]
-pub struct VertexBufferDescriptor {
-    pub stride: wgt::BufferAddress,
+pub struct VertexBufferLayout {
+    pub array_stride: wgt::BufferAddress,
     pub step_mode: wgt::InputStepMode,
-    pub attributes: *const wgt::VertexAttributeDescriptor,
-    pub attributes_length: usize,
+    pub attributes: *const wgt::VertexAttribute,
+    pub attributes_count: usize,
+}
+
+impl VertexBufferLayout {
+    unsafe fn into_wgpu(&self) -> wgc::pipeline::VertexBufferLayout {
+        wgc::pipeline::VertexBufferLayout {
+            array_stride: self.array_stride,
+            step_mode: self.step_mode,
+            attributes: Cow::Borrowed(slice::from_raw_parts(
+                self.attributes,
+                self.attributes_count,
+            )),
+        }
+    }
 }
 
 #[repr(C)]
-pub struct VertexStateDescriptor {
-    pub index_format: super::IndexFormat,
-    pub vertex_buffers: *const VertexBufferDescriptor,
-    pub vertex_buffers_length: usize,
+pub struct VertexState {
+    pub stage: ProgrammableStageDescriptor,
+    pub buffers: *const VertexBufferLayout,
+    pub buffer_count: usize,
+}
+
+#[repr(C)]
+pub struct FragmentState {
+    pub stage: ProgrammableStageDescriptor,
+    pub targets: *const wgt::ColorTargetState,
+    pub target_count: usize,
+}
+
+impl FragmentState {
+    unsafe fn into_wgpu(&self) -> wgc::pipeline::FragmentState {
+        wgc::pipeline::FragmentState {
+            stage: self.stage.into_wgpu(),
+            targets: Cow::Borrowed(slice::from_raw_parts(
+                self.targets,
+                self.target_count,
+            ))
+        }
+    }
 }
 
 #[repr(C)]
 pub struct RenderPipelineDescriptor {
     pub label: Label,
     pub layout: Option<id::PipelineLayoutId>,
-    pub vertex_stage: ProgrammableStageDescriptor,
-    pub fragment_stage: *const ProgrammableStageDescriptor,
-    pub rasterization_state: *const wgt::RasterizationStateDescriptor,
-    pub primitive_topology: wgt::PrimitiveTopology,
-    pub color_states: *const wgt::ColorStateDescriptor,
-    pub color_states_length: usize,
-    pub depth_stencil_state: *const wgt::DepthStencilStateDescriptor,
-    pub vertex_state: VertexStateDescriptor,
-    pub sample_count: u32,
-    pub sample_mask: u32,
-    pub alpha_to_coverage: bool,
+    pub vertex: VertexState,
+    pub primitive: wgt::PrimitiveState,
+    pub depth_stencil: *const wgt::DepthStencilState,
+    pub multisample: wgt::MultisampleState,
+    pub fragment: *const FragmentState,
 }
 
 #[no_mangle]
@@ -871,42 +897,24 @@ pub unsafe extern "C" fn wgpu_device_create_render_pipeline(
     device_id: id::DeviceId,
     desc_base: &RenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
-    let mut vertex_buffers = Vec::new();
-    for vertex_buffer in slice::from_raw_parts(
-        desc_base.vertex_state.vertex_buffers,
-        desc_base.vertex_state.vertex_buffers_length,
-    ) {
-        vertex_buffers.push(wgc::pipeline::VertexBufferDescriptor {
-            stride: vertex_buffer.stride,
-            step_mode: vertex_buffer.step_mode,
-            attributes: Cow::Borrowed(slice::from_raw_parts(
-                vertex_buffer.attributes,
-                vertex_buffer.attributes_length,
-            )),
-        });
-    }
+    let buffers: Vec<_> = slice::from_raw_parts(
+        desc_base.vertex.buffers,
+        desc_base.vertex.buffer_count,
+    ).iter().map(|buffer| buffer.into_wgpu()).collect::<Vec<_>>();
 
-    let vertex_state = wgc::pipeline::VertexStateDescriptor {
-        index_format: desc_base.vertex_state.index_format.into_wgpu(),
-        vertex_buffers: Cow::Borrowed(&vertex_buffers),
+    let vertex = wgc::pipeline::VertexState {
+        stage: desc_base.vertex.stage.into_wgpu(),
+        buffers: Cow::Borrowed(&buffers),
     };
 
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(desc_base.label).into_cow(),
         layout: desc_base.layout,
-        vertex_stage: desc_base.vertex_stage.into_wgpu(),
-        fragment_stage: desc_base.fragment_stage.as_ref().map(|f| f.into_wgpu()),
-        rasterization_state: desc_base.rasterization_state.as_ref().map(|r| r.clone()),
-        primitive_topology: desc_base.primitive_topology,
-        color_states: Cow::Borrowed(slice::from_raw_parts(
-            desc_base.color_states,
-            desc_base.color_states_length,
-        )),
-        depth_stencil_state: desc_base.depth_stencil_state.as_ref().map(|d| d.clone()),
-        vertex_state,
-        sample_count: desc_base.sample_count,
-        sample_mask: desc_base.sample_mask,
-        alpha_to_coverage_enabled: desc_base.alpha_to_coverage,
+        vertex,
+        primitive: desc_base.primitive.clone(),
+        depth_stencil: desc_base.depth_stencil.as_ref().cloned(),
+        multisample: desc_base.multisample.clone(),
+        fragment: desc_base.fragment.as_ref().map(|fragment| fragment.into_wgpu()),
     };
     let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, &desc, PhantomData, None));
     if let Some(err) = error {
@@ -924,7 +932,7 @@ pub extern "C" fn wgpu_render_pipeline_destroy(render_pipeline_id: id::RenderPip
 pub struct ComputePipelineDescriptor {
     pub label: Label,
     pub layout: Option<id::PipelineLayoutId>,
-    pub compute_stage: ProgrammableStageDescriptor,
+    pub stage: ProgrammableStageDescriptor,
 }
 
 #[no_mangle]
@@ -935,7 +943,7 @@ pub extern "C" fn wgpu_device_create_compute_pipeline(
     let desc = wgc::pipeline::ComputePipelineDescriptor {
         label: OwnedLabel::new(desc.label).into_cow(),
         layout: desc.layout,
-        compute_stage: desc.compute_stage.into_wgpu(),
+        stage: desc.stage.into_wgpu(),
     };
 
     let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, &desc, PhantomData, None));
