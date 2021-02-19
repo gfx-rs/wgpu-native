@@ -35,7 +35,6 @@ exclude = [
 	"TextureUse",
 	"Option_AdapterId",
 	"Option_BufferId",
-	"Option_IndexFormat",
 	"Option_SamplerId",
 	"Option_SurfaceId",
 	"Option_BufferSize",
