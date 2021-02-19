@@ -1,4 +1,4 @@
-use crate::{check_error, follow_chain, ChainedStruct, Label, OwnedLabel, SType, GLOBAL};
+use crate::{check_error, follow_chain, ChainedStruct, Label, OwnedLabel, SType, GLOBAL, IndexFormat};
 
 use wgc::{
     device::HostMap, gfx_select, hub::Token, id, pipeline::ShaderModuleSource,
@@ -882,11 +882,32 @@ impl FragmentState {
 }
 
 #[repr(C)]
+pub struct PrimitiveState {
+    pub topology: wgt::PrimitiveTopology,
+    pub strip_index_format: IndexFormat,
+    pub front_face: wgt::FrontFace,
+    pub cull_mode: wgt::CullMode,
+    pub polygon_mode: wgt::PolygonMode,
+}
+
+impl PrimitiveState {
+    fn into_wgpu(&self) -> wgt::PrimitiveState {
+        wgt::PrimitiveState {
+            topology: self.topology,
+            strip_index_format: self.strip_index_format.into_wgpu(),
+            front_face: self.front_face,
+            cull_mode: self.cull_mode,
+            polygon_mode: self.polygon_mode,
+        }
+    }
+}
+
+#[repr(C)]
 pub struct RenderPipelineDescriptor {
     pub label: Label,
     pub layout: Option<id::PipelineLayoutId>,
     pub vertex: VertexState,
-    pub primitive: wgt::PrimitiveState,
+    pub primitive: PrimitiveState,
     pub depth_stencil: *const wgt::DepthStencilState,
     pub multisample: wgt::MultisampleState,
     pub fragment: *const FragmentState,
@@ -911,7 +932,7 @@ pub unsafe extern "C" fn wgpu_device_create_render_pipeline(
         label: OwnedLabel::new(desc_base.label).into_cow(),
         layout: desc_base.layout,
         vertex,
-        primitive: desc_base.primitive.clone(),
+        primitive: desc_base.primitive.into_wgpu(),
         depth_stencil: desc_base.depth_stencil.as_ref().cloned(),
         multisample: desc_base.multisample.clone(),
         fragment: desc_base.fragment.as_ref().map(|fragment| fragment.into_wgpu()),

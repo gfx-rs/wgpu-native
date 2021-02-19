@@ -156,9 +156,9 @@ int main() {
                 .primitive = (WGPUPrimitiveState) {
                     .front_face = WGPUFrontFace_Ccw,
                     .cull_mode = WGPUCullMode_None,
-                    .polygon_mode = WGPUPolygonMode_Fill, // todo: double check
+                    .polygon_mode = WGPUPolygonMode_Fill,
                     .topology = WGPUPrimitiveTopology_TriangleList,
-                    .strip_index_format = 2 // todo
+                    .strip_index_format = WGPUIndexFormat_Undefined
                     },
                 .depth_stencil = NULL,
                 .multisample = (WGPUMultisampleState) {
