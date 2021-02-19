@@ -23,17 +23,17 @@ vulkan-portability = ["wgc/gfx-backend-vulkan"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "b23ece55e7abb8d449fcae09398b2402b0efee99"
+rev = "dc18ac72e462a1a6486880a8fb5dbd869e22fd5a"
 # path = "../wgpu/wgpu-core"
-version = "0.6"
+version = "0.7"
 features = ["raw-window-handle", "trace"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "b23ece55e7abb8d449fcae09398b2402b0efee99"
+rev = "dc18ac72e462a1a6486880a8fb5dbd869e22fd5a"
 # path = "../wgpu/wgpu-types"
-version = "0.6"
+version = "0.7"
 
 [dependencies]
 log = "0.4"
@@ -44,7 +44,7 @@ raw-window-handle = "0.3"
 libc = {version="0.2", features=[]}
 
 [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
-gfx-backend-vulkan = { version = "0.6", features = ["x11"] }
+gfx-backend-vulkan = { version = "0.7", features = [] }
 
 [workspace]
 members = [

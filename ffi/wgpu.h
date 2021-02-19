@@ -100,12 +100,33 @@ typedef enum WGPUAddressMode {
  * Backends supported by wgpu.
  */
 enum WGPUBackend {
+  /**
+   * Dummy backend, used for testing.
+   */
   WGPUBackend_Empty = 0,
+  /**
+   * Vulkan API
+   */
   WGPUBackend_Vulkan = 1,
+  /**
+   * Metal API (Apple platforms)
+   */
   WGPUBackend_Metal = 2,
+  /**
+   * Direct3D-12 (Windows)
+   */
   WGPUBackend_Dx12 = 3,
+  /**
+   * Direct3D-11 (Windows)
+   */
   WGPUBackend_Dx11 = 4,
+  /**
+   * OpenGL ES-3 (Linux, Android)
+   */
   WGPUBackend_Gl = 5,
+  /**
+   * WebGPU in the browser
+   */
   WGPUBackend_BrowserWebGpu = 6,
 };
 typedef uint8_t WGPUBackend;
@@ -128,18 +149,57 @@ typedef uint32_t WGPUBindingType;
  * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
  */
 typedef enum WGPUBlendFactor {
+  /**
+   * 0.0
+   */
   WGPUBlendFactor_Zero = 0,
+  /**
+   * 1.0
+   */
   WGPUBlendFactor_One = 1,
+  /**
+   * S.color
+   */
   WGPUBlendFactor_SrcColor = 2,
+  /**
+   * 1.0 - S.color
+   */
   WGPUBlendFactor_OneMinusSrcColor = 3,
+  /**
+   * S.alpha
+   */
   WGPUBlendFactor_SrcAlpha = 4,
+  /**
+   * 1.0 - S.alpha
+   */
   WGPUBlendFactor_OneMinusSrcAlpha = 5,
+  /**
+   * D.color
+   */
   WGPUBlendFactor_DstColor = 6,
+  /**
+   * 1.0 - D.color
+   */
   WGPUBlendFactor_OneMinusDstColor = 7,
+  /**
+   * D.alpha
+   */
   WGPUBlendFactor_DstAlpha = 8,
+  /**
+   * 1.0 - D.alpha
+   */
   WGPUBlendFactor_OneMinusDstAlpha = 9,
+  /**
+   * min(S.alpha, 1.0 - D.alpha)
+   */
   WGPUBlendFactor_SrcAlphaSaturated = 10,
+  /**
+   * Constant
+   */
   WGPUBlendFactor_BlendColor = 11,
+  /**
+   * 1.0 - Constant
+   */
   WGPUBlendFactor_OneMinusBlendColor = 12,
 } WGPUBlendFactor;
 
@@ -149,10 +209,25 @@ typedef enum WGPUBlendFactor {
  * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
  */
 typedef enum WGPUBlendOperation {
+  /**
+   * Src + Dst
+   */
   WGPUBlendOperation_Add = 0,
+  /**
+   * Src - Dst
+   */
   WGPUBlendOperation_Subtract = 1,
+  /**
+   * Dst - Src
+   */
   WGPUBlendOperation_ReverseSubtract = 2,
+  /**
+   * min(Src, Dst)
+   */
   WGPUBlendOperation_Min = 3,
+  /**
+   * max(Src, Dst)
+   */
   WGPUBlendOperation_Max = 4,
 } WGPUBlendOperation;
 
@@ -307,11 +382,11 @@ typedef enum WGPUPolygonMode {
    */
   WGPUPolygonMode_Fill = 0,
   /**
-   * Polygons are draw as line segments
+   * Polygons are drawn as line segments
    */
   WGPUPolygonMode_Line = 1,
   /**
-   * Polygons are draw as points
+   * Polygons are drawn as points
    */
   WGPUPolygonMode_Point = 2,
 } WGPUPolygonMode;
@@ -410,8 +485,17 @@ typedef uint32_t WGPUSType;
  * Color variation to use when sampler addressing mode is [`AddressMode::ClampToBorder`]
  */
 typedef enum WGPUSamplerBorderColor {
+  /**
+   * [0, 0, 0, 0]
+   */
   WGPUSamplerBorderColor_TransparentBlack,
+  /**
+   * [0, 0, 0, 1]
+   */
   WGPUSamplerBorderColor_OpaqueBlack,
+  /**
+   * [1, 1, 1, 1]
+   */
   WGPUSamplerBorderColor_OpaqueWhite,
 } WGPUSamplerBorderColor;
 
@@ -471,10 +555,26 @@ typedef enum WGPUStoreOp {
  * Status of the recieved swapchain image.
  */
 typedef enum WGPUSwapChainStatus {
+  /**
+   * No issues.
+   */
   WGPUSwapChainStatus_Good,
+  /**
+   * The swap chain is operational, but it does no longer perfectly
+   * match the surface. A re-configuration is needed.
+   */
   WGPUSwapChainStatus_Suboptimal,
+  /**
+   * Unable to get the next frame, timed out.
+   */
   WGPUSwapChainStatus_Timeout,
+  /**
+   * The surface under the swap chain has changed.
+   */
   WGPUSwapChainStatus_Outdated,
+  /**
+   * The surface under the swap chain is lost.
+   */
   WGPUSwapChainStatus_Lost,
 } WGPUSwapChainStatus;
 
@@ -1227,6 +1327,22 @@ typedef enum WGPUVertexFormat {
    * Four signed ints (i32). `ivec4` in shaders.
    */
   WGPUVertexFormat_Int4 = 29,
+  /**
+   * One double-precision float (f64). `double` in shaders. Requires VERTEX_ATTRIBUTE_64BIT features.
+   */
+  WGPUVertexFormat_Double = 30,
+  /**
+   * Two double-precision floats (f64). `dvec2` in shaders. Requires VERTEX_ATTRIBUTE_64BIT features.
+   */
+  WGPUVertexFormat_Double2 = 31,
+  /**
+   * Three double-precision floats (f64). `dvec3` in shaders. Requires VERTEX_ATTRIBUTE_64BIT features.
+   */
+  WGPUVertexFormat_Double3 = 32,
+  /**
+   * Four double-precision floats (f64). `dvec4` in shaders. Requires VERTEX_ATTRIBUTE_64BIT features.
+   */
+  WGPUVertexFormat_Double4 = 33,
 } WGPUVertexFormat;
 
 typedef struct WGPUComputePass WGPUComputePass;
@@ -1297,10 +1413,22 @@ typedef WGPUId_Texture_Dummy WGPUTextureId;
  * Origin of a copy to/from a texture.
  */
 typedef struct WGPUOrigin3d {
+  /**
+   *
+   */
   uint32_t x;
+  /**
+   *
+   */
   uint32_t y;
+  /**
+   *
+   */
   uint32_t z;
 } WGPUOrigin3d;
+/**
+ * Zero origin.
+ */
 #define WGPUOrigin3d_ZERO (WGPUOrigin3d){ .x = 0, .y = 0, .z = 0 }
 
 typedef struct WGPUTextureCopyView {
@@ -1313,8 +1441,17 @@ typedef struct WGPUTextureCopyView {
  * Extent of a texture related operation.
  */
 typedef struct WGPUExtent3d {
+  /**
+   *
+   */
   uint32_t width;
+  /**
+   *
+   */
   uint32_t height;
+  /**
+   *
+   */
   uint32_t depth;
 } WGPUExtent3d;
 
@@ -1328,9 +1465,21 @@ typedef WGPUId_TextureView_Dummy WGPUTextureViewId;
  * This is not to be used as a generic color type, only for specific wgpu interfaces.
  */
 typedef struct WGPUColor {
+  /**
+   *
+   */
   double r;
+  /**
+   *
+   */
   double g;
+  /**
+   *
+   */
   double b;
+  /**
+   *
+   */
   double a;
 } WGPUColor;
 #define WGPUColor_TRANSPARENT (WGPUColor){ .r = 0.0, .g = 0.0, .b = 0.0, .a = 0.0 }
@@ -1781,6 +1930,28 @@ typedef uint64_t WGPUFeatures;
  */
 #define WGPUFeatures_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES (uint64_t)268435456
 /**
+ * Enables 64-bit floating point types in SPIR-V shaders.
+ *
+ * Note: even when supported by GPU hardware, 64-bit floating point operations are
+ * frequently between 16 and 64 _times_ slower than equivelent operations on 32-bit floats.
+ *
+ * Supported Platforms:
+ * - Vulkan
+ *
+ * This is a native-only feature.
+ */
+#define WGPUFeatures_SHADER_FLOAT64 (uint64_t)536870912
+/**
+ * Enables using 64-bit types for vertex attributes.
+ *
+ * Requires SHADER_FLOAT64.
+ *
+ * Supported Platforms: N/A
+ *
+ * This is a native-only feature.
+ */
+#define WGPUFeatures_VERTEX_ATTRIBUTE_64BIT (uint64_t)1073741824
+/**
  * Features which are part of the upstream WebGPU standard.
  */
 #define WGPUFeatures_ALL_WEBGPU (uint64_t)65535
@@ -2066,6 +2237,11 @@ typedef uint64_t WGPUId_ShaderModule_Dummy;
 
 typedef WGPUId_ShaderModule_Dummy WGPUShaderModuleId;
 
+/**
+ * Flags controlling the shader processing.
+ *
+ * Note: These flags are internal tweaks, they don't affect the API.
+ */
 typedef uint32_t WGPUShaderFlags;
 /**
  * If enabled, `wgpu` will parse the shader with `Naga`
@@ -2132,38 +2308,193 @@ typedef struct WGPUProgrammableStageDescriptor {
 } WGPUProgrammableStageDescriptor;
 
 /**
- * Describes the state of the rasterizer in a render pipeline.
+ * Integral type used for binding locations in shaders.
  */
-typedef struct WGPURasterizationStateDescriptor {
+typedef uint32_t WGPUShaderLocation;
+
+/**
+ * Vertex inputs (attributes) to shaders.
+ *
+ * Arrays of these can be made with the [`vertex_attr_array`] macro. Vertex attributes are assumed to be tightly packed.
+ */
+typedef struct WGPUVertexAttribute {
+  /**
+   * Format of the input
+   */
+  enum WGPUVertexFormat format;
+  /**
+   * Byte offset of the start of the input
+   */
+  WGPUBufferAddress offset;
+  /**
+   * Location for this input. Must match the location in the shader.
+   */
+  WGPUShaderLocation shader_location;
+} WGPUVertexAttribute;
+
+typedef struct WGPUVertexBufferLayout {
+  WGPUBufferAddress array_stride;
+  enum WGPUInputStepMode step_mode;
+  const struct WGPUVertexAttribute *attributes;
+  uintptr_t attributes_count;
+} WGPUVertexBufferLayout;
+
+typedef struct WGPUVertexState {
+  struct WGPUProgrammableStageDescriptor stage;
+  const struct WGPUVertexBufferLayout *buffers;
+  uintptr_t buffer_count;
+} WGPUVertexState;
+
+typedef struct WGPUPrimitiveState {
+  enum WGPUPrimitiveTopology topology;
+  WGPUIndexFormat strip_index_format;
   enum WGPUFrontFace front_face;
   enum WGPUCullMode cull_mode;
-  /**
-   * Controls the way each polygon is rasterized. Can be either `Fill` (default), `Line` or `Point`
-   *
-   * Setting this to something other than `Fill` requires `Features::NON_FILL_POLYGON_MODE` to be enabled.
-   */
   enum WGPUPolygonMode polygon_mode;
+} WGPUPrimitiveState;
+
+/**
+ * Describes stencil state in a render pipeline.
+ *
+ * If you are not using stencil state, set this to [`StencilFaceState::IGNORE`].
+ */
+typedef struct WGPUStencilFaceState {
+  /**
+   * Comparison function that determines if the fail_op or pass_op is used on the stencil buffer.
+   */
+  WGPUCompareFunction compare;
+  /**
+   * Operation that is preformed when stencil test fails.
+   */
+  enum WGPUStencilOperation fail_op;
+  /**
+   * Operation that is performed when depth test fails but stencil test succeeds.
+   */
+  enum WGPUStencilOperation depth_fail_op;
+  /**
+   * Operation that is performed when stencil test success.
+   */
+  enum WGPUStencilOperation pass_op;
+} WGPUStencilFaceState;
+
+/**
+ * State of the stencil operation (fixed-pipeline stage).
+ */
+typedef struct WGPUStencilState {
+  /**
+   * Front face mode.
+   */
+  struct WGPUStencilFaceState front;
+  /**
+   * Back face mode.
+   */
+  struct WGPUStencilFaceState back;
+  /**
+   * Stencil values are AND'd with this mask when reading and writing from the stencil buffer. Only low 8 bits are used.
+   */
+  uint32_t read_mask;
+  /**
+   * Stencil values are AND'd with this mask when writing to the stencil buffer. Only low 8 bits are used.
+   */
+  uint32_t write_mask;
+} WGPUStencilState;
+
+/**
+ * Describes the biasing setting for the depth target.
+ */
+typedef struct WGPUDepthBiasState {
+  /**
+   * Constant depth biasing factor, in basic units of the depth format.
+   */
+  int32_t constant;
+  /**
+   * Slope depth biasing factor.
+   */
+  float slope_scale;
+  /**
+   * Depth bias clamp value (absolute).
+   */
+  float clamp;
+} WGPUDepthBiasState;
+
+/**
+ * Describes the depth/stencil state in a render pipeline.
+ */
+typedef struct WGPUDepthStencilState {
+  /**
+   * Format of the depth/stencil buffer, must be special depth format. Must match the the format
+   * of the depth/stencil attachment in [`CommandEncoder::begin_render_pass`].
+   */
+  enum WGPUTextureFormat format;
+  /**
+   * If disabled, depth will not be written to.
+   */
+  bool depth_write_enabled;
+  /**
+   * Comparison function used to compare depth values in the depth test.
+   */
+  WGPUCompareFunction depth_compare;
+  /**
+   * Stencil state.
+   */
+  struct WGPUStencilState stencil;
+  /**
+   * Depth bias state.
+   */
+  struct WGPUDepthBiasState bias;
   /**
    * If enabled polygon depth is clamped to 0-1 range instead of being clipped.
    *
    * Requires `Features::DEPTH_CLAMPING` enabled.
    */
   bool clamp_depth;
-  int32_t depth_bias;
-  float depth_bias_slope_scale;
-  float depth_bias_clamp;
-} WGPURasterizationStateDescriptor;
+} WGPUDepthStencilState;
+
+/**
+ * Describes the multi-sampling state of a render pipeline.
+ */
+typedef struct WGPUMultisampleState {
+  /**
+   * The number of samples calculated per pixel (for MSAA). For non-multisampled textures,
+   * this should be `1`
+   */
+  uint32_t count;
+  /**
+   * Bitmask that restricts the samples of a pixel modified by this pipeline. All samples
+   * can be enabled using the value `!0`
+   */
+  uint64_t mask;
+  /**
+   * When enabled, produces another sample mask per pixel based on the alpha output value, that
+   * is ANDed with the sample_mask and the primitive coverage to restrict the set of samples
+   * affected by a primitive.
+   *
+   * The implicit mask produced for alpha of zero is guaranteed to be zero, and for alpha of one
+   * is guaranteed to be all 1-s.
+   */
+  bool alpha_to_coverage_enabled;
+} WGPUMultisampleState;
 
 /**
  * Describes the blend state of a pipeline.
  *
  * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
  */
-typedef struct WGPUBlendDescriptor {
+typedef struct WGPUBlendState {
+  /**
+   * Multiplier for the source, which is produced by the fragment shader.
+   */
   enum WGPUBlendFactor src_factor;
+  /**
+   * Multiplier for the destination, which is stored in the target.
+   */
   enum WGPUBlendFactor dst_factor;
+  /**
+   * The binary operation applied to the source and destination,
+   * multiplied by their respective factors.
+   */
   enum WGPUBlendOperation operation;
-} WGPUBlendDescriptor;
+} WGPUBlendState;
 
 /**
  * Color write mask. Disabled color channels will not be written to.
@@ -2197,7 +2528,7 @@ typedef uint32_t WGPUColorWrite;
 /**
  * Describes the color state of a render pipeline.
  */
-typedef struct WGPUColorStateDescriptor {
+typedef struct WGPUColorTargetState {
   /**
    * The [`TextureFormat`] of the image that this pipeline will render to. Must match the the format
    * of the corresponding color attachment in [`CommandEncoder::begin_render_pass`].
@@ -2206,132 +2537,31 @@ typedef struct WGPUColorStateDescriptor {
   /**
    * The alpha blending that is used for this pipeline.
    */
-  struct WGPUBlendDescriptor alpha_blend;
+  struct WGPUBlendState alpha_blend;
   /**
    * The color blending that is used for this pipeline.
    */
-  struct WGPUBlendDescriptor color_blend;
+  struct WGPUBlendState color_blend;
   /**
    * Mask which enables/disables writes to different color/alpha channel.
    */
   WGPUColorWrite write_mask;
-} WGPUColorStateDescriptor;
+} WGPUColorTargetState;
 
-/**
- * Describes stencil state in a render pipeline.
- *
- * If you are not using stencil state, set this to [`StencilStateFaceDescriptor::IGNORE`].
- */
-typedef struct WGPUStencilStateFaceDescriptor {
-  /**
-   * Comparison function that determines if the fail_op or pass_op is used on the stencil buffer.
-   */
-  WGPUCompareFunction compare;
-  /**
-   * Operation that is preformed when stencil test fails.
-   */
-  enum WGPUStencilOperation fail_op;
-  /**
-   * Operation that is performed when depth test fails but stencil test succeeds.
-   */
-  enum WGPUStencilOperation depth_fail_op;
-  /**
-   * Operation that is performed when stencil test success.
-   */
-  enum WGPUStencilOperation pass_op;
-} WGPUStencilStateFaceDescriptor;
-
-typedef struct WGPUStencilStateDescriptor {
-  /**
-   * Front face mode.
-   */
-  struct WGPUStencilStateFaceDescriptor front;
-  /**
-   * Back face mode.
-   */
-  struct WGPUStencilStateFaceDescriptor back;
-  /**
-   * Stencil values are AND'd with this mask when reading and writing from the stencil buffer. Only low 8 bits are used.
-   */
-  uint32_t read_mask;
-  /**
-   * Stencil values are AND'd with this mask when writing to the stencil buffer. Only low 8 bits are used.
-   */
-  uint32_t write_mask;
-} WGPUStencilStateDescriptor;
-
-/**
- * Describes the depth/stencil state in a render pipeline.
- */
-typedef struct WGPUDepthStencilStateDescriptor {
-  /**
-   * Format of the depth/stencil buffer, must be special depth format. Must match the the format
-   * of the depth/stencil attachment in [`CommandEncoder::begin_render_pass`].
-   */
-  enum WGPUTextureFormat format;
-  /**
-   * If disabled, depth will not be written to.
-   */
-  bool depth_write_enabled;
-  /**
-   * Comparison function used to compare depth values in the depth test.
-   */
-  WGPUCompareFunction depth_compare;
-  struct WGPUStencilStateDescriptor stencil;
-} WGPUDepthStencilStateDescriptor;
-
-/**
- * Integral type used for binding locations in shaders.
- */
-typedef uint32_t WGPUShaderLocation;
-
-/**
- * Vertex inputs (attributes) to shaders.
- *
- * Arrays of these can be made with the [`vertex_attr_array`] macro. Vertex attributes are assumed to be tightly packed.
- */
-typedef struct WGPUVertexAttributeDescriptor {
-  /**
-   * Byte offset of the start of the input
-   */
-  WGPUBufferAddress offset;
-  /**
-   * Format of the input
-   */
-  enum WGPUVertexFormat format;
-  /**
-   * Location for this input. Must match the location in the shader.
-   */
-  WGPUShaderLocation shader_location;
-} WGPUVertexAttributeDescriptor;
-
-typedef struct WGPUVertexBufferDescriptor {
-  WGPUBufferAddress stride;
-  enum WGPUInputStepMode step_mode;
-  const struct WGPUVertexAttributeDescriptor *attributes;
-  uintptr_t attributes_length;
-} WGPUVertexBufferDescriptor;
-
-typedef struct WGPUVertexStateDescriptor {
-  WGPUIndexFormat index_format;
-  const struct WGPUVertexBufferDescriptor *vertex_buffers;
-  uintptr_t vertex_buffers_length;
-} WGPUVertexStateDescriptor;
+typedef struct WGPUFragmentState {
+  struct WGPUProgrammableStageDescriptor stage;
+  const struct WGPUColorTargetState *targets;
+  uintptr_t target_count;
+} WGPUFragmentState;
 
 typedef struct WGPURenderPipelineDescriptor {
   WGPULabel label;
   WGPUOption_PipelineLayoutId layout;
-  struct WGPUProgrammableStageDescriptor vertex_stage;
-  const struct WGPUProgrammableStageDescriptor *fragment_stage;
-  const struct WGPURasterizationStateDescriptor *rasterization_state;
-  enum WGPUPrimitiveTopology primitive_topology;
-  const struct WGPUColorStateDescriptor *color_states;
-  uintptr_t color_states_length;
-  const struct WGPUDepthStencilStateDescriptor *depth_stencil_state;
-  struct WGPUVertexStateDescriptor vertex_state;
-  uint32_t sample_count;
-  uint32_t sample_mask;
-  bool alpha_to_coverage;
+  struct WGPUVertexState vertex;
+  struct WGPUPrimitiveState primitive;
+  const struct WGPUDepthStencilState *depth_stencil;
+  struct WGPUMultisampleState multisample;
+  const struct WGPUFragmentState *fragment;
 } WGPURenderPipelineDescriptor;
 
 typedef uint64_t WGPUId_ComputePipeline_Dummy;
@@ -2341,7 +2571,7 @@ typedef WGPUId_ComputePipeline_Dummy WGPUComputePipelineId;
 typedef struct WGPUComputePipelineDescriptor {
   WGPULabel label;
   WGPUOption_PipelineLayoutId layout;
-  struct WGPUProgrammableStageDescriptor compute_stage;
+  struct WGPUProgrammableStageDescriptor stage;
 } WGPUComputePipelineDescriptor;
 
 typedef uint64_t WGPUId_SwapChain_Dummy;

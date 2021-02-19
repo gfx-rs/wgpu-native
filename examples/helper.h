@@ -8,4 +8,4 @@ typedef struct BufferDimensions {
 
 BufferDimensions buffer_dimensions_new(size_t width, size_t height);
 
-void save_png(const char *path, const unsigned char *data, BufferDimensions buffer_dimensions);
+void save_png(const char *path, const unsigned char *data, const BufferDimensions *buffer_dimensions);

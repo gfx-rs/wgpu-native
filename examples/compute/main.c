@@ -120,7 +120,7 @@ int main(
         wgpu_device_create_compute_pipeline(device,
             &(WGPUComputePipelineDescriptor){
                 .layout = pipeline_layout,
-                .compute_stage = (WGPUProgrammableStageDescriptor){
+                .stage = (WGPUProgrammableStageDescriptor){
                     .module = shader_module,
                     .entry_point = "main"
                 }});

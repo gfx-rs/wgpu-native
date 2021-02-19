@@ -1,4 +1,4 @@
-use crate::{check_error, Label, OwnedLabel, GLOBAL};
+use crate::{check_error, Label, OwnedLabel, GLOBAL, make_slice};
 
 pub use wgc::command::{
     bundle_ffi, compute_ffi, render_ffi, ColorAttachmentDescriptor, ComputePass,
@@ -51,7 +51,7 @@ pub struct BufferCopyViewC {
 }
 
 impl BufferCopyViewC {
-    pub fn into_wgpu(&self) -> wgc::command::BufferCopyView {
+    pub fn to_wgpu(&self) -> wgc::command::BufferCopyView {
         wgc::command::BufferCopyView {
             layout: self.layout.clone(),
             buffer: self.buffer,
@@ -67,7 +67,7 @@ pub struct TextureCopyViewC {
 }
 
 impl TextureCopyViewC {
-    pub fn into_wgpu(&self) -> wgc::command::TextureCopyView {
+    pub fn to_wgpu(&self) -> wgc::command::TextureCopyView {
         wgc::command::TextureCopyView {
             texture: self.texture,
             mip_level: self.mip_level,
@@ -85,8 +85,8 @@ pub extern "C" fn wgpu_command_encoder_copy_buffer_to_texture(
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_buffer_to_texture(
         command_encoder_id,
-        &source.into_wgpu(),
-        &destination.into_wgpu(),
+        &source.to_wgpu(),
+        &destination.to_wgpu(),
         copy_size))
     .expect("Unable to copy buffer to texture")
 }
@@ -100,8 +100,8 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_buffer(
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_buffer(
         command_encoder_id,
-        &source.into_wgpu(),
-        &destination.into_wgpu(),
+        &source.to_wgpu(),
+        &destination.to_wgpu(),
         copy_size))
     .expect("Unable to copy texture to buffer")
 }
@@ -115,8 +115,8 @@ pub extern "C" fn wgpu_command_encoder_copy_texture_to_texture(
 ) {
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_texture(
         command_encoder_id,
-        &source.into_wgpu(),
-        &destination.into_wgpu(),
+        &source.to_wgpu(),
+        &destination.to_wgpu(),
         copy_size))
     .expect("Unable to copy texture to texture")
 }
@@ -132,7 +132,7 @@ pub struct RenderPassDescriptor<'a> {
 impl<'a> RenderPassDescriptor<'a> {
     fn to_wgpu_type(&self) -> wgc::command::RenderPassDescriptor<'a> {
         let color_attachments = Cow::Borrowed(unsafe {
-            std::slice::from_raw_parts(self.color_attachments, self.color_attachments_length)
+            make_slice(self.color_attachments, self.color_attachments_length)
         });
 
         wgc::command::RenderPassDescriptor {
@@ -226,7 +226,7 @@ pub extern "C" fn wgpu_render_pass_set_index_buffer(
     pass.set_index_buffer(
         buffer_id,
         index_format
-            .into_wgpu()
+            .to_wgpu()
             .expect("IndexFormat cannot be undefined"),
         offset,
         size,
@@ -244,7 +244,7 @@ pub extern "C" fn wgpu_render_bundle_set_index_buffer(
     bundle.set_index_buffer(
         buffer_id,
         index_format
-            .into_wgpu()
+            .to_wgpu()
             .expect("IndexFormat cannot be undefined"),
         offset,
         size,

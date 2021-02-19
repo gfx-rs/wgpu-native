@@ -66,6 +66,9 @@ exclude = [
 "Option_SamplerBorderColor" = "SamplerBorderColor"
 "Option_TextureViewDimension" = "TextureViewDimension"
 "Option_TextureFormat" = "TextureFormat"
+"Option_IndexFormat" = "IndexFormat"
+"TextureCopyView_TextureId" = "TextureCopyView"
+"BufferCopyView_TextureId" = "BufferCopyView"
 
 [parse]
 parse_deps = true
