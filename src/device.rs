@@ -1,4 +1,4 @@
-use crate::{check_error, follow_chain, ChainedStruct, Label, OwnedLabel, SType, GLOBAL, IndexFormat};
+use crate::{check_error, follow_chain, ChainedStruct, Label, OwnedLabel, SType, GLOBAL, IndexFormat, make_slice};
 
 use wgc::{
     device::HostMap, gfx_select, hub::Token, id, pipeline::ShaderModuleSource,
@@ -7,7 +7,7 @@ use wgt::{Backend, BackendBit, DeviceType, Limits};
 
 use libc::c_char;
 use std::{
-    borrow::Cow, ffi::CString, marker::PhantomData, num::NonZeroU32, num::NonZeroU64, ptr, slice,
+    borrow::Cow, ffi::CString, marker::PhantomData, num::NonZeroU32, num::NonZeroU64, ptr,
 };
 use std::ffi::CStr;
 
@@ -477,7 +477,7 @@ pub enum TextureComponentType {
 }
 
 impl TextureComponentType {
-    fn into_wgpu(&self, filterable: bool) -> wgt::TextureSampleType {
+    fn to_wgpu(&self, filterable: bool) -> wgt::TextureSampleType {
         match self {
             TextureComponentType::Float => wgt::TextureSampleType::Float { filterable },
             TextureComponentType::Sint => wgt::TextureSampleType::Sint,
@@ -514,7 +514,7 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
     desc: &BindGroupLayoutDescriptor,
 ) -> id::BindGroupLayoutId {
     let mut entries = Vec::new();
-    for entry in slice::from_raw_parts(desc.entries, desc.entries_length) {
+    for entry in make_slice(desc.entries, desc.entries_length) {
         let ty = match entry.ty {
             BindingType::UniformBuffer => wgt::BindingType::Buffer {
                 ty: wgt::BufferBindingType::Uniform,
@@ -541,7 +541,7 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
             },
             BindingType::SampledTexture => wgt::BindingType::Texture {
                 view_dimension: entry.view_dimension,
-                sample_type: entry.texture_component_type.into_wgpu(entry.filtering),
+                sample_type: entry.texture_component_type.to_wgpu(entry.filtering),
                 multisampled: entry.multisampled,
             },
             BindingType::ReadonlyStorageTexture => wgt::BindingType::StorageTexture {
@@ -591,7 +591,7 @@ pub unsafe extern "C" fn wgpu_device_create_pipeline_layout(
 ) -> id::PipelineLayoutId {
     let desc = wgc::binding_model::PipelineLayoutDescriptor {
         label: OwnedLabel::new(desc_base.label).into_cow(),
-        bind_group_layouts: Cow::Borrowed(slice::from_raw_parts(
+        bind_group_layouts: Cow::Borrowed(make_slice(
             desc_base.bind_group_layouts,
             desc_base.bind_group_layouts_length,
         )),
@@ -612,7 +612,7 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group(
     device_id: id::DeviceId,
     desc: &BindGroupDescriptor,
 ) -> id::BindGroupId {
-    let entries = slice::from_raw_parts(desc.entries, desc.entries_length)
+    let entries = make_slice(desc.entries, desc.entries_length)
         .iter()
         .map(|entry| wgc::binding_model::BindGroupEntry {
             binding: entry.binding,
@@ -676,7 +676,7 @@ pub extern "C" fn wgpu_device_create_shader_module(
     let src = match chain.s_type {
         SType::ShaderModuleSPIRVDescriptor => {
             let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
-            let slice = unsafe { std::slice::from_raw_parts(desc.code, desc.code_size as usize) };
+            let slice = unsafe { make_slice(desc.code, desc.code_size as usize) };
             ShaderModuleSource::SpirV(Cow::Borrowed(slice))
         }
         SType::ShaderModuleWGSLDescriptor => {
@@ -731,7 +731,7 @@ pub unsafe extern "C" fn wgpu_device_create_render_bundle_encoder(
     let desc = wgc::command::RenderBundleEncoderDescriptor {
         label: label.as_cow(),
         color_formats: if desc.color_formats_length != 0 {
-            Cow::Borrowed(slice::from_raw_parts(
+            Cow::Borrowed(make_slice(
                 desc.color_formats,
                 desc.color_formats_length,
             ))
@@ -780,7 +780,7 @@ pub unsafe extern "C" fn wgpu_queue_write_buffer(
     data: *const u8,
     data_length: usize,
 ) {
-    let slice = slice::from_raw_parts(data, data_length);
+    let slice = make_slice(data, data_length);
     gfx_select!(queue_id => GLOBAL.queue_write_buffer(queue_id, buffer_id, buffer_offset, slice))
         .expect("Unable to write buffer")
 }
@@ -798,8 +798,8 @@ pub unsafe extern "C" fn wgpu_queue_write_texture(
     data_layout: &wgt::TextureDataLayout,
     size: &wgt::Extent3d,
 ) {
-    let slice = slice::from_raw_parts(data, data_length);
-    gfx_select!(queue_id => GLOBAL.queue_write_texture(queue_id, &texture.into_wgpu(), slice, data_layout, size))
+    let slice = make_slice(data, data_length);
+    gfx_select!(queue_id => GLOBAL.queue_write_texture(queue_id, &texture.to_wgpu(), slice, data_layout, size))
         .expect("Unable to write texture")
 }
 
@@ -813,7 +813,7 @@ pub unsafe extern "C" fn wgpu_queue_submit(
     command_buffers: *const id::CommandBufferId,
     command_buffers_length: usize,
 ) {
-    let command_buffer_ids = slice::from_raw_parts(command_buffers, command_buffers_length);
+    let command_buffer_ids = make_slice(command_buffers, command_buffers_length);
     gfx_select!(queue_id => GLOBAL.queue_submit(queue_id, command_buffer_ids))
         .expect("Unable to submit queue")
 }
@@ -826,7 +826,7 @@ pub struct ProgrammableStageDescriptor {
 }
 
 impl<'a> ProgrammableStageDescriptor {
-    fn into_wgpu(&self) -> wgc::pipeline::ProgrammableStageDescriptor<'a> {
+    fn to_wgpu(&self) -> wgc::pipeline::ProgrammableStageDescriptor<'a> {
         wgc::pipeline::ProgrammableStageDescriptor {
             module: self.module,
             entry_point: OwnedLabel::new(self.entry_point).into_cow().unwrap(),
@@ -843,11 +843,11 @@ pub struct VertexBufferLayout {
 }
 
 impl VertexBufferLayout {
-    unsafe fn into_wgpu(&self) -> wgc::pipeline::VertexBufferLayout {
+    unsafe fn to_wgpu(&self) -> wgc::pipeline::VertexBufferLayout {
         wgc::pipeline::VertexBufferLayout {
             array_stride: self.array_stride,
             step_mode: self.step_mode,
-            attributes: Cow::Borrowed(slice::from_raw_parts(
+            attributes: Cow::Borrowed(make_slice(
                 self.attributes,
                 self.attributes_count,
             )),
@@ -870,10 +870,10 @@ pub struct FragmentState {
 }
 
 impl FragmentState {
-    unsafe fn into_wgpu(&self) -> wgc::pipeline::FragmentState {
+    unsafe fn to_wgpu(&self) -> wgc::pipeline::FragmentState {
         wgc::pipeline::FragmentState {
-            stage: self.stage.into_wgpu(),
-            targets: Cow::Borrowed(slice::from_raw_parts(
+            stage: self.stage.to_wgpu(),
+            targets: Cow::Borrowed(make_slice(
                 self.targets,
                 self.target_count,
             ))
@@ -891,10 +891,10 @@ pub struct PrimitiveState {
 }
 
 impl PrimitiveState {
-    fn into_wgpu(&self) -> wgt::PrimitiveState {
+    fn to_wgpu(&self) -> wgt::PrimitiveState {
         wgt::PrimitiveState {
             topology: self.topology,
-            strip_index_format: self.strip_index_format.into_wgpu(),
+            strip_index_format: self.strip_index_format.to_wgpu(),
             front_face: self.front_face,
             cull_mode: self.cull_mode,
             polygon_mode: self.polygon_mode,
@@ -918,24 +918,24 @@ pub unsafe extern "C" fn wgpu_device_create_render_pipeline(
     device_id: id::DeviceId,
     desc_base: &RenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
-    let buffers: Vec<_> = slice::from_raw_parts(
+    let buffers: Vec<_> = make_slice(
         desc_base.vertex.buffers,
         desc_base.vertex.buffer_count,
-    ).iter().map(|buffer| buffer.into_wgpu()).collect::<Vec<_>>();
+    ).iter().map(|buffer| buffer.to_wgpu()).collect::<Vec<_>>();
 
     let vertex = wgc::pipeline::VertexState {
-        stage: desc_base.vertex.stage.into_wgpu(),
-        buffers: Cow::Borrowed(&buffers),
+        stage: desc_base.vertex.stage.to_wgpu(),
+        buffers: Cow::Owned(buffers),
     };
 
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(desc_base.label).into_cow(),
         layout: desc_base.layout,
         vertex,
-        primitive: desc_base.primitive.into_wgpu(),
+        primitive: desc_base.primitive.to_wgpu(),
         depth_stencil: desc_base.depth_stencil.as_ref().cloned(),
         multisample: desc_base.multisample.clone(),
-        fragment: desc_base.fragment.as_ref().map(|fragment| fragment.into_wgpu()),
+        fragment: desc_base.fragment.as_ref().map(|fragment| fragment.to_wgpu()),
     };
     let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, &desc, PhantomData, None));
     if let Some(err) = error {
@@ -964,7 +964,7 @@ pub extern "C" fn wgpu_device_create_compute_pipeline(
     let desc = wgc::pipeline::ComputePipelineDescriptor {
         label: OwnedLabel::new(desc.label).into_cow(),
         layout: desc.layout,
-        stage: desc.stage.into_wgpu(),
+        stage: desc.stage.to_wgpu(),
     };
 
     let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, &desc, PhantomData, None));

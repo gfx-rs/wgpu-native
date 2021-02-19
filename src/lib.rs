@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::slice;
 
 mod command;
 mod device;
@@ -128,6 +129,14 @@ pub fn check_error<I, E: std::fmt::Debug>(input: (I, Option<E>)) -> I {
     input.0
 }
 
+pub(crate) unsafe fn make_slice<'a, T: 'a>(pointer: *const T, count: usize) -> &'a [T] {
+    if count == 0 {
+        &[]
+    } else {
+        slice::from_raw_parts(pointer, count)
+    }
+}
+
 #[repr(u32)]
 pub enum IndexFormat {
     Undefined = 0,
@@ -136,7 +145,7 @@ pub enum IndexFormat {
 }
 
 impl IndexFormat {
-    fn into_wgpu(&self) -> Option<wgt::IndexFormat> {
+    fn to_wgpu(&self) -> Option<wgt::IndexFormat> {
         match self {
             IndexFormat::Undefined => None,
             IndexFormat::Uint16 => Some(wgt::IndexFormat::Uint16),

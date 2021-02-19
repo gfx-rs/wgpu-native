@@ -164,7 +164,7 @@ int main() {
                 .multisample = (WGPUMultisampleState) {
                     .alpha_to_coverage_enabled = false,
                     .count = 1,
-                    .mask = 0
+                    .mask = -1
                     },
                 .fragment = &(WGPUFragmentState) {
                     .stage = (WGPUProgrammableStageDescriptor) {
