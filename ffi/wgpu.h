@@ -143,93 +143,31 @@ enum WGPUBindingType {
 };
 typedef uint32_t WGPUBindingType;
 
-/**
- * Alpha blend factor.
- *
- * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
- */
-typedef enum WGPUBlendFactor {
-  /**
-   * 0.0
-   */
+enum WGPUBlendFactor {
   WGPUBlendFactor_Zero = 0,
-  /**
-   * 1.0
-   */
   WGPUBlendFactor_One = 1,
-  /**
-   * S.color
-   */
   WGPUBlendFactor_SrcColor = 2,
-  /**
-   * 1.0 - S.color
-   */
   WGPUBlendFactor_OneMinusSrcColor = 3,
-  /**
-   * S.alpha
-   */
   WGPUBlendFactor_SrcAlpha = 4,
-  /**
-   * 1.0 - S.alpha
-   */
   WGPUBlendFactor_OneMinusSrcAlpha = 5,
-  /**
-   * D.color
-   */
   WGPUBlendFactor_DstColor = 6,
-  /**
-   * 1.0 - D.color
-   */
   WGPUBlendFactor_OneMinusDstColor = 7,
-  /**
-   * D.alpha
-   */
   WGPUBlendFactor_DstAlpha = 8,
-  /**
-   * 1.0 - D.alpha
-   */
   WGPUBlendFactor_OneMinusDstAlpha = 9,
-  /**
-   * min(S.alpha, 1.0 - D.alpha)
-   */
   WGPUBlendFactor_SrcAlphaSaturated = 10,
-  /**
-   * Constant
-   */
   WGPUBlendFactor_BlendColor = 11,
-  /**
-   * 1.0 - Constant
-   */
   WGPUBlendFactor_OneMinusBlendColor = 12,
-} WGPUBlendFactor;
+};
+typedef uint32_t WGPUBlendFactor;
 
-/**
- * Alpha blend operation.
- *
- * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
- */
-typedef enum WGPUBlendOperation {
-  /**
-   * Src + Dst
-   */
+enum WGPUBlendOperation {
   WGPUBlendOperation_Add = 0,
-  /**
-   * Src - Dst
-   */
   WGPUBlendOperation_Subtract = 1,
-  /**
-   * Dst - Src
-   */
   WGPUBlendOperation_ReverseSubtract = 2,
-  /**
-   * min(Src, Dst)
-   */
   WGPUBlendOperation_Min = 3,
-  /**
-   * max(Src, Dst)
-   */
   WGPUBlendOperation_Max = 4,
-} WGPUBlendOperation;
+};
+typedef uint32_t WGPUBlendOperation;
 
 typedef enum WGPUBufferMapAsyncStatus {
   WGPUBufferMapAsyncStatus_Success,
@@ -275,23 +213,12 @@ enum WGPUCompareFunction {
 };
 typedef uint32_t WGPUCompareFunction;
 
-/**
- * Type of faces to be culled.
- */
-typedef enum WGPUCullMode {
-  /**
-   * No faces should be culled
-   */
+enum WGPUCullMode {
   WGPUCullMode_None = 0,
-  /**
-   * Front faces should be culled
-   */
   WGPUCullMode_Front = 1,
-  /**
-   * Back faces should be culled
-   */
   WGPUCullMode_Back = 2,
-} WGPUCullMode;
+};
+typedef uint32_t WGPUCullMode;
 
 /**
  * Texel mixing mode when sampling between texels.
@@ -372,24 +299,6 @@ typedef enum WGPULogLevel {
   WGPULogLevel_Debug = 4,
   WGPULogLevel_Trace = 5,
 } WGPULogLevel;
-
-/**
- * Type of drawing mode for polygons
- */
-typedef enum WGPUPolygonMode {
-  /**
-   * Polygons are filled
-   */
-  WGPUPolygonMode_Fill = 0,
-  /**
-   * Polygons are drawn as line segments
-   */
-  WGPUPolygonMode_Line = 1,
-  /**
-   * Polygons are drawn as points
-   */
-  WGPUPolygonMode_Point = 2,
-} WGPUPolygonMode;
 
 /**
  * Power Preference when choosing a physical adapter.
@@ -2307,194 +2216,59 @@ typedef struct WGPUProgrammableStageDescriptor {
   WGPULabel entry_point;
 } WGPUProgrammableStageDescriptor;
 
-/**
- * Integral type used for binding locations in shaders.
- */
-typedef uint32_t WGPUShaderLocation;
-
-/**
- * Vertex inputs (attributes) to shaders.
- *
- * Arrays of these can be made with the [`vertex_attr_array`] macro. Vertex attributes are assumed to be tightly packed.
- */
-typedef struct WGPUVertexAttribute {
-  /**
-   * Format of the input
-   */
+typedef struct WGPUVertexAttributeDescriptor {
   enum WGPUVertexFormat format;
-  /**
-   * Byte offset of the start of the input
-   */
-  WGPUBufferAddress offset;
-  /**
-   * Location for this input. Must match the location in the shader.
-   */
-  WGPUShaderLocation shader_location;
-} WGPUVertexAttribute;
+  uint64_t offset;
+  uint32_t shaderLocation;
+} WGPUVertexAttributeDescriptor;
 
-typedef struct WGPUVertexBufferLayout {
-  WGPUBufferAddress array_stride;
-  enum WGPUInputStepMode step_mode;
-  const struct WGPUVertexAttribute *attributes;
-  uintptr_t attributes_count;
-} WGPUVertexBufferLayout;
+typedef struct WGPUVertexBufferLayoutDescriptor {
+  uint64_t arrayStride;
+  enum WGPUInputStepMode stepMode;
+  uint32_t attributeCount;
+  const struct WGPUVertexAttributeDescriptor *attributes;
+} WGPUVertexBufferLayoutDescriptor;
 
-typedef struct WGPUVertexState {
-  struct WGPUProgrammableStageDescriptor stage;
-  const struct WGPUVertexBufferLayout *buffers;
-  uintptr_t buffer_count;
-} WGPUVertexState;
+typedef struct WGPUVertexStateDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
+  WGPUIndexFormat indexFormat;
+  uint32_t vertexBufferCount;
+  const struct WGPUVertexBufferLayoutDescriptor *vertexBuffers;
+} WGPUVertexStateDescriptor;
 
-typedef struct WGPUPrimitiveState {
-  enum WGPUPrimitiveTopology topology;
-  WGPUIndexFormat strip_index_format;
-  enum WGPUFrontFace front_face;
-  enum WGPUCullMode cull_mode;
-  enum WGPUPolygonMode polygon_mode;
-} WGPUPrimitiveState;
+typedef struct WGPURasterizationStateDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
+  enum WGPUFrontFace frontFace;
+  WGPUCullMode cullMode;
+  int32_t depthBias;
+  float depthBiasSlopeScale;
+  float depthBiasClamp;
+  bool clampDepth;
+} WGPURasterizationStateDescriptor;
 
-/**
- * Describes stencil state in a render pipeline.
- *
- * If you are not using stencil state, set this to [`StencilFaceState::IGNORE`].
- */
-typedef struct WGPUStencilFaceState {
-  /**
-   * Comparison function that determines if the fail_op or pass_op is used on the stencil buffer.
-   */
+typedef struct WGPUStencilStateFaceDescriptor {
   WGPUCompareFunction compare;
-  /**
-   * Operation that is preformed when stencil test fails.
-   */
-  enum WGPUStencilOperation fail_op;
-  /**
-   * Operation that is performed when depth test fails but stencil test succeeds.
-   */
-  enum WGPUStencilOperation depth_fail_op;
-  /**
-   * Operation that is performed when stencil test success.
-   */
-  enum WGPUStencilOperation pass_op;
-} WGPUStencilFaceState;
+  enum WGPUStencilOperation failOp;
+  enum WGPUStencilOperation depthFailOp;
+  enum WGPUStencilOperation passOp;
+} WGPUStencilStateFaceDescriptor;
 
-/**
- * State of the stencil operation (fixed-pipeline stage).
- */
-typedef struct WGPUStencilState {
-  /**
-   * Front face mode.
-   */
-  struct WGPUStencilFaceState front;
-  /**
-   * Back face mode.
-   */
-  struct WGPUStencilFaceState back;
-  /**
-   * Stencil values are AND'd with this mask when reading and writing from the stencil buffer. Only low 8 bits are used.
-   */
-  uint32_t read_mask;
-  /**
-   * Stencil values are AND'd with this mask when writing to the stencil buffer. Only low 8 bits are used.
-   */
-  uint32_t write_mask;
-} WGPUStencilState;
-
-/**
- * Describes the biasing setting for the depth target.
- */
-typedef struct WGPUDepthBiasState {
-  /**
-   * Constant depth biasing factor, in basic units of the depth format.
-   */
-  int32_t constant;
-  /**
-   * Slope depth biasing factor.
-   */
-  float slope_scale;
-  /**
-   * Depth bias clamp value (absolute).
-   */
-  float clamp;
-} WGPUDepthBiasState;
-
-/**
- * Describes the depth/stencil state in a render pipeline.
- */
-typedef struct WGPUDepthStencilState {
-  /**
-   * Format of the depth/stencil buffer, must be special depth format. Must match the the format
-   * of the depth/stencil attachment in [`CommandEncoder::begin_render_pass`].
-   */
+typedef struct WGPUDepthStencilStateDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   enum WGPUTextureFormat format;
-  /**
-   * If disabled, depth will not be written to.
-   */
-  bool depth_write_enabled;
-  /**
-   * Comparison function used to compare depth values in the depth test.
-   */
-  WGPUCompareFunction depth_compare;
-  /**
-   * Stencil state.
-   */
-  struct WGPUStencilState stencil;
-  /**
-   * Depth bias state.
-   */
-  struct WGPUDepthBiasState bias;
-  /**
-   * If enabled polygon depth is clamped to 0-1 range instead of being clipped.
-   *
-   * Requires `Features::DEPTH_CLAMPING` enabled.
-   */
-  bool clamp_depth;
-} WGPUDepthStencilState;
+  bool depthWriteEnabled;
+  WGPUCompareFunction depthCompare;
+  struct WGPUStencilStateFaceDescriptor stencilFront;
+  struct WGPUStencilStateFaceDescriptor stencilBack;
+  uint32_t stencilReadMask;
+  uint32_t stencilWriteMask;
+} WGPUDepthStencilStateDescriptor;
 
-/**
- * Describes the multi-sampling state of a render pipeline.
- */
-typedef struct WGPUMultisampleState {
-  /**
-   * The number of samples calculated per pixel (for MSAA). For non-multisampled textures,
-   * this should be `1`
-   */
-  uint32_t count;
-  /**
-   * Bitmask that restricts the samples of a pixel modified by this pipeline. All samples
-   * can be enabled using the value `!0`
-   */
-  uint64_t mask;
-  /**
-   * When enabled, produces another sample mask per pixel based on the alpha output value, that
-   * is ANDed with the sample_mask and the primitive coverage to restrict the set of samples
-   * affected by a primitive.
-   *
-   * The implicit mask produced for alpha of zero is guaranteed to be zero, and for alpha of one
-   * is guaranteed to be all 1-s.
-   */
-  bool alpha_to_coverage_enabled;
-} WGPUMultisampleState;
-
-/**
- * Describes the blend state of a pipeline.
- *
- * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
- */
-typedef struct WGPUBlendState {
-  /**
-   * Multiplier for the source, which is produced by the fragment shader.
-   */
-  enum WGPUBlendFactor src_factor;
-  /**
-   * Multiplier for the destination, which is stored in the target.
-   */
-  enum WGPUBlendFactor dst_factor;
-  /**
-   * The binary operation applied to the source and destination,
-   * multiplied by their respective factors.
-   */
-  enum WGPUBlendOperation operation;
-} WGPUBlendState;
+typedef struct WGPUBlendDescriptor {
+  WGPUBlendOperation operation;
+  WGPUBlendFactor srcFactor;
+  WGPUBlendFactor dstFactor;
+} WGPUBlendDescriptor;
 
 /**
  * Color write mask. Disabled color channels will not be written to.
@@ -2525,43 +2299,29 @@ typedef uint32_t WGPUColorWrite;
  */
 #define WGPUColorWrite_ALL (uint32_t)15
 
-/**
- * Describes the color state of a render pipeline.
- */
-typedef struct WGPUColorTargetState {
-  /**
-   * The [`TextureFormat`] of the image that this pipeline will render to. Must match the the format
-   * of the corresponding color attachment in [`CommandEncoder::begin_render_pass`].
-   */
+typedef struct WGPUColorStateDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   enum WGPUTextureFormat format;
-  /**
-   * The alpha blending that is used for this pipeline.
-   */
-  struct WGPUBlendState alpha_blend;
-  /**
-   * The color blending that is used for this pipeline.
-   */
-  struct WGPUBlendState color_blend;
-  /**
-   * Mask which enables/disables writes to different color/alpha channel.
-   */
-  WGPUColorWrite write_mask;
-} WGPUColorTargetState;
-
-typedef struct WGPUFragmentState {
-  struct WGPUProgrammableStageDescriptor stage;
-  const struct WGPUColorTargetState *targets;
-  uintptr_t target_count;
-} WGPUFragmentState;
+  struct WGPUBlendDescriptor alphaBlend;
+  struct WGPUBlendDescriptor colorBlend;
+  WGPUColorWrite writeMask;
+} WGPUColorStateDescriptor;
 
 typedef struct WGPURenderPipelineDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
   WGPUOption_PipelineLayoutId layout;
-  struct WGPUVertexState vertex;
-  struct WGPUPrimitiveState primitive;
-  const struct WGPUDepthStencilState *depth_stencil;
-  struct WGPUMultisampleState multisample;
-  const struct WGPUFragmentState *fragment;
+  struct WGPUProgrammableStageDescriptor vertexStage;
+  const struct WGPUProgrammableStageDescriptor *fragmentStage;
+  struct WGPUVertexStateDescriptor vertexState;
+  enum WGPUPrimitiveTopology primitiveTopology;
+  struct WGPURasterizationStateDescriptor rasterizationState;
+  uint32_t sampleCount;
+  const struct WGPUDepthStencilStateDescriptor *depthStencilState;
+  uint32_t colorStateCount;
+  const struct WGPUColorStateDescriptor *colorStates;
+  uint32_t sampleMask;
+  bool alphaToCoverageEnabled;
 } WGPURenderPipelineDescriptor;
 
 typedef uint64_t WGPUId_ComputePipeline_Dummy;
@@ -2909,8 +2669,8 @@ void wgpu_queue_submit(WGPUQueueId queue_id,
                        const WGPUCommandBufferId *command_buffers,
                        uintptr_t command_buffers_length);
 
-WGPURenderPipelineId wgpu_device_create_render_pipeline(WGPUDeviceId device_id,
-                                                        const struct WGPURenderPipelineDescriptor *desc_base);
+WGPURenderPipelineId wgpuDeviceCreateRenderPipeline(WGPUDeviceId device,
+                                                    const struct WGPURenderPipelineDescriptor *descriptor);
 
 void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
 
