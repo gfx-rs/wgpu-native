@@ -41,12 +41,14 @@ pub struct BindGroupEntry {
     pub texture_view: Option<id::TextureViewId>,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct BindGroupDescriptor {
+pub struct BindGroupDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
     pub layout: id::BindGroupLayoutId,
+    pub entryCount: u32,
     pub entries: *const BindGroupEntry,
-    pub entries_length: usize,
 }
 
 pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
@@ -149,14 +151,14 @@ pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
 /// This function is unsafe as it calls an unsafe extern callback.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_request_adapter_async(
-    desc: Option<&wgc::instance::RequestAdapterOptions>,
+    descriptor: Option<&wgc::instance::RequestAdapterOptions>,
     mask: BackendBit,
     callback: RequestAdapterCallback,
     userdata: *mut std::ffi::c_void,
 ) {
     let id = GLOBAL
         .request_adapter(
-            &desc.cloned().unwrap_or(wgt::RequestAdapterOptions {
+            &descriptor.cloned().unwrap_or(wgt::RequestAdapterOptions {
                 power_preference: wgt::PowerPreference::default(),
                 compatible_surface: None,
             }),
@@ -221,38 +223,40 @@ pub struct CAdapterInfo {
     pub backend: Backend,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct CDeviceDescriptor {
-    label: Label,
+pub struct CDeviceDescriptor<'c> {
+    nextInChain: Option<&'c ChainedStruct<'c>>,
+    label: Label, // none of these exist
     features: wgt::Features,
     limits: CLimits,
     trace_path: *const std::os::raw::c_char,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_adapter_request_device(
-    adapter_id: id::AdapterId,
-    desc: &CDeviceDescriptor,
+pub unsafe extern "C" fn wgpuAdapterRequestDevice(
+    adapter: id::AdapterId,
+    descriptor: &CDeviceDescriptor,
 ) -> id::DeviceId {
-    let trace_cstr = if desc.trace_path.is_null() {
+    let trace_cstr = if descriptor.trace_path.is_null() {
         None
     } else {
-        Some(std::ffi::CStr::from_ptr(desc.trace_path))
+        Some(std::ffi::CStr::from_ptr(descriptor.trace_path))
     };
     let trace_cow = trace_cstr.as_ref().map(|cstr| cstr.to_string_lossy());
     let trace_path = trace_cow
         .as_ref()
         .map(|cow| std::path::Path::new(cow.as_ref()));
     let desc = wgt::DeviceDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
-        features: desc.features,
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        features: descriptor.features,
         limits: Limits {
-            max_bind_groups: desc.limits.max_bind_groups,
+            max_bind_groups: descriptor.limits.max_bind_groups,
             ..Limits::default()
         },
     };
     check_error(
-        gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, &desc, trace_path, PhantomData)),
+        gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, PhantomData)),
     )
 }
 
@@ -308,14 +312,41 @@ pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId, now: bool) {
     gfx_select!(buffer_id => GLOBAL.buffer_drop(buffer_id, now))
 }
 
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct TextureDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+    pub usage: wgt::TextureUsage, // todo: rename to TextureUsageFlags
+    pub dimension: wgt::TextureDimension,
+    pub size: wgt::Extent3d,
+    pub format: wgt::TextureFormat,
+    pub mipLevelCount: u32,
+    pub sampleCount: u32,
+}
+
+impl TextureDescriptor<'_> {
+    fn to_wgpu(&self) -> wgt::TextureDescriptor<Label> {
+        wgt::TextureDescriptor {
+            label: self.label,
+            size: self.size,
+            mip_level_count: self.mipLevelCount,
+            sample_count: self.sampleCount,
+            dimension: self.dimension,
+            format: self.format,
+            usage: self.usage,
+        }
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_texture(
-    device_id: id::DeviceId,
-    desc: &wgt::TextureDescriptor<Label>,
+pub extern "C" fn wgpuDeviceCreateTexture(
+    device: id::DeviceId,
+    descriptor: &TextureDescriptor,
 ) -> id::TextureId {
-    let desc = desc.map_label(|l| OwnedLabel::new(*l).into_cow());
+    let desc = descriptor.to_wgpu().map_label(|l| OwnedLabel::new(*l).into_cow());
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_texture(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_texture(device, &desc, PhantomData)),
     )
 }
 
@@ -501,20 +532,22 @@ pub struct BindGroupLayoutEntry {
     pub count: u32,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct BindGroupLayoutDescriptor {
+pub struct BindGroupLayoutDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
+    pub entryCount: u32,
     pub entries: *const BindGroupLayoutEntry,
-    pub entries_length: usize,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
-    device_id: id::DeviceId,
-    desc: &BindGroupLayoutDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
+    device: id::DeviceId,
+    descriptor: &BindGroupLayoutDescriptor,
 ) -> id::BindGroupLayoutId {
     let mut entries = Vec::new();
-    for entry in make_slice(desc.entries, desc.entries_length) {
+    for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
         let ty = match entry.ty {
             BindingType::UniformBuffer => wgt::BindingType::Buffer {
                 ty: wgt::BufferBindingType::Uniform,
@@ -562,13 +595,13 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
             count: NonZeroU32::new(entry.count),
         });
     }
-    let label = OwnedLabel::new(desc.label);
+    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupLayoutDescriptor {
         label: label.as_cow(),
         entries: Cow::Borrowed(&entries),
     };
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_bind_group_layout(device, &desc, PhantomData)),
     )
 }
 
@@ -577,28 +610,30 @@ pub extern "C" fn wgpu_bind_group_layout_destroy(bind_group_layout_id: id::BindG
     gfx_select!(bind_group_layout_id => GLOBAL.bind_group_layout_drop(bind_group_layout_id))
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct PipelineLayoutDescriptor {
-    label: Label,
-    bind_group_layouts: *const id::BindGroupLayoutId,
-    bind_group_layouts_length: usize,
+pub struct PipelineLayoutDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+    pub bindGroupLayoutCount: u32,
+    pub bindGroupLayouts: *const id::BindGroupLayoutId,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_pipeline_layout(
-    device_id: id::DeviceId,
-    desc_base: &PipelineLayoutDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
+    device: id::DeviceId,
+    descriptor: &PipelineLayoutDescriptor,
 ) -> id::PipelineLayoutId {
     let desc = wgc::binding_model::PipelineLayoutDescriptor {
-        label: OwnedLabel::new(desc_base.label).into_cow(),
+        label: OwnedLabel::new(descriptor.label).into_cow(),
         bind_group_layouts: Cow::Borrowed(make_slice(
-            desc_base.bind_group_layouts,
-            desc_base.bind_group_layouts_length,
+            descriptor.bindGroupLayouts,
+            descriptor.bindGroupLayoutCount as usize,
         )),
         push_constant_ranges: Cow::Borrowed(&[]),
     };
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_pipeline_layout(device, &desc, PhantomData)),
     )
 }
 
@@ -608,11 +643,11 @@ pub extern "C" fn wgpu_pipeline_layout_destroy(pipeline_layout_id: id::PipelineL
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_bind_group(
-    device_id: id::DeviceId,
-    desc: &BindGroupDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
+    device: id::DeviceId,
+    descriptor: &BindGroupDescriptor,
 ) -> id::BindGroupId {
-    let entries = make_slice(desc.entries, desc.entries_length)
+    let entries = make_slice(descriptor.entries, descriptor.entryCount as usize)
         .iter()
         .map(|entry| wgc::binding_model::BindGroupEntry {
             binding: entry.binding,
@@ -631,14 +666,14 @@ pub unsafe extern "C" fn wgpu_device_create_bind_group(
             },
         })
         .collect::<Vec<_>>();
-    let label = OwnedLabel::new(desc.label);
+    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupDescriptor {
         label: label.as_cow(),
-        layout: desc.layout,
+        layout: descriptor.layout,
         entries: Cow::Borrowed(&entries),
     };
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_bind_group(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_bind_group(device, &desc, PhantomData)),
     )
 }
 
@@ -647,11 +682,12 @@ pub extern "C" fn wgpu_bind_group_destroy(bind_group_id: id::BindGroupId) {
     gfx_select!(bind_group_id => GLOBAL.bind_group_drop(bind_group_id))
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct ShaderModuleDescriptor<'c> {
-    next_in_chain: Option<&'c ChainedStruct<'c>>,
+    nextInChain: Option<&'c ChainedStruct<'c>>,
     label: Label,
-    flags: wgt::ShaderFlags,
+    flags: wgt::ShaderFlags, // todo: make this part of nextInChain
 }
 
 #[repr(C)]
@@ -668,11 +704,11 @@ pub struct ShaderModuleWGSLDescriptor<'c> {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_shader_module(
-    device_id: id::DeviceId,
-    desc: &ShaderModuleDescriptor,
+pub extern "C" fn wgpuDeviceCreateShaderModule(
+    device: id::DeviceId,
+    descriptor: &ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
-    let chain = desc.next_in_chain.expect("shader required");
+    let chain = descriptor.nextInChain.expect("shader required");
     let src = match chain.s_type {
         SType::ShaderModuleSPIRVDescriptor => {
             let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
@@ -688,11 +724,11 @@ pub extern "C" fn wgpu_device_create_shader_module(
         _ => panic!("invalid type"),
     };
     let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
-        flags: desc.flags,
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        flags: descriptor.flags,
     };
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, &desc, src, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, src, PhantomData)),
     )
 }
 
@@ -701,14 +737,29 @@ pub extern "C" fn wgpu_shader_module_destroy(shader_module_id: id::ShaderModuleI
     gfx_select!(shader_module_id => GLOBAL.shader_module_drop(shader_module_id))
 }
 
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct CommandEncoderDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+}
+
+impl CommandEncoderDescriptor<'_> {
+    fn to_wgpu(&self) -> wgt::CommandEncoderDescriptor<Label> {
+        wgt::CommandEncoderDescriptor {
+            label: self.label,
+        }
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_command_encoder(
-    device_id: id::DeviceId,
-    desc: &wgt::CommandEncoderDescriptor<Label>,
+pub extern "C" fn wgpuDeviceCreateCommandEncoder(
+    device: id::DeviceId,
+    descriptor: &CommandEncoderDescriptor,
 ) -> id::CommandEncoderId {
-    let desc = &desc.map_label(|l| OwnedLabel::new(*l).into_cow());
+    let desc = &descriptor.to_wgpu().map_label(|l| OwnedLabel::new(*l).into_cow());
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_command_encoder(device_id, desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_command_encoder(device, desc, PhantomData)),
     )
 }
 
@@ -927,7 +978,6 @@ impl ColorStateDescriptor<'_> {
             alpha_blend: self.alphaBlend.to_wgpu(),
             color_blend: self.colorBlend.to_wgpu(),
             write_mask: self.writeMask,
-
         }
     }
 }
@@ -1134,17 +1184,17 @@ pub struct ComputePipelineDescriptor {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_compute_pipeline(
-    device_id: id::DeviceId,
-    desc: &ComputePipelineDescriptor,
+pub extern "C" fn wgpuDeviceCreateComputePipeline(
+    device: id::DeviceId,
+    descriptor: &ComputePipelineDescriptor,
 ) -> id::ComputePipelineId {
     let desc = wgc::pipeline::ComputePipelineDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
-        layout: desc.layout,
-        stage: desc.stage.to_wgpu(),
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        layout: descriptor.layout,
+        stage: descriptor.stage.to_wgpu(),
     };
 
-    let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, &desc, PhantomData, None));
+    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
     if let Some(err) = error {
         panic!("{:?}", err);
     }
@@ -1156,13 +1206,32 @@ pub extern "C" fn wgpu_compute_pipeline_destroy(compute_pipeline_id: id::Compute
     gfx_select!(compute_pipeline_id => GLOBAL.compute_pipeline_drop(compute_pipeline_id))
 }
 
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct SwapChainDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+    pub usage: wgt::TextureUsage, // todo: rename to TextureUsageFlags
+    pub format: wgt::TextureFormat,
+    pub width: u32,
+    pub height: u32,
+    pub presentMode: wgt::PresentMode,
+}
+
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_swap_chain(
-    device_id: id::DeviceId,
-    surface_id: id::SurfaceId,
-    desc: &wgt::SwapChainDescriptor,
+pub extern "C" fn wgpuDeviceCreateSwapChain(
+    device: id::DeviceId,
+    surface: id::SurfaceId,
+    descriptor: &SwapChainDescriptor,
 ) -> id::SwapChainId {
-    gfx_select!(device_id => GLOBAL.device_create_swap_chain(device_id, surface_id, desc))
+    let desc = wgt::SwapChainDescriptor {
+        usage: descriptor.usage,
+        format: descriptor.format,
+        width: descriptor.width,
+        height: descriptor.height,
+        present_mode: descriptor.presentMode,
+    };
+    gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc))
         .expect("Unable to create swap chain")
 }
 

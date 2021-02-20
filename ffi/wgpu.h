@@ -1553,6 +1553,11 @@ typedef uint64_t WGPUId_Device_Dummy;
 
 typedef WGPUId_Device_Dummy WGPUDeviceId;
 
+typedef struct WGPUChainedStruct {
+  const struct WGPUChainedStruct *next;
+  WGPUSType s_type;
+} WGPUChainedStruct;
+
 /**
  * Features that are not guaranteed to be supported.
  *
@@ -1874,6 +1879,7 @@ typedef struct WGPULimits {
 } WGPULimits;
 
 typedef struct WGPUDeviceDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
   WGPUFeatures features;
   struct WGPULimits limits;
@@ -2038,11 +2044,6 @@ typedef uint64_t WGPUId_Sampler_Dummy;
 
 typedef WGPUId_Sampler_Dummy WGPUSamplerId;
 
-typedef struct WGPUChainedStruct {
-  const struct WGPUChainedStruct *next;
-  WGPUSType s_type;
-} WGPUChainedStruct;
-
 typedef struct WGPUSamplerDescriptor {
   const struct WGPUChainedStruct *next_in_chain;
   WGPULabel label;
@@ -2102,9 +2103,10 @@ typedef struct WGPUBindGroupLayoutEntry {
 } WGPUBindGroupLayoutEntry;
 
 typedef struct WGPUBindGroupLayoutDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
+  uint32_t entryCount;
   const struct WGPUBindGroupLayoutEntry *entries;
-  uintptr_t entries_length;
 } WGPUBindGroupLayoutDescriptor;
 
 typedef uint64_t WGPUId_PipelineLayout_Dummy;
@@ -2112,9 +2114,10 @@ typedef uint64_t WGPUId_PipelineLayout_Dummy;
 typedef WGPUId_PipelineLayout_Dummy WGPUPipelineLayoutId;
 
 typedef struct WGPUPipelineLayoutDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
-  const WGPUBindGroupLayoutId *bind_group_layouts;
-  uintptr_t bind_group_layouts_length;
+  uint32_t bindGroupLayoutCount;
+  const WGPUBindGroupLayoutId *bindGroupLayouts;
 } WGPUPipelineLayoutDescriptor;
 
 typedef uint64_t WGPUId_BindGroup_Dummy;
@@ -2136,10 +2139,11 @@ typedef struct WGPUBindGroupEntry {
 } WGPUBindGroupEntry;
 
 typedef struct WGPUBindGroupDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
   WGPUBindGroupLayoutId layout;
+  uint32_t entryCount;
   const struct WGPUBindGroupEntry *entries;
-  uintptr_t entries_length;
 } WGPUBindGroupDescriptor;
 
 typedef uint64_t WGPUId_ShaderModule_Dummy;
@@ -2166,18 +2170,13 @@ typedef uint32_t WGPUShaderFlags;
 #define WGPUShaderFlags_EXPERIMENTAL_TRANSLATION (uint32_t)2
 
 typedef struct WGPUShaderModuleDescriptor {
-  const struct WGPUChainedStruct *next_in_chain;
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
   WGPUShaderFlags flags;
 } WGPUShaderModuleDescriptor;
 
-/**
- * Describes a [`CommandEncoder`].
- */
 typedef struct WGPUCommandEncoderDescriptor {
-  /**
-   * Debug label for the command encoder. This will show up in graphics debuggers for easy identification.
-   */
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
 } WGPUCommandEncoderDescriptor;
 
@@ -2338,32 +2337,14 @@ typedef uint64_t WGPUId_SwapChain_Dummy;
 
 typedef WGPUId_SwapChain_Dummy WGPUSwapChainId;
 
-/**
- * Describes a [`SwapChain`].
- */
 typedef struct WGPUSwapChainDescriptor {
-  /**
-   * The usage of the swap chain. The only supported usage is `RENDER_ATTACHMENT`.
-   */
+  const struct WGPUChainedStruct *nextInChain;
+  WGPULabel label;
   WGPUTextureUsage usage;
-  /**
-   * The texture format of the swap chain. The only formats that are guaranteed are
-   * `Bgra8Unorm` and `Bgra8UnormSrgb`
-   */
   enum WGPUTextureFormat format;
-  /**
-   * Width of the swap chain. Must be the same size as the surface.
-   */
   uint32_t width;
-  /**
-   * Height of the swap chain. Must be the same size as the surface.
-   */
   uint32_t height;
-  /**
-   * Presentation mode of the swap chain. FIFO is the only guaranteed to be supported, though
-   * other formats will automatically fall back to FIFO.
-   */
-  enum WGPUPresentMode present_mode;
+  enum WGPUPresentMode presentMode;
 } WGPUSwapChainDescriptor;
 
 typedef void (*WGPUBufferMapCallback)(enum WGPUBufferMapAsyncStatus status, uint8_t *userdata);
@@ -2559,13 +2540,13 @@ WGPUSurfaceId wgpu_create_surface_from_windows_hwnd(void *_hinstance, void *hwnd
  *
  * This function is unsafe as it calls an unsafe extern callback.
  */
-void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
+void wgpu_request_adapter_async(const WGPURequestAdapterOptions *descriptor,
                                 WGPUBackendBit mask,
                                 WGPURequestAdapterCallback callback,
                                 void *userdata);
 
-WGPUDeviceId wgpu_adapter_request_device(WGPUAdapterId adapter_id,
-                                         const struct WGPUDeviceDescriptor *desc);
+WGPUDeviceId wgpuAdapterRequestDevice(WGPUAdapterId adapter,
+                                      const struct WGPUDeviceDescriptor *descriptor);
 
 WGPUFeatures wgpu_adapter_features(WGPUAdapterId adapter_id);
 
@@ -2597,28 +2578,28 @@ WGPUSamplerId wgpu_device_create_sampler(WGPUDeviceId device_id,
 
 void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
 
-WGPUBindGroupLayoutId wgpu_device_create_bind_group_layout(WGPUDeviceId device_id,
-                                                           const struct WGPUBindGroupLayoutDescriptor *desc);
+WGPUBindGroupLayoutId wgpuDeviceCreateBindGroupLayout(WGPUDeviceId device,
+                                                      const struct WGPUBindGroupLayoutDescriptor *descriptor);
 
 void wgpu_bind_group_layout_destroy(WGPUBindGroupLayoutId bind_group_layout_id);
 
-WGPUPipelineLayoutId wgpu_device_create_pipeline_layout(WGPUDeviceId device_id,
-                                                        const struct WGPUPipelineLayoutDescriptor *desc_base);
+WGPUPipelineLayoutId wgpuDeviceCreatePipelineLayout(WGPUDeviceId device,
+                                                    const struct WGPUPipelineLayoutDescriptor *descriptor);
 
 void wgpu_pipeline_layout_destroy(WGPUPipelineLayoutId pipeline_layout_id);
 
-WGPUBindGroupId wgpu_device_create_bind_group(WGPUDeviceId device_id,
-                                              const struct WGPUBindGroupDescriptor *desc);
+WGPUBindGroupId wgpuDeviceCreateBindGroup(WGPUDeviceId device,
+                                          const struct WGPUBindGroupDescriptor *descriptor);
 
 void wgpu_bind_group_destroy(WGPUBindGroupId bind_group_id);
 
-WGPUShaderModuleId wgpu_device_create_shader_module(WGPUDeviceId device_id,
-                                                    const struct WGPUShaderModuleDescriptor *desc);
+WGPUShaderModuleId wgpuDeviceCreateShaderModule(WGPUDeviceId device,
+                                                const struct WGPUShaderModuleDescriptor *descriptor);
 
 void wgpu_shader_module_destroy(WGPUShaderModuleId shader_module_id);
 
-WGPUCommandEncoderId wgpu_device_create_command_encoder(WGPUDeviceId device_id,
-                                                        const struct WGPUCommandEncoderDescriptor *desc);
+WGPUCommandEncoderId wgpuDeviceCreateCommandEncoder(WGPUDeviceId device,
+                                                    const struct WGPUCommandEncoderDescriptor *descriptor);
 
 void wgpu_command_encoder_destroy(WGPUCommandEncoderId command_encoder_id);
 
@@ -2674,14 +2655,14 @@ WGPURenderPipelineId wgpuDeviceCreateRenderPipeline(WGPUDeviceId device,
 
 void wgpu_render_pipeline_destroy(WGPURenderPipelineId render_pipeline_id);
 
-WGPUComputePipelineId wgpu_device_create_compute_pipeline(WGPUDeviceId device_id,
-                                                          const struct WGPUComputePipelineDescriptor *desc);
+WGPUComputePipelineId wgpuDeviceCreateComputePipeline(WGPUDeviceId device,
+                                                      const struct WGPUComputePipelineDescriptor *descriptor);
 
 void wgpu_compute_pipeline_destroy(WGPUComputePipelineId compute_pipeline_id);
 
-WGPUSwapChainId wgpu_device_create_swap_chain(WGPUDeviceId device_id,
-                                              WGPUSurfaceId surface_id,
-                                              const struct WGPUSwapChainDescriptor *desc);
+WGPUSwapChainId wgpuDeviceCreateSwapChain(WGPUDeviceId device,
+                                          WGPUSurfaceId surface,
+                                          const struct WGPUSwapChainDescriptor *descriptor);
 
 void wgpu_device_poll(WGPUDeviceId device_id, bool force_wait);
 

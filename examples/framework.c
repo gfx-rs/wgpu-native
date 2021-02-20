@@ -27,7 +27,7 @@ WGPUShaderModuleDescriptor read_file(const char *name) {
     spirvDescriptor->code = (uint32_t *) bytes;
     spirvDescriptor->code_size = length / 4;
     return (WGPUShaderModuleDescriptor) {
-        .next_in_chain = (const WGPUChainedStruct *) spirvDescriptor,
+        .nextInChain = (const WGPUChainedStruct *) spirvDescriptor,
         .label = NULL,
         .flags = WGPUShaderFlags_VALIDATION,
     };

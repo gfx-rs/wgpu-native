@@ -49,7 +49,7 @@ int main(
         (void *) &adapter
     );
 
-    WGPUDeviceId device = wgpu_adapter_request_device(adapter,
+    WGPUDeviceId device = wgpuAdapterRequestDevice(adapter,
         &(WGPUDeviceDescriptor) {
             .label = "",
             0,
@@ -82,16 +82,16 @@ int main(
     wgpu_buffer_unmap(storage_buffer);
 
     WGPUBindGroupLayoutId bind_group_layout =
-        wgpu_device_create_bind_group_layout(device,
+        wgpuDeviceCreateBindGroupLayout(device,
             &(WGPUBindGroupLayoutDescriptor){
                 .label = "bind group layout",
                 .entries = &(WGPUBindGroupLayoutEntry){
                     .binding = 0,
                     .visibility = WGPUShaderStage_COMPUTE,
                     .ty = WGPUBindingType_StorageBuffer},
-                .entries_length = BIND_ENTRIES_LENGTH});
+                .entryCount = BIND_ENTRIES_LENGTH});
 
-    WGPUBindGroupId bind_group = wgpu_device_create_bind_group(device,
+    WGPUBindGroupId bind_group = wgpuDeviceCreateBindGroup(device,
             &(WGPUBindGroupDescriptor){
                 .label = "bind group",
                 .layout = bind_group_layout,
@@ -100,24 +100,24 @@ int main(
                     .buffer = storage_buffer,
                     .offset = 0,
                     .size = size},
-                .entries_length = BIND_ENTRIES_LENGTH});
+                .entryCount = BIND_ENTRIES_LENGTH});
 
     WGPUBindGroupLayoutId bind_group_layouts[BIND_GROUP_LAYOUTS_LENGTH] = {
         bind_group_layout};
 
     WGPUPipelineLayoutId pipeline_layout =
-            wgpu_device_create_pipeline_layout(device,
+            wgpuDeviceCreatePipelineLayout(device,
                 &(WGPUPipelineLayoutDescriptor){
-                    .bind_group_layouts = bind_group_layouts,
-                    .bind_group_layouts_length = BIND_GROUP_LAYOUTS_LENGTH});
+                    .bindGroupLayouts = bind_group_layouts,
+                    .bindGroupLayoutCount = BIND_GROUP_LAYOUTS_LENGTH});
 
     WGPUShaderModuleDescriptor source = read_file("./../data/collatz.comp.spv");
-    WGPUShaderModuleId shader_module = wgpu_device_create_shader_module(
+    WGPUShaderModuleId shader_module = wgpuDeviceCreateShaderModule(
         device,
         &source);
 
     WGPUComputePipelineId compute_pipeline =
-        wgpu_device_create_compute_pipeline(device,
+        wgpuDeviceCreateComputePipeline(device,
             &(WGPUComputePipelineDescriptor){
                 .layout = pipeline_layout,
                 .stage = (WGPUProgrammableStageDescriptor){

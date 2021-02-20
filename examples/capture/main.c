@@ -59,7 +59,7 @@ int main(
             (void *) &adapter
     );
 
-    WGPUDeviceId device = wgpu_adapter_request_device(
+    WGPUDeviceId device = wgpuAdapterRequestDevice(
             adapter,
             &(WGPUDeviceDescriptor) {
                     .label = NULL,
@@ -96,7 +96,7 @@ int main(
             .label = NULL
     });
 
-    WGPUCommandEncoderId encoder = wgpu_device_create_command_encoder(
+    WGPUCommandEncoderId encoder = wgpuDeviceCreateCommandEncoder(
             device, &(WGPUCommandEncoderDescriptor) {
                     .label = NULL,
             });

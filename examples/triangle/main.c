@@ -97,7 +97,7 @@ int main() {
         (void *) &adapter
     );
 
-    WGPUDeviceId device = wgpu_adapter_request_device(adapter,
+    WGPUDeviceId device = wgpuAdapterRequestDevice(adapter,
         &(WGPUDeviceDescriptor) {
             .label = "",
             0,
@@ -108,37 +108,37 @@ int main() {
         );
 
     WGPUShaderModuleDescriptor vertex_source = read_file("./../data/triangle.vert.spv");
-    WGPUShaderModuleId vertex_shader = wgpu_device_create_shader_module(device,
+    WGPUShaderModuleId vertex_shader = wgpuDeviceCreateShaderModule(device,
             &vertex_source);
 
     WGPUShaderModuleDescriptor fragment_source = read_file("./../data/triangle.frag.spv");
-    WGPUShaderModuleId fragment_shader = wgpu_device_create_shader_module(device,
+    WGPUShaderModuleId fragment_shader = wgpuDeviceCreateShaderModule(device,
             &fragment_source);
 
     WGPUBindGroupLayoutId bind_group_layout =
-        wgpu_device_create_bind_group_layout(device,
+        wgpuDeviceCreateBindGroupLayout(device,
             &(WGPUBindGroupLayoutDescriptor){
                 .label = "bind group layout",
                 .entries = NULL,
-                .entries_length = 0,
+                .entryCount = 0,
             });
     WGPUBindGroupId bind_group =
-        wgpu_device_create_bind_group(device,
+        wgpuDeviceCreateBindGroup(device,
             &(WGPUBindGroupDescriptor){
                 .label = "bind group",
                 .layout = bind_group_layout,
                 .entries = NULL,
-                .entries_length = 0,
+                .entryCount = 0,
             });
 
     WGPUBindGroupLayoutId bind_group_layouts[BIND_GROUP_LAYOUTS_LENGTH] = {
         bind_group_layout};
 
     WGPUPipelineLayoutId pipeline_layout =
-        wgpu_device_create_pipeline_layout(device,
+        wgpuDeviceCreatePipelineLayout(device,
             &(WGPUPipelineLayoutDescriptor){
-                .bind_group_layouts = bind_group_layouts,
-                .bind_group_layouts_length = BIND_GROUP_LAYOUTS_LENGTH,
+                .bindGroupLayouts = bind_group_layouts,
+                .bindGroupLayoutCount = BIND_GROUP_LAYOUTS_LENGTH,
             });
 
     WGPURenderPipelineId render_pipeline = wgpuDeviceCreateRenderPipeline(
@@ -184,13 +184,13 @@ int main() {
     int prev_height = 0;
     glfwGetWindowSize(window, &prev_width, &prev_height);
 
-    WGPUSwapChainId swap_chain = wgpu_device_create_swap_chain(device, surface,
+    WGPUSwapChainId swap_chain = wgpuDeviceCreateSwapChain(device, surface,
         &(WGPUSwapChainDescriptor){
             .usage = WGPUTextureUsage_RENDER_ATTACHMENT,
             .format = WGPUTextureFormat_Bgra8Unorm,
             .width = prev_width,
             .height = prev_height,
-            .present_mode = WGPUPresentMode_Fifo,
+            .presentMode = WGPUPresentMode_Fifo,
         });
 
     while (!glfwWindowShouldClose(window)) {
@@ -201,13 +201,13 @@ int main() {
             prev_width = width;
             prev_height = height;
 
-            swap_chain = wgpu_device_create_swap_chain(device, surface,
+            swap_chain = wgpuDeviceCreateSwapChain(device, surface,
                 &(WGPUSwapChainDescriptor){
                     .usage = WGPUTextureUsage_RENDER_ATTACHMENT,
                     .format = WGPUTextureFormat_Bgra8Unorm,
                     .width = width,
                     .height = height,
-                    .present_mode = WGPUPresentMode_Fifo,
+                    .presentMode = WGPUPresentMode_Fifo,
                 });
         }
 
