@@ -885,78 +885,20 @@ impl<'a> ProgrammableStageDescriptor {
     }
 }
 
-#[repr(u32)]
-pub enum BlendOperation {
-    Add = 0,
-    Subtract = 1,
-    ReverseSubtract = 2,
-    Min = 3,
-    Max = 4,
-}
-
-impl BlendOperation {
-    fn to_wgpu(&self) -> wgt::BlendOperation {
-        match self {
-            BlendOperation::Add => wgt::BlendOperation::Add,
-            BlendOperation::Subtract => wgt::BlendOperation::Subtract,
-            BlendOperation::ReverseSubtract => wgt::BlendOperation::ReverseSubtract,
-            BlendOperation::Min => wgt::BlendOperation::Min,
-            BlendOperation::Max => wgt::BlendOperation::Max,
-        }
-    }
-}
-
-#[repr(u32)]
-pub enum BlendFactor {
-    Zero = 0,
-    One = 1,
-    SrcColor = 2,
-    OneMinusSrcColor = 3,
-    SrcAlpha = 4,
-    OneMinusSrcAlpha = 5,
-    DstColor = 6,
-    OneMinusDstColor = 7,
-    DstAlpha = 8,
-    OneMinusDstAlpha = 9,
-    SrcAlphaSaturated = 10,
-    BlendColor = 11,
-    OneMinusBlendColor = 12,
-}
-
-impl BlendFactor {
-    fn to_wgpu(&self) -> wgt::BlendFactor {
-        match self {
-            BlendFactor::Zero => wgt::BlendFactor::Zero,
-            BlendFactor::One => wgt::BlendFactor::One,
-            BlendFactor::SrcColor => wgt::BlendFactor::SrcColor,
-            BlendFactor::OneMinusSrcColor => wgt::BlendFactor::OneMinusSrcColor,
-            BlendFactor::SrcAlpha => wgt::BlendFactor::SrcAlpha,
-            BlendFactor::OneMinusSrcAlpha => wgt::BlendFactor::OneMinusSrcAlpha,
-            BlendFactor::DstColor => wgt::BlendFactor::DstColor,
-            BlendFactor::OneMinusDstColor => wgt::BlendFactor::OneMinusDstColor,
-            BlendFactor::DstAlpha => wgt::BlendFactor::DstAlpha,
-            BlendFactor::OneMinusDstAlpha => wgt::BlendFactor::OneMinusDstAlpha,
-            BlendFactor::SrcAlphaSaturated => wgt::BlendFactor::SrcAlphaSaturated,
-            BlendFactor::BlendColor => wgt::BlendFactor::BlendColor,
-            BlendFactor::OneMinusBlendColor => wgt::BlendFactor::OneMinusBlendColor,
-        }
-    }
-}
-
 #[repr(C)]
 #[allow(non_snake_case)]
 pub struct BlendDescriptor {
-    pub operation: BlendOperation,
-    pub srcFactor: BlendFactor,
-    pub dstFactor: BlendFactor,
+    pub operation: wgt::BlendOperation,
+    pub srcFactor: wgt::BlendFactor,
+    pub dstFactor: wgt::BlendFactor,
 }
 
 impl BlendDescriptor {
     fn to_wgpu(&self) -> wgt::BlendState {
         wgt::BlendState {
-            src_factor: self.srcFactor.to_wgpu(),
-            dst_factor: self.dstFactor.to_wgpu(),
-            operation: self.operation.to_wgpu(),
+            src_factor: self.srcFactor,
+            dst_factor: self.dstFactor,
+            operation: self.operation,
         }
     }
 }

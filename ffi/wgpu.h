@@ -143,31 +143,93 @@ enum WGPUBindingType {
 };
 typedef uint32_t WGPUBindingType;
 
-enum WGPUBlendFactor {
+/**
+ * Alpha blend factor.
+ *
+ * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
+ */
+typedef enum WGPUBlendFactor {
+  /**
+   * 0.0
+   */
   WGPUBlendFactor_Zero = 0,
+  /**
+   * 1.0
+   */
   WGPUBlendFactor_One = 1,
+  /**
+   * S.color
+   */
   WGPUBlendFactor_SrcColor = 2,
+  /**
+   * 1.0 - S.color
+   */
   WGPUBlendFactor_OneMinusSrcColor = 3,
+  /**
+   * S.alpha
+   */
   WGPUBlendFactor_SrcAlpha = 4,
+  /**
+   * 1.0 - S.alpha
+   */
   WGPUBlendFactor_OneMinusSrcAlpha = 5,
+  /**
+   * D.color
+   */
   WGPUBlendFactor_DstColor = 6,
+  /**
+   * 1.0 - D.color
+   */
   WGPUBlendFactor_OneMinusDstColor = 7,
+  /**
+   * D.alpha
+   */
   WGPUBlendFactor_DstAlpha = 8,
+  /**
+   * 1.0 - D.alpha
+   */
   WGPUBlendFactor_OneMinusDstAlpha = 9,
+  /**
+   * min(S.alpha, 1.0 - D.alpha)
+   */
   WGPUBlendFactor_SrcAlphaSaturated = 10,
+  /**
+   * Constant
+   */
   WGPUBlendFactor_BlendColor = 11,
+  /**
+   * 1.0 - Constant
+   */
   WGPUBlendFactor_OneMinusBlendColor = 12,
-};
-typedef uint32_t WGPUBlendFactor;
+} WGPUBlendFactor;
 
-enum WGPUBlendOperation {
+/**
+ * Alpha blend operation.
+ *
+ * Alpha blending is very complicated: see the OpenGL or Vulkan spec for more information.
+ */
+typedef enum WGPUBlendOperation {
+  /**
+   * Src + Dst
+   */
   WGPUBlendOperation_Add = 0,
+  /**
+   * Src - Dst
+   */
   WGPUBlendOperation_Subtract = 1,
+  /**
+   * Dst - Src
+   */
   WGPUBlendOperation_ReverseSubtract = 2,
+  /**
+   * min(Src, Dst)
+   */
   WGPUBlendOperation_Min = 3,
+  /**
+   * max(Src, Dst)
+   */
   WGPUBlendOperation_Max = 4,
-};
-typedef uint32_t WGPUBlendOperation;
+} WGPUBlendOperation;
 
 typedef enum WGPUBufferMapAsyncStatus {
   WGPUBufferMapAsyncStatus_Success,
@@ -2264,9 +2326,9 @@ typedef struct WGPUDepthStencilStateDescriptor {
 } WGPUDepthStencilStateDescriptor;
 
 typedef struct WGPUBlendDescriptor {
-  WGPUBlendOperation operation;
-  WGPUBlendFactor srcFactor;
-  WGPUBlendFactor dstFactor;
+  enum WGPUBlendOperation operation;
+  enum WGPUBlendFactor srcFactor;
+  enum WGPUBlendFactor dstFactor;
 } WGPUBlendDescriptor;
 
 /**
