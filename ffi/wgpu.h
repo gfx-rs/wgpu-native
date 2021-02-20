@@ -131,18 +131,6 @@ enum WGPUBackend {
 };
 typedef uint8_t WGPUBackend;
 
-enum WGPUBindingType {
-  WGPUBindingType_UniformBuffer = 0,
-  WGPUBindingType_StorageBuffer = 1,
-  WGPUBindingType_ReadonlyStorageBuffer = 2,
-  WGPUBindingType_Sampler = 3,
-  WGPUBindingType_ComparisonSampler = 4,
-  WGPUBindingType_SampledTexture = 5,
-  WGPUBindingType_ReadonlyStorageTexture = 6,
-  WGPUBindingType_WriteonlyStorageTexture = 7,
-};
-typedef uint32_t WGPUBindingType;
-
 /**
  * Alpha blend factor.
  *
@@ -230,6 +218,13 @@ typedef enum WGPUBlendOperation {
    */
   WGPUBlendOperation_Max = 4,
 } WGPUBlendOperation;
+
+typedef enum WGPUBufferBindingType {
+  WGPUBufferBindingType_Undefined = 0,
+  WGPUBufferBindingType_Uniform = 1,
+  WGPUBufferBindingType_Storage = 2,
+  WGPUBufferBindingType_ReadOnlyStorage = 3,
+} WGPUBufferBindingType;
 
 typedef enum WGPUBufferMapAsyncStatus {
   WGPUBufferMapAsyncStatus_Success,
@@ -452,6 +447,13 @@ enum WGPUSType {
 };
 typedef uint32_t WGPUSType;
 
+typedef enum WGPUSamplerBindingType {
+  WGPUSamplerBindingType_Undefined = 0,
+  WGPUSamplerBindingType_Filtering = 1,
+  WGPUSamplerBindingType_NonFiltering = 2,
+  WGPUSamplerBindingType_Comparison = 3,
+} WGPUSamplerBindingType;
+
 /**
  * Color variation to use when sampler addressing mode is [`AddressMode::ClampToBorder`]
  */
@@ -507,6 +509,12 @@ typedef enum WGPUStencilOperation {
    */
   WGPUStencilOperation_DecrementWrap = 7,
 } WGPUStencilOperation;
+
+typedef enum WGPUStorageTextureAccess {
+  WGPUStorageTextureAccess_Undefined = 0,
+  WGPUStorageTextureAccess_ReadOnly = 1,
+  WGPUStorageTextureAccess_WriteOnly = 2,
+} WGPUStorageTextureAccess;
 
 /**
  * Operation to perform to the output attachment at the end of a renderpass.
@@ -566,14 +574,6 @@ typedef enum WGPUTextureAspect {
    */
   WGPUTextureAspect_DepthOnly,
 } WGPUTextureAspect;
-
-enum WGPUTextureComponentType {
-  WGPUTextureComponentType_Float = 0,
-  WGPUTextureComponentType_Sint = 1,
-  WGPUTextureComponentType_Uint = 2,
-  WGPUTextureComponentType_DepthComparison = 3,
-};
-typedef uint32_t WGPUTextureComponentType;
 
 /**
  * Dimensionality of a texture.
@@ -1143,6 +1143,15 @@ typedef enum WGPUTextureFormat {
    */
   WGPUTextureFormat_Astc12x12RgbaUnormSrgb = 89,
 } WGPUTextureFormat;
+
+typedef enum WGPUTextureSampleType {
+  WGPUTextureSampleType_Undefined = 0,
+  WGPUTextureSampleType_Float = 1,
+  WGPUTextureSampleType_UnfilterableFloat = 2,
+  WGPUTextureSampleType_Depth = 3,
+  WGPUTextureSampleType_Sint = 4,
+  WGPUTextureSampleType_Uint = 5,
+} WGPUTextureSampleType;
 
 /**
  * Dimensions of a particular texture view.
@@ -2002,28 +2011,12 @@ typedef uint32_t WGPUBufferUsage;
  */
 #define WGPUBufferUsage_INDIRECT (uint32_t)256
 
-/**
- * Describes a [`Buffer`].
- */
 typedef struct WGPUBufferDescriptor {
-  /**
-   * Debug label of a buffer. This will show up in graphics debuggers for easy identification.
-   */
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
-  /**
-   * Size of a buffer.
-   */
-  WGPUBufferAddress size;
-  /**
-   * Usages of a buffer. If the buffer is used in any way that isn't specified here, the operation
-   * will panic.
-   */
   WGPUBufferUsage usage;
-  /**
-   * Allows a buffer to be mapped immediately after they are made. It does not have to be [`BufferUsage::MAP_READ`] or
-   * [`BufferUsage::MAP_WRITE`], all buffers are allowed to be mapped at creation.
-   */
-  bool mapped_at_creation;
+  uint64_t size;
+  bool mappedAtCreation;
 } WGPUBufferDescriptor;
 
 /**
@@ -2056,39 +2049,15 @@ typedef uint32_t WGPUTextureUsage;
  */
 #define WGPUTextureUsage_RENDER_ATTACHMENT (uint32_t)16
 
-/**
- * Describes a [`Texture`].
- */
 typedef struct WGPUTextureDescriptor {
-  /**
-   * Debug label of the texture. This will show up in graphics debuggers for easy identification.
-   */
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
-  /**
-   * Size of the texture. For a regular 1D/2D texture, the unused sizes will be 1. For 2DArray textures, Z is the
-   * number of 2D textures in that array.
-   */
-  struct WGPUExtent3d size;
-  /**
-   * Mip count of texture. For a texture with no extra mips, this must be 1.
-   */
-  uint32_t mip_level_count;
-  /**
-   * Sample count of texture. If this is not 1, texture must have [`BindingType::Texture::multisampled`] set to true.
-   */
-  uint32_t sample_count;
-  /**
-   * Dimensions of the texture.
-   */
-  enum WGPUTextureDimension dimension;
-  /**
-   * Format of the texture.
-   */
-  enum WGPUTextureFormat format;
-  /**
-   * Allowed usages of the texture. If used in other ways, the operation will panic.
-   */
   WGPUTextureUsage usage;
+  enum WGPUTextureDimension dimension;
+  struct WGPUExtent3d size;
+  enum WGPUTextureFormat format;
+  uint32_t mipLevelCount;
+  uint32_t sampleCount;
 } WGPUTextureDescriptor;
 
 typedef struct WGPUTextureViewDescriptor {
@@ -2109,16 +2078,16 @@ typedef WGPUId_Sampler_Dummy WGPUSamplerId;
 typedef struct WGPUSamplerDescriptor {
   const struct WGPUChainedStruct *next_in_chain;
   WGPULabel label;
-  enum WGPUAddressMode address_mode_u;
-  enum WGPUAddressMode address_mode_v;
-  enum WGPUAddressMode address_mode_w;
-  enum WGPUFilterMode mag_filter;
-  enum WGPUFilterMode min_filter;
-  enum WGPUFilterMode mipmap_filter;
-  float lod_min_clamp;
-  float lod_max_clamp;
+  enum WGPUAddressMode addressModeU;
+  enum WGPUAddressMode addressModeV;
+  enum WGPUAddressMode addressModeW;
+  enum WGPUFilterMode magFilter;
+  enum WGPUFilterMode minFilter;
+  enum WGPUFilterMode mipmapFilter;
+  float lodMinClamp;
+  float lodMaxClamp;
   WGPUCompareFunction compare;
-  WGPUSamplerBorderColor border_color;
+  uint16_t maxAnisotropy;
 } WGPUSamplerDescriptor;
 
 typedef uint64_t WGPUId_BindGroupLayout_Dummy;
@@ -2150,18 +2119,40 @@ typedef uint32_t WGPUShaderStage;
  */
 #define WGPUShaderStage_COMPUTE (uint32_t)4
 
+typedef struct WGPUBufferBindingLayout {
+  const struct WGPUChainedStruct *nextInChain;
+  enum WGPUBufferBindingType type;
+  bool hasDynamicOffset;
+  uint64_t minBindingSize;
+} WGPUBufferBindingLayout;
+
+typedef struct WGPUSamplerBindingLayout {
+  const struct WGPUChainedStruct *nextInChain;
+  enum WGPUSamplerBindingType type;
+} WGPUSamplerBindingLayout;
+
+typedef struct WGPUTextureBindingLayout {
+  const struct WGPUChainedStruct *nextInChain;
+  enum WGPUTextureSampleType sampleType;
+  enum WGPUTextureViewDimension viewDimension;
+  bool multisampled;
+} WGPUTextureBindingLayout;
+
+typedef struct WGPUStorageTextureBindingLayout {
+  const struct WGPUChainedStruct *nextInChain;
+  enum WGPUStorageTextureAccess access;
+  enum WGPUTextureFormat format;
+  enum WGPUTextureViewDimension viewDimension;
+} WGPUStorageTextureBindingLayout;
+
 typedef struct WGPUBindGroupLayoutEntry {
+  const struct WGPUChainedStruct *nextInChain;
   uint32_t binding;
   WGPUShaderStage visibility;
-  WGPUBindingType ty;
-  bool has_dynamic_offset;
-  uint64_t min_buffer_binding_size;
-  bool multisampled;
-  bool filtering;
-  enum WGPUTextureViewDimension view_dimension;
-  WGPUTextureComponentType texture_component_type;
-  enum WGPUTextureFormat storage_texture_format;
-  uint32_t count;
+  struct WGPUBufferBindingLayout buffer;
+  struct WGPUSamplerBindingLayout sampler;
+  struct WGPUTextureBindingLayout texture;
+  struct WGPUStorageTextureBindingLayout storageTexture;
 } WGPUBindGroupLayoutEntry;
 
 typedef struct WGPUBindGroupLayoutDescriptor {
@@ -2186,18 +2177,13 @@ typedef uint64_t WGPUId_BindGroup_Dummy;
 
 typedef WGPUId_BindGroup_Dummy WGPUBindGroupId;
 
-/**
- * Integral type used for buffer slice sizes.
- */
-typedef uint64_t WGPUBufferSize;
-
 typedef struct WGPUBindGroupEntry {
   uint32_t binding;
   WGPUOption_BufferId buffer;
-  WGPUBufferAddress offset;
-  WGPUBufferSize size;
+  uint64_t offset;
+  uint64_t size;
   WGPUOption_SamplerId sampler;
-  WGPUOption_TextureViewId texture_view;
+  WGPUOption_TextureViewId textureView;
 } WGPUBindGroupEntry;
 
 typedef struct WGPUBindGroupDescriptor {
@@ -2245,11 +2231,12 @@ typedef struct WGPUCommandEncoderDescriptor {
 typedef struct WGPURenderBundleEncoder *WGPURenderBundleEncoderId;
 
 typedef struct WGPURenderBundleEncoderDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
-  const enum WGPUTextureFormat *color_formats;
-  uintptr_t color_formats_length;
-  const enum WGPUTextureFormat *depth_stencil_format;
-  uint32_t sample_count;
+  uint32_t colorFormatsCount;
+  const enum WGPUTextureFormat *colorFormats;
+  const enum WGPUTextureFormat *depthStencilFormat;
+  uint32_t sampleCount;
 } WGPURenderBundleEncoderDescriptor;
 
 typedef uint64_t WGPUId_RenderBundle;
@@ -2410,6 +2397,11 @@ typedef struct WGPUSwapChainDescriptor {
 } WGPUSwapChainDescriptor;
 
 typedef void (*WGPUBufferMapCallback)(enum WGPUBufferMapAsyncStatus status, uint8_t *userdata);
+
+/**
+ * Integral type used for buffer slice sizes.
+ */
+typedef uint64_t WGPUBufferSize;
 
 typedef struct WGPUAdapterInfo {
   /**
@@ -2620,13 +2612,13 @@ WGPUFeatures wgpu_device_features(WGPUDeviceId device_id);
 
 struct WGPULimits wgpu_device_limits(WGPUDeviceId device_id);
 
-WGPUBufferId wgpu_device_create_buffer(WGPUDeviceId device_id,
-                                       const struct WGPUBufferDescriptor *desc);
+WGPUBufferId wgpuDeviceCreateBuffer(WGPUDeviceId device,
+                                    const struct WGPUBufferDescriptor *descriptor);
 
 void wgpu_buffer_destroy(WGPUBufferId buffer_id, bool now);
 
-WGPUTextureId wgpu_device_create_texture(WGPUDeviceId device_id,
-                                         const struct WGPUTextureDescriptor *desc);
+WGPUTextureId wgpuDeviceCreateTexture(WGPUDeviceId device,
+                                      const struct WGPUTextureDescriptor *descriptor);
 
 void wgpu_texture_destroy(WGPUTextureId texture_id, bool now);
 
@@ -2635,8 +2627,8 @@ WGPUTextureViewId wgpu_texture_create_view(WGPUTextureId texture_id,
 
 void wgpu_texture_view_destroy(WGPUTextureViewId texture_view_id, bool now);
 
-WGPUSamplerId wgpu_device_create_sampler(WGPUDeviceId device_id,
-                                         const struct WGPUSamplerDescriptor *desc);
+WGPUSamplerId wgpuDeviceCreateSampler(WGPUDeviceId device,
+                                      const struct WGPUSamplerDescriptor *descriptor);
 
 void wgpu_sampler_destroy(WGPUSamplerId sampler_id);
 
@@ -2667,15 +2659,15 @@ void wgpu_command_encoder_destroy(WGPUCommandEncoderId command_encoder_id);
 
 void wgpu_command_buffer_destroy(WGPUCommandBufferId command_buffer_id);
 
-WGPURenderBundleEncoderId wgpu_device_create_render_bundle_encoder(WGPUDeviceId device_id,
-                                                                   const struct WGPURenderBundleEncoderDescriptor *desc);
+WGPURenderBundleEncoderId wgpuDeviceCreateRenderBundleEncoder(WGPUDeviceId device,
+                                                              const struct WGPURenderBundleEncoderDescriptor *descriptor);
 
 WGPURenderBundleId wgpu_render_bundle_encoder_finish(WGPURenderBundleEncoderId bundle_encoder_id,
                                                      const struct WGPURenderBundleDescriptor_Label *desc);
 
 void wgpu_render_bundle_destroy(WGPURenderBundleId render_bundle_id);
 
-WGPUQueueId wgpu_device_get_default_queue(WGPUDeviceId device_id);
+WGPUQueueId wgpuDeviceGetDefaultQueue(WGPUDeviceId device);
 
 /**
  * # Safety

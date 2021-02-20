@@ -22,23 +22,26 @@ unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
     }
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct RenderBundleEncoderDescriptor {
-    label: Label,
-    color_formats: *const wgt::TextureFormat,
-    color_formats_length: usize,
-    depth_stencil_format: *const wgt::TextureFormat,
-    sample_count: u32,
+pub struct RenderBundleEncoderDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+    pub colorFormatsCount: u32,
+    pub colorFormats: *const wgt::TextureFormat,
+    pub depthStencilFormat: *const wgt::TextureFormat, // todo: replace with non-*const
+    pub sampleCount: u32,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct BindGroupEntry {
     pub binding: u32,
     pub buffer: Option<id::BufferId>,
-    pub offset: wgt::BufferAddress,
-    pub size: wgt::BufferSize,
+    pub offset: u64,
+    pub size: u64,
     pub sampler: Option<id::SamplerId>,
-    pub texture_view: Option<id::TextureViewId>,
+    pub textureView: Option<id::TextureViewId>,
 }
 
 #[allow(non_snake_case)]
@@ -296,14 +299,35 @@ pub extern "C" fn wgpu_device_limits(device_id: id::DeviceId) -> CLimits {
         .into()
 }
 
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct CBufferDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub label: Label,
+    pub usage: wgt::BufferUsage,
+    pub size: u64,
+    pub mappedAtCreation: bool,
+}
+
+impl CBufferDescriptor<'_> {
+    fn to_wgpu(&self) -> wgt::BufferDescriptor<Label> {
+        wgt::BufferDescriptor {
+            label: self.label,
+            size: self.size,
+            usage: self.usage,
+            mapped_at_creation: self.mappedAtCreation,
+        }
+    }
+}
+
 #[no_mangle]
-pub extern "C" fn wgpu_device_create_buffer(
-    device_id: id::DeviceId,
-    desc: &wgt::BufferDescriptor<Label>,
+pub extern "C" fn wgpuDeviceCreateBuffer(
+    device: id::DeviceId,
+    descriptor: &CBufferDescriptor,
 ) -> id::BufferId {
-    let desc = desc.map_label(|l| OwnedLabel::new(*l).into_cow());
+    let desc = descriptor.to_wgpu().map_label(|l| OwnedLabel::new(*l).into_cow());
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_buffer(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_buffer(device, &desc, PhantomData)),
     )
 }
 
@@ -314,10 +338,10 @@ pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId, now: bool) {
 
 #[allow(non_snake_case)]
 #[repr(C)]
-pub struct TextureDescriptor<'c> {
+pub struct CTextureDescriptor<'c> {
     pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
-    pub usage: wgt::TextureUsage, // todo: rename to TextureUsageFlags
+    pub usage: wgt::TextureUsage,
     pub dimension: wgt::TextureDimension,
     pub size: wgt::Extent3d,
     pub format: wgt::TextureFormat,
@@ -325,7 +349,7 @@ pub struct TextureDescriptor<'c> {
     pub sampleCount: u32,
 }
 
-impl TextureDescriptor<'_> {
+impl CTextureDescriptor<'_> {
     fn to_wgpu(&self) -> wgt::TextureDescriptor<Label> {
         wgt::TextureDescriptor {
             label: self.label,
@@ -342,7 +366,7 @@ impl TextureDescriptor<'_> {
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateTexture(
     device: id::DeviceId,
-    descriptor: &TextureDescriptor,
+    descriptor: &CTextureDescriptor,
 ) -> id::TextureId {
     let desc = descriptor.to_wgpu().map_label(|l| OwnedLabel::new(*l).into_cow());
     check_error(
@@ -433,20 +457,21 @@ impl Into<Option<wgt::CompareFunction>> for CompareFunction {
     }
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct SamplerDescriptor<'c> {
     pub next_in_chain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
-    pub address_mode_u: wgt::AddressMode,
-    pub address_mode_v: wgt::AddressMode,
-    pub address_mode_w: wgt::AddressMode,
-    pub mag_filter: wgt::FilterMode,
-    pub min_filter: wgt::FilterMode,
-    pub mipmap_filter: wgt::FilterMode,
-    pub lod_min_clamp: f32,
-    pub lod_max_clamp: f32,
-    pub compare: CompareFunction,
-    pub border_color: Option<wgt::SamplerBorderColor>,
+    pub addressModeU: wgt::AddressMode,
+    pub addressModeV: wgt::AddressMode,
+    pub addressModeW: wgt::AddressMode,
+    pub magFilter: wgt::FilterMode,
+    pub minFilter: wgt::FilterMode,
+    pub mipmapFilter: wgt::FilterMode,
+    pub lodMinClamp: f32,
+    pub lodMaxClamp: f32,
+    pub compare: wgt::CompareFunction,
+    pub maxAnisotropy: u16,
 }
 
 unsafe fn map_sampler_descriptor<'a>(
@@ -456,29 +481,29 @@ unsafe fn map_sampler_descriptor<'a>(
     wgc::resource::SamplerDescriptor {
         label: OwnedLabel::new(base.label).into_cow(),
         address_modes: [
-            base.address_mode_u,
-            base.address_mode_v,
-            base.address_mode_w,
+            base.addressModeU,
+            base.addressModeV,
+            base.addressModeW,
         ],
-        mag_filter: base.mag_filter,
-        min_filter: base.min_filter,
-        mipmap_filter: base.mipmap_filter,
-        lod_min_clamp: base.lod_min_clamp,
-        lod_max_clamp: base.lod_max_clamp,
+        mag_filter: base.magFilter,
+        min_filter: base.minFilter,
+        mipmap_filter: base.mipmapFilter,
+        lod_min_clamp: base.lodMinClamp,
+        lod_max_clamp: base.lodMaxClamp,
         compare: base.compare.into(),
-        border_color: base.border_color,
+        border_color: None, // todo: not in wgpu-headers
         anisotropy_clamp: anisotropic.and_then(|a| std::num::NonZeroU8::new(a.anisotropic_clamp)),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_sampler(
-    device_id: id::DeviceId,
-    desc: &SamplerDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreateSampler(
+    device: id::DeviceId,
+    descriptor: &SamplerDescriptor,
 ) -> id::SamplerId {
-    let full_desc = follow_chain!(map_sampler_descriptor(desc, AnisotropicFiltering => AnisotropicSamplerDescriptorExt));
+    let full_desc = follow_chain!(map_sampler_descriptor(descriptor, AnisotropicFiltering => AnisotropicSamplerDescriptorExt));
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_sampler(device_id, &full_desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_sampler(device, &full_desc, PhantomData)),
     )
 }
 
@@ -499,37 +524,102 @@ pub enum BindingType {
     WriteonlyStorageTexture = 7,
 }
 
-#[repr(u32)]
-pub enum TextureComponentType {
-    Float = 0,
-    Sint = 1,
-    Uint = 2,
-    DepthComparison = 3,
+#[repr(C)]
+#[derive(PartialEq)]
+pub enum BufferBindingType {
+    Undefined = 0,
+    Uniform = 1,
+    Storage = 2,
+    ReadOnlyStorage = 3,
 }
 
-impl TextureComponentType {
-    fn to_wgpu(&self, filterable: bool) -> wgt::TextureSampleType {
+/// cbindgen:field-names=[nextInChain, type, hasDynamicOffset, minBindingSize]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct BufferBindingLayout<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub type_: BufferBindingType,
+    pub hasDynamicOffset: bool,
+    pub minBindingSize: u64,
+}
+
+#[repr(C)]
+#[derive(PartialEq)]
+pub enum SamplerBindingType {
+    Undefined = 0,
+    Filtering = 1,
+    NonFiltering = 2,
+    Comparison = 3,
+}
+
+/// cbindgen:field-names=[nextInChain, type]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct SamplerBindingLayout<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub type_: SamplerBindingType,
+}
+
+#[repr(C)]
+#[derive(PartialEq)]
+pub enum TextureSampleType {
+    Undefined = 0,
+    Float = 1,
+    UnfilterableFloat = 2,
+    Depth = 3,
+    Sint = 4,
+    Uint = 5,
+}
+
+impl TextureSampleType {
+    fn to_wgpu(&self) -> wgt::TextureSampleType {
         match self {
-            TextureComponentType::Float => wgt::TextureSampleType::Float { filterable },
-            TextureComponentType::Sint => wgt::TextureSampleType::Sint,
-            TextureComponentType::Uint => wgt::TextureSampleType::Uint,
-            TextureComponentType::DepthComparison => wgt::TextureSampleType::Depth,
+            TextureSampleType::Undefined => panic!("invalid"),
+            TextureSampleType::Float => wgt::TextureSampleType::Float { filterable: true },
+            TextureSampleType::UnfilterableFloat => wgt::TextureSampleType::Float { filterable: false },
+            TextureSampleType::Depth => wgt::TextureSampleType::Depth,
+            TextureSampleType::Sint => wgt::TextureSampleType::Sint,
+            TextureSampleType::Uint => wgt::TextureSampleType::Uint,
         }
     }
 }
+
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct BindGroupLayoutEntry {
+pub struct TextureBindingLayout<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub sampleType: TextureSampleType,
+    pub viewDimension: wgt::TextureViewDimension,
+    pub multisampled: bool,
+}
+
+#[repr(C)]
+#[derive(PartialEq)]
+pub enum StorageTextureAccess {
+    Undefined = 0,
+    ReadOnly = 1,
+    WriteOnly = 2,
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct StorageTextureBindingLayout<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub access: StorageTextureAccess,
+    pub format: wgt::TextureFormat,
+    pub viewDimension: wgt::TextureViewDimension,
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct BindGroupLayoutEntry<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub binding: u32,
     pub visibility: wgt::ShaderStage,
-    pub ty: BindingType,
-    pub has_dynamic_offset: bool,
-    pub min_buffer_binding_size: u64,
-    pub multisampled: bool,
-    pub filtering: bool,
-    pub view_dimension: wgt::TextureViewDimension,
-    pub texture_component_type: TextureComponentType,
-    pub storage_texture_format: wgt::TextureFormat,
-    pub count: u32,
+    pub buffer: BufferBindingLayout<'c>,
+    pub sampler: SamplerBindingLayout<'c>,
+    pub texture: TextureBindingLayout<'c>,
+    pub storageTexture: StorageTextureBindingLayout<'c>,
 }
 
 #[allow(non_snake_case)]
@@ -538,7 +628,7 @@ pub struct BindGroupLayoutDescriptor<'c> {
     pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
     pub entryCount: u32,
-    pub entries: *const BindGroupLayoutEntry,
+    pub entries: *const BindGroupLayoutEntry<'c>,
 }
 
 #[no_mangle]
@@ -548,51 +638,72 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
 ) -> id::BindGroupLayoutId {
     let mut entries = Vec::new();
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        let ty = match entry.ty {
-            BindingType::UniformBuffer => wgt::BindingType::Buffer {
-                ty: wgt::BufferBindingType::Uniform,
-                has_dynamic_offset: entry.has_dynamic_offset,
-                min_binding_size: NonZeroU64::new(entry.min_buffer_binding_size),
-            },
-            BindingType::StorageBuffer => wgt::BindingType::Buffer {
-                ty: wgt::BufferBindingType::Storage { read_only: false },
-                has_dynamic_offset: entry.has_dynamic_offset,
-                min_binding_size: NonZeroU64::new(entry.min_buffer_binding_size),
-            },
-            BindingType::ReadonlyStorageBuffer => wgt::BindingType::Buffer {
-                ty: wgt::BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: entry.has_dynamic_offset,
-                min_binding_size: NonZeroU64::new(entry.min_buffer_binding_size),
-            },
-            BindingType::Sampler => wgt::BindingType::Sampler {
-                comparison: false,
-                filtering: entry.filtering,
-            },
-            BindingType::ComparisonSampler => wgt::BindingType::Sampler {
-                comparison: true,
-                filtering: entry.filtering,
-            },
-            BindingType::SampledTexture => wgt::BindingType::Texture {
-                view_dimension: entry.view_dimension,
-                sample_type: entry.texture_component_type.to_wgpu(entry.filtering),
-                multisampled: entry.multisampled,
-            },
-            BindingType::ReadonlyStorageTexture => wgt::BindingType::StorageTexture {
-                view_dimension: entry.view_dimension,
-                format: entry.storage_texture_format,
-                access: wgt::StorageTextureAccess::ReadOnly,
-            },
-            BindingType::WriteonlyStorageTexture => wgt::BindingType::StorageTexture {
-                view_dimension: entry.view_dimension,
-                format: entry.storage_texture_format,
-                access: wgt::StorageTextureAccess::WriteOnly,
-            },
+        let ty = if entry.texture.sampleType != TextureSampleType::Undefined {
+            match entry.texture.sampleType {
+                TextureSampleType::Undefined => unreachable!(),
+                _ => wgt::BindingType::Texture {
+                    view_dimension: entry.texture.viewDimension,
+                    sample_type: entry.texture.sampleType.to_wgpu(),
+                    multisampled: entry.texture.multisampled,
+                },
+            }
+        } else if entry.storageTexture.access != StorageTextureAccess::Undefined {
+            match entry.storageTexture.access {
+                StorageTextureAccess::Undefined => unreachable!(),
+                StorageTextureAccess::ReadOnly => wgt::BindingType::StorageTexture {
+                    view_dimension: entry.storageTexture.viewDimension,
+                    format: entry.storageTexture.format,
+                    access: wgt::StorageTextureAccess::ReadOnly,
+                },
+                StorageTextureAccess::WriteOnly => wgt::BindingType::StorageTexture {
+                    view_dimension: entry.storageTexture.viewDimension,
+                    format: entry.storageTexture.format,
+                    access: wgt::StorageTextureAccess::WriteOnly,
+                },
+            }
+        } else if entry.buffer.type_ != BufferBindingType::Undefined {
+            match entry.buffer.type_ {
+                BufferBindingType::Undefined => unreachable!(),
+                BufferBindingType::Uniform => wgt::BindingType::Buffer {
+                    ty: wgt::BufferBindingType::Uniform,
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    min_binding_size: NonZeroU64::new(entry.buffer.minBindingSize),
+                },
+                BufferBindingType::Storage => wgt::BindingType::Buffer {
+                    ty: wgt::BufferBindingType::Storage { read_only: false },
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    min_binding_size: NonZeroU64::new(entry.buffer.minBindingSize),
+                },
+                BufferBindingType::ReadOnlyStorage => wgt::BindingType::Buffer {
+                    ty: wgt::BufferBindingType::Storage { read_only: true },
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    min_binding_size: NonZeroU64::new(entry.buffer.minBindingSize),
+                },
+            }
+        } else if entry.sampler.type_ != SamplerBindingType::Undefined {
+            match entry.sampler.type_ {
+                SamplerBindingType::Undefined => unreachable!(),
+                SamplerBindingType::Filtering => wgt::BindingType::Sampler {
+                    comparison: false,
+                    filtering: true,
+                },
+                SamplerBindingType::NonFiltering => wgt::BindingType::Sampler {
+                    comparison: false,
+                    filtering: false,
+                },
+                SamplerBindingType::Comparison => wgt::BindingType::Sampler {
+                    comparison: true,
+                    filtering: false,
+                },
+            }
+        } else {
+            panic!("no valid layout struct")
         };
         entries.push(wgt::BindGroupLayoutEntry {
             binding: entry.binding,
             visibility: entry.visibility,
             ty,
-            count: NonZeroU32::new(entry.count),
+            count: NonZeroU32::new(0), // todo
         });
     }
     let label = OwnedLabel::new(descriptor.label);
@@ -655,11 +766,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                 wgc::binding_model::BindingResource::Buffer(wgc::binding_model::BufferBinding {
                     buffer_id: id,
                     offset: entry.offset,
-                    size: Some(entry.size),
+                    size: wgt::BufferSize::new(entry.size),
                 })
             } else if let Some(id) = entry.sampler {
                 wgc::binding_model::BindingResource::Sampler(id)
-            } else if let Some(id) = entry.texture_view {
+            } else if let Some(id) = entry.textureView {
                 wgc::binding_model::BindingResource::TextureView(id)
             } else {
                 panic!("Unknown binding!");
@@ -774,25 +885,18 @@ pub extern "C" fn wgpu_command_buffer_destroy(command_buffer_id: id::CommandBuff
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_render_bundle_encoder(
-    device_id: id::DeviceId,
-    desc: &RenderBundleEncoderDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
+    device: id::DeviceId,
+    descriptor: &RenderBundleEncoderDescriptor,
 ) -> id::RenderBundleEncoderId {
-    let label = OwnedLabel::new(desc.label);
+    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::command::RenderBundleEncoderDescriptor {
         label: label.as_cow(),
-        color_formats: if desc.color_formats_length != 0 {
-            Cow::Borrowed(make_slice(
-                desc.color_formats,
-                desc.color_formats_length,
-            ))
-        } else {
-            Cow::Borrowed(&[])
-        },
-        depth_stencil_format: desc.depth_stencil_format.as_ref().cloned(),
-        sample_count: desc.sample_count,
+        color_formats: Cow::Borrowed(make_slice(descriptor.colorFormats, descriptor.colorFormatsCount as usize)),
+        depth_stencil_format: descriptor.depthStencilFormat.as_ref().cloned(),
+        sample_count: descriptor.sampleCount,
     };
-    check_error(GLOBAL.device_create_render_bundle_encoder(device_id, &desc))
+    check_error(GLOBAL.device_create_render_bundle_encoder(device, &desc))
 }
 
 #[no_mangle]
@@ -815,8 +919,8 @@ pub unsafe extern "C" fn wgpu_render_bundle_destroy(render_bundle_id: id::Render
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_get_default_queue(device_id: id::DeviceId) -> id::QueueId {
-    device_id
+pub extern "C" fn wgpuDeviceGetDefaultQueue(device: id::DeviceId) -> id::QueueId {
+    device
 }
 
 /// # Safety
@@ -1153,7 +1257,7 @@ pub extern "C" fn wgpu_compute_pipeline_destroy(compute_pipeline_id: id::Compute
 pub struct SwapChainDescriptor<'c> {
     pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
-    pub usage: wgt::TextureUsage, // todo: rename to TextureUsageFlags
+    pub usage: wgt::TextureUsage,
     pub format: wgt::TextureFormat,
     pub width: u32,
     pub height: u32,

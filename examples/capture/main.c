@@ -69,7 +69,7 @@ int main(
     );
 
     BufferDimensions buffer_dimensions = buffer_dimensions_new(width, height);
-    WGPUBufferId output_buffer = wgpu_device_create_buffer(
+    WGPUBufferId output_buffer = wgpuDeviceCreateBuffer(
             device,
             &(WGPUBufferDescriptor) {
                     .label = NULL,
@@ -77,7 +77,7 @@ int main(
                             buffer_dimensions.height,
                     .usage = WGPUBufferUsage_MAP_READ |
                              WGPUBufferUsage_COPY_DST,
-                    .mapped_at_creation = false}
+                    .mappedAtCreation = false}
     );
 
     WGPUExtent3d texture_extent = (WGPUExtent3d) {
@@ -86,10 +86,10 @@ int main(
             .depth = 1,
     };
 
-    WGPUTextureId texture = wgpu_device_create_texture(device, &(WGPUTextureDescriptor) {
+    WGPUTextureId texture = wgpuDeviceCreateTexture(device, &(WGPUTextureDescriptor) {
             .size = texture_extent,
-            .mip_level_count = 1,
-            .sample_count = 1,
+            .mipLevelCount = 1,
+            .sampleCount = 1,
             .dimension = WGPUTextureDimension_D2,
             .format = WGPUTextureFormat_Rgba8UnormSrgb,
             .usage = WGPUTextureUsage_RENDER_ATTACHMENT | WGPUTextureUsage_COPY_SRC,
@@ -142,7 +142,7 @@ int main(
             .label = NULL
     });
 
-    WGPUQueueId queue = wgpu_device_get_default_queue(device);
+    WGPUQueueId queue = wgpuDeviceGetDefaultQueue(device);
 
     wgpu_queue_submit(queue, &command_buffer, 1);
 
