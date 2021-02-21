@@ -2153,6 +2153,7 @@ typedef struct WGPUBindGroupLayoutEntry {
   struct WGPUSamplerBindingLayout sampler;
   struct WGPUTextureBindingLayout texture;
   struct WGPUStorageTextureBindingLayout storageTexture;
+  uint32_t count;
 } WGPUBindGroupLayoutEntry;
 
 typedef struct WGPUBindGroupLayoutDescriptor {

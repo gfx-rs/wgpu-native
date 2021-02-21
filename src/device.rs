@@ -622,6 +622,7 @@ pub struct BindGroupLayoutEntry<'c> {
     pub sampler: SamplerBindingLayout<'c>,
     pub texture: TextureBindingLayout<'c>,
     pub storageTexture: StorageTextureBindingLayout<'c>,
+    pub count: u32, // todo: what is this?
 }
 
 #[allow(non_snake_case)]
@@ -705,7 +706,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             binding: entry.binding,
             visibility: entry.visibility,
             ty,
-            count: NonZeroU32::new(0), // todo
+            count: NonZeroU32::new(entry.count),
         });
     }
     let label = OwnedLabel::new(descriptor.label);
