@@ -29,7 +29,7 @@ pub struct RenderBundleEncoderDescriptor<'c> {
     pub label: Label,
     pub colorFormatsCount: u32,
     pub colorFormats: *const wgt::TextureFormat,
-    pub depthStencilFormat: *const wgt::TextureFormat, // todo: replace with non-*const
+    pub depthStencilFormat: *const wgt::TextureFormat, // todo: remove *const when TextureFormat has Undefined variant
     pub sampleCount: u32,
 }
 
@@ -154,14 +154,14 @@ pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
 /// This function is unsafe as it calls an unsafe extern callback.
 #[no_mangle]
 pub unsafe extern "C" fn wgpu_request_adapter_async(
-    descriptor: Option<&wgc::instance::RequestAdapterOptions>,
+    desc: Option<&wgc::instance::RequestAdapterOptions>,
     mask: BackendBit,
     callback: RequestAdapterCallback,
     userdata: *mut std::ffi::c_void,
 ) {
     let id = GLOBAL
         .request_adapter(
-            &descriptor.cloned().unwrap_or(wgt::RequestAdapterOptions {
+            &desc.cloned().unwrap_or(wgt::RequestAdapterOptions {
                 power_preference: wgt::PowerPreference::default(),
                 compatible_surface: None,
             }),
@@ -230,7 +230,8 @@ pub struct CAdapterInfo {
 #[repr(C)]
 pub struct CDeviceDescriptor<'c> {
     nextInChain: Option<&'c ChainedStruct<'c>>,
-    label: Label, // none of these exist
+    label: Label,
+    // todo: move these to an extension
     features: wgt::Features,
     limits: CLimits,
     trace_path: *const std::os::raw::c_char,
@@ -427,6 +428,14 @@ pub struct AnisotropicSamplerDescriptorExt<'c> {
     pub anisotropic_clamp: u8,
 }
 
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct BorderClampColorDescriptorExt<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub s_type: SType,
+    pub borderColor: wgt::SamplerBorderColor,
+}
+
 #[repr(u32)]
 #[derive(Clone, Copy)]
 pub enum CompareFunction {
@@ -476,7 +485,7 @@ pub struct SamplerDescriptor<'c> {
 
 unsafe fn map_sampler_descriptor<'a>(
     base: &SamplerDescriptor<'a>,
-    anisotropic: Option<&AnisotropicSamplerDescriptorExt>,
+    border: Option<&BorderClampColorDescriptorExt>,
 ) -> wgc::resource::SamplerDescriptor<'a> {
     wgc::resource::SamplerDescriptor {
         label: OwnedLabel::new(base.label).into_cow(),
@@ -491,8 +500,8 @@ unsafe fn map_sampler_descriptor<'a>(
         lod_min_clamp: base.lodMinClamp,
         lod_max_clamp: base.lodMaxClamp,
         compare: base.compare.into(),
-        border_color: None, // todo: not in wgpu-headers
-        anisotropy_clamp: anisotropic.and_then(|a| std::num::NonZeroU8::new(a.anisotropic_clamp)),
+        border_color: border.map(|b|b.borderColor),
+        anisotropy_clamp: std::num::NonZeroU8::new(base.maxAnisotropy as u8),
     }
 }
 
@@ -501,7 +510,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     device: id::DeviceId,
     descriptor: &SamplerDescriptor,
 ) -> id::SamplerId {
-    let full_desc = follow_chain!(map_sampler_descriptor(descriptor, AnisotropicFiltering => AnisotropicSamplerDescriptorExt));
+    let full_desc = follow_chain!(map_sampler_descriptor(descriptor, BorderClampColor => BorderClampColorDescriptorExt));
     check_error(
         gfx_select!(device => GLOBAL.device_create_sampler(device, &full_desc, PhantomData)),
     )

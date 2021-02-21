@@ -443,6 +443,7 @@ enum WGPUSType {
    * Placeholder value until real value can be determined
    */
   WGPUSType_AnisotropicFiltering = 268435456,
+  WGPUSType_BorderClampColor = 536870912,
   WGPUSType_Force32 = 2147483647,
 };
 typedef uint32_t WGPUSType;
@@ -2594,7 +2595,7 @@ WGPUSurfaceId wgpu_create_surface_from_windows_hwnd(void *_hinstance, void *hwnd
  *
  * This function is unsafe as it calls an unsafe extern callback.
  */
-void wgpu_request_adapter_async(const WGPURequestAdapterOptions *descriptor,
+void wgpu_request_adapter_async(const WGPURequestAdapterOptions *desc,
                                 WGPUBackendBit mask,
                                 WGPURequestAdapterCallback callback,
                                 void *userdata);

@@ -111,6 +111,7 @@ pub enum SType {
     ShaderModuleWGSLDescriptor = 0x00_00_00_06,
     /// Placeholder value until real value can be determined
     AnisotropicFiltering = 0x10_00_00_00,
+    BorderClampColor = 0x20_00_00_00,
     Force32 = 0x7F_FF_FF_FF,
 }
 
