@@ -363,6 +363,24 @@ typedef enum WGPULogLevel {
 } WGPULogLevel;
 
 /**
+ * Type of drawing mode for polygons
+ */
+typedef enum WGPUPolygonMode {
+  /**
+   * Polygons are filled
+   */
+  WGPUPolygonMode_Fill = 0,
+  /**
+   * Polygons are drawn as line segments
+   */
+  WGPUPolygonMode_Line = 1,
+  /**
+   * Polygons are drawn as points
+   */
+  WGPUPolygonMode_Point = 2,
+} WGPUPolygonMode;
+
+/**
  * Power Preference when choosing a physical adapter.
  */
 typedef enum WGPUPowerPreference {
@@ -2306,6 +2324,7 @@ typedef struct WGPURasterizationStateDescriptor {
   float depthBiasSlopeScale;
   float depthBiasClamp;
   bool clampDepth;
+  enum WGPUPolygonMode polygonMode;
 } WGPURasterizationStateDescriptor;
 
 typedef struct WGPUStencilStateFaceDescriptor {
