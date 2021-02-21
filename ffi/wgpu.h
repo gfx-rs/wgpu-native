@@ -442,8 +442,7 @@ enum WGPUSType {
   /**
    * Placeholder value until real value can be determined
    */
-  WGPUSType_AnisotropicFiltering = 268435456,
-  WGPUSType_BorderClampColor = 536870912,
+  WGPUSType_BorderClampColor = 268435456,
   WGPUSType_Force32 = 2147483647,
 };
 typedef uint32_t WGPUSType;
@@ -1627,7 +1626,7 @@ typedef WGPUId_Device_Dummy WGPUDeviceId;
 
 typedef struct WGPUChainedStruct {
   const struct WGPUChainedStruct *next;
-  WGPUSType s_type;
+  WGPUSType sType;
 } WGPUChainedStruct;
 
 /**
@@ -2077,7 +2076,7 @@ typedef uint64_t WGPUId_Sampler_Dummy;
 typedef WGPUId_Sampler_Dummy WGPUSamplerId;
 
 typedef struct WGPUSamplerDescriptor {
-  const struct WGPUChainedStruct *next_in_chain;
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
   enum WGPUAddressMode addressModeU;
   enum WGPUAddressMode addressModeV;
@@ -2443,12 +2442,6 @@ typedef const char *WGPURawString;
 typedef uint64_t WGPUId_QuerySet_Dummy;
 
 typedef WGPUId_QuerySet_Dummy WGPUQuerySetId;
-
-typedef struct WGPUAnisotropicSamplerDescriptorExt {
-  const struct WGPUChainedStruct *next_in_chain;
-  WGPUSType s_type;
-  uint8_t anisotropic_clamp;
-} WGPUAnisotropicSamplerDescriptorExt;
 
 typedef struct WGPUShaderModuleSPIRVDescriptor {
   struct WGPUChainedStruct chain;

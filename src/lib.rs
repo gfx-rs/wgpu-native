@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
 ///
 /// - All pointers in the chain of next pointers must point to either null or a valid extension object
 /// - All structures used as extension objects must be `#[repr(C)]`.
-/// - All structures used as extension objects must have `pub next_in_chain: Option<&ChainedStruct>` and `pub s_type: SType`
+/// - All structures used as extension objects must have `pub nextInChain: Option<&ChainedStruct>` and `pub sType: SType`
 ///   as the first and second members respectively.
 ///
 /// The result of these rules, and the fact that wgpu-native functions using it do not validate all these assumptions,
@@ -76,9 +76,9 @@ macro_rules! follow_chain {
         $(
             let mut $stype: Option<&$ty> = None;
         )*
-        let mut chain_opt: Option<&$crate::ChainedStruct> = $base.next_in_chain;
+        let mut chain_opt: Option<&$crate::ChainedStruct> = $base.nextInChain;
         while let Some(next_in_chain) = chain_opt {
-            match next_in_chain.s_type {
+            match next_in_chain.sType {
                 $(
                     $crate::SType::$stype => {
                         let next_in_chain_ptr = next_in_chain as *const $crate::ChainedStruct;
@@ -110,15 +110,15 @@ pub enum SType {
     ShaderModuleSPIRVDescriptor = 0x00_00_00_05,
     ShaderModuleWGSLDescriptor = 0x00_00_00_06,
     /// Placeholder value until real value can be determined
-    AnisotropicFiltering = 0x10_00_00_00,
-    BorderClampColor = 0x20_00_00_00,
+    BorderClampColor = 0x10_00_00_00,
     Force32 = 0x7F_FF_FF_FF,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct ChainedStruct<'c> {
     next: Option<&'c ChainedStruct<'c>>,
-    s_type: SType,
+    sType: SType,
 }
 
 #[track_caller]

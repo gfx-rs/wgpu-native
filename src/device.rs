@@ -421,18 +421,11 @@ pub extern "C" fn wgpu_texture_view_destroy(texture_view_id: id::TextureViewId, 
         .expect("Unable to destroy texture view")
 }
 
-#[repr(C)]
-pub struct AnisotropicSamplerDescriptorExt<'c> {
-    pub next_in_chain: Option<&'c ChainedStruct<'c>>,
-    pub s_type: SType,
-    pub anisotropic_clamp: u8,
-}
-
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct BorderClampColorDescriptorExt<'c> {
     pub nextInChain: Option<&'c ChainedStruct<'c>>,
-    pub s_type: SType,
+    pub sType: SType,
     pub borderColor: wgt::SamplerBorderColor,
 }
 
@@ -469,7 +462,7 @@ impl Into<Option<wgt::CompareFunction>> for CompareFunction {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct SamplerDescriptor<'c> {
-    pub next_in_chain: Option<&'c ChainedStruct<'c>>,
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
     pub addressModeU: wgt::AddressMode,
     pub addressModeV: wgt::AddressMode,
@@ -829,7 +822,7 @@ pub extern "C" fn wgpuDeviceCreateShaderModule(
     descriptor: &ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
     let chain = descriptor.nextInChain.expect("shader required");
-    let src = match chain.s_type {
+    let src = match chain.sType {
         SType::ShaderModuleSPIRVDescriptor => {
             let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
             let slice = unsafe { make_slice(desc.code, desc.code_size as usize) };
