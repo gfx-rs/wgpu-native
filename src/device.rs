@@ -835,109 +835,228 @@ impl<'a> ProgrammableStageDescriptor {
 }
 
 #[repr(C)]
-pub struct VertexBufferLayout {
-    pub array_stride: wgt::BufferAddress,
-    pub step_mode: wgt::InputStepMode,
-    pub attributes: *const wgt::VertexAttribute,
-    pub attributes_count: usize,
+#[allow(non_snake_case)]
+pub struct BlendDescriptor {
+    pub operation: wgt::BlendOperation,
+    pub srcFactor: wgt::BlendFactor,
+    pub dstFactor: wgt::BlendFactor,
 }
 
-impl VertexBufferLayout {
+impl BlendDescriptor {
+    fn to_wgpu(&self) -> wgt::BlendState {
+        wgt::BlendState {
+            src_factor: self.srcFactor,
+            dst_factor: self.dstFactor,
+            operation: self.operation,
+        }
+    }
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct ColorStateDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub format: wgt::TextureFormat,
+    pub alphaBlend: BlendDescriptor,
+    pub colorBlend: BlendDescriptor,
+    pub writeMask: wgt::ColorWrite,
+}
+
+impl ColorStateDescriptor<'_> {
+    fn to_wgpu(&self) -> wgt::ColorTargetState {
+        wgt::ColorTargetState {
+            format: self.format,
+            alpha_blend: self.alphaBlend.to_wgpu(),
+            color_blend: self.colorBlend.to_wgpu(),
+            write_mask: self.writeMask,
+        }
+    }
+}
+
+#[repr(u32)]
+pub enum CullMode {
+    None = 0,
+    Front = 1,
+    Back = 2,
+}
+
+impl CullMode {
+    fn to_wgpu(&self) -> wgt::CullMode {
+        match self {
+            CullMode::None => wgt::CullMode::None,
+            CullMode::Front => wgt::CullMode::Front,
+            CullMode::Back => wgt::CullMode::Back,
+        }
+    }
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct VertexAttributeDescriptor {
+    pub format: wgt::VertexFormat,
+    pub offset: u64,
+    pub shaderLocation: u32,
+}
+
+impl VertexAttributeDescriptor {
+    fn to_wgpu(&self) -> wgt::VertexAttribute {
+        wgt::VertexAttribute {
+            format: self.format,
+            offset: self.offset,
+            shader_location: self.shaderLocation,
+        }
+    }
+}
+
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct VertexBufferLayoutDescriptor {
+    pub arrayStride: u64,
+    pub stepMode: wgt::InputStepMode,
+    pub attributeCount: u32,
+    pub attributes: *const VertexAttributeDescriptor,
+}
+
+impl VertexBufferLayoutDescriptor {
     unsafe fn to_wgpu(&self) -> wgc::pipeline::VertexBufferLayout {
         wgc::pipeline::VertexBufferLayout {
-            array_stride: self.array_stride,
-            step_mode: self.step_mode,
-            attributes: Cow::Borrowed(make_slice(
-                self.attributes,
-                self.attributes_count,
-            )),
+            array_stride: self.arrayStride,
+            step_mode: self.stepMode,
+            attributes: Cow::Owned(make_slice(self.attributes, self.attributeCount as usize).iter().map(|x| x.to_wgpu()).collect()),
         }
     }
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct VertexState {
-    pub stage: ProgrammableStageDescriptor,
-    pub buffers: *const VertexBufferLayout,
-    pub buffer_count: usize,
+pub struct VertexStateDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub indexFormat: IndexFormat,
+    pub vertexBufferCount: u32,
+    pub vertexBuffers: *const VertexBufferLayoutDescriptor,
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct FragmentState {
-    pub stage: ProgrammableStageDescriptor,
-    pub targets: *const wgt::ColorTargetState,
-    pub target_count: usize,
+pub struct RasterizationStateDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub frontFace: wgt::FrontFace,
+    pub cullMode: CullMode,
+    pub depthBias: i32,
+    pub depthBiasSlopeScale: f32,
+    pub depthBiasClamp: f32,
+    pub clampDepth: bool,
+    pub polygonMode: wgt::PolygonMode, // todo: move to nextInChain
 }
 
-impl FragmentState {
-    unsafe fn to_wgpu(&self) -> wgc::pipeline::FragmentState {
-        wgc::pipeline::FragmentState {
-            stage: self.stage.to_wgpu(),
-            targets: Cow::Borrowed(make_slice(
-                self.targets,
-                self.target_count,
-            ))
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct StencilStateFaceDescriptor {
+    pub compare: CompareFunction,
+    pub failOp: wgt::StencilOperation,
+    pub depthFailOp: wgt::StencilOperation,
+    pub passOp: wgt::StencilOperation,
+}
+
+impl StencilStateFaceDescriptor {
+    fn to_wgpu(&self) -> wgt::StencilFaceState {
+        let compare: Option<wgt::CompareFunction> = self.compare.into();
+        wgt::StencilFaceState {
+            compare: compare.expect("compare to be valid"),
+            fail_op: self.failOp,
+            depth_fail_op: self.depthFailOp,
+            pass_op: self.passOp,
         }
     }
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct PrimitiveState {
-    pub topology: wgt::PrimitiveTopology,
-    pub strip_index_format: IndexFormat,
-    pub front_face: wgt::FrontFace,
-    pub cull_mode: wgt::CullMode,
-    pub polygon_mode: wgt::PolygonMode,
+pub struct DepthStencilStateDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
+    pub format: wgt::TextureFormat,
+    pub depthWriteEnabled: bool,
+    pub depthCompare: CompareFunction,
+    pub stencilFront: StencilStateFaceDescriptor,
+    pub stencilBack: StencilStateFaceDescriptor,
+    pub stencilReadMask: u32,
+    pub stencilWriteMask: u32,
 }
 
-impl PrimitiveState {
-    fn to_wgpu(&self) -> wgt::PrimitiveState {
-        wgt::PrimitiveState {
-            topology: self.topology,
-            strip_index_format: self.strip_index_format.to_wgpu(),
-            front_face: self.front_face,
-            cull_mode: self.cull_mode,
-            polygon_mode: self.polygon_mode,
+impl DepthStencilStateDescriptor<'_> {
+    fn to_wgpu(&self, s: &RasterizationStateDescriptor) -> wgt::DepthStencilState {
+        let depth_compare: Option<wgt::CompareFunction> = self.depthCompare.into();
+        wgt::DepthStencilState {
+            format: self.format,
+            depth_write_enabled: self.depthWriteEnabled,
+            depth_compare: depth_compare.expect("depth_compare to be valid"),
+            stencil: wgt::StencilState {
+                front: self.stencilFront.to_wgpu(),
+                back: self.stencilBack.to_wgpu(),
+                read_mask: self.stencilReadMask,
+                write_mask: self.stencilWriteMask,
+            },
+            bias: wgt::DepthBiasState {
+                constant: 0, // todo: not in webgpu-headers
+                slope_scale: s.depthBiasSlopeScale,
+                clamp: s.depthBiasClamp,
+            },
+            clamp_depth: s.clampDepth,
         }
     }
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct RenderPipelineDescriptor {
+pub struct RenderPipelineDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
     pub layout: Option<id::PipelineLayoutId>,
-    pub vertex: VertexState,
-    pub primitive: PrimitiveState,
-    pub depth_stencil: *const wgt::DepthStencilState,
-    pub multisample: wgt::MultisampleState,
-    pub fragment: *const FragmentState,
+    pub vertexStage: ProgrammableStageDescriptor,
+    pub fragmentStage: *const ProgrammableStageDescriptor,
+    pub vertexState: VertexStateDescriptor<'c>,
+    pub primitiveTopology: wgt::PrimitiveTopology,
+    pub rasterizationState: RasterizationStateDescriptor<'c>,
+    pub sampleCount: u32,
+    pub depthStencilState: *const DepthStencilStateDescriptor<'c>,
+    pub colorStateCount: u32,
+    pub colorStates: *const ColorStateDescriptor<'c>,
+    pub sampleMask: u32,
+    pub alphaToCoverageEnabled: bool,
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_render_pipeline(
-    device_id: id::DeviceId,
-    desc_base: &RenderPipelineDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
+    device: id::DeviceId,
+    descriptor: &RenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
-    let buffers: Vec<_> = make_slice(
-        desc_base.vertex.buffers,
-        desc_base.vertex.buffer_count,
-    ).iter().map(|buffer| buffer.to_wgpu()).collect::<Vec<_>>();
-
-    let vertex = wgc::pipeline::VertexState {
-        stage: desc_base.vertex.stage.to_wgpu(),
-        buffers: Cow::Owned(buffers),
-    };
-
     let desc = wgc::pipeline::RenderPipelineDescriptor {
-        label: OwnedLabel::new(desc_base.label).into_cow(),
-        layout: desc_base.layout,
-        vertex,
-        primitive: desc_base.primitive.to_wgpu(),
-        depth_stencil: desc_base.depth_stencil.as_ref().cloned(),
-        multisample: desc_base.multisample.clone(),
-        fragment: desc_base.fragment.as_ref().map(|fragment| fragment.to_wgpu()),
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        layout: descriptor.layout,
+        vertex: wgc::pipeline::VertexState {
+            stage: descriptor.vertexStage.to_wgpu(),
+            buffers: Cow::Owned(make_slice(descriptor.vertexState.vertexBuffers, descriptor.vertexState.vertexBufferCount as usize).iter().map(|x|x.to_wgpu()).collect()),
+        },
+        primitive: wgt::PrimitiveState {
+            topology: descriptor.primitiveTopology,
+            strip_index_format: descriptor.vertexState.indexFormat.to_wgpu(),
+            front_face: descriptor.rasterizationState.frontFace,
+            cull_mode: descriptor.rasterizationState.cullMode.to_wgpu(),
+            polygon_mode: descriptor.rasterizationState.polygonMode,
+        },
+        depth_stencil: descriptor.depthStencilState.as_ref().map(|x|x.to_wgpu(&descriptor.rasterizationState)),
+        multisample: wgt::MultisampleState {
+            count: descriptor.sampleCount,
+            mask: descriptor.sampleMask as u64,
+            alpha_to_coverage_enabled: descriptor.alphaToCoverageEnabled,
+        },
+        fragment: descriptor.fragmentStage.as_ref().map(|x| wgc::pipeline::FragmentState {
+            stage: x.to_wgpu(),
+            targets: Cow::Owned(make_slice(descriptor.colorStates, descriptor.colorStateCount as usize).iter().map(|x|x.to_wgpu()).collect()),
+        }
+        ),
     };
-    let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_render_pipeline(device_id, &desc, PhantomData, None));
+    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
     if let Some(err) = error {
         panic!("{:?}", err);
     }
