@@ -1104,6 +1104,7 @@ pub struct RasterizationStateDescriptor<'c> {
     pub depthBiasSlopeScale: f32,
     pub depthBiasClamp: f32,
     pub clampDepth: bool,
+    pub polygonMode: wgt::PolygonMode, // todo: move to nextInChain
 }
 
 #[allow(non_snake_case)]
@@ -1199,7 +1200,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             strip_index_format: descriptor.vertexState.indexFormat.to_wgpu(),
             front_face: descriptor.rasterizationState.frontFace,
             cull_mode: descriptor.rasterizationState.cullMode.to_wgpu(),
-            polygon_mode: Default::default() // todo: not in webgpu-headers
+            polygon_mode: descriptor.rasterizationState.polygonMode,
         },
         depth_stencil: descriptor.depthStencilState.as_ref().map(|x|x.to_wgpu(&descriptor.rasterizationState)),
         multisample: wgt::MultisampleState {
