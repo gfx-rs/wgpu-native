@@ -2279,8 +2279,9 @@ typedef uint64_t WGPUId_RenderPipeline_Dummy;
 typedef WGPUId_RenderPipeline_Dummy WGPURenderPipelineId;
 
 typedef struct WGPUProgrammableStageDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPUShaderModuleId module;
-  WGPULabel entry_point;
+  WGPULabel entryPoint;
 } WGPUProgrammableStageDescriptor;
 
 typedef struct WGPUVertexAttributeDescriptor {
@@ -2397,6 +2398,7 @@ typedef uint64_t WGPUId_ComputePipeline_Dummy;
 typedef WGPUId_ComputePipeline_Dummy WGPUComputePipelineId;
 
 typedef struct WGPUComputePipelineDescriptor {
+  const struct WGPUChainedStruct *nextInChain;
   WGPULabel label;
   WGPUOption_PipelineLayoutId layout;
   struct WGPUProgrammableStageDescriptor stage;
@@ -2465,7 +2467,7 @@ typedef WGPUId_QuerySet_Dummy WGPUQuerySetId;
 
 typedef struct WGPUShaderModuleSPIRVDescriptor {
   struct WGPUChainedStruct chain;
-  uint32_t code_size;
+  uint32_t codeSize;
   const uint32_t *code;
 } WGPUShaderModuleSPIRVDescriptor;
 

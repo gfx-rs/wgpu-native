@@ -125,7 +125,7 @@ int main(
                 .layout = pipeline_layout,
                 .stage = (WGPUProgrammableStageDescriptor){
                     .module = shader_module,
-                    .entry_point = "main"
+                    .entryPoint = "main"
                 }});
 
     WGPUCommandEncoderId encoder = wgpuDeviceCreateCommandEncoder(

@@ -147,11 +147,11 @@ int main() {
                     .layout = pipeline_layout,
                     .vertexStage = (WGPUProgrammableStageDescriptor) {
                             .module = vertex_shader,
-                            .entry_point = "main",
+                            .entryPoint = "main",
                     },
                     .fragmentStage = &(WGPUProgrammableStageDescriptor) {
                             .module = fragment_shader,
-                            .entry_point = "main",
+                            .entryPoint = "main",
                     },
                     .vertexState = (WGPUVertexStateDescriptor) {
                             .indexFormat = WGPUIndexFormat_Undefined,

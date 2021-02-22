@@ -804,10 +804,11 @@ pub struct ShaderModuleDescriptor<'c> {
     flags: wgt::ShaderFlags, // todo: make this part of nextInChain
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 pub struct ShaderModuleSPIRVDescriptor<'c> {
     chain: ChainedStruct<'c>,
-    code_size: u32,
+    codeSize: u32,
     code: *const u32,
 }
 
@@ -817,26 +818,35 @@ pub struct ShaderModuleWGSLDescriptor<'c> {
     source: *const c_char
 }
 
+unsafe fn map_spirv_descriptor<'a>(
+    _: &ShaderModuleDescriptor<'a>,
+    spriv: Option<&ShaderModuleSPIRVDescriptor>,
+) -> Option<ShaderModuleSource<'a>> {
+    spriv.map(|desc| {
+        let slice = make_slice(desc.code, desc.codeSize as usize);
+        ShaderModuleSource::SpirV(Cow::Borrowed(slice))
+    })
+}
+
+unsafe fn map_wgsl_descriptor<'a>(
+    _: &ShaderModuleDescriptor<'a>,
+    wgsl: Option<&ShaderModuleWGSLDescriptor>,
+) -> Option<ShaderModuleSource<'a>> {
+    wgsl.map(|desc| {
+        let c_str: &CStr = CStr::from_ptr(desc.source);
+        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
+    })
+}
+
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateShaderModule(
     device: id::DeviceId,
     descriptor: &ShaderModuleDescriptor,
 ) -> id::ShaderModuleId {
-    let chain = descriptor.nextInChain.expect("shader required");
-    let src = match chain.sType {
-        SType::ShaderModuleSPIRVDescriptor => {
-            let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
-            let slice = unsafe { make_slice(desc.code, desc.code_size as usize) };
-            ShaderModuleSource::SpirV(Cow::Borrowed(slice))
-        }
-        SType::ShaderModuleWGSLDescriptor => {
-            let desc: &ShaderModuleWGSLDescriptor = unsafe { std::mem::transmute(chain) };
-            let c_str: &CStr = unsafe { CStr::from_ptr(desc.source) };
-            let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
-            ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
-        }
-        _ => panic!("invalid type"),
-    };
+    let src = unsafe { follow_chain!(map_spirv_descriptor(descriptor, ShaderModuleSPIRVDescriptor => ShaderModuleSPIRVDescriptor))
+        .or_else(||follow_chain!(map_wgsl_descriptor(descriptor, ShaderModuleWGSLDescriptor => ShaderModuleWGSLDescriptor))) }
+        .expect("shader required");
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
         flags: descriptor.flags,
@@ -976,18 +986,20 @@ pub unsafe extern "C" fn wgpu_queue_submit(
         .expect("Unable to submit queue")
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
 #[derive(Clone)]
-pub struct ProgrammableStageDescriptor {
+pub struct ProgrammableStageDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub module: id::ShaderModuleId,
-    pub entry_point: Label,
+    pub entryPoint: Label,
 }
 
-impl<'a> ProgrammableStageDescriptor {
+impl<'a> ProgrammableStageDescriptor<'_> {
     fn to_wgpu(&self) -> wgc::pipeline::ProgrammableStageDescriptor<'a> {
         wgc::pipeline::ProgrammableStageDescriptor {
             module: self.module,
-            entry_point: OwnedLabel::new(self.entry_point).into_cow().unwrap(),
+            entry_point: OwnedLabel::new(self.entryPoint).into_cow().unwrap(),
         }
     }
 }
@@ -1170,8 +1182,8 @@ pub struct RenderPipelineDescriptor<'c> {
     pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
     pub layout: Option<id::PipelineLayoutId>,
-    pub vertexStage: ProgrammableStageDescriptor,
-    pub fragmentStage: *const ProgrammableStageDescriptor,
+    pub vertexStage: ProgrammableStageDescriptor<'c>,
+    pub fragmentStage: *const ProgrammableStageDescriptor<'c>,
     pub vertexState: VertexStateDescriptor<'c>,
     pub primitiveTopology: wgt::PrimitiveTopology,
     pub rasterizationState: RasterizationStateDescriptor<'c>,
@@ -1226,11 +1238,13 @@ pub extern "C" fn wgpu_render_pipeline_destroy(render_pipeline_id: id::RenderPip
     gfx_select!(render_pipeline_id => GLOBAL.render_pipeline_drop(render_pipeline_id))
 }
 
+#[allow(non_snake_case)]
 #[repr(C)]
-pub struct ComputePipelineDescriptor {
+pub struct ComputePipelineDescriptor<'c> {
+    pub nextInChain: Option<&'c ChainedStruct<'c>>,
     pub label: Label,
     pub layout: Option<id::PipelineLayoutId>,
-    pub stage: ProgrammableStageDescriptor,
+    pub stage: ProgrammableStageDescriptor<'c>,
 }
 
 #[no_mangle]

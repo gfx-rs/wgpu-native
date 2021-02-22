@@ -22,10 +22,10 @@ WGPUShaderModuleDescriptor read_file(const char *name) {
     WGPUShaderModuleSPIRVDescriptor *spirvDescriptor = malloc(sizeof(WGPUShaderModuleSPIRVDescriptor));
     spirvDescriptor->chain = (WGPUChainedStruct) {
         .next = NULL,
-        .s_type = WGPUSType_ShaderModuleSPIRVDescriptor
+        .sType = WGPUSType_ShaderModuleSPIRVDescriptor
     };
     spirvDescriptor->code = (uint32_t *) bytes;
-    spirvDescriptor->code_size = length / 4;
+    spirvDescriptor->codeSize = length / 4;
     return (WGPUShaderModuleDescriptor) {
         .nextInChain = (const WGPUChainedStruct *) spirvDescriptor,
         .label = NULL,
