@@ -866,10 +866,13 @@ impl ColorStateDescriptor<'_> {
     fn to_wgpu(&self) -> wgt::ColorTargetState {
         wgt::ColorTargetState {
             format: self.format,
-            blend: Some(wgt::BlendState {
-                color: self.colorBlend.to_wgpu(),
-                alpha: self.alphaBlend.to_wgpu(),
-            }),
+            blend: {
+                let state = wgt::BlendState {
+                    color: self.colorBlend.to_wgpu(),
+                    alpha: self.alphaBlend.to_wgpu(),
+                };
+                if state == wgt::BlendState::default() { None } else { Some(state) }
+            },
             write_mask: self.writeMask,
         }
     }
