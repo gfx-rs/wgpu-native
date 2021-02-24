@@ -843,8 +843,8 @@ pub struct BlendDescriptor {
 }
 
 impl BlendDescriptor {
-    fn to_wgpu(&self) -> wgt::BlendState {
-        wgt::BlendState {
+    fn to_wgpu(&self) -> wgt::BlendComponent {
+        wgt::BlendComponent {
             src_factor: self.srcFactor,
             dst_factor: self.dstFactor,
             operation: self.operation,
@@ -862,12 +862,30 @@ pub struct ColorStateDescriptor<'c> {
     pub writeMask: wgt::ColorWrite,
 }
 
+const DEFAULT_BLEND_STATE: wgt::BlendState = wgt::BlendState {
+    color: wgt::BlendComponent {
+        src_factor: wgt::BlendFactor::Zero,
+        dst_factor: wgt::BlendFactor::Zero,
+        operation: wgt::BlendOperation::Add,
+    },
+    alpha: wgt::BlendComponent {
+        src_factor: wgt::BlendFactor::Zero,
+        dst_factor: wgt::BlendFactor::Zero,
+        operation: wgt::BlendOperation::Add,
+    },
+};
+
 impl ColorStateDescriptor<'_> {
     fn to_wgpu(&self) -> wgt::ColorTargetState {
         wgt::ColorTargetState {
             format: self.format,
-            alpha_blend: self.alphaBlend.to_wgpu(),
-            color_blend: self.colorBlend.to_wgpu(),
+            blend: {
+                let state = wgt::BlendState {
+                    color: self.colorBlend.to_wgpu(),
+                    alpha: self.alphaBlend.to_wgpu(),
+                };
+                if state == DEFAULT_BLEND_STATE { None } else { Some(state) }
+            },
             write_mask: self.writeMask,
         }
     }
@@ -881,11 +899,11 @@ pub enum CullMode {
 }
 
 impl CullMode {
-    fn to_wgpu(&self) -> wgt::CullMode {
+    fn to_wgpu(&self) -> Option<wgt::Face> {
         match self {
-            CullMode::None => wgt::CullMode::None,
-            CullMode::Front => wgt::CullMode::Front,
-            CullMode::Back => wgt::CullMode::Back,
+            CullMode::None => None,
+            CullMode::Front => Some(wgt::Face::Front),
+            CullMode::Back => Some(wgt::Face::Back),
         }
     }
 }
