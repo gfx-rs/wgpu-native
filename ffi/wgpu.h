@@ -1859,7 +1859,7 @@ typedef uint64_t WGPUFeatures;
  */
 #define WGPUFeatures_ADDRESS_MODE_CLAMP_TO_BORDER (uint64_t)16777216
 /**
- * Allows the user to set a non-fill polygon mode in [`RasterizationStateDescriptor::polygon_mode`]
+ * Allows the user to set a non-fill polygon mode in [`PrimitiveState::polygon_mode`]
  *
  * This allows drawing polygons/triangles as lines (wireframe) or points instead of filled
  *

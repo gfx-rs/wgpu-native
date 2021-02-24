@@ -862,6 +862,19 @@ pub struct ColorStateDescriptor<'c> {
     pub writeMask: wgt::ColorWrite,
 }
 
+const DEFAULT_BLEND_STATE: wgt::BlendState = wgt::BlendState {
+    color: wgt::BlendComponent {
+        src_factor: wgt::BlendFactor::Zero,
+        dst_factor: wgt::BlendFactor::Zero,
+        operation: wgt::BlendOperation::Add,
+    },
+    alpha: wgt::BlendComponent {
+        src_factor: wgt::BlendFactor::Zero,
+        dst_factor: wgt::BlendFactor::Zero,
+        operation: wgt::BlendOperation::Add,
+    },
+};
+
 impl ColorStateDescriptor<'_> {
     fn to_wgpu(&self) -> wgt::ColorTargetState {
         wgt::ColorTargetState {
@@ -871,7 +884,7 @@ impl ColorStateDescriptor<'_> {
                     color: self.colorBlend.to_wgpu(),
                     alpha: self.alphaBlend.to_wgpu(),
                 };
-                if state == wgt::BlendState::default() { None } else { Some(state) }
+                if state == DEFAULT_BLEND_STATE { None } else { Some(state) }
             },
             write_mask: self.writeMask,
         }
