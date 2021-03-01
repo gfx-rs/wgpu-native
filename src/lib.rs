@@ -161,7 +161,7 @@ pub unsafe extern "C" fn wgpu_get_version() -> std::os::raw::c_uint {
     let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse().unwrap();
     let pre: u32 = match env!("CARGO_PKG_VERSION_PRE").parse::<u32>() {
         Ok(n) => n,
-        Err(e) => 0,
+        Err(_e) => 0,
     };
     (major << 24) + (minor << 16) + (patch << 8) + pre
 }
