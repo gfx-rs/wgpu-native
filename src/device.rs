@@ -1,1078 +1,440 @@
-use crate::{check_error, follow_chain, ChainedStruct, Label, OwnedLabel, SType, GLOBAL, IndexFormat, make_slice};
-
-use wgc::{
-    device::HostMap, gfx_select, hub::Token, id, pipeline::ShaderModuleSource,
-};
-use wgt::{Backend, BackendBit, DeviceType, Limits};
-
-use libc::c_char;
+use crate::{check_error, follow_chain, make_slice, map_enum, native, Label, OwnedLabel, GLOBAL};
 use std::{
-    borrow::Cow, ffi::CString, marker::PhantomData, num::NonZeroU32, num::NonZeroU64, ptr,
+    borrow::Cow,
+    ffi::CStr,
+    marker::PhantomData,
+    num::{NonZeroU32, NonZeroU64},
+    path::Path,
 };
-use std::ffi::CStr;
-
-pub type RequestAdapterCallback =
-    unsafe extern "C" fn(id: id::AdapterId, userdata: *mut std::ffi::c_void);
-
-// see https://github.com/rust-windowing/raw-window-handle/issues/49
-struct PseudoRwh(raw_window_handle::RawWindowHandle);
-unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
-    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
-        self.0.clone()
-    }
-}
-
-#[repr(C)]
-pub struct RenderBundleEncoderDescriptor {
-    label: Label,
-    color_formats: *const wgt::TextureFormat,
-    color_formats_length: usize,
-    depth_stencil_format: *const wgt::TextureFormat,
-    sample_count: u32,
-}
-
-#[repr(C)]
-pub struct BindGroupEntry {
-    pub binding: u32,
-    pub buffer: Option<id::BufferId>,
-    pub offset: wgt::BufferAddress,
-    pub size: wgt::BufferSize,
-    pub sampler: Option<id::SamplerId>,
-    pub texture_view: Option<id::TextureViewId>,
-}
-
-#[repr(C)]
-pub struct BindGroupDescriptor {
-    pub label: Label,
-    pub layout: id::BindGroupLayoutId,
-    pub entries: *const BindGroupEntry,
-    pub entries_length: usize,
-}
-
-pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
-    GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData)
-}
-
-#[cfg(all(
-    unix,
-    not(target_os = "android"),
-    not(target_os = "ios"),
-    not(target_os = "macos")
-))]
-#[no_mangle]
-pub extern "C" fn wgpu_create_surface_from_xlib(
-    display: *mut *const std::ffi::c_void,
-    window: libc::c_ulong,
-) -> id::SurfaceId {
-    use raw_window_handle::unix::XlibHandle;
-    wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(XlibHandle {
-        window,
-        display: display as *mut _,
-        ..XlibHandle::empty()
-    }))
-}
-
-#[cfg(all(
-    unix,
-    not(target_os = "android"),
-    not(target_os = "ios"),
-    not(target_os = "macos")
-))]
-#[no_mangle]
-pub extern "C" fn wgpu_create_surface_from_wayland(
-    surface: *mut std::ffi::c_void,
-    display: *mut std::ffi::c_void,
-) -> id::SurfaceId {
-    use raw_window_handle::unix::WaylandHandle;
-    wgpu_create_surface(raw_window_handle::RawWindowHandle::Wayland(WaylandHandle {
-        surface,
-        display,
-        ..WaylandHandle::empty()
-    }))
-}
-
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub extern "C" fn wgpu_create_surface_from_android(
-    a_native_window: *mut std::ffi::c_void,
-) -> id::SurfaceId {
-    use raw_window_handle::android::AndroidHandle;
-    wgpu_create_surface(raw_window_handle::RawWindowHandle::Android(AndroidHandle {
-        a_native_window,
-        ..AndroidHandle::empty()
-    }))
-}
-
-#[cfg(any(target_os = "ios", target_os = "macos"))]
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_create_surface_from_metal_layer(
-    layer: *mut std::ffi::c_void,
-) -> id::SurfaceId {
-    let surface = wgc::instance::Surface {
-        #[cfg(feature = "vulkan-portability")]
-        vulkan: None, //TODO: currently requires `NSView`
-        metal: GLOBAL
-            .instance
-            .metal
-            .as_ref()
-            .map(|inst| inst.create_surface_from_layer(std::mem::transmute(layer))),
-    };
-
-    let id = GLOBAL.surfaces.process_id(PhantomData);
-    GLOBAL.surfaces.register(id, surface, &mut Token::root());
-
-    id
-}
-
-#[cfg(windows)]
-#[no_mangle]
-pub extern "C" fn wgpu_create_surface_from_windows_hwnd(
-    _hinstance: *mut std::ffi::c_void,
-    hwnd: *mut std::ffi::c_void,
-) -> id::SurfaceId {
-    use raw_window_handle::windows::WindowsHandle;
-    wgpu_create_surface(raw_window_handle::RawWindowHandle::Windows(
-        raw_window_handle::windows::WindowsHandle {
-            hwnd,
-            ..WindowsHandle::empty()
-        },
-    ))
-}
+use wgc::{gfx_select, id, pipeline::ShaderModuleSource};
 
 #[no_mangle]
-pub fn wgpu_enumerate_adapters(mask: BackendBit) -> Vec<id::AdapterId> {
-    GLOBAL.enumerate_adapters(wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData))
-}
-
-/// # Safety
-///
-/// This function is unsafe as it calls an unsafe extern callback.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_request_adapter_async(
-    desc: Option<&wgc::instance::RequestAdapterOptions>,
-    mask: BackendBit,
-    callback: RequestAdapterCallback,
-    userdata: *mut std::ffi::c_void,
+pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
+    _: native::WGPUInstance,
+    options: *const native::WGPURequestAdapterOptions,
+    callback: native::WGPURequestAdapterCallback,
+    userdata: *mut std::os::raw::c_void,
 ) {
+    let compatible_surface: Option<id::SurfaceId> =
+        options.as_ref().map(|options| options.compatibleSurface);
     let id = GLOBAL
         .request_adapter(
-            &desc.cloned().unwrap_or(wgt::RequestAdapterOptions {
+            &wgt::RequestAdapterOptions {
                 power_preference: wgt::PowerPreference::default(),
-                compatible_surface: None,
-            }),
-            wgc::instance::AdapterInputs::Mask(mask, |_| PhantomData),
+                compatible_surface,
+            },
+            wgc::instance::AdapterInputs::Mask(wgt::BackendBit::PRIMARY, |_| PhantomData),
         )
         .expect("Unable to request adapter");
-    callback(id, userdata);
-}
-
-#[repr(C)]
-pub struct CLimits {
-    max_bind_groups: u32,
-}
-
-impl From<wgt::Limits> for CLimits {
-    fn from(other: Limits) -> Self {
-        Self {
-            max_bind_groups: other.max_bind_groups,
-        }
-    }
-}
-
-#[repr(u8)]
-pub enum CDeviceType {
-    /// Other.
-    Other = 0,
-    /// Integrated GPU with shared CPU/GPU memory.
-    IntegratedGpu,
-    /// Discrete GPU with separate CPU/GPU memory.
-    DiscreteGpu,
-    /// Virtual / Hosted.
-    VirtualGpu,
-    /// Cpu / Software Rendering.
-    Cpu,
-}
-
-impl From<DeviceType> for CDeviceType {
-    fn from(other: DeviceType) -> Self {
-        match other {
-            DeviceType::Other => CDeviceType::Other,
-            DeviceType::IntegratedGpu => CDeviceType::IntegratedGpu,
-            DeviceType::DiscreteGpu => CDeviceType::DiscreteGpu,
-            DeviceType::VirtualGpu => CDeviceType::VirtualGpu,
-            DeviceType::Cpu => CDeviceType::Cpu,
-        }
-    }
-}
-
-#[repr(C)]
-pub struct CAdapterInfo {
-    /// Adapter name
-    pub name: *mut c_char,
-    /// Length of the adapter name
-    pub name_length: usize,
-    /// Vendor PCI id of the adapter
-    pub vendor: usize,
-    /// PCI id of the adapter
-    pub device: usize,
-    /// Type of device
-    pub device_type: CDeviceType,
-    /// Backend used for device
-    pub backend: Backend,
-}
-
-#[repr(C)]
-pub struct CDeviceDescriptor {
-    label: Label,
-    features: wgt::Features,
-    limits: CLimits,
-    trace_path: *const std::os::raw::c_char,
+    (callback.unwrap())(id, userdata);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_adapter_request_device(
-    adapter_id: id::AdapterId,
-    desc: &CDeviceDescriptor,
-) -> id::DeviceId {
-    let trace_cstr = if desc.trace_path.is_null() {
-        None
+pub unsafe extern "C" fn wgpuAdapterRequestDevice(
+    adapter: id::AdapterId,
+    descriptor: &native::WGPUDeviceDescriptor,
+    callback: native::WGPURequestDeviceCallback,
+    userdata: *mut ::std::os::raw::c_void,
+) {
+    let (desc, trace_str) = follow_chain!(
+        map_device_descriptor(descriptor,
+        WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+    );
+    let trace_path = trace_str.as_ref().map(|path| Path::new(path));
+    let device_id = check_error(
+        gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, PhantomData)),
+    );
+    (callback.unwrap())(device_id, userdata);
+}
+
+fn map_device_descriptor<'a>(
+    _: &native::WGPUDeviceDescriptor,
+    extras: Option<&native::WGPUDeviceExtras>,
+) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
+    if let Some(extras) = extras {
+        (
+            wgt::DeviceDescriptor {
+                label: OwnedLabel::new(extras.label).into_cow(),
+                features: wgt::Features::empty(),
+                limits: wgt::Limits {
+                    max_bind_groups: extras.maxBindGroups,
+                    ..wgt::Limits::default()
+                },
+            },
+            OwnedLabel::new(extras.tracePath).into_inner(),
+        )
     } else {
-        Some(std::ffi::CStr::from_ptr(desc.trace_path))
-    };
-    let trace_cow = trace_cstr.as_ref().map(|cstr| cstr.to_string_lossy());
-    let trace_path = trace_cow
-        .as_ref()
-        .map(|cow| std::path::Path::new(cow.as_ref()));
-    let desc = wgt::DeviceDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
-        features: desc.features,
-        limits: Limits {
-            max_bind_groups: desc.limits.max_bind_groups,
-            ..Limits::default()
-        },
+        (
+            wgt::DeviceDescriptor {
+                label: None,
+                features: wgt::Features::empty(),
+                limits: wgt::Limits::default(),
+            },
+            None,
+        )
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
+    device: id::DeviceId,
+    descriptor: &native::WGPUShaderModuleDescriptor,
+) -> id::ShaderModuleId {
+    let label = OwnedLabel::new(descriptor.label);
+    let source = follow_chain!(
+        map_shader_module(descriptor,
+        WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
+        WGPUSType_ShaderModuleWGSLDescriptor => native::WGPUShaderModuleWGSLDescriptor)
+    );
+
+    let desc = wgc::pipeline::ShaderModuleDescriptor {
+        label: label.as_cow(),
+        flags: wgt::ShaderFlags::VALIDATION,
     };
     check_error(
-        gfx_select!(adapter_id => GLOBAL.adapter_request_device(adapter_id, &desc, trace_path, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, source, PhantomData)),
     )
 }
 
-#[no_mangle]
-pub extern "C" fn wgpu_adapter_features(adapter_id: id::AdapterId) -> wgt::Features {
-    gfx_select!(adapter_id => GLOBAL.adapter_features(adapter_id))
-        .expect("Unable to get adapter features")
+fn map_shader_module<'a>(
+    _: &native::WGPUShaderModuleDescriptor,
+    spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
+    wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
+) -> ShaderModuleSource<'a> {
+    if let Some(wgsl) = wgsl {
+        let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.source) };
+        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
+    } else if let Some(spirv) = spirv {
+        let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
+        ShaderModuleSource::SpirV(Cow::Borrowed(slice))
+    } else {
+        panic!("Shader not provided.");
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_adapter_limits(adapter_id: id::AdapterId) -> CLimits {
-    gfx_select!(adapter_id => GLOBAL.adapter_limits(adapter_id))
-        .expect("Unable to get adapter limits")
-        .into()
-}
-
-pub fn adapter_get_info(adapter_id: id::AdapterId) -> wgt::AdapterInfo {
-    gfx_select!(adapter_id => GLOBAL.adapter_get_info(adapter_id))
-        .expect("Unable to get adapter info")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_adapter_destroy(adapter_id: id::AdapterId) {
-    gfx_select!(adapter_id => GLOBAL.adapter_drop(adapter_id))
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_features(device_id: id::DeviceId) -> wgt::Features {
-    gfx_select!(device_id => GLOBAL.device_features(device_id))
-        .expect("Unable to get device features")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_limits(device_id: id::DeviceId) -> CLimits {
-    gfx_select!(device_id => GLOBAL.device_limits(device_id))
-        .expect("Unable to get device limits")
-        .into()
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_create_buffer(
-    device_id: id::DeviceId,
-    desc: &wgt::BufferDescriptor<Label>,
+pub extern "C" fn wgpuDeviceCreateBuffer(
+    device: id::DeviceId,
+    desc: &native::WGPUBufferDescriptor,
 ) -> id::BufferId {
-    let desc = desc.map_label(|l| OwnedLabel::new(*l).into_cow());
-    check_error(
-        gfx_select!(device_id => GLOBAL.device_create_buffer(device_id, &desc, PhantomData)),
-    )
+    let usage = wgt::BufferUsage::from_bits(desc.usage).expect("Buffer Usage Invalid.");
+    let label = OwnedLabel::new(desc.label);
+    check_error(gfx_select!(device => GLOBAL.device_create_buffer(
+        device,
+        &wgt::BufferDescriptor {
+            label: label.as_cow(),
+            size: desc.size,
+            usage,
+            mapped_at_creation: desc.mappedAtCreation,
+        },
+        PhantomData
+    )))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId, now: bool) {
-    gfx_select!(buffer_id => GLOBAL.buffer_drop(buffer_id, now))
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_create_texture(
-    device_id: id::DeviceId,
-    desc: &wgt::TextureDescriptor<Label>,
-) -> id::TextureId {
-    let desc = desc.map_label(|l| OwnedLabel::new(*l).into_cow());
-    check_error(
-        gfx_select!(device_id => GLOBAL.device_create_texture(device_id, &desc, PhantomData)),
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId, now: bool) {
-    gfx_select!(texture_id => GLOBAL.texture_drop(texture_id, now))
-}
-
-#[repr(C)]
-pub struct TextureViewDescriptor {
-    pub label: Label,
-    pub format: Option<wgt::TextureFormat>,
-    pub dimension: Option<wgt::TextureViewDimension>,
-    pub aspect: wgt::TextureAspect,
-    pub base_mip_level: u32,
-    pub level_count: u32,
-    pub base_array_layer: u32,
-    pub array_layer_count: u32,
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_texture_create_view(
-    texture_id: id::TextureId,
-    desc: Option<&TextureViewDescriptor>,
-) -> id::TextureViewId {
-    let desc = desc
-        .map(|desc| wgc::resource::TextureViewDescriptor {
-            label: OwnedLabel::new(desc.label).into_cow(),
-            format: desc.format,
-            dimension: desc.dimension,
-            aspect: desc.aspect,
-            base_mip_level: desc.base_mip_level,
-            level_count: NonZeroU32::new(desc.level_count),
-            base_array_layer: desc.base_array_layer,
-            array_layer_count: NonZeroU32::new(desc.array_layer_count),
-        })
-        .unwrap_or(wgc::resource::TextureViewDescriptor::default());
-
-    check_error(
-        gfx_select!(texture_id => GLOBAL.texture_create_view(texture_id, &desc, PhantomData)),
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_texture_view_destroy(texture_view_id: id::TextureViewId, now: bool) {
-    gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id, now))
-        .expect("Unable to destroy texture view")
-}
-
-#[repr(C)]
-pub struct AnisotropicSamplerDescriptorExt<'c> {
-    pub next_in_chain: Option<&'c ChainedStruct<'c>>,
-    pub s_type: SType,
-    pub anisotropic_clamp: u8,
-}
-
-#[repr(u32)]
-#[derive(Clone, Copy)]
-pub enum CompareFunction {
-    Undefined,
-    Never,
-    Less,
-    LessEqual,
-    Greater,
-    GreaterEqual,
-    Equal,
-    NotEqual,
-    Always,
-}
-
-impl Into<Option<wgt::CompareFunction>> for CompareFunction {
-    fn into(self) -> Option<wgt::CompareFunction> {
-        match self {
-            CompareFunction::Undefined => None,
-            CompareFunction::Never => Some(wgt::CompareFunction::Never),
-            CompareFunction::Less => Some(wgt::CompareFunction::Less),
-            CompareFunction::LessEqual => Some(wgt::CompareFunction::LessEqual),
-            CompareFunction::Greater => Some(wgt::CompareFunction::Greater),
-            CompareFunction::GreaterEqual => Some(wgt::CompareFunction::GreaterEqual),
-            CompareFunction::Equal => Some(wgt::CompareFunction::Equal),
-            CompareFunction::NotEqual => Some(wgt::CompareFunction::NotEqual),
-            CompareFunction::Always => Some(wgt::CompareFunction::Less),
-        }
-    }
-}
-
-#[repr(C)]
-pub struct SamplerDescriptor<'c> {
-    pub next_in_chain: Option<&'c ChainedStruct<'c>>,
-    pub label: Label,
-    pub address_mode_u: wgt::AddressMode,
-    pub address_mode_v: wgt::AddressMode,
-    pub address_mode_w: wgt::AddressMode,
-    pub mag_filter: wgt::FilterMode,
-    pub min_filter: wgt::FilterMode,
-    pub mipmap_filter: wgt::FilterMode,
-    pub lod_min_clamp: f32,
-    pub lod_max_clamp: f32,
-    pub compare: CompareFunction,
-    pub border_color: Option<wgt::SamplerBorderColor>,
-}
-
-unsafe fn map_sampler_descriptor<'a>(
-    base: &SamplerDescriptor<'a>,
-    anisotropic: Option<&AnisotropicSamplerDescriptorExt>,
-) -> wgc::resource::SamplerDescriptor<'a> {
-    wgc::resource::SamplerDescriptor {
-        label: OwnedLabel::new(base.label).into_cow(),
-        address_modes: [
-            base.address_mode_u,
-            base.address_mode_v,
-            base.address_mode_w,
-        ],
-        mag_filter: base.mag_filter,
-        min_filter: base.min_filter,
-        mipmap_filter: base.mipmap_filter,
-        lod_min_clamp: base.lod_min_clamp,
-        lod_max_clamp: base.lod_max_clamp,
-        compare: base.compare.into(),
-        border_color: base.border_color,
-        anisotropy_clamp: anisotropic.and_then(|a| std::num::NonZeroU8::new(a.anisotropic_clamp)),
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_sampler(
-    device_id: id::DeviceId,
-    desc: &SamplerDescriptor,
-) -> id::SamplerId {
-    let full_desc = follow_chain!(map_sampler_descriptor(desc, AnisotropicFiltering => AnisotropicSamplerDescriptorExt));
-    check_error(
-        gfx_select!(device_id => GLOBAL.device_create_sampler(device_id, &full_desc, PhantomData)),
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_sampler_destroy(sampler_id: id::SamplerId) {
-    gfx_select!(sampler_id => GLOBAL.sampler_drop(sampler_id))
-}
-
-#[repr(u32)]
-pub enum BindingType {
-    UniformBuffer = 0,
-    StorageBuffer = 1,
-    ReadonlyStorageBuffer = 2,
-    Sampler = 3,
-    ComparisonSampler = 4,
-    SampledTexture = 5,
-    ReadonlyStorageTexture = 6,
-    WriteonlyStorageTexture = 7,
-}
-
-#[repr(u32)]
-pub enum TextureComponentType {
-    Float = 0,
-    Sint = 1,
-    Uint = 2,
-    DepthComparison = 3,
-}
-
-impl TextureComponentType {
-    fn to_wgpu(&self, filterable: bool) -> wgt::TextureSampleType {
-        match self {
-            TextureComponentType::Float => wgt::TextureSampleType::Float { filterable },
-            TextureComponentType::Sint => wgt::TextureSampleType::Sint,
-            TextureComponentType::Uint => wgt::TextureSampleType::Uint,
-            TextureComponentType::DepthComparison => wgt::TextureSampleType::Depth,
-        }
-    }
-}
-#[repr(C)]
-pub struct BindGroupLayoutEntry {
-    pub binding: u32,
-    pub visibility: wgt::ShaderStage,
-    pub ty: BindingType,
-    pub has_dynamic_offset: bool,
-    pub min_buffer_binding_size: u64,
-    pub multisampled: bool,
-    pub filtering: bool,
-    pub view_dimension: wgt::TextureViewDimension,
-    pub texture_component_type: TextureComponentType,
-    pub storage_texture_format: wgt::TextureFormat,
-    pub count: u32,
-}
-
-#[repr(C)]
-pub struct BindGroupLayoutDescriptor {
-    pub label: Label,
-    pub entries: *const BindGroupLayoutEntry,
-    pub entries_length: usize,
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_bind_group_layout(
-    device_id: id::DeviceId,
-    desc: &BindGroupLayoutDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
+    device: id::DeviceId,
+    descriptor: &native::WGPUBindGroupLayoutDescriptor,
 ) -> id::BindGroupLayoutId {
     let mut entries = Vec::new();
-    for entry in make_slice(desc.entries, desc.entries_length) {
-        let ty = match entry.ty {
-            BindingType::UniformBuffer => wgt::BindingType::Buffer {
-                ty: wgt::BufferBindingType::Uniform,
-                has_dynamic_offset: entry.has_dynamic_offset,
-                min_binding_size: NonZeroU64::new(entry.min_buffer_binding_size),
-            },
-            BindingType::StorageBuffer => wgt::BindingType::Buffer {
-                ty: wgt::BufferBindingType::Storage { read_only: false },
-                has_dynamic_offset: entry.has_dynamic_offset,
-                min_binding_size: NonZeroU64::new(entry.min_buffer_binding_size),
-            },
-            BindingType::ReadonlyStorageBuffer => wgt::BindingType::Buffer {
-                ty: wgt::BufferBindingType::Storage { read_only: true },
-                has_dynamic_offset: entry.has_dynamic_offset,
-                min_binding_size: NonZeroU64::new(entry.min_buffer_binding_size),
-            },
-            BindingType::Sampler => wgt::BindingType::Sampler {
-                comparison: false,
-                filtering: entry.filtering,
-            },
-            BindingType::ComparisonSampler => wgt::BindingType::Sampler {
-                comparison: true,
-                filtering: entry.filtering,
-            },
-            BindingType::SampledTexture => wgt::BindingType::Texture {
-                view_dimension: entry.view_dimension,
-                sample_type: entry.texture_component_type.to_wgpu(entry.filtering),
-                multisampled: entry.multisampled,
-            },
-            BindingType::ReadonlyStorageTexture => wgt::BindingType::StorageTexture {
-                view_dimension: entry.view_dimension,
-                format: entry.storage_texture_format,
-                access: wgt::StorageTextureAccess::ReadOnly,
-            },
-            BindingType::WriteonlyStorageTexture => wgt::BindingType::StorageTexture {
-                view_dimension: entry.view_dimension,
-                format: entry.storage_texture_format,
-                access: wgt::StorageTextureAccess::WriteOnly,
-            },
+
+    for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
+        let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
+        let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
+        let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
+        let is_storage_texture =
+            entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
+
+        let ty = if is_texture || is_sampler || is_storage_texture {
+            unimplemented!();
+        } else if is_buffer {
+            wgt::BindingType::Buffer {
+                ty: match entry.buffer.type_ {
+                    native::WGPUBufferBindingType_Uniform => wgt::BufferBindingType::Uniform,
+                    native::WGPUBufferBindingType_Storage => {
+                        wgt::BufferBindingType::Storage { read_only: false }
+                    }
+                    native::WGPUBufferBindingType_ReadOnlyStorage => {
+                        wgt::BufferBindingType::Storage { read_only: true }
+                    }
+                    x => panic!("Unknown Buffer Type: {}", x),
+                },
+                has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                min_binding_size: NonZeroU64::new(entry.buffer.minBindingSize),
+            }
+        } else {
+            panic!("No entry type specified.");
         };
+
         entries.push(wgt::BindGroupLayoutEntry {
-            binding: entry.binding,
-            visibility: entry.visibility,
             ty,
-            count: NonZeroU32::new(entry.count),
+            binding: entry.binding,
+            visibility: wgt::ShaderStage::from_bits(entry.visibility).unwrap(),
+            count: None, // TODO - What is this?
         });
     }
-    let label = OwnedLabel::new(desc.label);
+    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupLayoutDescriptor {
         label: label.as_cow(),
         entries: Cow::Borrowed(&entries),
     };
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_bind_group_layout(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_bind_group_layout(device, &desc, PhantomData)),
     )
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_bind_group_layout_destroy(bind_group_layout_id: id::BindGroupLayoutId) {
-    gfx_select!(bind_group_layout_id => GLOBAL.bind_group_layout_drop(bind_group_layout_id))
-}
+pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
+    device: id::DeviceId,
+    descriptor: &native::WGPUBindGroupDescriptor,
+) -> id::BindGroupId {
+    let mut entries = Vec::new();
 
-#[repr(C)]
-pub struct PipelineLayoutDescriptor {
-    label: Label,
-    bind_group_layouts: *const id::BindGroupLayoutId,
-    bind_group_layouts_length: usize,
+    for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
+        entries.push(
+            //TODO: Not all things are buffers!
+            wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::Buffer(
+                    wgc::binding_model::BufferBinding {
+                        buffer_id: entry.buffer,
+                        offset: entry.offset,
+                        size: NonZeroU64::new(entry.size),
+                    },
+                ),
+            },
+        )
+    }
+
+    let label = OwnedLabel::new(descriptor.label);
+    let desc = wgc::binding_model::BindGroupDescriptor {
+        label: label.as_cow(),
+        layout: descriptor.layout,
+        entries: Cow::Borrowed(&entries),
+    };
+    check_error(gfx_select!(device => GLOBAL.device_create_bind_group(device, &desc, PhantomData)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_pipeline_layout(
-    device_id: id::DeviceId,
-    desc_base: &PipelineLayoutDescriptor,
+pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
+    device: id::DeviceId,
+    descriptor: &native::WGPUPipelineLayoutDescriptor,
 ) -> id::PipelineLayoutId {
     let desc = wgc::binding_model::PipelineLayoutDescriptor {
-        label: OwnedLabel::new(desc_base.label).into_cow(),
+        label: OwnedLabel::new(descriptor.label).into_cow(),
         bind_group_layouts: Cow::Borrowed(make_slice(
-            desc_base.bind_group_layouts,
-            desc_base.bind_group_layouts_length,
+            descriptor.bindGroupLayouts,
+            descriptor.bindGroupLayoutCount as usize,
         )),
         push_constant_ranges: Cow::Borrowed(&[]),
     };
     check_error(
-        gfx_select!(device_id => GLOBAL.device_create_pipeline_layout(device_id, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_pipeline_layout(device, &desc, PhantomData)),
     )
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_pipeline_layout_destroy(pipeline_layout_id: id::PipelineLayoutId) {
-    gfx_select!(pipeline_layout_id => GLOBAL.pipeline_layout_drop(pipeline_layout_id))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_bind_group(
-    device_id: id::DeviceId,
-    desc: &BindGroupDescriptor,
-) -> id::BindGroupId {
-    let entries = make_slice(desc.entries, desc.entries_length)
-        .iter()
-        .map(|entry| wgc::binding_model::BindGroupEntry {
-            binding: entry.binding,
-            resource: if let Some(id) = entry.buffer {
-                wgc::binding_model::BindingResource::Buffer(wgc::binding_model::BufferBinding {
-                    buffer_id: id,
-                    offset: entry.offset,
-                    size: Some(entry.size),
-                })
-            } else if let Some(id) = entry.sampler {
-                wgc::binding_model::BindingResource::Sampler(id)
-            } else if let Some(id) = entry.texture_view {
-                wgc::binding_model::BindingResource::TextureView(id)
-            } else {
-                panic!("Unknown binding!");
-            },
-        })
-        .collect::<Vec<_>>();
-    let label = OwnedLabel::new(desc.label);
-    let desc = wgc::binding_model::BindGroupDescriptor {
-        label: label.as_cow(),
-        layout: desc.layout,
-        entries: Cow::Borrowed(&entries),
+pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
+    device: id::DeviceId,
+    descriptor: &native::WGPUComputePipelineDescriptor,
+) -> id::ComputePipelineId {
+    let stage = wgc::pipeline::ProgrammableStageDescriptor {
+        module: descriptor.computeStage.module,
+        entry_point: OwnedLabel::new(descriptor.computeStage.entryPoint)
+            .into_cow()
+            .expect("Entry point not provided"),
     };
-    check_error(
-        gfx_select!(device_id => GLOBAL.device_create_bind_group(device_id, &desc, PhantomData)),
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_bind_group_destroy(bind_group_id: id::BindGroupId) {
-    gfx_select!(bind_group_id => GLOBAL.bind_group_drop(bind_group_id))
-}
-
-#[repr(C)]
-pub struct ShaderModuleDescriptor<'c> {
-    next_in_chain: Option<&'c ChainedStruct<'c>>,
-    label: Label,
-    flags: wgt::ShaderFlags,
-}
-
-#[repr(C)]
-pub struct ShaderModuleSPIRVDescriptor<'c> {
-    chain: ChainedStruct<'c>,
-    code_size: u32,
-    code: *const u32,
-}
-
-#[repr(C)]
-pub struct ShaderModuleWGSLDescriptor<'c> {
-    chain: ChainedStruct<'c>,
-    source: *const c_char
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_create_shader_module(
-    device_id: id::DeviceId,
-    desc: &ShaderModuleDescriptor,
-) -> id::ShaderModuleId {
-    let chain = desc.next_in_chain.expect("shader required");
-    let src = match chain.s_type {
-        SType::ShaderModuleSPIRVDescriptor => {
-            let desc: &ShaderModuleSPIRVDescriptor = unsafe { std::mem::transmute(chain) };
-            let slice = unsafe { make_slice(desc.code, desc.code_size as usize) };
-            ShaderModuleSource::SpirV(Cow::Borrowed(slice))
-        }
-        SType::ShaderModuleWGSLDescriptor => {
-            let desc: &ShaderModuleWGSLDescriptor = unsafe { std::mem::transmute(chain) };
-            let c_str: &CStr = unsafe { CStr::from_ptr(desc.source) };
-            let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
-            ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
-        }
-        _ => panic!("invalid type"),
+    let desc = wgc::pipeline::ComputePipelineDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        layout: Some(descriptor.layout),
+        stage,
     };
-    let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
-        flags: desc.flags,
-    };
-    check_error(
-        gfx_select!(device_id => GLOBAL.device_create_shader_module(device_id, &desc, src, PhantomData)),
-    )
+
+    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
+
+    check_error((id, error))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_shader_module_destroy(shader_module_id: id::ShaderModuleId) {
-    gfx_select!(shader_module_id => GLOBAL.shader_module_drop(shader_module_id))
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_create_command_encoder(
-    device_id: id::DeviceId,
-    desc: &wgt::CommandEncoderDescriptor<Label>,
+pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
+    device: id::DeviceId,
+    descriptor: &native::WGPUCommandEncoderDescriptor,
 ) -> id::CommandEncoderId {
-    let desc = &desc.map_label(|l| OwnedLabel::new(*l).into_cow());
-    check_error(
-        gfx_select!(device_id => GLOBAL.device_create_command_encoder(device_id, desc, PhantomData)),
-    )
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_command_encoder_destroy(command_encoder_id: id::CommandEncoderId) {
-    gfx_select!(command_encoder_id => GLOBAL.command_encoder_drop(command_encoder_id))
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_command_buffer_destroy(command_buffer_id: id::CommandBufferId) {
-    gfx_select!(command_buffer_id => GLOBAL.command_buffer_drop(command_buffer_id))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_device_create_render_bundle_encoder(
-    device_id: id::DeviceId,
-    desc: &RenderBundleEncoderDescriptor,
-) -> id::RenderBundleEncoderId {
-    let label = OwnedLabel::new(desc.label);
-    let desc = wgc::command::RenderBundleEncoderDescriptor {
-        label: label.as_cow(),
-        color_formats: if desc.color_formats_length != 0 {
-            Cow::Borrowed(make_slice(
-                desc.color_formats,
-                desc.color_formats_length,
-            ))
-        } else {
-            Cow::Borrowed(&[])
-        },
-        depth_stencil_format: desc.depth_stencil_format.as_ref().cloned(),
-        sample_count: desc.sample_count,
+    let desc = wgt::CommandEncoderDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
     };
-    check_error(GLOBAL.device_create_render_bundle_encoder(device_id, &desc))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_render_bundle_encoder_finish(
-    bundle_encoder_id: id::RenderBundleEncoderId,
-    desc: Option<&wgt::RenderBundleDescriptor<Label>>,
-) -> id::RenderBundleId {
-    let bundle = *Box::from_raw(bundle_encoder_id);
-    let desc = desc
-        .map(|d| d.map_label(|l| OwnedLabel::new(*l).into_cow()))
-        .unwrap_or(wgt::RenderBundleDescriptor { label: None });
     check_error(
-        gfx_select!(bundle.parent() => GLOBAL.render_bundle_encoder_finish(bundle, &desc, PhantomData)),
+        gfx_select!(device => GLOBAL.device_create_command_encoder(device, &desc, PhantomData)),
     )
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_render_bundle_destroy(render_bundle_id: id::RenderBundleId) {
-    gfx_select!(render_bundle_id => GLOBAL.render_bundle_drop(render_bundle_id))
+pub unsafe extern "C" fn wgpuDeviceGetQueue(device: id::DeviceId) -> id::QueueId {
+    device
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_get_default_queue(device_id: id::DeviceId) -> id::QueueId {
-    device_id
-}
-
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given `data`
-/// pointer is valid for `data_length` elements.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_queue_write_buffer(
-    queue_id: id::QueueId,
-    buffer_id: id::BufferId,
-    buffer_offset: wgt::BufferAddress,
-    data: *const u8,
-    data_length: usize,
-) {
-    let slice = make_slice(data, data_length);
-    gfx_select!(queue_id => GLOBAL.queue_write_buffer(queue_id, buffer_id, buffer_offset, slice))
-        .expect("Unable to write buffer")
-}
-
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given `data`
-/// pointer is valid for `data_length` elements.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_queue_write_texture(
-    queue_id: id::QueueId,
-    texture: &crate::command::TextureCopyViewC,
-    data: *const u8,
-    data_length: usize,
-    data_layout: &wgt::TextureDataLayout,
-    size: &wgt::Extent3d,
-) {
-    let slice = make_slice(data, data_length);
-    gfx_select!(queue_id => GLOBAL.queue_write_texture(queue_id, &texture.to_wgpu(), slice, data_layout, size))
-        .expect("Unable to write texture")
-}
-
-/// # Safety
-///
-/// This function is unsafe as there is no guarantee that the given `command_buffers`
-/// pointer is valid for `command_buffers_length` elements.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_queue_submit(
-    queue_id: id::QueueId,
+pub unsafe extern "C" fn wgpuQueueSubmit(
+    queue: id::QueueId,
+    command_count: u32,
     command_buffers: *const id::CommandBufferId,
-    command_buffers_length: usize,
 ) {
-    let command_buffer_ids = make_slice(command_buffers, command_buffers_length);
-    gfx_select!(queue_id => GLOBAL.queue_submit(queue_id, command_buffer_ids))
+    let command_buffer_ids = make_slice(command_buffers, command_count as usize);
+    gfx_select!(queue => GLOBAL.queue_submit(queue, command_buffer_ids))
         .expect("Unable to submit queue")
 }
 
-#[repr(C)]
-#[derive(Clone)]
-pub struct ProgrammableStageDescriptor {
-    pub module: id::ShaderModuleId,
-    pub entry_point: Label,
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueWriteBuffer(
+    queue: id::QueueId,
+    buffer: id::BufferId,
+    buffer_offset: u64,
+    data: *const u8, // TODO: Check - this might not follow the header
+    data_size: usize,
+) {
+    let slice = make_slice(data, data_size);
+    gfx_select!(queue => GLOBAL.queue_write_buffer(queue, buffer, buffer_offset, slice))
+        .expect("Unable to write buffer")
 }
 
-impl<'a> ProgrammableStageDescriptor {
-    fn to_wgpu(&self) -> wgc::pipeline::ProgrammableStageDescriptor<'a> {
-        wgc::pipeline::ProgrammableStageDescriptor {
-            module: self.module,
-            entry_point: OwnedLabel::new(self.entry_point).into_cow().unwrap(),
-        }
-    }
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferMapAsync(
+    buffer: id::BufferId,
+    mode: native::WGPUMapModeFlags,
+    offset: usize,
+    size: usize,
+    callback: native::WGPUBufferMapCallback,
+    user_data: *mut u8,
+) {
+    let operation = wgc::resource::BufferMapOperation {
+        host: match mode as crate::EnumConstant {
+            native::WGPUMapMode_Write => wgc::device::HostMap::Write,
+            native::WGPUMapMode_Read => wgc::device::HostMap::Read,
+            x => panic!("Unknown map mode: {}", x),
+        },
+        // TODO: Change wgpu-core to follow new API
+        callback: std::mem::transmute(callback.expect("Callback cannot be null")),
+        user_data,
+    };
+
+    gfx_select!(buffer => GLOBAL.buffer_map_async(buffer, offset as u64 .. (offset + size) as u64, operation))
+        .expect("Unable to map buffer")
 }
 
-#[repr(C)]
-#[allow(non_snake_case)]
-pub struct BlendDescriptor {
-    pub operation: wgt::BlendOperation,
-    pub srcFactor: wgt::BlendFactor,
-    pub dstFactor: wgt::BlendFactor,
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDevicePoll(device: id::DeviceId, force_wait: bool) {
+    gfx_select!(device => GLOBAL.device_poll(device, force_wait)).expect("Unable to poll device")
 }
 
-impl BlendDescriptor {
-    fn to_wgpu(&self) -> wgt::BlendComponent {
-        wgt::BlendComponent {
-            src_factor: self.srcFactor,
-            dst_factor: self.dstFactor,
-            operation: self.operation,
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct ColorStateDescriptor<'c> {
-    pub nextInChain: Option<&'c ChainedStruct<'c>>,
-    pub format: wgt::TextureFormat,
-    pub alphaBlend: BlendDescriptor,
-    pub colorBlend: BlendDescriptor,
-    pub writeMask: wgt::ColorWrite,
-}
-
-const DEFAULT_BLEND_STATE: wgt::BlendState = wgt::BlendState {
-    color: wgt::BlendComponent {
-        src_factor: wgt::BlendFactor::Zero,
-        dst_factor: wgt::BlendFactor::Zero,
-        operation: wgt::BlendOperation::Add,
-    },
-    alpha: wgt::BlendComponent {
-        src_factor: wgt::BlendFactor::Zero,
-        dst_factor: wgt::BlendFactor::Zero,
-        operation: wgt::BlendOperation::Add,
-    },
-};
-
-impl ColorStateDescriptor<'_> {
-    fn to_wgpu(&self) -> wgt::ColorTargetState {
-        wgt::ColorTargetState {
-            format: self.format,
-            blend: {
-                let state = wgt::BlendState {
-                    color: self.colorBlend.to_wgpu(),
-                    alpha: self.alphaBlend.to_wgpu(),
-                };
-                if state == DEFAULT_BLEND_STATE { None } else { Some(state) }
-            },
-            write_mask: self.writeMask,
-        }
-    }
-}
-
-#[repr(u32)]
-pub enum CullMode {
-    None = 0,
-    Front = 1,
-    Back = 2,
-}
-
-impl CullMode {
-    fn to_wgpu(&self) -> Option<wgt::Face> {
-        match self {
-            CullMode::None => None,
-            CullMode::Front => Some(wgt::Face::Front),
-            CullMode::Back => Some(wgt::Face::Back),
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct VertexAttributeDescriptor {
-    pub format: wgt::VertexFormat,
-    pub offset: u64,
-    pub shaderLocation: u32,
-}
-
-impl VertexAttributeDescriptor {
-    fn to_wgpu(&self) -> wgt::VertexAttribute {
-        wgt::VertexAttribute {
-            format: self.format,
-            offset: self.offset,
-            shader_location: self.shaderLocation,
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct VertexBufferLayoutDescriptor {
-    pub arrayStride: u64,
-    pub stepMode: wgt::InputStepMode,
-    pub attributeCount: u32,
-    pub attributes: *const VertexAttributeDescriptor,
-}
-
-impl VertexBufferLayoutDescriptor {
-    unsafe fn to_wgpu(&self) -> wgc::pipeline::VertexBufferLayout {
-        wgc::pipeline::VertexBufferLayout {
-            array_stride: self.arrayStride,
-            step_mode: self.stepMode,
-            attributes: Cow::Owned(make_slice(self.attributes, self.attributeCount as usize).iter().map(|x| x.to_wgpu()).collect()),
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct VertexStateDescriptor<'c> {
-    pub nextInChain: Option<&'c ChainedStruct<'c>>,
-    pub indexFormat: IndexFormat,
-    pub vertexBufferCount: u32,
-    pub vertexBuffers: *const VertexBufferLayoutDescriptor,
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct RasterizationStateDescriptor<'c> {
-    pub nextInChain: Option<&'c ChainedStruct<'c>>,
-    pub frontFace: wgt::FrontFace,
-    pub cullMode: CullMode,
-    pub depthBias: i32,
-    pub depthBiasSlopeScale: f32,
-    pub depthBiasClamp: f32,
-    pub clampDepth: bool,
-    pub polygonMode: wgt::PolygonMode, // todo: move to nextInChain
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct StencilStateFaceDescriptor {
-    pub compare: CompareFunction,
-    pub failOp: wgt::StencilOperation,
-    pub depthFailOp: wgt::StencilOperation,
-    pub passOp: wgt::StencilOperation,
-}
-
-impl StencilStateFaceDescriptor {
-    fn to_wgpu(&self) -> wgt::StencilFaceState {
-        let compare: Option<wgt::CompareFunction> = self.compare.into();
-        wgt::StencilFaceState {
-            compare: compare.expect("compare to be valid"),
-            fail_op: self.failOp,
-            depth_fail_op: self.depthFailOp,
-            pass_op: self.passOp,
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct DepthStencilStateDescriptor<'c> {
-    pub nextInChain: Option<&'c ChainedStruct<'c>>,
-    pub format: wgt::TextureFormat,
-    pub depthWriteEnabled: bool,
-    pub depthCompare: CompareFunction,
-    pub stencilFront: StencilStateFaceDescriptor,
-    pub stencilBack: StencilStateFaceDescriptor,
-    pub stencilReadMask: u32,
-    pub stencilWriteMask: u32,
-}
-
-impl DepthStencilStateDescriptor<'_> {
-    fn to_wgpu(&self, s: &RasterizationStateDescriptor) -> wgt::DepthStencilState {
-        let depth_compare: Option<wgt::CompareFunction> = self.depthCompare.into();
-        wgt::DepthStencilState {
-            format: self.format,
-            depth_write_enabled: self.depthWriteEnabled,
-            depth_compare: depth_compare.expect("depth_compare to be valid"),
-            stencil: wgt::StencilState {
-                front: self.stencilFront.to_wgpu(),
-                back: self.stencilBack.to_wgpu(),
-                read_mask: self.stencilReadMask,
-                write_mask: self.stencilWriteMask,
-            },
-            bias: wgt::DepthBiasState {
-                constant: 0, // todo: not in webgpu-headers
-                slope_scale: s.depthBiasSlopeScale,
-                clamp: s.depthBiasClamp,
-            },
-            clamp_depth: s.clampDepth,
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[repr(C)]
-pub struct RenderPipelineDescriptor<'c> {
-    pub nextInChain: Option<&'c ChainedStruct<'c>>,
-    pub label: Label,
-    pub layout: Option<id::PipelineLayoutId>,
-    pub vertexStage: ProgrammableStageDescriptor,
-    pub fragmentStage: *const ProgrammableStageDescriptor,
-    pub vertexState: VertexStateDescriptor<'c>,
-    pub primitiveTopology: wgt::PrimitiveTopology,
-    pub rasterizationState: RasterizationStateDescriptor<'c>,
-    pub sampleCount: u32,
-    pub depthStencilState: *const DepthStencilStateDescriptor<'c>,
-    pub colorStateCount: u32,
-    pub colorStates: *const ColorStateDescriptor<'c>,
-    pub sampleMask: u32,
-    pub alphaToCoverageEnabled: bool,
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferGetMappedRange(
+    buffer: id::BufferId,
+    offset: usize,
+    size: usize,
+) -> *mut u8 {
+    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, NonZeroU64::new(size as u64)))
+        .expect("Unable to get mapped range").0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     device: id::DeviceId,
-    descriptor: &RenderPipelineDescriptor,
+    descriptor: native::WGPURenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        layout: descriptor.layout,
+        layout: Some(descriptor.layout),
         vertex: wgc::pipeline::VertexState {
-            stage: descriptor.vertexStage.to_wgpu(),
-            buffers: Cow::Owned(make_slice(descriptor.vertexState.vertexBuffers, descriptor.vertexState.vertexBufferCount as usize).iter().map(|x|x.to_wgpu()).collect()),
+            stage: wgc::pipeline::ProgrammableStageDescriptor {
+                module: descriptor.vertex.module,
+                entry_point: OwnedLabel::new(descriptor.vertex.entryPoint)
+                    .into_cow()
+                    .expect("Entry point not provided"),
+            },
+            buffers: Cow::Owned(
+                make_slice(
+                    descriptor.vertex.buffers,
+                    descriptor.vertex.bufferCount as usize,
+                )
+                .iter()
+                .map(|buffer| wgc::pipeline::VertexBufferLayout {
+                    array_stride: buffer.arrayStride,
+                    step_mode: match buffer.stepMode {
+                        native::WGPUInputStepMode_Vertex => wgt::InputStepMode::Vertex,
+                        native::WGPUInputStepMode_Instance => wgt::InputStepMode::Instance,
+                        x => panic!("Unknown step mode {}", x),
+                    },
+                    attributes: Cow::Owned(
+                        make_slice(buffer.attributes, buffer.attributeCount as usize)
+                            .iter()
+                            .map(|attribute| wgt::VertexAttribute {
+                                format: map_vertex_format(attribute.format)
+                                    .expect("Vertex Format must be defined"),
+                                offset: attribute.offset,
+                                shader_location: attribute.shaderLocation,
+                            })
+                            .collect(),
+                    ),
+                })
+                .collect(),
+            ),
         },
         primitive: wgt::PrimitiveState {
-            topology: descriptor.primitiveTopology,
-            strip_index_format: descriptor.vertexState.indexFormat.to_wgpu(),
-            front_face: descriptor.rasterizationState.frontFace,
-            cull_mode: descriptor.rasterizationState.cullMode.to_wgpu(),
-            polygon_mode: descriptor.rasterizationState.polygonMode,
+            topology: map_primitive_topology(descriptor.primitive.topology),
+            strip_index_format: map_index_format(descriptor.primitive.stripIndexFormat).ok(),
+            front_face: match descriptor.primitive.frontFace {
+                native::WGPUFrontFace_CCW => wgt::FrontFace::Ccw,
+                native::WGPUFrontFace_CW => wgt::FrontFace::Cw,
+                _ => panic!("Front face not provided"),
+            },
+            cull_mode: match descriptor.primitive.cullMode {
+                native::WGPUCullMode_Front => Some(wgt::Face::Front),
+                native::WGPUCullMode_Back => Some(wgt::Face::Back),
+                _ => None,
+            },
+            polygon_mode: wgt::PolygonMode::Fill,
+            conservative: false,
         },
-        depth_stencil: descriptor.depthStencilState.as_ref().map(|x|x.to_wgpu(&descriptor.rasterizationState)),
+        depth_stencil: descriptor.depthStencil.as_ref().map(|_| unimplemented!()),
         multisample: wgt::MultisampleState {
-            count: descriptor.sampleCount,
-            mask: descriptor.sampleMask as u64,
-            alpha_to_coverage_enabled: descriptor.alphaToCoverageEnabled,
+            count: descriptor.multisample.count,
+            mask: descriptor.multisample.mask as u64,
+            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled,
         },
-        fragment: descriptor.fragmentStage.as_ref().map(|x| wgc::pipeline::FragmentState {
-            stage: x.to_wgpu(),
-            targets: Cow::Owned(make_slice(descriptor.colorStates, descriptor.colorStateCount as usize).iter().map(|x|x.to_wgpu()).collect()),
-        }
-        ),
+        fragment: descriptor
+            .fragment
+            .as_ref()
+            .map(|fragment| wgc::pipeline::FragmentState {
+                stage: wgc::pipeline::ProgrammableStageDescriptor {
+                    module: fragment.module,
+                    entry_point: OwnedLabel::new(fragment.entryPoint)
+                        .into_cow()
+                        .expect("Entry point not provided"),
+                },
+                targets: Cow::Owned(
+                    make_slice(fragment.targets, fragment.targetCount as usize)
+                        .iter()
+                        .map(|color_target| wgt::ColorTargetState {
+                            format: map_texture_format(color_target.format)
+                                .expect("Texture format must be defined"),
+                            blend: color_target.blend.as_ref().map(|blend| wgt::BlendState {
+                                color: wgt::BlendComponent {
+                                    src_factor: map_blend_factor(blend.color.srcFactor),
+                                    dst_factor: map_blend_factor(blend.color.dstFactor),
+                                    operation: map_blend_operation(blend.color.operation),
+                                },
+                                alpha: wgt::BlendComponent {
+                                    src_factor: map_blend_factor(blend.alpha.srcFactor),
+                                    dst_factor: map_blend_factor(blend.alpha.dstFactor),
+                                    operation: map_blend_operation(blend.alpha.operation),
+                                },
+                            }),
+                            write_mask: wgt::ColorWrite::from_bits(color_target.writeMask).unwrap(),
+                        })
+                        .collect(),
+                ),
+            }),
     };
     let (id, _, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
     if let Some(err) = error {
@@ -1082,159 +444,245 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_render_pipeline_destroy(render_pipeline_id: id::RenderPipelineId) {
-    gfx_select!(render_pipeline_id => GLOBAL.render_pipeline_drop(render_pipeline_id))
-}
-
-#[repr(C)]
-pub struct ComputePipelineDescriptor {
-    pub label: Label,
-    pub layout: Option<id::PipelineLayoutId>,
-    pub stage: ProgrammableStageDescriptor,
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_create_compute_pipeline(
-    device_id: id::DeviceId,
-    desc: &ComputePipelineDescriptor,
-) -> id::ComputePipelineId {
-    let desc = wgc::pipeline::ComputePipelineDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
-        layout: desc.layout,
-        stage: desc.stage.to_wgpu(),
-    };
-
-    let (id, _, error) = gfx_select!(device_id => GLOBAL.device_create_compute_pipeline(device_id, &desc, PhantomData, None));
-    if let Some(err) = error {
-        panic!("{:?}", err);
-    }
-    id
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_compute_pipeline_destroy(compute_pipeline_id: id::ComputePipelineId) {
-    gfx_select!(compute_pipeline_id => GLOBAL.compute_pipeline_drop(compute_pipeline_id))
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_create_swap_chain(
-    device_id: id::DeviceId,
-    surface_id: id::SurfaceId,
-    desc: &wgt::SwapChainDescriptor,
+pub extern "C" fn wgpuDeviceCreateSwapChain(
+    device: id::DeviceId,
+    surface: id::SurfaceId,
+    desc: &native::WGPUSwapChainDescriptor,
 ) -> id::SwapChainId {
-    gfx_select!(device_id => GLOBAL.device_create_swap_chain(device_id, surface_id, desc))
+    let desc = wgt::SwapChainDescriptor {
+        usage: wgt::TextureUsage::from_bits(desc.usage).unwrap(),
+        format: map_texture_format(desc.format).expect("Texture format not defined"),
+        width: desc.width,
+        height: desc.height,
+        present_mode: map_present_mode(desc.presentMode),
+    };
+    gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc))
         .expect("Unable to create swap chain")
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_device_poll(device_id: id::DeviceId, force_wait: bool) {
-    gfx_select!(device_id => GLOBAL.device_poll(device_id, force_wait))
-        .expect("Unable to poll device")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_device_destroy(device_id: id::DeviceId) {
-    gfx_select!(device_id => GLOBAL.device_drop(device_id))
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_buffer_map_read_async(
-    buffer_id: id::BufferId,
-    start: wgt::BufferAddress,
-    size: wgt::BufferAddress,
-    callback: wgc::resource::BufferMapCallback,
-    user_data: *mut u8,
-) {
-    let operation = wgc::resource::BufferMapOperation {
-        host: HostMap::Read,
-        callback,
-        user_data,
-    };
-
-    gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
-        .expect("Unable to map buffer")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_buffer_map_write_async(
-    buffer_id: id::BufferId,
-    start: wgt::BufferAddress,
-    size: wgt::BufferAddress,
-    callback: wgc::resource::BufferMapCallback,
-    user_data: *mut u8,
-) {
-    let operation = wgc::resource::BufferMapOperation {
-        host: HostMap::Write,
-        callback,
-        user_data,
-    };
-
-    gfx_select!(buffer_id => GLOBAL.buffer_map_async(buffer_id, start .. start + size, operation))
-        .expect("Unable to map buffer")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_buffer_unmap(buffer_id: id::BufferId) {
-    gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_swap_chain_get_current_texture_view(
-    swap_chain_id: id::SwapChainId,
+pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
+    swap_chain: id::SwapChainId,
 ) -> Option<id::TextureViewId> {
-    gfx_select!(swap_chain_id => GLOBAL.swap_chain_get_current_texture_view(swap_chain_id, PhantomData))
+    gfx_select!(swap_chain => GLOBAL.swap_chain_get_current_texture_view(swap_chain, PhantomData))
         .expect("Unable to get swap chain texture view")
         .view_id
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_swap_chain_present(swap_chain_id: id::SwapChainId) -> wgt::SwapChainStatus {
-    gfx_select!(swap_chain_id => GLOBAL.swap_chain_present(swap_chain_id))
-        .expect("Unable to present swap chain")
+pub extern "C" fn wgpuSwapChainPresent(swap_chain: id::SwapChainId) {
+    //TODO: Header does not return swap chain status?
+    gfx_select!(swap_chain => GLOBAL.swap_chain_present(swap_chain))
+        .expect("Unable to present swap chain");
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_buffer_get_mapped_range(
-    buffer_id: id::BufferId,
-    start: wgt::BufferAddress,
-    size: wgt::BufferSize,
-) -> *mut u8 {
-    gfx_select!(buffer_id => GLOBAL.buffer_get_mapped_range(buffer_id, start, Some(size)))
-        .expect("Unable to get mapped range")
-}
-
-/// Fills the given `info` struct with the adapter info.
-///
-/// # Safety
-///
-/// The field `info.name` is expected to point to a pre-allocated memory
-/// location. This function is unsafe as there is no guarantee that the
-/// pointer is valid and big enough to hold the adapter name.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_adapter_get_info(adapter_id: id::AdapterId, info: &mut CAdapterInfo) {
-    let adapter_info = gfx_select!(adapter_id => GLOBAL.adapter_get_info(adapter_id))
-        .expect("Unable to get adapter info");
-    let adapter_name = CString::new(adapter_info.name).unwrap();
-
-    info.device = adapter_info.device;
-    info.vendor = adapter_info.vendor;
-    info.device_type = CDeviceType::from(adapter_info.device_type);
-    info.backend = adapter_info.backend;
-
-    let string_bytes = adapter_name.as_bytes_with_nul();
-    let cpy_length = match std::cmp::min(info.name_length, string_bytes.len()) {
-        len if len > 0 => len,
-        _ => return,
+pub extern "C" fn wgpuTextureCreateView(
+    texture: id::TextureId,
+    descriptor: &native::WGPUTextureViewDescriptor,
+) -> id::TextureViewId {
+    let desc = wgc::resource::TextureViewDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        format: map_texture_format(descriptor.format),
+        dimension: map_texture_view_dimension(descriptor.dimension),
+        aspect: map_texture_aspect(descriptor.aspect),
+        base_mip_level: descriptor.baseMipLevel,
+        level_count: NonZeroU32::new(descriptor.mipLevelCount),
+        base_array_layer: descriptor.baseArrayLayer,
+        array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
     };
 
-    // Copies the string bytes owned into a the pre-allocated memory location
-    // pointed by `info.name`.
-    // NOTE: this is obviousy unsafe and the caller **must** ensure the
-    // memory is allocated.
-    ptr::copy(string_bytes.as_ptr(), info.name as *mut u8, cpy_length - 1);
-    // Manually appends the null terminator. Depending on user input length,
-    // we may not copy the entire string.
-    info.name
-        .offset((cpy_length - 1) as isize)
-        .write('\0' as c_char);
+    check_error(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuDeviceCreateTexture(
+    device: id::DeviceId,
+    descriptor: &native::WGPUTextureDescriptor,
+) -> id::TextureId {
+    let desc = wgt::TextureDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        size: crate::command::map_extent3d(&descriptor.size),
+        mip_level_count: descriptor.mipLevelCount,
+        sample_count: descriptor.sampleCount,
+        dimension: map_texture_dimension(descriptor.dimension),
+        format: map_texture_format(descriptor.format).expect("Texture format must be provided"),
+        usage: wgt::TextureUsage::from_bits(descriptor.usage).expect("Invalid texture usage"),
+    };
+
+    check_error(gfx_select!(device => GLOBAL.device_create_texture(device, &desc, PhantomData)))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBufferUnmap(buffer_id: id::BufferId) {
+    gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
+}
+
+map_enum!(
+    map_texture_aspect,
+    WGPUTextureAspect,
+    wgt::TextureAspect,
+    "Unknown texture aspect",
+    All,
+    StencilOnly,
+    DepthOnly
+);
+map_enum!(
+    map_present_mode,
+    WGPUPresentMode,
+    wgt::PresentMode,
+    "Unknown present mode",
+    Immediate,
+    Mailbox,
+    Fifo
+);
+map_enum!(
+    map_primitive_topology,
+    WGPUPrimitiveTopology,
+    wgt::PrimitiveTopology,
+    "Unknown primitive topology",
+    PointList,
+    LineList,
+    LineStrip,
+    TriangleList,
+    TriangleStrip
+);
+map_enum!(
+    map_index_format,
+    WGPUIndexFormat,
+    wgt::IndexFormat,
+    Uint16,
+    Uint32
+);
+map_enum!(
+    map_blend_factor,
+    WGPUBlendFactor,
+    wgt::BlendFactor,
+    "Unknown blend factor",
+    Zero,
+    One,
+    SrcColor,
+    OneMinusSrcColor,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    DstColor,
+    OneMinusDstColor,
+    DstAlpha,
+    OneMinusDstAlpha,
+    SrcAlphaSaturated,
+    BlendColor
+);
+map_enum!(
+    map_blend_operation,
+    WGPUBlendOperation,
+    wgt::BlendOperation,
+    "Unknown blend operation",
+    Add,
+    Subtract,
+    ReverseSubtract,
+    Min,
+    Max
+);
+map_enum!(
+    map_vertex_format,
+    WGPUVertexFormat,
+    wgt::VertexFormat,
+    Uint8x2,
+    Uint8x4,
+    Sint8x2,
+    Sint8x4,
+    Unorm8x2,
+    Unorm8x4,
+    Snorm8x2,
+    Snorm8x4,
+    Uint16x2,
+    Uint16x4,
+    Sint16x2,
+    Sint16x4,
+    Unorm16x2,
+    Unorm16x4,
+    Snorm16x2,
+    Snorm16x4,
+    Float16x2,
+    Float16x4,
+    Float32,
+    Float32x2,
+    Float32x3,
+    Float32x4,
+    Uint32,
+    Uint32x2,
+    Uint32x3,
+    Uint32x4,
+    Sint32,
+    Sint32x2,
+    Sint32x3,
+    Sint32x4
+);
+
+// Header does not match wgt types so we have to manually map them
+pub fn map_texture_view_dimension(value: crate::EnumConstant) -> Option<wgt::TextureViewDimension> {
+    match value {
+        native::WGPUTextureViewDimension_1D => Some(wgt::TextureViewDimension::D1),
+        native::WGPUTextureViewDimension_2D => Some(wgt::TextureViewDimension::D2),
+        native::WGPUTextureViewDimension_2DArray => Some(wgt::TextureViewDimension::D2Array),
+        native::WGPUTextureViewDimension_Cube => Some(wgt::TextureViewDimension::Cube),
+        native::WGPUTextureViewDimension_CubeArray => Some(wgt::TextureViewDimension::CubeArray),
+        native::WGPUTextureViewDimension_3D => Some(wgt::TextureViewDimension::D3),
+        x => None,
+    }
+}
+
+pub fn map_texture_dimension(value: crate::EnumConstant) -> wgt::TextureDimension {
+    match value {
+        native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
+        native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
+        native::WGPUTextureDimension_3D => wgt::TextureDimension::D3,
+        x => panic!("Unknown texture dimension: {}", x),
+    }
+}
+
+pub fn map_texture_format(value: crate::EnumConstant) -> Option<wgt::TextureFormat> {
+    // TODO: Add support for BC formats
+    match value {
+        native::WGPUTextureFormat_R8Unorm => Some(wgt::TextureFormat::R8Unorm),
+        native::WGPUTextureFormat_R8Snorm => Some(wgt::TextureFormat::R8Snorm),
+        native::WGPUTextureFormat_R8Uint => Some(wgt::TextureFormat::R8Uint),
+        native::WGPUTextureFormat_R8Sint => Some(wgt::TextureFormat::R8Sint),
+        native::WGPUTextureFormat_R16Uint => Some(wgt::TextureFormat::R16Uint),
+        native::WGPUTextureFormat_R16Sint => Some(wgt::TextureFormat::R16Sint),
+        native::WGPUTextureFormat_R16Float => Some(wgt::TextureFormat::R16Float),
+        native::WGPUTextureFormat_RG8Unorm => Some(wgt::TextureFormat::Rg8Unorm),
+        native::WGPUTextureFormat_RG8Snorm => Some(wgt::TextureFormat::Rg8Snorm),
+        native::WGPUTextureFormat_RG8Uint => Some(wgt::TextureFormat::Rg8Uint),
+        native::WGPUTextureFormat_RG8Sint => Some(wgt::TextureFormat::Rg8Sint),
+        native::WGPUTextureFormat_R32Float => Some(wgt::TextureFormat::R32Float),
+        native::WGPUTextureFormat_R32Uint => Some(wgt::TextureFormat::R32Uint),
+        native::WGPUTextureFormat_R32Sint => Some(wgt::TextureFormat::R32Sint),
+        native::WGPUTextureFormat_RG16Uint => Some(wgt::TextureFormat::Rg16Uint),
+        native::WGPUTextureFormat_RG16Sint => Some(wgt::TextureFormat::Rg16Sint),
+        native::WGPUTextureFormat_RG16Float => Some(wgt::TextureFormat::Rg16Float),
+        native::WGPUTextureFormat_RGBA8Unorm => Some(wgt::TextureFormat::Rgba8Unorm),
+        native::WGPUTextureFormat_RGBA8UnormSrgb => Some(wgt::TextureFormat::Rgba8UnormSrgb),
+        native::WGPUTextureFormat_RGBA8Snorm => Some(wgt::TextureFormat::Rgba8Snorm),
+        native::WGPUTextureFormat_RGBA8Uint => Some(wgt::TextureFormat::Rgba8Uint),
+        native::WGPUTextureFormat_RGBA8Sint => Some(wgt::TextureFormat::Rgba8Sint),
+        native::WGPUTextureFormat_BGRA8Unorm => Some(wgt::TextureFormat::Bgra8Unorm),
+        native::WGPUTextureFormat_BGRA8UnormSrgb => Some(wgt::TextureFormat::Bgra8UnormSrgb),
+        native::WGPUTextureFormat_RGB10A2Unorm => Some(wgt::TextureFormat::Rgb10a2Unorm),
+        native::WGPUTextureFormat_RG32Float => Some(wgt::TextureFormat::Rg32Float),
+        native::WGPUTextureFormat_RG32Uint => Some(wgt::TextureFormat::Rg32Uint),
+        native::WGPUTextureFormat_RG32Sint => Some(wgt::TextureFormat::Rg32Sint),
+        native::WGPUTextureFormat_RGBA16Uint => Some(wgt::TextureFormat::Rgba16Uint),
+        native::WGPUTextureFormat_RGBA16Sint => Some(wgt::TextureFormat::Rgba16Sint),
+        native::WGPUTextureFormat_RGBA16Float => Some(wgt::TextureFormat::Rgba16Float),
+        native::WGPUTextureFormat_RGBA32Float => Some(wgt::TextureFormat::Rgba32Float),
+        native::WGPUTextureFormat_RGBA32Uint => Some(wgt::TextureFormat::Rgba32Uint),
+        native::WGPUTextureFormat_RGBA32Sint => Some(wgt::TextureFormat::Rgba32Sint),
+        native::WGPUTextureFormat_Depth32Float => Some(wgt::TextureFormat::Depth32Float),
+        native::WGPUTextureFormat_Depth24Plus => Some(wgt::TextureFormat::Depth24Plus),
+        native::WGPUTextureFormat_Depth24PlusStencil8 => {
+            Some(wgt::TextureFormat::Depth24PlusStencil8)
+        }
+        _ => None,
+    }
 }

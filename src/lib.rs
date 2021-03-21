@@ -1,31 +1,42 @@
-use std::borrow::Cow;
-use std::sync::Arc;
-use std::slice;
+use std::{borrow::Cow, marker::PhantomData, sync::Arc};
+use wgc::id;
 
-mod command;
-mod device;
-mod logging;
+pub mod command;
+pub mod device;
+pub mod logging;
 
-pub use self::command::*;
-pub use self::device::*;
-pub use self::logging::*;
+pub mod native {
+    #![allow(non_upper_case_globals)]
+    #![allow(non_camel_case_types)]
+    #![allow(non_snake_case)]
+    #![allow(dead_code)]
+
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
 
 type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
-pub type Label = *const libc::c_char;
+lazy_static::lazy_static! {
+    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::BackendBit::PRIMARY));
+}
+
+pub type Label<'a> = Option<Cow<'a, str>>;
 
 struct OwnedLabel(Option<String>);
 impl OwnedLabel {
-    fn new(label: Label) -> Self {
-        OwnedLabel(if label.is_null() {
+    fn new(ptr: *const std::os::raw::c_char) -> Self {
+        Self(if ptr.is_null() {
             None
         } else {
             Some(
-                unsafe { std::ffi::CStr::from_ptr(label) }
+                unsafe { std::ffi::CStr::from_ptr(ptr) }
                     .to_string_lossy()
                     .to_string(),
             )
         })
+    }
+    fn into_inner(self) -> Option<String> {
+        self.0
     }
     fn as_cow(&self) -> Option<Cow<str>> {
         self.0.as_ref().map(|s| Cow::Borrowed(s.as_str()))
@@ -35,8 +46,21 @@ impl OwnedLabel {
     }
 }
 
-lazy_static::lazy_static! {
-    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::BackendBit::PRIMARY));
+#[track_caller]
+pub fn check_error<I, E: std::fmt::Debug>(input: (I, Option<E>)) -> I {
+    if let Some(error) = input.1 {
+        panic!("{:?}", error);
+    }
+
+    input.0
+}
+
+pub unsafe fn make_slice<'a, T: 'a>(pointer: *const T, count: usize) -> &'a [T] {
+    if count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(pointer, count)
+    }
 }
 
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.
@@ -68,6 +92,7 @@ lazy_static::lazy_static! {
 ///
 /// Given two or more extension structs of the same SType in the same chain, this macro will favor the latter most. There should
 /// not be more than one extension struct with the same SType in a chain anyway, so this behavior should be unproblematic.
+
 #[macro_export]
 macro_rules! follow_chain {
     ($func:ident($base:expr $(, $stype:ident => $ty:ty)*)) => {{
@@ -76,12 +101,12 @@ macro_rules! follow_chain {
         $(
             let mut $stype: Option<&$ty> = None;
         )*
-        let mut chain_opt: Option<&$crate::ChainedStruct> = $base.next_in_chain;
+        let mut chain_opt: Option<&$crate::native::WGPUChainedStruct> = $base.nextInChain.as_ref();
         while let Some(next_in_chain) = chain_opt {
-            match next_in_chain.s_type {
+            match next_in_chain.sType {
                 $(
-                    $crate::SType::$stype => {
-                        let next_in_chain_ptr = next_in_chain as *const $crate::ChainedStruct;
+                    $crate::native::$stype => {
+                        let next_in_chain_ptr = next_in_chain as *const $crate::native::WGPUChainedStruct;
                         assert_eq!(
                             0,
                             next_in_chain_ptr.align_offset(::std::mem::align_of::<$ty>()),
@@ -94,74 +119,135 @@ macro_rules! follow_chain {
                 )*
                 _ => {}
             }
-            chain_opt = next_in_chain.next;
+            chain_opt = next_in_chain.next.as_ref();
         }
         $func($base, $($stype),*)
     }}};
 }
 
-#[repr(u32)]
-pub enum SType {
-    Invalid = 0x00_00_00_00,
-    SurfaceDescriptorFromMetalLayer = 0x00_00_00_01,
-    SurfaceDescriptorFromWindowsHWND = 0x00_00_00_02,
-    SurfaceDescriptorFromXlib = 0x00_00_00_03,
-    SurfaceDescriptorFromHTMLCanvasId = 0x00_00_00_04,
-    ShaderModuleSPIRVDescriptor = 0x00_00_00_05,
-    ShaderModuleWGSLDescriptor = 0x00_00_00_06,
-    /// Placeholder value until real value can be determined
-    AnisotropicFiltering = 0x10_00_00_00,
-    Force32 = 0x7F_FF_FF_FF,
-}
+#[cfg(target_os = "windows")]
+pub type EnumConstant = i32;
 
-#[repr(C)]
-pub struct ChainedStruct<'c> {
-    next: Option<&'c ChainedStruct<'c>>,
-    s_type: SType,
-}
+#[cfg(not(target_os = "windows"))]
+pub type EnumConstant = u32;
 
-#[track_caller]
-pub fn check_error<I, E: std::fmt::Debug>(input: (I, Option<E>)) -> I {
-    if let Some(error) = input.1 {
-        panic!("{:?}", error);
-    }
+/// Creates a function which maps native constants to wgpu enums.
+/// If an error message is provided, the function will panic if the
+/// input does not match any known variants. Otherwise a Result<T, i32> is returned
+///
+/// # Syntax
+///
+/// For enums that have undefined variants:
+/// ```ignore
+/// map_enum!(function_name, header_prefix, rust_type, Variant1, Variant2...)
+/// ```
+///
+/// For enums where all variants are defined:
+/// ```ignore
+/// map_enum!(function_name, header_prefix, rust_type, err_msg, Variant1, Variant2...)
+/// ```
+///
+/// # Example
+///
+/// For the following enum:
+/// ```c
+/// typedef enum WGPUIndexFormat {
+///     WGPUIndexFormat_Undefined = 0x00000000,
+///     WGPUIndexFormat_Uint16 = 0x00000001,
+///     WGPUIndexFormat_Uint32 = 0x00000002,
+///     WGPUIndexFormat_Force32 = 0x7FFFFFFF
+/// } WGPUIndexFormat;
+/// ```
+/// Then you can use the following macro:
+/// ```ignore
+/// map_enum!(map_index_format, WGPUIndexFormat, wgt::IndexFormat, Uint16, Uint32);
+/// ```
+/// Which expands into:
+/// ```ignore
+/// pub fn map_index_format(value: i32) -> Result<wgt::IndexFormat, i32> {
+///      match value {
+///          native::WGPUIndexFormat_Uint16 => Ok(wgt::IndexFormat::Uint16),
+///          native::WGPUIndexFormat_Uint32 => Ok(wgt::IndexFormat::Uint32),
+///          x => Err(x),
+///      }
+/// }
+/// ```
+///
+#[macro_export]
+macro_rules! map_enum {
+    ($name:ident, $c_name:ident, $rs_type:ty, $($variant:ident),+) => {
+        pub fn $name(value: crate::EnumConstant) -> Result<$rs_type, crate::EnumConstant> {
+            match value {
+                $(paste::paste!(native::[<$c_name _ $variant>]) => Ok(<$rs_type>::$variant)),+,
+                x => Err(x),
+            }
+        }
+    };
+    ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($variant:ident),+) => {
+        pub fn $name(value: crate::EnumConstant) -> $rs_type {
+            map_enum!(map_fn, $c_name, $rs_type, $($variant),+);
 
-    input.0
-}
-
-pub(crate) unsafe fn make_slice<'a, T: 'a>(pointer: *const T, count: usize) -> &'a [T] {
-    if count == 0 {
-        &[]
-    } else {
-        slice::from_raw_parts(pointer, count)
-    }
-}
-
-#[repr(u32)]
-pub enum IndexFormat {
-    Undefined = 0,
-    Uint16 = 1,
-    Uint32 = 2,
-}
-
-impl IndexFormat {
-    fn to_wgpu(&self) -> Option<wgt::IndexFormat> {
-        match self {
-            IndexFormat::Undefined => None,
-            IndexFormat::Uint16 => Some(wgt::IndexFormat::Uint16),
-            IndexFormat::Uint32 => Some(wgt::IndexFormat::Uint32),
+            map_fn(value).expect($err_msg)
         }
     }
 }
 
+// see https://github.com/rust-windowing/raw-window-handle/issues/49
+struct PseudoRwh(raw_window_handle::RawWindowHandle);
+unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
+    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
+        self.0.clone()
+    }
+}
+
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_get_version() -> std::os::raw::c_uint {
-    let major: u32 = env!("CARGO_PKG_VERSION_MAJOR").parse().unwrap();
-    let minor: u32 = env!("CARGO_PKG_VERSION_MINOR").parse().unwrap();
-    let patch: u32 = env!("CARGO_PKG_VERSION_PATCH").parse().unwrap();
-    let pre: u32 = match env!("CARGO_PKG_VERSION_PRE").parse::<u32>() {
-        Ok(n) => n,
-        Err(_e) => 0,
-    };
-    (major << 24) + (minor << 16) + (patch << 8) + pre
+pub unsafe extern "C" fn wgpuInstanceCreateSurface(
+    _: native::WGPUInstance,
+    descriptor: *const native::WGPUSurfaceDescriptor,
+) -> id::SurfaceId {
+    follow_chain!(
+        map_surface(descriptor.as_ref().unwrap(),
+            WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
+            WGPUSType_SurfaceDescriptorFromXlib => native::WGPUSurfaceDescriptorFromXlib)
+    )
+}
+
+pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
+    GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData)
+}
+
+unsafe fn map_surface(
+    _: &native::WGPUSurfaceDescriptor,
+    win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
+    x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
+) -> id::SurfaceId {
+    #[cfg(windows)]
+    if let Some(win) = win {
+        use raw_window_handle::windows::WindowsHandle;
+
+        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Windows(
+            raw_window_handle::windows::WindowsHandle {
+                hwnd: win.hwnd,
+                ..WindowsHandle::empty()
+            },
+        ));
+    }
+
+    #[cfg(all(
+        unix,
+        not(target_os = "android"),
+        not(target_os = "ios"),
+        not(target_os = "macos")
+    ))]
+    if let Some(x11) = x11 {
+        use raw_window_handle::unix::XlibHandle;
+
+        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(XlibHandle {
+            window: x11.window as u64,
+            display: x11.display as *mut _,
+            ..XlibHandle::empty()
+        }));
+    }
+
+    panic!("Error: Unsupported Surface");
 }

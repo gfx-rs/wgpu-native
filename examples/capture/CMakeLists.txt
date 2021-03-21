@@ -4,7 +4,7 @@ project(capture)
 
 set(TARGET_NAME capture)
 
-add_executable(${TARGET_NAME} main.c)
+add_executable(${TARGET_NAME} main.c ../framework.c)
 
 if(MSVC)
     add_definitions(-DWGPU_TARGET=WGPU_TARGET_WINDOWS)

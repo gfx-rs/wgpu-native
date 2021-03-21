@@ -5,8 +5,8 @@ GENERATOR_PLATFORM:=
 
 FFI_DIR:=ffi
 BUILD_DIR:=build
-CLEAN_FFI_DIR:=
 CREATE_BUILD_DIR:=
+OUTPUT_DIR:=
 LIB_NAME:=wgpu_native
 
 WILDCARD_SOURCE:=$(wildcard src/*.rs)
@@ -22,12 +22,12 @@ else
 endif
 
 ifeq ($(OS),Windows_NT)
-	CLEAN_FFI_DIR=del $(FFI_DIR)\*.* /Q /S
-	CREATE_BUILD_DIR=mkdir $(BUILD_DIR)
+	CREATE_BUILD_DIR=if exist "$(BUILD_DIR)" rmdir /s /q $(BUILD_DIR) && mkdir $(BUILD_DIR)
 	GENERATOR_PLATFORM=-DCMAKE_GENERATOR_PLATFORM=x64
+	OUTPUT_DIR=build/Debug
 else
-	CLEAN_FFI_DIR=rm $(FFI_DIR)/**
 	CREATE_BUILD_DIR=mkdir -p $(BUILD_DIR)
+	OUTPUT_DIR=build
 endif
 
 ifeq ($(OS),Windows_NT)
@@ -51,7 +51,7 @@ endif
 	run-example-compute run-example-triangle  \
 	lib-native lib-native-release
 
-all: example-compute example-triangle
+all: example-compute example-triangle example-capture
 
 package: lib-native lib-native-release
 	mkdir -p dist
@@ -81,7 +81,6 @@ doc:
 
 clear:
 	cargo clean
-	$(CLEAN_FFI_DIR)
 
 lib-native: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build
@@ -89,17 +88,23 @@ lib-native: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 lib-native-release: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build --release
 
-$(FFI_DIR)/wgpu.h: cbindgen.toml Makefile $(WILDCARD_SOURCE)
-	rustup run nightly cbindgen -o $(FFI_DIR)/wgpu.h
-
-example-compute: lib-native $(FFI_DIR)/wgpu.h examples/compute/main.c
+example-compute: lib-native examples/compute/main.c
 	cd examples/compute && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-compute: example-compute
-	cd examples/compute && build/compute 1 2 3 4
+	cd examples/compute && "$(OUTPUT_DIR)/compute" 1 2 3 4
 
-example-triangle: lib-native $(FFI_DIR)/wgpu.h examples/triangle/main.c
+example-triangle: lib-native examples/triangle/main.c
 	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-triangle: example-triangle
-	cd examples/triangle && build/triangle
+	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
+
+build-helper:
+	cargo build -p helper
+
+example-capture: lib-native build-helper examples/capture/main.c
+	cd examples/capture && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
+
+run-example-capture: example-capture
+	cd examples/capture && "$(OUTPUT_DIR)/capture"

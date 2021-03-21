@@ -1,209 +1,123 @@
-use crate::{check_error, Label, OwnedLabel, GLOBAL, make_slice};
-
-pub use wgc::command::{
-    bundle_ffi, compute_ffi, render_ffi, ColorAttachmentDescriptor, ComputePass,
-    DepthStencilAttachmentDescriptor, RenderBundleEncoder, RenderCommand, RenderPass,
+use crate::{check_error, make_slice, map_enum, native, OwnedLabel, GLOBAL};
+use std::{borrow::Cow, num::NonZeroU32};
+use wgc::{
+    command::{compute_ffi, render_ffi},
+    gfx_select, id,
 };
 
-use std::borrow::Cow;
-use wgc::{gfx_select, id};
-use wgt::{BufferAddress, BufferSize};
-
-#[repr(C)]
-pub struct CommandBufferDescriptor {
-    pub label: Label,
-}
-
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_command_encoder_finish(
-    encoder_id: id::CommandEncoderId,
-    desc_base: Option<&CommandBufferDescriptor>,
+pub unsafe extern "C" fn wgpuCommandEncoderFinish(
+    encoder: id::CommandEncoderId,
+    desc: &native::WGPUCommandBufferDescriptor,
 ) -> id::CommandBufferId {
     let desc = wgt::CommandBufferDescriptor {
-        label: desc_base.and_then(|c| OwnedLabel::new(c.label).into_cow()),
+        label: OwnedLabel::new(desc.label).into_cow(),
     };
 
-    check_error(gfx_select!(encoder_id => GLOBAL.command_encoder_finish(encoder_id, &desc)))
+    check_error(gfx_select!(encoder => GLOBAL.command_encoder_finish(encoder, &desc)))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_command_encoder_copy_buffer_to_buffer(
-    command_encoder_id: id::CommandEncoderId,
+pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
+    command_encoder: id::CommandEncoderId,
     source: id::BufferId,
-    source_offset: wgt::BufferAddress,
+    source_offset: u64,
     destination: id::BufferId,
-    destination_offset: wgt::BufferAddress,
-    size: wgt::BufferAddress,
+    destination_offset: u64,
+    size: u64,
 ) {
-    gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_buffer_to_buffer(
-        command_encoder_id,
-        source, source_offset,
+    gfx_select!(command_encoder => GLOBAL.command_encoder_copy_buffer_to_buffer(
+        command_encoder,
+        source, 
+        source_offset,
         destination,
         destination_offset,
         size))
     .expect("Unable to copy buffer to buffer")
 }
 
-#[repr(C)]
-pub struct BufferCopyViewC {
-    pub layout: wgt::TextureDataLayout,
-    pub buffer: id::BufferId,
-}
-
-impl BufferCopyViewC {
-    pub fn to_wgpu(&self) -> wgc::command::BufferCopyView {
-        wgc::command::BufferCopyView {
-            layout: self.layout.clone(),
-            buffer: self.buffer,
-        }
-    }
-}
-
-#[repr(C)]
-pub struct TextureCopyViewC {
-    pub texture: id::TextureId,
-    pub mip_level: u32,
-    pub origin: wgt::Origin3d,
-}
-
-impl TextureCopyViewC {
-    pub fn to_wgpu(&self) -> wgc::command::TextureCopyView {
-        wgc::command::TextureCopyView {
-            texture: self.texture,
-            mip_level: self.mip_level,
-            origin: self.origin,
-        }
-    }
-}
-
 #[no_mangle]
-pub extern "C" fn wgpu_command_encoder_copy_buffer_to_texture(
-    command_encoder_id: id::CommandEncoderId,
-    source: &BufferCopyViewC,
-    destination: &TextureCopyViewC,
-    copy_size: &wgt::Extent3d,
+pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
+    command_encoder: id::CommandEncoderId,
+    source: &native::WGPUImageCopyTexture,
+    destination: &native::WGPUImageCopyBuffer,
+    copy_size: &native::WGPUExtent3D,
 ) {
-    gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_buffer_to_texture(
-        command_encoder_id,
-        &source.to_wgpu(),
-        &destination.to_wgpu(),
-        copy_size))
-    .expect("Unable to copy buffer to texture")
-}
-
-#[no_mangle]
-pub extern "C" fn wgpu_command_encoder_copy_texture_to_buffer(
-    command_encoder_id: id::CommandEncoderId,
-    source: &TextureCopyViewC,
-    destination: &BufferCopyViewC,
-    copy_size: &wgt::Extent3d,
-) {
-    gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_buffer(
-        command_encoder_id,
-        &source.to_wgpu(),
-        &destination.to_wgpu(),
-        copy_size))
+    gfx_select!(command_encoder => GLOBAL.command_encoder_copy_texture_to_buffer(
+        command_encoder,
+        &map_image_copy_texture(source),
+        &map_image_copy_buffer(destination),
+        &map_extent3d(copy_size)))
     .expect("Unable to copy texture to buffer")
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_command_encoder_copy_texture_to_texture(
-    command_encoder_id: id::CommandEncoderId,
-    source: &TextureCopyViewC,
-    destination: &TextureCopyViewC,
-    copy_size: &wgt::Extent3d,
-) {
-    gfx_select!(command_encoder_id => GLOBAL.command_encoder_copy_texture_to_texture(
-        command_encoder_id,
-        &source.to_wgpu(),
-        &destination.to_wgpu(),
-        copy_size))
-    .expect("Unable to copy texture to texture")
-}
-
-#[repr(C)]
-pub struct RenderPassDescriptor<'a> {
-    color_attachments: &'a ColorAttachmentDescriptor,
-    color_attachments_length: usize,
-    depth_stencil_attachment: Option<&'a DepthStencilAttachmentDescriptor>,
-    label: Label,
-}
-
-impl<'a> RenderPassDescriptor<'a> {
-    fn to_wgpu_type(&self) -> wgc::command::RenderPassDescriptor<'a> {
-        let color_attachments = Cow::Borrowed(unsafe {
-            make_slice(self.color_attachments, self.color_attachments_length)
-        });
-
-        wgc::command::RenderPassDescriptor {
-            color_attachments,
-            depth_stencil_attachment: self.depth_stencil_attachment,
-            label: OwnedLabel::new(self.label).into_cow(),
-        }
-    }
-}
-
-#[repr(C)]
-pub struct ComputePassDescriptor {
-    label: Label,
-}
-
-impl<'a> ComputePassDescriptor {
-    fn to_wgpu_type(&self) -> wgc::command::ComputePassDescriptor {
-        wgc::command::ComputePassDescriptor {
-            label: OwnedLabel::new(self.label).into_cow(),
-        }
-    }
-}
-
-/// # Safety
-///
-/// This function is unsafe because improper use may lead to memory
-/// problems. For example, a double-free may occur if the function is called
-/// twice on the same raw pointer.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_command_encoder_begin_render_pass(
-    encoder_id: id::CommandEncoderId,
-    desc: &RenderPassDescriptor,
-) -> *mut RenderPass {
-    let pass = wgc::command::RenderPass::new(encoder_id, &desc.to_wgpu_type());
-    Box::into_raw(Box::new(pass))
-}
-
-/// # Safety
-///
-/// This function is unsafe because improper use may lead to memory
-/// problems. For example, a double-free may occur if the function is called
-/// twice on the same raw pointer.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_render_pass_end_pass(pass: *mut RenderPass) {
-    let pass = Box::from_raw(pass);
-    let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, &pass))
-        .expect("Unable to end render pass");
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_render_pass_destroy(pass: *mut RenderPass) {
-    let _ = Box::from_raw(pass);
-}
-
-/// # Safety
-///
-/// This function is unsafe because improper use may lead to memory
-/// problems. For example, a double-free may occur if the function is called
-/// twice on the same raw pointer.
-#[no_mangle]
-pub unsafe extern "C" fn wgpu_command_encoder_begin_compute_pass(
-    encoder_id: id::CommandEncoderId,
-    desc: &ComputePassDescriptor,
-) -> *mut ComputePass {
-    let pass = wgc::command::ComputePass::new(encoder_id, &desc.to_wgpu_type());
+pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
+    encoder: id::CommandEncoderId,
+    descriptor: &native::WGPUComputePassDescriptor,
+) -> id::ComputePassEncoderId {
+    let desc = wgc::command::ComputePassDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+    };
+    let pass = wgc::command::ComputePass::new(encoder, &desc);
     Box::into_raw(Box::new(pass))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_compute_pass_end_pass(pass: *mut ComputePass) {
+pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
+    encoder: id::CommandEncoderId,
+    descriptor: native::WGPURenderPassDescriptor,
+) -> id::RenderPassEncoderId {
+    let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
+        wgc::command::DepthStencilAttachmentDescriptor {
+            attachment: desc.attachment,
+            depth: wgc::command::PassChannel {
+                load_op: map_load_op(desc.depthLoadOp),
+                store_op: map_store_op(desc.depthStoreOp),
+                clear_value: desc.clearDepth,
+                read_only: desc.depthReadOnly,
+            },
+            stencil: wgc::command::PassChannel {
+                load_op: map_load_op(desc.stencilLoadOp),
+                store_op: map_store_op(desc.stencilStoreOp),
+                clear_value: desc.clearStencil,
+                read_only: desc.stencilReadOnly,
+            },
+        }
+    });
+    let desc = wgc::command::RenderPassDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        color_attachments: Cow::Owned(
+            make_slice(
+                descriptor.colorAttachments,
+                descriptor.colorAttachmentCount as usize,
+            )
+            .iter()
+            .map(|color_attachment| wgc::command::ColorAttachmentDescriptor {
+                attachment: color_attachment.attachment,
+                resolve_target: Some(color_attachment.resolveTarget),
+                channel: wgc::command::PassChannel {
+                    load_op: map_load_op(color_attachment.loadOp),
+                    store_op: map_store_op(color_attachment.storeOp),
+                    clear_value: wgt::Color {
+                        r: color_attachment.clearColor.r,
+                        g: color_attachment.clearColor.g,
+                        b: color_attachment.clearColor.b,
+                        a: color_attachment.clearColor.a,
+                    },
+                    read_only: false,
+                },
+            })
+            .collect(),
+        ),
+        depth_stencil_attachment: depth_stencil_attachment.as_ref(),
+    };
+    let pass = wgc::command::RenderPass::new(encoder, &desc);
+    Box::into_raw(Box::new(pass))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderEndPass(pass: id::ComputePassEncoderId) {
     let pass = Box::from_raw(pass);
     let encoder_id = pass.parent_id();
     gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, &pass))
@@ -211,42 +125,153 @@ pub unsafe extern "C" fn wgpu_compute_pass_end_pass(pass: *mut ComputePass) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpu_compute_pass_destroy(pass: *mut ComputePass) {
-    let _ = Box::from_raw(pass);
+pub unsafe extern "C" fn wgpuRenderPassEncoderEndPass(pass: id::RenderPassEncoderId) {
+    let pass = Box::from_raw(pass);
+    let encoder_id = pass.parent_id();
+    gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, &pass))
+        .expect("Unable to end render pass");
+}
+
+// TODO: Move these out of wgc
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
+    pass: id::ComputePassEncoderId,
+    pipeline_id: id::ComputePipelineId,
+) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_set_pipeline(pass, pipeline_id);
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_render_pass_set_index_buffer(
-    pass: &mut RenderPass,
-    buffer_id: id::BufferId,
-    index_format: super::IndexFormat,
-    offset: BufferAddress,
-    size: Option<BufferSize>,
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
+    pass: id::RenderPassEncoderId,
+    pipeline_id: id::RenderPipelineId,
 ) {
-    pass.set_index_buffer(
-        buffer_id,
-        index_format
-            .to_wgpu()
-            .expect("IndexFormat cannot be undefined"),
-        offset,
-        size,
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_pipeline(pass, pipeline_id);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
+    pass: id::ComputePassEncoderId,
+    groupIndex: u32,
+    group: id::BindGroupId,
+    dynamic_offset_count: u32,
+    dynamic_offsets: *const u32,
+) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_set_bind_group(
+        pass,
+        groupIndex,
+        group,
+        dynamic_offsets,
+        dynamic_offset_count as usize,
     );
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_render_bundle_set_index_buffer(
-    bundle: &mut RenderBundleEncoder,
-    buffer_id: id::BufferId,
-    index_format: super::IndexFormat,
-    offset: BufferAddress,
-    size: Option<BufferSize>,
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
+    pass: id::RenderPassEncoderId,
+    groupIndex: u32,
+    group: id::BindGroupId,
+    dynamic_offset_count: u32,
+    dynamic_offsets: *const u32,
 ) {
-    bundle.set_index_buffer(
-        buffer_id,
-        index_format
-            .to_wgpu()
-            .expect("IndexFormat cannot be undefined"),
-        offset,
-        size,
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_bind_group(
+        pass,
+        groupIndex,
+        group,
+        dynamic_offsets,
+        dynamic_offset_count as usize,
     );
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderDispatch(
+    pass: id::ComputePassEncoderId,
+    x: u32,
+    y: u32,
+    z: u32,
+) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_dispatch(pass, x, y, z);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
+    pass: id::RenderPassEncoderId,
+    vertex_count: u32,
+    instance_count: u32,
+    first_vertex: u32,
+    first_instance: u32,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_draw(
+        pass,
+        vertex_count,
+        instance_count,
+        first_vertex,
+        first_instance,
+    );
+}
+
+pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
+    wgt::Extent3d {
+        width: native.width,
+        height: native.height,
+        depth_or_array_layers: native.depth,
+    }
+}
+
+pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
+    wgt::Origin3d {
+        x: native.x,
+        y: native.y,
+        z: native.z,
+    }
+}
+
+pub fn map_image_copy_texture(
+    native: &native::WGPUImageCopyTexture,
+) -> wgc::command::ImageCopyTexture {
+    wgt::ImageCopyTexture {
+        texture: native.texture,
+        mip_level: native.mipLevel,
+        origin: map_origin3d(&native.origin),
+    }
+}
+
+pub fn map_image_copy_buffer(
+    native: &native::WGPUImageCopyBuffer,
+) -> wgc::command::ImageCopyBuffer {
+    wgt::ImageCopyBuffer {
+        buffer: native.buffer,
+        layout: map_texture_data_layout(&native.layout),
+    }
+}
+
+pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::ImageDataLayout {
+    wgt::ImageDataLayout {
+        offset: native.offset,
+        bytes_per_row: NonZeroU32::new(native.bytesPerRow),
+        rows_per_image: NonZeroU32::new(native.rowsPerImage),
+    }
+}
+
+map_enum!(
+    map_load_op,
+    WGPULoadOp,
+    wgc::command::LoadOp,
+    "Unknown load op",
+    Clear,
+    Load
+);
+map_enum!(
+    map_store_op,
+    WGPUStoreOp,
+    wgc::command::StoreOp,
+    "Unknown store op",
+    Clear,
+    Store
+);

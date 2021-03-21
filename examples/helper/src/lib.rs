@@ -36,9 +36,18 @@ impl BufferDimensions {
 }
 
 #[no_mangle]
-pub extern "C" fn save_png(path: *const c_char, data: *const c_uchar, buffer_dimensions: &BufferDimensions) {
+pub extern "C" fn save_png(
+    path: *const c_char,
+    data: *const c_uchar,
+    buffer_dimensions: &BufferDimensions,
+) {
     let png_output_path: &str = unsafe { CStr::from_ptr(path) }.to_str().unwrap();
-    let padded_buffer = unsafe { from_raw_parts(data, buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) };
+    let padded_buffer = unsafe {
+        from_raw_parts(
+            data,
+            buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height,
+        )
+    };
 
     let mut png_encoder = png::Encoder::new(
         File::create(png_output_path).unwrap(),
