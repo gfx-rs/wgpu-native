@@ -3,7 +3,7 @@ project('wgpu-native', 'c', version : '0.6.0', license : 'MPL 2.0')
 
 cargo = find_program('cargo')
 #determin whitch dir contain platform library
-if host_machine.system() == 'Linux'
+if host_machine.system() == 'linux'
     lib_path='target/release/libwgpu_native.a'
 elif host_machine.system() == 'windows'
     lib_path='target/release/wgpu_native.lib'
