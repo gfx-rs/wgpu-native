@@ -1,11 +1,13 @@
 
 project('wgpu-native', 'c', version : '0.6.0', license : 'MPL 2.0')
 
+inc_dirs = [include_directories('ffi', is_system: true)]
+
 cargo = find_program('cargo')
-#determin whitch dir contain platform library
-if host_machine.system() == 'linux'
+#determin which dir contain platform library
+if ['linux','android','darwin','cygwin','freebsd','netbsd','openbsd'].contains(host_machine.system())
     lib_path='target/release/libwgpu_native.a'
-elif host_machine.system() == 'windows'
+else
     lib_path='target/release/wgpu_native.lib'
 endif
 
@@ -16,7 +18,7 @@ wgpu_native = static_library('wgpu_native', objects : lib_path, install : true)
 
 dep_wgpu_native = declare_dependency(
 link_with:wgpu_native,
-include_directories: ['ffi/']
+include_directories: inc_dirs
 )
 
 pkg = import('pkgconfig')
