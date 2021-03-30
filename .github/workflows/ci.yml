@@ -78,6 +78,7 @@ jobs:
                                 cmake . -DCMAKE_INSTALL_PREFIX=$GLFW3_INSTALL_DIR -DCMAKE_GENERATOR_PLATFORM=x64
                                 cmake --build . --target install
             make_command: CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/glfw-3.3/install make VERBOSE=1
+            make_shell: cmd
     steps:
       - uses: actions/checkout@v2
         with:
@@ -197,6 +198,8 @@ jobs:
     runs-on: macos-10.15
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - run: rustup component add clippy
       - run: rustup target add aarch64-apple-ios
       - run: cargo clippy --target aarch64-apple-ios

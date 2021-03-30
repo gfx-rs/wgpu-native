@@ -48,7 +48,21 @@ int main()
 
 #if WGPU_TARGET == WGPU_TARGET_MACOS
     {
-#error TODO
+        id metal_layer = NULL;
+        NSWindow *ns_window = glfwGetCocoaWindow(window);
+        [ns_window.contentView setWantsLayer:YES];
+        metal_layer = [CAMetalLayer layer];
+        [ns_window.contentView setLayer:metal_layer];
+        surface = wgpuInstanceCreateSurface(NULL, &(WGPUSurfaceDescriptor) { 
+            .label = NULL, 
+            .nextInChain = (const WGPUChainedStruct*)&(WGPUSurfaceDescriptorFromMetalLayer) {
+                .chain = (WGPUChainedStruct) {
+                    .next = NULL,
+                    .sType = WGPUSType_SurfaceDescriptorFromMetalLayer,
+                },
+                .layer = metal_layer,
+            },
+        });    
     }
 #elif WGPU_TARGET == WGPU_TARGET_LINUX_X11
     {

@@ -208,7 +208,8 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     follow_chain!(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
-            WGPUSType_SurfaceDescriptorFromXlib => native::WGPUSurfaceDescriptorFromXlib)
+            WGPUSType_SurfaceDescriptorFromXlib => native::WGPUSurfaceDescriptorFromXlib,
+            WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer)
     )
 }
 
@@ -220,6 +221,7 @@ unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
     win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
     x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
+    metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
 ) -> id::SurfaceId {
     #[cfg(windows)]
     if let Some(win) = win {
@@ -247,6 +249,11 @@ unsafe fn map_surface(
             display: x11.display as *mut _,
             ..XlibHandle::empty()
         }));
+    }
+
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    if let Some(metal) = metal {
+        return GLOBAL.instance_create_surface_metal(metal.layer, PhantomData);
     }
 
     panic!("Error: Unsupported Surface");

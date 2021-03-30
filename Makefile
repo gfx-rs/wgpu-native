@@ -22,7 +22,8 @@ else
 endif
 
 ifeq ($(OS),Windows_NT)
-	CREATE_BUILD_DIR=if exist "$(BUILD_DIR)" rmdir /s /q $(BUILD_DIR) && mkdir $(BUILD_DIR)
+	# '-Force' ignores error if folder already exists
+	CREATE_BUILD_DIR=powershell -Command md $(BUILD_DIR) -Force
 	GENERATOR_PLATFORM=-DCMAKE_GENERATOR_PLATFORM=x64
 	OUTPUT_DIR=build/Debug
 else
