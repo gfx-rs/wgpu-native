@@ -35,4 +35,6 @@ void wgpuSetLogCallback(WGPULogCallback callback);
 
 void wgpuSetLogLevel(WGPULogLevel level);
 
+void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void* const data);
+
 #endif 

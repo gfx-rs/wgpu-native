@@ -1,9 +1,10 @@
 use crate::{check_error, follow_chain, make_slice, map_enum, native, Label, OwnedLabel, GLOBAL};
 use std::{
     borrow::Cow,
+    convert::TryInto,
     ffi::CStr,
     marker::PhantomData,
-    num::{NonZeroU32, NonZeroU64},
+    num::{NonZeroU32, NonZeroU64, NonZeroU8},
     path::Path,
 };
 use wgc::{gfx_select, id, pipeline::ShaderModuleSource};
@@ -130,6 +131,11 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
         },
         PhantomData
     )))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId) {
+    gfx_select!(buffer_id => GLOBAL.buffer_destroy(buffer_id)).expect("Unable to destroy buffer");
 }
 
 #[no_mangle]
@@ -456,8 +462,13 @@ pub extern "C" fn wgpuDeviceCreateSwapChain(
         height: desc.height,
         present_mode: map_present_mode(desc.presentMode),
     };
-    gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc))
-        .expect("Unable to create swap chain")
+    let (id, error) =
+        gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc));
+    if let Some(error) = error {
+        panic!("Failed to create swapchain: {}", error);
+    }
+
+    id
 }
 
 #[no_mangle]
@@ -487,7 +498,7 @@ pub extern "C" fn wgpuTextureCreateView(
         dimension: map_texture_view_dimension(descriptor.dimension),
         aspect: map_texture_aspect(descriptor.aspect),
         base_mip_level: descriptor.baseMipLevel,
-        level_count: NonZeroU32::new(descriptor.mipLevelCount),
+        mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
         base_array_layer: descriptor.baseArrayLayer,
         array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
     };
@@ -514,10 +525,79 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId) {
+    gfx_select!(texture_id => GLOBAL.texture_destroy(texture_id))
+        .expect("Failed to destroy texture");
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuDeviceCreateSampler(
+    device: id::DeviceId,
+    descriptor: &native::WGPUSamplerDescriptor,
+) -> id::SamplerId {
+    let desc = wgc::resource::SamplerDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        address_modes: [
+            map_address_mode(descriptor.addressModeU),
+            map_address_mode(descriptor.addressModeV),
+            map_address_mode(descriptor.addressModeW),
+        ],
+        mag_filter: map_filter_mode(descriptor.magFilter),
+        min_filter: map_filter_mode(descriptor.minFilter),
+        mipmap_filter: map_filter_mode(descriptor.mipmapFilter),
+        lod_min_clamp: descriptor.lodMinClamp,
+        lod_max_clamp: descriptor.lodMaxClamp,
+        compare: map_compare_function(descriptor.compare).ok(),
+        anisotropy_clamp: descriptor
+            .maxAnisotropy
+            .try_into()
+            .ok()
+            .and_then(|clamp| NonZeroU8::new(clamp)),
+        border_color: None,
+    };
+    check_error(gfx_select!(device => GLOBAL.device_create_sampler(device, &desc, PhantomData)))
+}
+
+#[no_mangle]
 pub extern "C" fn wgpuBufferUnmap(buffer_id: id::BufferId) {
     gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
 }
 
+#[no_mangle]
+pub extern "C" fn wgpuSurface(buffer_id: id::BufferId) {
+    gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
+}
+
+map_enum!(
+    map_address_mode,
+    WGPUAddressMode,
+    wgt::AddressMode,
+    "Unknown address mode",
+    ClampToEdge,
+    Repeat,
+    MirrorRepeat
+);
+map_enum!(
+    map_filter_mode,
+    WGPUFilterMode,
+    wgt::FilterMode,
+    "Unknown filter mode",
+    Nearest,
+    Linear
+);
+map_enum!(
+    map_compare_function,
+    WGPUCompareFunction,
+    wgt::CompareFunction,
+    Never,
+    Less,
+    Equal,
+    LessEqual,
+    Greater,
+    NotEqual,
+    GreaterEqual,
+    Always
+);
 map_enum!(
     map_texture_aspect,
     WGPUTextureAspect,
@@ -628,7 +708,7 @@ pub fn map_texture_view_dimension(value: crate::EnumConstant) -> Option<wgt::Tex
         native::WGPUTextureViewDimension_Cube => Some(wgt::TextureViewDimension::Cube),
         native::WGPUTextureViewDimension_CubeArray => Some(wgt::TextureViewDimension::CubeArray),
         native::WGPUTextureViewDimension_3D => Some(wgt::TextureViewDimension::D3),
-        x => None,
+        _ => None,
     }
 }
 

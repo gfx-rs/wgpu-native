@@ -1,5 +1,8 @@
 use crate::{check_error, make_slice, map_enum, native, OwnedLabel, GLOBAL};
-use std::{borrow::Cow, num::NonZeroU32};
+use std::{
+    borrow::Cow,
+    num::{NonZeroU32, NonZeroU64},
+};
 use wgc::{
     command::{compute_ffi, render_ffi},
     gfx_select, id,
@@ -37,6 +40,21 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
+    command_encoder: id::CommandEncoderId,
+    source: &native::WGPUImageCopyTexture,
+    destination: &native::WGPUImageCopyTexture,
+    copy_size: &native::WGPUExtent3D,
+) {
+    gfx_select!(command_encoder => GLOBAL.command_encoder_copy_texture_to_texture(
+        command_encoder,
+        &map_image_copy_texture(source),
+        &map_image_copy_texture(destination),
+        &map_extent3d(copy_size)))
+    .expect("Unable to copy texture to buffer")
+}
+
+#[no_mangle]
 pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
     command_encoder: id::CommandEncoderId,
     source: &native::WGPUImageCopyTexture,
@@ -47,6 +65,21 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
         command_encoder,
         &map_image_copy_texture(source),
         &map_image_copy_buffer(destination),
+        &map_extent3d(copy_size)))
+    .expect("Unable to copy texture to buffer")
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
+    command_encoder: id::CommandEncoderId,
+    source: &native::WGPUImageCopyBuffer,
+    destination: &native::WGPUImageCopyTexture,
+    copy_size: &native::WGPUExtent3D,
+) {
+    gfx_select!(command_encoder => GLOBAL.command_encoder_copy_buffer_to_texture(
+        command_encoder,
+        &map_image_copy_buffer(source),
+        &map_image_copy_texture(destination),
         &map_extent3d(copy_size)))
     .expect("Unable to copy texture to buffer")
 }
@@ -69,8 +102,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     descriptor: native::WGPURenderPassDescriptor,
 ) -> id::RenderPassEncoderId {
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
-        wgc::command::DepthStencilAttachmentDescriptor {
-            attachment: desc.attachment,
+        wgc::command::RenderPassDepthStencilAttachment {
+            view: desc.attachment,
             depth: wgc::command::PassChannel {
                 load_op: map_load_op(desc.depthLoadOp),
                 store_op: map_store_op(desc.depthStoreOp),
@@ -93,18 +126,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 descriptor.colorAttachmentCount as usize,
             )
             .iter()
-            .map(|color_attachment| wgc::command::ColorAttachmentDescriptor {
-                attachment: color_attachment.attachment,
+            .map(|color_attachment| wgc::command::RenderPassColorAttachment {
+                view: color_attachment.attachment,
                 resolve_target: Some(color_attachment.resolveTarget),
                 channel: wgc::command::PassChannel {
                     load_op: map_load_op(color_attachment.loadOp),
                     store_op: map_store_op(color_attachment.storeOp),
-                    clear_value: wgt::Color {
-                        r: color_attachment.clearColor.r,
-                        g: color_attachment.clearColor.g,
-                        b: color_attachment.clearColor.b,
-                        a: color_attachment.clearColor.a,
-                    },
+                    clear_value: map_color(&color_attachment.clearColor),
                     read_only: false,
                 },
             })
@@ -154,7 +182,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     pass: id::ComputePassEncoderId,
-    groupIndex: u32,
+    group_index: u32,
     group: id::BindGroupId,
     dynamic_offset_count: u32,
     dynamic_offsets: *const u32,
@@ -162,7 +190,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     let pass = pass.as_mut().expect("Compute pass invalid");
     compute_ffi::wgpu_compute_pass_set_bind_group(
         pass,
-        groupIndex,
+        group_index,
         group,
         dynamic_offsets,
         dynamic_offset_count as usize,
@@ -172,7 +200,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     pass: id::RenderPassEncoderId,
-    groupIndex: u32,
+    group_index: u32,
     group: id::BindGroupId,
     dynamic_offset_count: u32,
     dynamic_offsets: *const u32,
@@ -180,7 +208,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     let pass = pass.as_mut().expect("Render pass invalid");
     render_ffi::wgpu_render_pass_set_bind_group(
         pass,
-        groupIndex,
+        group_index,
         group,
         dynamic_offsets,
         dynamic_offset_count as usize,
@@ -214,6 +242,123 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
         first_vertex,
         first_instance,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
+    pass: id::RenderPassEncoderId,
+    index_count: u32,
+    instance_count: u32,
+    first_index: u32,
+    base_vertex: u32,
+    first_instance: u32,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_draw_indexed(
+        pass,
+        index_count,
+        instance_count,
+        first_index,
+        base_vertex as i32,
+        first_instance,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
+    pass: id::RenderPassEncoderId,
+    buffer: id::BufferId,
+    index_format: native::WGPUIndexFormat,
+    offset: u64,
+    size: u64,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    pass.set_index_buffer(
+        buffer,
+        crate::device::map_index_format(index_format).expect("Index format cannot be undefined"),
+        offset,
+        NonZeroU64::new(size),
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
+    pass: id::RenderPassEncoderId,
+    slot: u32,
+    buffer: id::BufferId,
+    offset: u64,
+    size: u64,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_vertex_buffer(
+        pass,
+        slot,
+        buffer,
+        offset,
+        NonZeroU64::new(size),
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
+    pass: id::RenderPassEncoderId,
+    stages: &native::WGPUShaderStage,
+    offset: u32,
+    size_bytes: u32,
+    size: *const u8,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_push_constants(
+        pass,
+        wgt::ShaderStage::from_bits(*stages as u32).expect("Invalid shader stage"),
+        offset,
+        size_bytes,
+        size,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendColor(
+    pass: id::RenderPassEncoderId,
+    color: &native::WGPUColor,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_blend_color(pass, &map_color(color));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
+    pass: id::RenderPassEncoderId,
+    reference: u32,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_stencil_reference(pass, reference);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetViewport(
+    pass: id::RenderPassEncoderId,
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    depth_min: f32,
+    depth_max: f32,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_viewport(pass, x, y, w, h, depth_min, depth_max);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
+    pass: id::RenderPassEncoderId,
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_set_scissor_rect(pass, x, y, w, h);
 }
 
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
@@ -256,6 +401,15 @@ pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::I
         offset: native.offset,
         bytes_per_row: NonZeroU32::new(native.bytesPerRow),
         rows_per_image: NonZeroU32::new(native.rowsPerImage),
+    }
+}
+
+pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
+    wgt::Color {
+        r: native.r,
+        g: native.g,
+        b: native.b,
+        a: native.a,
     }
 }
 

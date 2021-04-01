@@ -219,12 +219,12 @@ pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id
 
 unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
-    win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
-    metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
+    _x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
+    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
 ) -> id::SurfaceId {
     #[cfg(windows)]
-    if let Some(win) = win {
+    if let Some(win) = _win {
         use raw_window_handle::windows::WindowsHandle;
 
         return wgpu_create_surface(raw_window_handle::RawWindowHandle::Windows(
@@ -241,7 +241,7 @@ unsafe fn map_surface(
         not(target_os = "ios"),
         not(target_os = "macos")
     ))]
-    if let Some(x11) = x11 {
+    if let Some(x11) = _x11 {
         use raw_window_handle::unix::XlibHandle;
 
         return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(XlibHandle {
@@ -252,7 +252,7 @@ unsafe fn map_surface(
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
-    if let Some(metal) = metal {
+    if let Some(metal) = _metal {
         return GLOBAL.instance_create_surface_metal(metal.layer, PhantomData);
     }
 
