@@ -1,10 +1,11 @@
-#ifndef WGPU_H
-#define WGPU_H
 #include "wgpu.h"
-#endif
 
-WGPUShaderModuleDescriptor read_file(const char *name);
+WGPUShaderModuleDescriptor load_wgsl(const char *name);
 
-void read_buffer_map(
-    WGPUBufferMapAsyncStatus status,
-    uint8_t *userdata);
+void request_adapter_callback(WGPUAdapter received, void* userdata);
+
+void request_device_callback(WGPUDevice received, void* userdata);
+
+void readBufferMap(WGPUBufferMapAsyncStatus status, uint8_t* userdata);
+
+void initializeLog();

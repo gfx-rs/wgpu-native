@@ -4,7 +4,7 @@
 [![Crates.io](https://img.shields.io/crates/v/wgpu-native.svg?label=wgpu-native)](https://crates.io/crates/wgpu-native)
 
 This is a native WebGPU implementation in Rust, based on [wgpu-core](https://github.com/gfx-rs/wgpu).
-The C API header is generated at `ffi/wgpu.h` by [cbindgen](https://github.com/eqrion/cbindgen).
+The bindings are based on the WebGPU-native header found at `ffi/webgpu.h` and wgpu-native specific items in `ffi/wgpu.h`
 
 # Bindings
 

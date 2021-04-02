@@ -60,13 +60,16 @@ jobs:
             channel: stable
             build_command: rustup default stable-msvc; cargo clippy
             make_command: make package
+            install_deps_command: |
+                                # choco exit with code 1 after successful install 
+                                choco install -y --force llvm | exit 0
           - os: windows-2019
             name: Windows Nightly
             channel: nightly
             build_command: rustup default nightly-msvc; cargo check
             install_deps_command: |
                                 # choco exit with code 1 after successful install ¯\_(ツ)_/¯
-                                choco install -y --force cmake make | exit 0
+                                choco install -y --force cmake make llvm | exit 0
                                 curl -sL -o glfw.zip https://github.com/glfw/glfw/archive/3.3.zip
                                 unzip -qq glfw.zip -d $GITHUB_WORKSPACE
                                 cd $GITHUB_WORKSPACE/glfw-3.3/
@@ -75,8 +78,11 @@ jobs:
                                 cmake . -DCMAKE_INSTALL_PREFIX=$GLFW3_INSTALL_DIR -DCMAKE_GENERATOR_PLATFORM=x64
                                 cmake --build . --target install
             make_command: CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/glfw-3.3/install make VERBOSE=1
+            make_shell: cmd
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - if: matrix.channel == 'nightly'
         name: Install latest nightly
         uses: actions-rs/toolchain@v1
@@ -93,8 +99,6 @@ jobs:
       - if: contains(matrix.build_command, 'clippy')
         name: cargo clippy
         run: ${{ matrix.build_command }}
-      - if: matrix.channel == 'nightly'
-        run: cargo +nightly install cbindgen
       - run: ${{ matrix.make_command }}
         shell: bash
 
@@ -194,6 +198,8 @@ jobs:
     runs-on: macos-10.15
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - run: rustup component add clippy
       - run: rustup target add aarch64-apple-ios
       - run: cargo clippy --target aarch64-apple-ios
@@ -205,11 +211,13 @@ jobs:
       PKG_CONFIG_ALLOW_CROSS: 1
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - run: rustup component add clippy
       - name: Install dependencies
         run: |
           sudo apt-get update -y -qq
-          sudo apt-get install -y -qq libegl1-mesa-dev
+          sudo apt-get install -y -qq libegl1-mesa-dev libc6-dev-i386
           echo "$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
       - run: rustup target add aarch64-linux-android
       - run: cargo clippy --target aarch64-linux-android
@@ -219,6 +227,8 @@ jobs:
     runs-on: macos-10.15
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - run: rustup component add clippy
       - run: cargo clippy --features vulkan-portability
 

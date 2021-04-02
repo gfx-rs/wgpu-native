@@ -1,0 +1,3 @@
+[submodule "ffi/webgpu-headers"]
+	path = ffi/webgpu-headers
+	url = https://github.com/webgpu-native/webgpu-headers
