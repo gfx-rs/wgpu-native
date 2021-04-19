@@ -51,7 +51,7 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
         &map_image_copy_texture(source),
         &map_image_copy_texture(destination),
         &map_extent3d(copy_size)))
-    .expect("Unable to copy texture to buffer")
+    .expect("Unable to copy texture to texture")
 }
 
 #[no_mangle]
@@ -81,7 +81,7 @@ pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
         &map_image_copy_buffer(source),
         &map_image_copy_texture(destination),
         &map_extent3d(copy_size)))
-    .expect("Unable to copy texture to buffer")
+    .expect("Unable to copy buffer to texture")
 }
 
 #[no_mangle]
