@@ -152,8 +152,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         let is_storage_texture =
             entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
-        let ty = if is_texture || is_sampler || is_storage_texture {
-            unimplemented!();
+        let ty = if is_texture {
+            unimplemented!("texture");
+        } else if is_sampler {
+            unimplemented!("sampler");
+        } else if is_storage_texture {
+            unimplemented!("storage_texture");
         } else if is_buffer {
             wgt::BindingType::Buffer {
                 ty: match entry.buffer.type_ {
@@ -346,7 +350,7 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     device: id::DeviceId,
-    descriptor: native::WGPURenderPipelineDescriptor,
+    descriptor: &native::WGPURenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),

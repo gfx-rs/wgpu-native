@@ -99,7 +99,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     encoder: id::CommandEncoderId,
-    descriptor: native::WGPURenderPassDescriptor,
+    descriptor: &native::WGPURenderPassDescriptor,
 ) -> id::RenderPassEncoderId {
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
