@@ -189,7 +189,22 @@ macro_rules! map_enum {
 
             map_fn(value).expect($err_msg)
         }
-    }
+    };
+    ($name:ident, $c_name:ident, $rs_type:ty, $($native_variant:ident:$variant2:ident),+) => {
+        pub fn $name(value: crate::EnumConstant) -> Result<$rs_type, crate::EnumConstant> {
+            match value {
+                $(paste::paste!(native::[<$c_name _ $native_variant>]) => Ok(<$rs_type>::$variant2)),+,
+                x => Err(x),
+            }
+        }
+    };
+    ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($native_variant:ident:$variant2:ident),+) => {
+        pub fn $name(value: crate::EnumConstant) -> $rs_type {
+            map_enum!(map_fn, $c_name, $rs_type, $($native_variant:$variant2),+);
+
+            map_fn(value).expect($err_msg)
+        }
+    };
 }
 
 // see https://github.com/rust-windowing/raw-window-handle/issues/49

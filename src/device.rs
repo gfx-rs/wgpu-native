@@ -346,7 +346,7 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     device: id::DeviceId,
-    descriptor: native::WGPURenderPipelineDescriptor,
+    descriptor: &native::WGPURenderPipelineDescriptor,
 ) -> id::RenderPipelineId {
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
@@ -399,6 +399,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 native::WGPUCullMode_Back => Some(wgt::Face::Back),
                 _ => None,
             },
+            clamp_depth: false, // todo: fill this via extras
             polygon_mode: wgt::PolygonMode::Fill,
             conservative: false,
         },
@@ -639,18 +640,19 @@ map_enum!(
     WGPUBlendFactor,
     wgt::BlendFactor,
     "Unknown blend factor",
-    Zero,
-    One,
-    SrcColor,
-    OneMinusSrcColor,
-    SrcAlpha,
-    OneMinusSrcAlpha,
-    DstColor,
-    OneMinusDstColor,
-    DstAlpha,
-    OneMinusDstAlpha,
-    SrcAlphaSaturated,
-    BlendColor
+    Zero:Zero,
+    One:One,
+    SrcColor:Src,
+    OneMinusSrcColor:OneMinusSrc,
+    SrcAlpha:SrcAlpha,
+    OneMinusSrcAlpha:OneMinusSrcAlpha,
+    DstColor:Dst,
+    OneMinusDstColor:OneMinusDst,
+    DstAlpha:DstAlpha,
+    OneMinusDstAlpha:OneMinusDstAlpha,
+    SrcAlphaSaturated:SrcAlphaSaturated,
+    BlendColor:Constant,
+    OneMinusBlendColor:OneMinusConstant
 );
 map_enum!(
     map_blend_operation,
