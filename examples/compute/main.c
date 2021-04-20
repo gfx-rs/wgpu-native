@@ -32,7 +32,7 @@ int main()
                 },
                 .maxBindGroups = 1,
                 .label = "Device",
-                .tracePath = "build/",
+                .tracePath = NULL,
             },
         },
         request_device_callback, (void*)&device);

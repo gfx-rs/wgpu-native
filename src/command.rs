@@ -323,7 +323,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendColor(
     color: &native::WGPUColor,
 ) {
     let pass = pass.as_mut().expect("Render pass invalid");
-    render_ffi::wgpu_render_pass_set_blend_color(pass, &map_color(color));
+    render_ffi::wgpu_render_pass_set_blend_constant(pass, &map_color(color));
 }
 
 #[no_mangle]
