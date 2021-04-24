@@ -17,7 +17,7 @@ WGPUShaderModuleDescriptor load_wgsl(const char *name) {
     fclose(file);
     bytes[length] = NULL;
 
-    WGPUShaderModuleWGSLDescriptor *wgslDescriptor = malloc(sizeof(WGPUShaderModuleSPIRVDescriptor));
+    WGPUShaderModuleWGSLDescriptor *wgslDescriptor = malloc(sizeof(WGPUShaderModuleWGSLDescriptor));
     wgslDescriptor->chain.next = NULL;
     wgslDescriptor->chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
     wgslDescriptor->source = (const char*) bytes;
