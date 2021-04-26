@@ -109,7 +109,6 @@ jobs:
   # Python world, but generally useful.
   release-build:
     name: release-build - ${{ matrix.name }}
-    if: contains(github.ref, 'tags/v')
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -235,7 +234,7 @@ jobs:
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each os (win32, win64, MacOS64, Linux32, Linux64),
   # plus a file containing the commit sha.
-  publish:
+  publish:    
     name: Publish Github release
     needs: [release-build]
     runs-on: ubuntu-18.04
