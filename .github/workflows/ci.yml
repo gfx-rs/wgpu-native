@@ -119,12 +119,12 @@ jobs:
             ARCH: 64
             OS_NAME: linux
             IMAGE: manylinux2010_x86_64
-          - name: Linux-32
-            os: ubuntu-18.04
-            RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
-            ARCH: 32
-            OS_NAME: linux
-            IMAGE: manylinux2010_i686
+          #- name: Linux-32  -> broken because `x11.window as u64` (should be u32)
+          #  os: ubuntu-18.04
+          #  RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
+          #  ARCH: 32
+          #  OS_NAME: linux
+          #  IMAGE: manylinux2010_i686
           - name: MacOS-64
             os: macOS-10.15
             RUST_TOOLCHAIN: stable
@@ -143,8 +143,22 @@ jobs:
             OS_NAME: windows
     steps:
     - uses: actions/checkout@v2
+      with:
+        submodules: 'true'
+    - name: Windows 64 deps
+      if: success() && matrix.OS_NAME == 'windows' && matrix.ARCH == 64
+      run: |
+          choco install -y --force llvm | exit 0
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+      shell: bash
+    - name: Windows 32 deps
+      if: success() && matrix.OS_NAME == 'windows' && matrix.ARCH == 32
+      run: |
+          choco install -y --force --x86 llvm | exit 0
+          echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
+      shell: bash
     - name: Docker build
-      if: success() && matrix.OS_NAME == 'Linux'
+      if: success() && matrix.OS_NAME == 'linux'
       env:
         IMAGE: ${{ matrix.IMAGE }}
         RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
@@ -157,14 +171,14 @@ jobs:
             curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
             rustup toolchain install --no-self-update $RUST_TOOLCHAIN && \
             rustup default $RUST_TOOLCHAIN && \
-            yum install zip -y && \
+            yum install zip clang -y && \
             make package")
           docker start -ai $CID
           mkdir -p dist
           docker cp $CID:/tmp/wgpu-native/dist/. dist/.
           docker rm $CID
     - name: Host build
-      if: success() && matrix.OS_NAME != 'Linux'
+      if: success() && matrix.OS_NAME != 'linux'
       env:
         RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
         MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
@@ -185,6 +199,7 @@ jobs:
           mv dist/*release*.zip ./dist/wgpu-$OS_NAME-$ARCH-release.zip
       shell: bash
     - name: Publish
+      if: success() && contains(github.ref, 'tags/v')
       uses: actions/upload-artifact@v2
       with:
         path: dist
@@ -234,7 +249,7 @@ jobs:
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each os (win32, win64, MacOS64, Linux32, Linux64),
   # plus a file containing the commit sha.
-  publish:    
+  publish:
     name: Publish Github release
     needs: [release-build]
     runs-on: ubuntu-18.04
