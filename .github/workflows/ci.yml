@@ -119,12 +119,12 @@ jobs:
             ARCH: 64
             OS_NAME: linux
             IMAGE: manylinux2010_x86_64
-          #- name: Linux-32  -> broken because `x11.window as u64` (should be u32)
-          #  os: ubuntu-18.04
-          #  RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
-          #  ARCH: 32
-          #  OS_NAME: linux
-          #  IMAGE: manylinux2010_i686
+          - name: Linux-32
+            os: ubuntu-18.04
+            RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
+            ARCH: 32
+            OS_NAME: linux
+            IMAGE: manylinux2010_i686
           - name: MacOS-64
             os: macOS-10.15
             RUST_TOOLCHAIN: stable
