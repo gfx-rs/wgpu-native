@@ -10,7 +10,7 @@ pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     // e.g. "v4.1"      -> 0x04010000
     //      "5.4.3.2.1" -> 0x05040302
     let static_str = match option_env!("WGPU_NATIVE_VERSION") {
-        Some (s) => s.trim_start_matches("v"),
+        Some (s) => s.trim().trim_start_matches("v"),
         None => "",
     };
     let mut version: u32 = 0;
