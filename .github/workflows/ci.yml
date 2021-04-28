@@ -102,7 +102,7 @@ jobs:
       - run: ${{ matrix.make_command }}
         shell: bash
 
-  # Builds for binary releases. Runs on each build, but only uploads the artifacts on a tag starting with 'v'
+  # Builds for binary releases. Run on tags starting with 'v'.
   # The Linux builds are performed on a "manylinux2010" container. This container
   # is designed such that that the resulting binary has minimal dependencies on system
   # libraries, and thus works on as many linuxes as possible. It's a thing from the
