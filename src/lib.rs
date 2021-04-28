@@ -260,7 +260,7 @@ unsafe fn map_surface(
         use raw_window_handle::unix::XlibHandle;
 
         return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(XlibHandle {
-            window: x11.window as u64,
+            window: x11.window as _,
             display: x11.display as *mut _,
             ..XlibHandle::empty()
         }));

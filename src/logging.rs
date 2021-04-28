@@ -2,6 +2,32 @@ use crate::{map_enum, native};
 use log::{Level, LevelFilter, Metadata, Record};
 use std::ffi::CString;
 
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
+    // Take the string of WGPU_NATIVE_VERSION, strip any leading v's, split on dots,
+    // and map the first 4 parts to the bytes of an uint32, consuming MSB first.
+    // e.g. "v4.1"      -> 0x04010000
+    //      "5.4.3.2.1" -> 0x05040302
+    let static_str = match option_env!("WGPU_NATIVE_VERSION") {
+        Some (s) => s.trim().trim_start_matches("v"),
+        None => "",
+    };
+    let mut version: u32 = 0;
+    let mut index: i32 = 0;
+    for part in static_str.split(".") {
+        let versionpart: u32 = match part.parse::<u32>() {
+            Ok(n) => n,
+            Err(_e) => 0,
+        };
+        let shift : i32 = 8 * (3 - index);
+        if shift < 0 {break;}
+        version += versionpart << shift;
+        index += 1;
+    }
+    version
+}
+
 struct Logger {
     callback: native::WGPULogCallback,
     initialized: bool,
