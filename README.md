@@ -4,7 +4,7 @@
 [![Crates.io](https://img.shields.io/crates/v/wgpu-native.svg?label=wgpu-native)](https://crates.io/crates/wgpu-native)
 
 This is a native WebGPU implementation in Rust, based on [wgpu-core](https://github.com/gfx-rs/wgpu).
-The bindings are based on the WebGPU-native header found at `ffi/webgpu.h` and wgpu-native specific items in `ffi/wgpu.h`
+The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/webgpu.h` and wgpu-native specific items in `ffi/wgpu.h`
 
 # Bindings
 
@@ -19,8 +19,8 @@ Note: the version numbers of `wgpu-native` are not aligned with versions of `wgp
 
 ## Pre-built binaries
 
-- Automated 32 and 64-bit builds for MacOS, Windows and Linux are available as Github [releases](https://github.com/gfx-rs/wgpu-native/releases).
+Automated 32 and 64-bit builds for MacOS, Windows and Linux are available as Github [releases](https://github.com/gfx-rs/wgpu-native/releases). Details can be found in the  [Binary Releases](https://github.com/gfx-rs/wgpu-native/wiki/Binary-Releases) page in the wiki.
 
 ## Usage
 
-This repository contains C-language examples that link to the native library targets and perform basic rendering and computation. Please refer to our [Getting Started](https://github.com/gfx-rs/wgpu/wiki/Getting-Started#getting-started) page at the wiki for more information.
+This repository contains C-language examples that link to the native library targets and perform basic rendering and computation. Please refer to our [Getting Started](https://github.com/gfx-rs/wgpu-native/wiki/Getting-Started) page at the wiki for more information.
