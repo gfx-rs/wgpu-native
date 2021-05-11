@@ -1,16 +1,17 @@
+# This is the main CI workflow to test that the package can be build on various platforms
+
 name: CI
 
 on:
   push:
-    tags:
-      - 'v*'
-    branches-ignore: [ staging.tmp ]
+    branches: [ master ]
   pull_request:
     branches-ignore: [ staging.tmp ]
 
 jobs:
+  
+  # A matrix with common builds
 
-  # Builds to test that the package can be build on various platforms
   test-build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
@@ -22,7 +23,7 @@ jobs:
             name: MacOS Stable
             channel: stable
             build_command: cargo clippy
-            make_command: make package
+            make_command: make lib-native
           - os: macos-10.15
             name: MacOS Nightly
             channel: nightly
@@ -37,7 +38,7 @@ jobs:
                     sudo apt-get update
                     sudo apt-get install -f -y libegl1-mesa-dev
                     sudo apt-get install -f -y mesa-vulkan-drivers
-            make_command: make package
+            make_command: make lib-native
           - os: ubuntu-18.04
             name: Ubuntu Nightly
             channel: nightly
@@ -59,7 +60,7 @@ jobs:
             name: Windows Stable
             channel: stable
             build_command: rustup default stable-msvc; cargo clippy
-            make_command: make package
+            make_command: make lib-native
             install_deps_command: |
                                 # choco exit with code 1 after successful install 
                                 choco install -y --force llvm | exit 0
@@ -102,114 +103,6 @@ jobs:
       - run: ${{ matrix.make_command }}
         shell: bash
 
-  # Builds for binary releases. Run on tags starting with 'v'.
-  # The Linux builds are performed on a "manylinux2010" container. This container
-  # is designed such that that the resulting binary has minimal dependencies on system
-  # libraries, and thus works on as many linuxes as possible. It's a thing from the
-  # Python world, but generally useful.
-  release-build:
-    name: release-build - ${{ matrix.name }}
-    if: success() && contains(github.ref, 'tags/v')
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - name: Linux-64
-            os: ubuntu-18.04
-            RUST_TOOLCHAIN: stable
-            ARCH: 64
-            OS_NAME: linux
-            IMAGE: manylinux2010_x86_64
-          - name: Linux-32
-            os: ubuntu-18.04
-            RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
-            ARCH: 32
-            OS_NAME: linux
-            IMAGE: manylinux2010_i686
-          - name: MacOS-64
-            os: macOS-10.15
-            RUST_TOOLCHAIN: stable
-            ARCH: 64
-            OS_NAME: macos
-            MACOSX_DEPLOYMENT_TARGET: '10.13'
-          - name: Windows-64
-            os: vs2017-win2016
-            RUST_TOOLCHAIN: stable-msvc
-            ARCH: 64
-            OS_NAME: windows
-          - name: Windows-32
-            os: vs2017-win2016
-            RUST_TOOLCHAIN: stable-i686-pc-windows-msvc
-            ARCH: 32
-            OS_NAME: windows
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'true'
-    - name: set version (which gets baked into wgpuGetVersion)
-      run: |
-          echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Windows 64 deps
-      if: success() && matrix.OS_NAME == 'windows' && matrix.ARCH == 64
-      run: |
-          choco install -y --force llvm | exit 0
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      shell: bash
-    - name: Windows 32 deps
-      if: success() && matrix.OS_NAME == 'windows' && matrix.ARCH == 32
-      run: |
-          choco install -y --force --x86 llvm | exit 0
-          echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
-      shell: bash
-    - name: Docker build
-      if: success() && matrix.OS_NAME == 'linux'
-      env:
-        IMAGE: ${{ matrix.IMAGE }}
-        RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
-      run: |
-          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro quay.io/pypa/$IMAGE bash -c "\
-            cp -r /tmp/src/. . && \
-            rm -rf ./dist && \
-            export PATH=/root/.cargo/bin:\$PATH && \
-            export USER=root && \
-            curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
-            rustup toolchain install --no-self-update $RUST_TOOLCHAIN && \
-            rustup default $RUST_TOOLCHAIN && \
-            yum install zip clang -y && \
-            make package")
-          docker start -ai $CID
-          mkdir -p dist
-          docker cp $CID:/tmp/wgpu-native/dist/. dist/.
-          docker rm $CID
-    - name: Host build
-      if: success() && matrix.OS_NAME != 'linux'
-      env:
-        RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
-        MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
-      run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
-          export PATH=$HOME/.cargo/bin:$PATH
-          rustup toolchain install --no-self-update $RUST_TOOLCHAIN
-          rustup default $RUST_TOOLCHAIN
-          make package
-      shell: bash
-    - name: Pre-publish
-      env:
-        OS_NAME: ${{ matrix.OS_NAME }}
-        ARCH: ${{ matrix.ARCH }}
-      run: |
-          mkdir -p ./dist
-          mv dist/*debug*.zip ./dist/wgpu-$OS_NAME-$ARCH-debug.zip
-          mv dist/*release*.zip ./dist/wgpu-$OS_NAME-$ARCH-release.zip
-      shell: bash
-    - name: Publish
-      if: success()
-      uses: actions/upload-artifact@v2
-      with:
-        path: dist
-        name: dist
-
   # Some smaller test builds
 
   ios-build:
@@ -250,47 +143,3 @@ jobs:
           submodules: 'true'
       - run: rustup component add clippy
       - run: cargo clippy --features vulkan-portability
-
-  # Create a Github release and upload the binary libs that we just built.
-  # There should be a release and debug build for each os (win32, win64, MacOS64, Linux32, Linux64),
-  # plus a file containing the commit sha.
-  publish:
-    name: Publish Github release
-    needs: [release-build]
-    runs-on: ubuntu-18.04
-    if: success() && contains(github.ref, 'tags/v')
-    steps:
-    - uses: actions/checkout@v2
-    - name: set version (which gets used as release name)
-      run: |
-          echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Download assets
-      uses: actions/download-artifact@v1.0.0
-      with:
-        name: dist
-    - name: Create commit-sha file
-      env:
-        GITHUB_SHA: ${{ github.sha }}
-      run: |
-        echo $GITHUB_SHA > dist/commit-sha
-    - name: Create release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ env.WGPU_NATIVE_VERSION }}
-        release_name: ${{ env.WGPU_NATIVE_VERSION }}
-        body: |
-            Autogenerated binary modules.
-            The Linux builds are built on CentOS 6 (glibc 2.12, see [Manylinux2010](https://www.python.org/dev/peps/pep-0571/)).
-            The MacOS builds target MacOS 10.13 High Sierra and up.
-        draft: false
-        prerelease: false
-    - name: Upload Release Assets
-      # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
-      uses: AButler/upload-release-assets@v2.0
-      with:
-        release-tag: ${{ env.WGPU_NATIVE_VERSION }}
-        files: 'dist/*.zip;dist/commit-sha'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
