@@ -153,9 +153,42 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
         let ty = if is_texture {
-            unimplemented!("texture");
+            wgt::BindingType::Texture {
+                sample_type: match entry.texture.sampleType {
+                    native::WGPUTextureSampleType_Float => { wgt::TextureSampleType::Float {filterable: true} },
+                    native::WGPUTextureSampleType_UnfilterableFloat  => { wgt::TextureSampleType::Float {filterable: false} },
+                    native::WGPUTextureSampleType_Depth   => wgt::TextureSampleType::Depth,
+                    native::WGPUTextureSampleType_Sint   => wgt::TextureSampleType::Sint,
+                    native::WGPUTextureSampleType_Uint   => wgt::TextureSampleType::Uint,
+                    x => panic!("Unknown texture SampleType: {}", x),
+                },
+                view_dimension: match entry.texture.viewDimension {
+                    native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
+                    native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
+                    native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
+                    native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
+                    native::WGPUTextureViewDimension_CubeArray => wgt::TextureViewDimension::CubeArray,
+                    native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
+                    x => panic!("Unknown texture ViewDimension: {}", x),
+                },
+                multisampled: entry.texture.multisampled,
+            }
         } else if is_sampler {
-            unimplemented!("sampler");
+            match entry.sampler.type_ {
+                native::WGPUSamplerBindingType_Filtering => wgt::BindingType::Sampler {
+                    filtering: true,
+                    comparison: false,
+                },
+                native::WGPUSamplerBindingType_NonFiltering => wgt::BindingType::Sampler {
+                    filtering: false,
+                    comparison: false,
+                },
+                native::WGPUSamplerBindingType_Comparison => wgt::BindingType::Sampler {
+                    filtering: false,
+                    comparison: true,
+                },
+                x => panic!("Unknown Sampler Type: {}", x),
+            }
         } else if is_storage_texture {
             unimplemented!("storage_texture");
         } else if is_buffer {
@@ -202,8 +235,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     let mut entries = Vec::new();
 
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        entries.push(
-            //TODO: Not all things are buffers!
+        let wgc_entry = if entry.buffer {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::Buffer(
@@ -213,8 +245,21 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                         size: NonZeroU64::new(entry.size),
                     },
                 ),
-            },
-        )
+            }
+        } else if entry.sampler as u64!= 0 {
+            wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::Sampler(entry.sampler),
+            }
+        } else if entry.textureView as u64 != 0 {
+            wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::TextureView(entry.textureView),
+            }
+        } else {
+            panic!("BindGroup entry does not have buffer nor sampler nor textureView.")
+        };
+        entries.push(wgc_entry);
     }
 
     let label = OwnedLabel::new(descriptor.label);
@@ -261,7 +306,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
         stage,
     };
 
-    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
 
     check_error((id, error))
 }
@@ -343,7 +388,7 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
     offset: usize,
     size: usize,
 ) -> *mut u8 {
-    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, NonZeroU64::new(size as u64)))
+    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, Some(size as u64)))
         .expect("Unable to get mapped range").0
 }
 
@@ -447,7 +492,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 ),
             }),
     };
-    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
     if let Some(err) = error {
         panic!("{:?}", err);
     }
