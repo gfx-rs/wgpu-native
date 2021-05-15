@@ -155,11 +155,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         let ty = if is_texture {
             wgt::BindingType::Texture {
                 sample_type: match entry.texture.sampleType {
-                    native::WGPUTextureSampleType_Float => { wgt::TextureSampleType::Float {filterable: true} },
-                    native::WGPUTextureSampleType_UnfilterableFloat  => { wgt::TextureSampleType::Float {filterable: false} },
-                    native::WGPUTextureSampleType_Depth   => wgt::TextureSampleType::Depth,
-                    native::WGPUTextureSampleType_Sint   => wgt::TextureSampleType::Sint,
-                    native::WGPUTextureSampleType_Uint   => wgt::TextureSampleType::Uint,
+                    native::WGPUTextureSampleType_Float => {
+                        wgt::TextureSampleType::Float { filterable: true }
+                    }
+                    native::WGPUTextureSampleType_UnfilterableFloat => {
+                        wgt::TextureSampleType::Float { filterable: false }
+                    }
+                    native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
+                    native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
+                    native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
                     x => panic!("Unknown texture SampleType: {}", x),
                 },
                 view_dimension: match entry.texture.viewDimension {
@@ -167,7 +171,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
                     native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
                     native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
-                    native::WGPUTextureViewDimension_CubeArray => wgt::TextureViewDimension::CubeArray,
+                    native::WGPUTextureViewDimension_CubeArray => {
+                        wgt::TextureViewDimension::CubeArray
+                    }
                     native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
                     x => panic!("Unknown texture ViewDimension: {}", x),
                 },
@@ -190,7 +196,30 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                 x => panic!("Unknown Sampler Type: {}", x),
             }
         } else if is_storage_texture {
-            unimplemented!("storage_texture");
+            wgt::BindingType::StorageTexture {
+                access: match entry.storageTexture.access {
+                    native::WGPUStorageTextureAccess_ReadOnly => {
+                        wgt::StorageTextureAccess::ReadOnly
+                    }
+                    native::WGPUStorageTextureAccess_WriteOnly => {
+                        wgt::StorageTextureAccess::WriteOnly
+                    }
+                    x => panic!("Unknown StorageTextureAccess: {}", x),
+                },
+                format: map_texture_format(entry.storageTexture.format)
+                    .expect("StorageTexture format missing"),
+                view_dimension: match entry.storageTexture.viewDimension {
+                    native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
+                    native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
+                    native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
+                    native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
+                    native::WGPUTextureViewDimension_CubeArray => {
+                        wgt::TextureViewDimension::CubeArray
+                    }
+                    native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
+                    x => panic!("Unknown texture ViewDimension: {}", x),
+                },
+            }
         } else if is_buffer {
             wgt::BindingType::Buffer {
                 ty: match entry.buffer.type_ {
@@ -233,28 +262,29 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     descriptor: &native::WGPUBindGroupDescriptor,
 ) -> id::BindGroupId {
     let mut entries = Vec::new();
-
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        let wgc_entry = if entry.buffer {
+        let wgc_entry = if entry.buffer.is_some() {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::Buffer(
                     wgc::binding_model::BufferBinding {
-                        buffer_id: entry.buffer,
+                        buffer_id: entry.buffer.unwrap(),
                         offset: entry.offset,
                         size: NonZeroU64::new(entry.size),
                     },
                 ),
             }
-        } else if entry.sampler as u64!= 0 {
+        } else if entry.sampler.is_some() {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::Sampler(entry.sampler),
+                resource: wgc::binding_model::BindingResource::Sampler(entry.sampler.unwrap()),
             }
-        } else if entry.textureView as u64 != 0 {
+        } else if entry.textureView.is_some() {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::TextureView(entry.textureView),
+                resource: wgc::binding_model::BindingResource::TextureView(
+                    entry.textureView.unwrap(),
+                ),
             }
         } else {
             panic!("BindGroup entry does not have buffer nor sampler nor textureView.")
@@ -389,7 +419,8 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
     size: usize,
 ) -> *mut u8 {
     gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, Some(size as u64)))
-        .expect("Unable to get mapped range").0
+        .expect("Unable to get mapped range")
+        .0
 }
 
 #[no_mangle]
@@ -689,19 +720,19 @@ map_enum!(
     WGPUBlendFactor,
     wgt::BlendFactor,
     "Unknown blend factor",
-    Zero:Zero,
-    One:One,
-    SrcColor:Src,
-    OneMinusSrcColor:OneMinusSrc,
-    SrcAlpha:SrcAlpha,
-    OneMinusSrcAlpha:OneMinusSrcAlpha,
-    DstColor:Dst,
-    OneMinusDstColor:OneMinusDst,
-    DstAlpha:DstAlpha,
-    OneMinusDstAlpha:OneMinusDstAlpha,
-    SrcAlphaSaturated:SrcAlphaSaturated,
-    BlendColor:Constant,
-    OneMinusBlendColor:OneMinusConstant
+    Zero: Zero,
+    One: One,
+    SrcColor: Src,
+    OneMinusSrcColor: OneMinusSrc,
+    SrcAlpha: SrcAlpha,
+    OneMinusSrcAlpha: OneMinusSrcAlpha,
+    DstColor: Dst,
+    OneMinusDstColor: OneMinusDst,
+    DstAlpha: DstAlpha,
+    OneMinusDstAlpha: OneMinusDstAlpha,
+    SrcAlphaSaturated: SrcAlphaSaturated,
+    BlendColor: Constant,
+    OneMinusBlendColor: OneMinusConstant
 );
 map_enum!(
     map_blend_operation,
