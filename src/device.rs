@@ -1,3 +1,4 @@
+use crate::command::{map_extent3d, map_image_copy_texture, map_texture_data_layout};
 use crate::{check_error, follow_chain, make_slice, map_enum, native, Label, OwnedLabel, GLOBAL};
 use std::{
     borrow::Cow,
@@ -134,7 +135,7 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId) {
+pub extern "C" fn wgpuBufferDestroy(buffer_id: id::BufferId) {
     gfx_select!(buffer_id => GLOBAL.buffer_destroy(buffer_id)).expect("Unable to destroy buffer");
 }
 
@@ -384,6 +385,26 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuQueueWriteTexture(
+    queue: id::QueueId,
+    destination: native::WGPUImageCopyTexture,
+    data: *const u8, // TODO: Check - this might not follow the header
+    data_size: usize,
+    data_layout: native::WGPUTextureDataLayout,
+    write_size: native::WGPUExtent3D,
+) {
+    let slice = make_slice(data, data_size);
+    gfx_select!(queue => GLOBAL.queue_write_texture(
+        queue,
+        &map_image_copy_texture(&destination),
+        slice,
+        &map_texture_data_layout(&data_layout),
+        &map_extent3d(&write_size)
+    ))
+    .expect("Unable to write texture")
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuBufferMapAsync(
     buffer: id::BufferId,
     mode: native::WGPUMapModeFlags,
@@ -606,7 +627,7 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId) {
+pub extern "C" fn wgpuTextureDestroy(texture_id: id::TextureId) {
     gfx_select!(texture_id => GLOBAL.texture_destroy(texture_id))
         .expect("Failed to destroy texture");
 }
