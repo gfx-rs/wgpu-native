@@ -48,6 +48,19 @@ fn main() {
             .raw_line(format!("type {} = wgc::id::{};", old_name, new_name));
     }
 
+    // WGPUBindGroupEntry has fields that are id's which can be 0
+    builder = builder.blacklist_item("WGPUBindGroupEntry").raw_line(
+        "#[repr(C)]
+            pub struct WGPUBindGroupEntry {
+                pub binding: u32,
+                pub buffer: Option<wgc::id::BufferId>,
+                pub offset: u64,
+                pub size: u64,
+                pub sampler: Option<wgc::id::SamplerId>,
+                pub textureView: Option<wgc::id::TextureViewId>,
+            }",
+    );
+
     // See https://github.com/rust-lang/rust-bindgen/issues/1780
     if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
         let output = Command::new("xcrun")
