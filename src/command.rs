@@ -227,6 +227,16 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatch(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderDispatchIndirect(
+    pass: id::ComputePassEncoderId,
+    indirect_buffer: id::BufferId,
+    indirect_offset: u64,
+) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_dispatch_indirect(pass, indirect_buffer, indirect_offset);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     pass: id::RenderPassEncoderId,
     vertex_count: u32,

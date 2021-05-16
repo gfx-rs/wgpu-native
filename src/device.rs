@@ -1,3 +1,4 @@
+use crate::command::{map_extent3d, map_image_copy_texture, map_texture_data_layout};
 use crate::{check_error, follow_chain, make_slice, map_enum, native, Label, OwnedLabel, GLOBAL};
 use std::{
     borrow::Cow,
@@ -134,7 +135,7 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_buffer_destroy(buffer_id: id::BufferId) {
+pub extern "C" fn wgpuBufferDestroy(buffer_id: id::BufferId) {
     gfx_select!(buffer_id => GLOBAL.buffer_destroy(buffer_id)).expect("Unable to destroy buffer");
 }
 
@@ -153,11 +154,73 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
         let ty = if is_texture {
-            unimplemented!("texture");
+            wgt::BindingType::Texture {
+                sample_type: match entry.texture.sampleType {
+                    native::WGPUTextureSampleType_Float => {
+                        wgt::TextureSampleType::Float { filterable: true }
+                    }
+                    native::WGPUTextureSampleType_UnfilterableFloat => {
+                        wgt::TextureSampleType::Float { filterable: false }
+                    }
+                    native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
+                    native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
+                    native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
+                    x => panic!("Unknown texture SampleType: {}", x),
+                },
+                view_dimension: match entry.texture.viewDimension {
+                    native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
+                    native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
+                    native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
+                    native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
+                    native::WGPUTextureViewDimension_CubeArray => {
+                        wgt::TextureViewDimension::CubeArray
+                    }
+                    native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
+                    x => panic!("Unknown texture ViewDimension: {}", x),
+                },
+                multisampled: entry.texture.multisampled,
+            }
         } else if is_sampler {
-            unimplemented!("sampler");
+            match entry.sampler.type_ {
+                native::WGPUSamplerBindingType_Filtering => wgt::BindingType::Sampler {
+                    filtering: true,
+                    comparison: false,
+                },
+                native::WGPUSamplerBindingType_NonFiltering => wgt::BindingType::Sampler {
+                    filtering: false,
+                    comparison: false,
+                },
+                native::WGPUSamplerBindingType_Comparison => wgt::BindingType::Sampler {
+                    filtering: false,
+                    comparison: true,
+                },
+                x => panic!("Unknown Sampler Type: {}", x),
+            }
         } else if is_storage_texture {
-            unimplemented!("storage_texture");
+            wgt::BindingType::StorageTexture {
+                access: match entry.storageTexture.access {
+                    native::WGPUStorageTextureAccess_ReadOnly => {
+                        wgt::StorageTextureAccess::ReadOnly
+                    }
+                    native::WGPUStorageTextureAccess_WriteOnly => {
+                        wgt::StorageTextureAccess::WriteOnly
+                    }
+                    x => panic!("Unknown StorageTextureAccess: {}", x),
+                },
+                format: map_texture_format(entry.storageTexture.format)
+                    .expect("StorageTexture format missing"),
+                view_dimension: match entry.storageTexture.viewDimension {
+                    native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
+                    native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
+                    native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
+                    native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
+                    native::WGPUTextureViewDimension_CubeArray => {
+                        wgt::TextureViewDimension::CubeArray
+                    }
+                    native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
+                    x => panic!("Unknown texture ViewDimension: {}", x),
+                },
+            }
         } else if is_buffer {
             wgt::BindingType::Buffer {
                 ty: match entry.buffer.type_ {
@@ -200,21 +263,34 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     descriptor: &native::WGPUBindGroupDescriptor,
 ) -> id::BindGroupId {
     let mut entries = Vec::new();
-
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        entries.push(
-            //TODO: Not all things are buffers!
+        let wgc_entry = if entry.buffer.is_some() {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::Buffer(
                     wgc::binding_model::BufferBinding {
-                        buffer_id: entry.buffer,
+                        buffer_id: entry.buffer.unwrap(),
                         offset: entry.offset,
                         size: NonZeroU64::new(entry.size),
                     },
                 ),
-            },
-        )
+            }
+        } else if entry.sampler.is_some() {
+            wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::Sampler(entry.sampler.unwrap()),
+            }
+        } else if entry.textureView.is_some() {
+            wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::TextureView(
+                    entry.textureView.unwrap(),
+                ),
+            }
+        } else {
+            panic!("BindGroup entry does not have buffer nor sampler nor textureView.")
+        };
+        entries.push(wgc_entry);
     }
 
     let label = OwnedLabel::new(descriptor.label);
@@ -261,7 +337,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
         stage,
     };
 
-    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
 
     check_error((id, error))
 }
@@ -309,6 +385,26 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuQueueWriteTexture(
+    queue: id::QueueId,
+    destination: native::WGPUImageCopyTexture,
+    data: *const u8, // TODO: Check - this might not follow the header
+    data_size: usize,
+    data_layout: native::WGPUTextureDataLayout,
+    write_size: native::WGPUExtent3D,
+) {
+    let slice = make_slice(data, data_size);
+    gfx_select!(queue => GLOBAL.queue_write_texture(
+        queue,
+        &map_image_copy_texture(&destination),
+        slice,
+        &map_texture_data_layout(&data_layout),
+        &map_extent3d(&write_size)
+    ))
+    .expect("Unable to write texture")
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuBufferMapAsync(
     buffer: id::BufferId,
     mode: native::WGPUMapModeFlags,
@@ -343,8 +439,9 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
     offset: usize,
     size: usize,
 ) -> *mut u8 {
-    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, NonZeroU64::new(size as u64)))
-        .expect("Unable to get mapped range").0
+    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, Some(size as u64)))
+        .expect("Unable to get mapped range")
+        .0
 }
 
 #[no_mangle]
@@ -447,7 +544,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 ),
             }),
     };
-    let (id, _, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
     if let Some(err) = error {
         panic!("{:?}", err);
     }
@@ -530,7 +627,7 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpu_texture_destroy(texture_id: id::TextureId) {
+pub extern "C" fn wgpuTextureDestroy(texture_id: id::TextureId) {
     gfx_select!(texture_id => GLOBAL.texture_destroy(texture_id))
         .expect("Failed to destroy texture");
 }
@@ -644,19 +741,19 @@ map_enum!(
     WGPUBlendFactor,
     wgt::BlendFactor,
     "Unknown blend factor",
-    Zero:Zero,
-    One:One,
-    SrcColor:Src,
-    OneMinusSrcColor:OneMinusSrc,
-    SrcAlpha:SrcAlpha,
-    OneMinusSrcAlpha:OneMinusSrcAlpha,
-    DstColor:Dst,
-    OneMinusDstColor:OneMinusDst,
-    DstAlpha:DstAlpha,
-    OneMinusDstAlpha:OneMinusDstAlpha,
-    SrcAlphaSaturated:SrcAlphaSaturated,
-    BlendColor:Constant,
-    OneMinusBlendColor:OneMinusConstant
+    Zero: Zero,
+    One: One,
+    SrcColor: Src,
+    OneMinusSrcColor: OneMinusSrc,
+    SrcAlpha: SrcAlpha,
+    OneMinusSrcAlpha: OneMinusSrcAlpha,
+    DstColor: Dst,
+    OneMinusDstColor: OneMinusDst,
+    DstAlpha: DstAlpha,
+    OneMinusDstAlpha: OneMinusDstAlpha,
+    SrcAlphaSaturated: SrcAlphaSaturated,
+    BlendColor: Constant,
+    OneMinusBlendColor: OneMinusConstant
 );
 map_enum!(
     map_blend_operation,

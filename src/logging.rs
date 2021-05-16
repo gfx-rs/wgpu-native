@@ -2,7 +2,6 @@ use crate::{map_enum, native};
 use log::{Level, LevelFilter, Metadata, Record};
 use std::ffi::CString;
 
-
 #[no_mangle]
 pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     // Take the string of WGPU_NATIVE_VERSION, strip any leading v's, split on dots,
@@ -10,7 +9,7 @@ pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     // e.g. "v4.1"      -> 0x04010000
     //      "5.4.3.2.1" -> 0x05040302
     let static_str = match option_env!("WGPU_NATIVE_VERSION") {
-        Some (s) => s.trim().trim_start_matches("v"),
+        Some(s) => s.trim().trim_start_matches("v"),
         None => "",
     };
     let mut version: u32 = 0;
@@ -20,8 +19,10 @@ pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
             Ok(n) => n,
             Err(_e) => 0,
         };
-        let shift : i32 = 8 * (3 - index);
-        if shift < 0 {break;}
+        let shift: i32 = 8 * (3 - index);
+        if shift < 0 {
+            break;
+        }
         version += versionpart << shift;
         index += 1;
     }

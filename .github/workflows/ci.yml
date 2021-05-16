@@ -9,7 +9,7 @@ on:
     branches-ignore: [ staging.tmp ]
 
 jobs:
-  
+
   # A matrix with common builds
 
   test-build:
@@ -62,7 +62,7 @@ jobs:
             build_command: rustup default stable-msvc; cargo clippy
             make_command: make lib-native
             install_deps_command: |
-                                # choco exit with code 1 after successful install 
+                                # choco exit with code 1 after successful install
                                 choco install -y --force llvm | exit 0
           - os: windows-2019
             name: Windows Nightly
@@ -142,4 +142,4 @@ jobs:
         with:
           submodules: 'true'
       - run: rustup component add clippy
-      - run: cargo clippy --features vulkan-portability
+      - run: cargo clippy
