@@ -132,28 +132,10 @@ int main()
     WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
     WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
 
-    WGPUBindGroupLayout bindGroupLayout = wgpuDeviceCreateBindGroupLayout(device,
-        &(WGPUBindGroupLayoutDescriptor) {
-            .label = "bind group layout",
-            .entries = NULL,
-            .entryCount = 0,
-        });
-    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device,
-        &(WGPUBindGroupDescriptor) {
-            .label = "bind group",
-            .layout = bindGroupLayout,
-            .entries = NULL,
-            .entryCount = 0,
-        });
-
-    WGPUBindGroupLayout bindGroupLayouts[1] = {
-        bindGroupLayout
-    };
-
     WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(device,
         &(WGPUPipelineLayoutDescriptor) {
-            .bindGroupLayouts = bindGroupLayouts,
-            .bindGroupLayoutCount = 1 });
+            .bindGroupLayouts = NULL,
+            .bindGroupLayoutCount = 0 });
 
     WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(
         device,
@@ -261,7 +243,6 @@ int main()
             });
 
         wgpuRenderPassEncoderSetPipeline(renderPass, pipeline);
-        wgpuRenderPassEncoderSetBindGroup(renderPass, 0, bindGroup, 0, NULL);
         wgpuRenderPassEncoderDraw(renderPass, 3, 1, 0, 0);
         wgpuRenderPassEncoderEndPass(renderPass);
 
