@@ -275,6 +275,26 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
+    pass: id::RenderPassEncoderId,
+    buffer: id::BufferId,
+    indirect_offset: u64,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_draw_indirect(pass, buffer, indirect_offset);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
+    pass: id::RenderPassEncoderId,
+    buffer: id::BufferId,
+    indirect_offset: u64,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_draw_indexed_indirect(pass, buffer, indirect_offset);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     pass: id::RenderPassEncoderId,
     buffer: id::BufferId,
