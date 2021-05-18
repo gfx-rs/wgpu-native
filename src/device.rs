@@ -504,7 +504,37 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             polygon_mode: wgt::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: descriptor.depthStencil.as_ref().map(|_| unimplemented!()),
+        depth_stencil: descriptor
+            .depthStencil
+            .as_ref()
+            .map(|desc| wgt::DepthStencilState {
+                format: map_texture_format(desc.format)
+                    .expect("Texture format must be defined in DepthStencilState"),
+                depth_write_enabled: desc.depthWriteEnabled,
+                depth_compare: map_compare_function(desc.depthCompare).unwrap(),
+                stencil: wgt::StencilState {
+                    front: wgt::StencilFaceState {
+                        compare: map_compare_function(desc.stencilFront.compare).unwrap(),
+                        fail_op: map_stencil_operation(desc.stencilFront.failOp).unwrap(),
+                        depth_fail_op: map_stencil_operation(desc.stencilFront.depthFailOp)
+                            .unwrap(),
+                        pass_op: map_stencil_operation(desc.stencilFront.passOp).unwrap(),
+                    },
+                    back: wgt::StencilFaceState {
+                        compare: map_compare_function(desc.stencilBack.compare).unwrap(),
+                        fail_op: map_stencil_operation(desc.stencilBack.failOp).unwrap(),
+                        depth_fail_op: map_stencil_operation(desc.stencilBack.depthFailOp).unwrap(),
+                        pass_op: map_stencil_operation(desc.stencilBack.passOp).unwrap(),
+                    },
+                    read_mask: desc.stencilReadMask,
+                    write_mask: desc.stencilWriteMask,
+                },
+                bias: wgt::DepthBiasState {
+                    constant: desc.depthBias,
+                    slope_scale: desc.depthBiasSlopeScale,
+                    clamp: desc.depthBiasClamp,
+                },
+            }),
         multisample: wgt::MultisampleState {
             count: descriptor.multisample.count,
             mask: descriptor.multisample.mask as u64,
@@ -765,6 +795,19 @@ map_enum!(
     ReverseSubtract,
     Min,
     Max
+);
+map_enum!(
+    map_stencil_operation,
+    WGPUStencilOperation,
+    wgt::StencilOperation,
+    Keep,
+    Zero,
+    Replace,
+    Invert,
+    IncrementClamp,
+    DecrementClamp,
+    IncrementWrap,
+    DecrementWrap
 );
 map_enum!(
     map_vertex_format,
