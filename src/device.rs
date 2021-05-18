@@ -299,9 +299,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         layout: descriptor.layout,
         entries: Cow::Borrowed(&entries),
     };
-    if entries.len() == 0 {
-        panic!("Bind groups with zero entries not allowed.");
-    }
     check_error(gfx_select!(device => GLOBAL.device_create_bind_group(device, &desc, PhantomData)))
 }
 
