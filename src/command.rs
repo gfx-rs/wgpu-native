@@ -1,8 +1,5 @@
-use crate::{check_error, make_slice, map_enum, native, OwnedLabel, GLOBAL};
-use std::{
-    borrow::Cow,
-    num::{NonZeroU32, NonZeroU64},
-};
+use crate::{check_error, conv, make_slice, native, OwnedLabel, GLOBAL};
+use std::{borrow::Cow, num::NonZeroU64};
 use wgc::{
     command::{compute_ffi, render_ffi},
     gfx_select, id,
@@ -31,7 +28,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
 ) {
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_buffer_to_buffer(
         command_encoder,
-        source, 
+        source,
         source_offset,
         destination,
         destination_offset,
@@ -48,9 +45,9 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
 ) {
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_texture_to_texture(
         command_encoder,
-        &map_image_copy_texture(source),
-        &map_image_copy_texture(destination),
-        &map_extent3d(copy_size)))
+        &conv::map_image_copy_texture(source),
+        &conv::map_image_copy_texture(destination),
+        &conv::map_extent3d(copy_size)))
     .expect("Unable to copy texture to texture")
 }
 
@@ -63,9 +60,9 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
 ) {
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_texture_to_buffer(
         command_encoder,
-        &map_image_copy_texture(source),
-        &map_image_copy_buffer(destination),
-        &map_extent3d(copy_size)))
+        &conv::map_image_copy_texture(source),
+        &conv::map_image_copy_buffer(destination),
+        &conv::map_extent3d(copy_size)))
     .expect("Unable to copy texture to buffer")
 }
 
@@ -78,9 +75,9 @@ pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
 ) {
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_buffer_to_texture(
         command_encoder,
-        &map_image_copy_buffer(source),
-        &map_image_copy_texture(destination),
-        &map_extent3d(copy_size)))
+        &conv::map_image_copy_buffer(source),
+        &conv::map_image_copy_texture(destination),
+        &conv::map_extent3d(copy_size)))
     .expect("Unable to copy buffer to texture")
 }
 
@@ -105,14 +102,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         wgc::command::RenderPassDepthStencilAttachment {
             view: desc.attachment,
             depth: wgc::command::PassChannel {
-                load_op: map_load_op(desc.depthLoadOp),
-                store_op: map_store_op(desc.depthStoreOp),
+                load_op: conv::map_load_op(desc.depthLoadOp),
+                store_op: conv::map_store_op(desc.depthStoreOp),
                 clear_value: desc.clearDepth,
                 read_only: desc.depthReadOnly,
             },
             stencil: wgc::command::PassChannel {
-                load_op: map_load_op(desc.stencilLoadOp),
-                store_op: map_store_op(desc.stencilStoreOp),
+                load_op: conv::map_load_op(desc.stencilLoadOp),
+                store_op: conv::map_store_op(desc.stencilStoreOp),
                 clear_value: desc.clearStencil,
                 read_only: desc.stencilReadOnly,
             },
@@ -130,9 +127,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 view: color_attachment.attachment,
                 resolve_target: Some(color_attachment.resolveTarget),
                 channel: wgc::command::PassChannel {
-                    load_op: map_load_op(color_attachment.loadOp),
-                    store_op: map_store_op(color_attachment.storeOp),
-                    clear_value: map_color(&color_attachment.clearColor),
+                    load_op: conv::map_load_op(color_attachment.loadOp),
+                    store_op: conv::map_store_op(color_attachment.storeOp),
+                    clear_value: conv::map_color(&color_attachment.clearColor),
                     read_only: false,
                 },
             })
@@ -275,6 +272,26 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
+    pass: id::RenderPassEncoderId,
+    buffer: id::BufferId,
+    indirect_offset: u64,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_draw_indirect(pass, buffer, indirect_offset);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
+    pass: id::RenderPassEncoderId,
+    buffer: id::BufferId,
+    indirect_offset: u64,
+) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_draw_indexed_indirect(pass, buffer, indirect_offset);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     pass: id::RenderPassEncoderId,
     buffer: id::BufferId,
@@ -285,7 +302,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     let pass = pass.as_mut().expect("Render pass invalid");
     pass.set_index_buffer(
         buffer,
-        crate::device::map_index_format(index_format).expect("Index format cannot be undefined"),
+        conv::map_index_format(index_format).expect("Index format cannot be undefined"),
         offset,
         NonZeroU64::new(size),
     );
@@ -333,7 +350,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendColor(
     color: &native::WGPUColor,
 ) {
     let pass = pass.as_mut().expect("Render pass invalid");
-    render_ffi::wgpu_render_pass_set_blend_constant(pass, &map_color(color));
+    render_ffi::wgpu_render_pass_set_blend_constant(pass, &conv::map_color(color));
 }
 
 #[no_mangle]
@@ -370,72 +387,3 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
     let pass = pass.as_mut().expect("Render pass invalid");
     render_ffi::wgpu_render_pass_set_scissor_rect(pass, x, y, w, h);
 }
-
-pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
-    wgt::Extent3d {
-        width: native.width,
-        height: native.height,
-        depth_or_array_layers: native.depth,
-    }
-}
-
-pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
-    wgt::Origin3d {
-        x: native.x,
-        y: native.y,
-        z: native.z,
-    }
-}
-
-pub fn map_image_copy_texture(
-    native: &native::WGPUImageCopyTexture,
-) -> wgc::command::ImageCopyTexture {
-    wgt::ImageCopyTexture {
-        texture: native.texture,
-        mip_level: native.mipLevel,
-        origin: map_origin3d(&native.origin),
-    }
-}
-
-pub fn map_image_copy_buffer(
-    native: &native::WGPUImageCopyBuffer,
-) -> wgc::command::ImageCopyBuffer {
-    wgt::ImageCopyBuffer {
-        buffer: native.buffer,
-        layout: map_texture_data_layout(&native.layout),
-    }
-}
-
-pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::ImageDataLayout {
-    wgt::ImageDataLayout {
-        offset: native.offset,
-        bytes_per_row: NonZeroU32::new(native.bytesPerRow),
-        rows_per_image: NonZeroU32::new(native.rowsPerImage),
-    }
-}
-
-pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
-    wgt::Color {
-        r: native.r,
-        g: native.g,
-        b: native.b,
-        a: native.a,
-    }
-}
-
-map_enum!(
-    map_load_op,
-    WGPULoadOp,
-    wgc::command::LoadOp,
-    "Unknown load op",
-    Clear,
-    Load
-);
-map_enum!(
-    map_store_op,
-    WGPUStoreOp,
-    wgc::command::StoreOp,
-    "Unknown store op",
-    Clear,
-    Store
-);

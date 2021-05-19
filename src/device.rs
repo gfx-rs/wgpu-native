@@ -1,14 +1,13 @@
-use crate::command::{map_extent3d, map_image_copy_texture, map_texture_data_layout};
-use crate::{check_error, follow_chain, make_slice, map_enum, native, Label, OwnedLabel, GLOBAL};
+use crate::conv::{map_device_descriptor, map_shader_module};
+use crate::{check_error, conv, follow_chain, make_slice, native, OwnedLabel, GLOBAL};
 use std::{
     borrow::Cow,
     convert::TryInto,
-    ffi::CStr,
     marker::PhantomData,
     num::{NonZeroU32, NonZeroU64, NonZeroU8},
     path::Path,
 };
-use wgc::{gfx_select, id, pipeline::ShaderModuleSource};
+use wgc::{gfx_select, id};
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
@@ -49,34 +48,6 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     (callback.unwrap())(device_id, userdata);
 }
 
-fn map_device_descriptor<'a>(
-    _: &native::WGPUDeviceDescriptor,
-    extras: Option<&native::WGPUDeviceExtras>,
-) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
-    if let Some(extras) = extras {
-        (
-            wgt::DeviceDescriptor {
-                label: OwnedLabel::new(extras.label).into_cow(),
-                features: wgt::Features::empty(),
-                limits: wgt::Limits {
-                    max_bind_groups: extras.maxBindGroups,
-                    ..wgt::Limits::default()
-                },
-            },
-            OwnedLabel::new(extras.tracePath).into_inner(),
-        )
-    } else {
-        (
-            wgt::DeviceDescriptor {
-                label: None,
-                features: wgt::Features::empty(),
-                limits: wgt::Limits::default(),
-            },
-            None,
-        )
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     device: id::DeviceId,
@@ -96,23 +67,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     check_error(
         gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, source, PhantomData)),
     )
-}
-
-fn map_shader_module<'a>(
-    _: &native::WGPUShaderModuleDescriptor,
-    spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
-    wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
-) -> ShaderModuleSource<'a> {
-    if let Some(wgsl) = wgsl {
-        let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.source) };
-        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
-        ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
-    } else if let Some(spirv) = spirv {
-        let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
-        ShaderModuleSource::SpirV(Cow::Borrowed(slice))
-    } else {
-        panic!("Shader not provided.");
-    }
 }
 
 #[no_mangle]
@@ -207,7 +161,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     }
                     x => panic!("Unknown StorageTextureAccess: {}", x),
                 },
-                format: map_texture_format(entry.storageTexture.format)
+                format: conv::map_texture_format(entry.storageTexture.format)
                     .expect("StorageTexture format missing"),
                 view_dimension: match entry.storageTexture.viewDimension {
                     native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
@@ -396,10 +350,10 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
     let slice = make_slice(data, data_size);
     gfx_select!(queue => GLOBAL.queue_write_texture(
         queue,
-        &map_image_copy_texture(&destination),
+        &conv::map_image_copy_texture(&destination),
         slice,
-        &map_texture_data_layout(&data_layout),
-        &map_extent3d(&write_size)
+        &conv::map_texture_data_layout(&data_layout),
+        &conv::map_extent3d(&write_size)
     ))
     .expect("Unable to write texture")
 }
@@ -476,7 +430,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         make_slice(buffer.attributes, buffer.attributeCount as usize)
                             .iter()
                             .map(|attribute| wgt::VertexAttribute {
-                                format: map_vertex_format(attribute.format)
+                                format: conv::map_vertex_format(attribute.format)
                                     .expect("Vertex Format must be defined"),
                                 offset: attribute.offset,
                                 shader_location: attribute.shaderLocation,
@@ -488,8 +442,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             ),
         },
         primitive: wgt::PrimitiveState {
-            topology: map_primitive_topology(descriptor.primitive.topology),
-            strip_index_format: map_index_format(descriptor.primitive.stripIndexFormat).ok(),
+            topology: conv::map_primitive_topology(descriptor.primitive.topology),
+            strip_index_format: conv::map_index_format(descriptor.primitive.stripIndexFormat).ok(),
             front_face: match descriptor.primitive.frontFace {
                 native::WGPUFrontFace_CCW => wgt::FrontFace::Ccw,
                 native::WGPUFrontFace_CW => wgt::FrontFace::Cw,
@@ -504,7 +458,26 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             polygon_mode: wgt::PolygonMode::Fill,
             conservative: false,
         },
-        depth_stencil: descriptor.depthStencil.as_ref().map(|_| unimplemented!()),
+        depth_stencil: descriptor
+            .depthStencil
+            .as_ref()
+            .map(|desc| wgt::DepthStencilState {
+                format: conv::map_texture_format(desc.format)
+                    .expect("Texture format must be defined in DepthStencilState"),
+                depth_write_enabled: desc.depthWriteEnabled,
+                depth_compare: conv::map_compare_function(desc.depthCompare).unwrap(),
+                stencil: wgt::StencilState {
+                    front: conv::map_stencil_face_state(desc.stencilFront),
+                    back: conv::map_stencil_face_state(desc.stencilBack),
+                    read_mask: desc.stencilReadMask,
+                    write_mask: desc.stencilWriteMask,
+                },
+                bias: wgt::DepthBiasState {
+                    constant: desc.depthBias,
+                    slope_scale: desc.depthBiasSlopeScale,
+                    clamp: desc.depthBiasClamp,
+                },
+            }),
         multisample: wgt::MultisampleState {
             count: descriptor.multisample.count,
             mask: descriptor.multisample.mask as u64,
@@ -524,18 +497,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     make_slice(fragment.targets, fragment.targetCount as usize)
                         .iter()
                         .map(|color_target| wgt::ColorTargetState {
-                            format: map_texture_format(color_target.format)
+                            format: conv::map_texture_format(color_target.format)
                                 .expect("Texture format must be defined"),
                             blend: color_target.blend.as_ref().map(|blend| wgt::BlendState {
                                 color: wgt::BlendComponent {
-                                    src_factor: map_blend_factor(blend.color.srcFactor),
-                                    dst_factor: map_blend_factor(blend.color.dstFactor),
-                                    operation: map_blend_operation(blend.color.operation),
+                                    src_factor: conv::map_blend_factor(blend.color.srcFactor),
+                                    dst_factor: conv::map_blend_factor(blend.color.dstFactor),
+                                    operation: conv::map_blend_operation(blend.color.operation),
                                 },
                                 alpha: wgt::BlendComponent {
-                                    src_factor: map_blend_factor(blend.alpha.srcFactor),
-                                    dst_factor: map_blend_factor(blend.alpha.dstFactor),
-                                    operation: map_blend_operation(blend.alpha.operation),
+                                    src_factor: conv::map_blend_factor(blend.alpha.srcFactor),
+                                    dst_factor: conv::map_blend_factor(blend.alpha.dstFactor),
+                                    operation: conv::map_blend_operation(blend.alpha.operation),
                                 },
                             }),
                             write_mask: wgt::ColorWrite::from_bits(color_target.writeMask).unwrap(),
@@ -559,10 +532,10 @@ pub extern "C" fn wgpuDeviceCreateSwapChain(
 ) -> id::SwapChainId {
     let desc = wgt::SwapChainDescriptor {
         usage: wgt::TextureUsage::from_bits(desc.usage).unwrap(),
-        format: map_texture_format(desc.format).expect("Texture format not defined"),
+        format: conv::map_texture_format(desc.format).expect("Texture format not defined"),
         width: desc.width,
         height: desc.height,
-        present_mode: map_present_mode(desc.presentMode),
+        present_mode: conv::map_present_mode(desc.presentMode),
     };
     let (id, error) =
         gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc));
@@ -596,9 +569,9 @@ pub extern "C" fn wgpuTextureCreateView(
 ) -> id::TextureViewId {
     let desc = wgc::resource::TextureViewDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        format: map_texture_format(descriptor.format),
-        dimension: map_texture_view_dimension(descriptor.dimension),
-        aspect: map_texture_aspect(descriptor.aspect),
+        format: conv::map_texture_format(descriptor.format),
+        dimension: conv::map_texture_view_dimension(descriptor.dimension),
+        aspect: conv::map_texture_aspect(descriptor.aspect),
         base_mip_level: descriptor.baseMipLevel,
         mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
         base_array_layer: descriptor.baseArrayLayer,
@@ -615,11 +588,12 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 ) -> id::TextureId {
     let desc = wgt::TextureDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        size: crate::command::map_extent3d(&descriptor.size),
+        size: conv::map_extent3d(&descriptor.size),
         mip_level_count: descriptor.mipLevelCount,
         sample_count: descriptor.sampleCount,
-        dimension: map_texture_dimension(descriptor.dimension),
-        format: map_texture_format(descriptor.format).expect("Texture format must be provided"),
+        dimension: conv::map_texture_dimension(descriptor.dimension),
+        format: conv::map_texture_format(descriptor.format)
+            .expect("Texture format must be provided"),
         usage: wgt::TextureUsage::from_bits(descriptor.usage).expect("Invalid texture usage"),
     };
 
@@ -640,16 +614,16 @@ pub extern "C" fn wgpuDeviceCreateSampler(
     let desc = wgc::resource::SamplerDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
         address_modes: [
-            map_address_mode(descriptor.addressModeU),
-            map_address_mode(descriptor.addressModeV),
-            map_address_mode(descriptor.addressModeW),
+            conv::map_address_mode(descriptor.addressModeU),
+            conv::map_address_mode(descriptor.addressModeV),
+            conv::map_address_mode(descriptor.addressModeW),
         ],
-        mag_filter: map_filter_mode(descriptor.magFilter),
-        min_filter: map_filter_mode(descriptor.minFilter),
-        mipmap_filter: map_filter_mode(descriptor.mipmapFilter),
+        mag_filter: conv::map_filter_mode(descriptor.magFilter),
+        min_filter: conv::map_filter_mode(descriptor.minFilter),
+        mipmap_filter: conv::map_filter_mode(descriptor.mipmapFilter),
         lod_min_clamp: descriptor.lodMinClamp,
         lod_max_clamp: descriptor.lodMaxClamp,
-        compare: map_compare_function(descriptor.compare).ok(),
+        compare: conv::map_compare_function(descriptor.compare).ok(),
         anisotropy_clamp: descriptor
             .maxAnisotropy
             .try_into()
@@ -668,204 +642,4 @@ pub extern "C" fn wgpuBufferUnmap(buffer_id: id::BufferId) {
 #[no_mangle]
 pub extern "C" fn wgpuSurface(buffer_id: id::BufferId) {
     gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
-}
-
-map_enum!(
-    map_address_mode,
-    WGPUAddressMode,
-    wgt::AddressMode,
-    "Unknown address mode",
-    ClampToEdge,
-    Repeat,
-    MirrorRepeat
-);
-map_enum!(
-    map_filter_mode,
-    WGPUFilterMode,
-    wgt::FilterMode,
-    "Unknown filter mode",
-    Nearest,
-    Linear
-);
-map_enum!(
-    map_compare_function,
-    WGPUCompareFunction,
-    wgt::CompareFunction,
-    Never,
-    Less,
-    Equal,
-    LessEqual,
-    Greater,
-    NotEqual,
-    GreaterEqual,
-    Always
-);
-map_enum!(
-    map_texture_aspect,
-    WGPUTextureAspect,
-    wgt::TextureAspect,
-    "Unknown texture aspect",
-    All,
-    StencilOnly,
-    DepthOnly
-);
-map_enum!(
-    map_present_mode,
-    WGPUPresentMode,
-    wgt::PresentMode,
-    "Unknown present mode",
-    Immediate,
-    Mailbox,
-    Fifo
-);
-map_enum!(
-    map_primitive_topology,
-    WGPUPrimitiveTopology,
-    wgt::PrimitiveTopology,
-    "Unknown primitive topology",
-    PointList,
-    LineList,
-    LineStrip,
-    TriangleList,
-    TriangleStrip
-);
-map_enum!(
-    map_index_format,
-    WGPUIndexFormat,
-    wgt::IndexFormat,
-    Uint16,
-    Uint32
-);
-map_enum!(
-    map_blend_factor,
-    WGPUBlendFactor,
-    wgt::BlendFactor,
-    "Unknown blend factor",
-    Zero: Zero,
-    One: One,
-    SrcColor: Src,
-    OneMinusSrcColor: OneMinusSrc,
-    SrcAlpha: SrcAlpha,
-    OneMinusSrcAlpha: OneMinusSrcAlpha,
-    DstColor: Dst,
-    OneMinusDstColor: OneMinusDst,
-    DstAlpha: DstAlpha,
-    OneMinusDstAlpha: OneMinusDstAlpha,
-    SrcAlphaSaturated: SrcAlphaSaturated,
-    BlendColor: Constant,
-    OneMinusBlendColor: OneMinusConstant
-);
-map_enum!(
-    map_blend_operation,
-    WGPUBlendOperation,
-    wgt::BlendOperation,
-    "Unknown blend operation",
-    Add,
-    Subtract,
-    ReverseSubtract,
-    Min,
-    Max
-);
-map_enum!(
-    map_vertex_format,
-    WGPUVertexFormat,
-    wgt::VertexFormat,
-    Uint8x2,
-    Uint8x4,
-    Sint8x2,
-    Sint8x4,
-    Unorm8x2,
-    Unorm8x4,
-    Snorm8x2,
-    Snorm8x4,
-    Uint16x2,
-    Uint16x4,
-    Sint16x2,
-    Sint16x4,
-    Unorm16x2,
-    Unorm16x4,
-    Snorm16x2,
-    Snorm16x4,
-    Float16x2,
-    Float16x4,
-    Float32,
-    Float32x2,
-    Float32x3,
-    Float32x4,
-    Uint32,
-    Uint32x2,
-    Uint32x3,
-    Uint32x4,
-    Sint32,
-    Sint32x2,
-    Sint32x3,
-    Sint32x4
-);
-
-// Header does not match wgt types so we have to manually map them
-pub fn map_texture_view_dimension(value: crate::EnumConstant) -> Option<wgt::TextureViewDimension> {
-    match value {
-        native::WGPUTextureViewDimension_1D => Some(wgt::TextureViewDimension::D1),
-        native::WGPUTextureViewDimension_2D => Some(wgt::TextureViewDimension::D2),
-        native::WGPUTextureViewDimension_2DArray => Some(wgt::TextureViewDimension::D2Array),
-        native::WGPUTextureViewDimension_Cube => Some(wgt::TextureViewDimension::Cube),
-        native::WGPUTextureViewDimension_CubeArray => Some(wgt::TextureViewDimension::CubeArray),
-        native::WGPUTextureViewDimension_3D => Some(wgt::TextureViewDimension::D3),
-        _ => None,
-    }
-}
-
-pub fn map_texture_dimension(value: crate::EnumConstant) -> wgt::TextureDimension {
-    match value {
-        native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
-        native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
-        native::WGPUTextureDimension_3D => wgt::TextureDimension::D3,
-        x => panic!("Unknown texture dimension: {}", x),
-    }
-}
-
-pub fn map_texture_format(value: crate::EnumConstant) -> Option<wgt::TextureFormat> {
-    // TODO: Add support for BC formats
-    match value {
-        native::WGPUTextureFormat_R8Unorm => Some(wgt::TextureFormat::R8Unorm),
-        native::WGPUTextureFormat_R8Snorm => Some(wgt::TextureFormat::R8Snorm),
-        native::WGPUTextureFormat_R8Uint => Some(wgt::TextureFormat::R8Uint),
-        native::WGPUTextureFormat_R8Sint => Some(wgt::TextureFormat::R8Sint),
-        native::WGPUTextureFormat_R16Uint => Some(wgt::TextureFormat::R16Uint),
-        native::WGPUTextureFormat_R16Sint => Some(wgt::TextureFormat::R16Sint),
-        native::WGPUTextureFormat_R16Float => Some(wgt::TextureFormat::R16Float),
-        native::WGPUTextureFormat_RG8Unorm => Some(wgt::TextureFormat::Rg8Unorm),
-        native::WGPUTextureFormat_RG8Snorm => Some(wgt::TextureFormat::Rg8Snorm),
-        native::WGPUTextureFormat_RG8Uint => Some(wgt::TextureFormat::Rg8Uint),
-        native::WGPUTextureFormat_RG8Sint => Some(wgt::TextureFormat::Rg8Sint),
-        native::WGPUTextureFormat_R32Float => Some(wgt::TextureFormat::R32Float),
-        native::WGPUTextureFormat_R32Uint => Some(wgt::TextureFormat::R32Uint),
-        native::WGPUTextureFormat_R32Sint => Some(wgt::TextureFormat::R32Sint),
-        native::WGPUTextureFormat_RG16Uint => Some(wgt::TextureFormat::Rg16Uint),
-        native::WGPUTextureFormat_RG16Sint => Some(wgt::TextureFormat::Rg16Sint),
-        native::WGPUTextureFormat_RG16Float => Some(wgt::TextureFormat::Rg16Float),
-        native::WGPUTextureFormat_RGBA8Unorm => Some(wgt::TextureFormat::Rgba8Unorm),
-        native::WGPUTextureFormat_RGBA8UnormSrgb => Some(wgt::TextureFormat::Rgba8UnormSrgb),
-        native::WGPUTextureFormat_RGBA8Snorm => Some(wgt::TextureFormat::Rgba8Snorm),
-        native::WGPUTextureFormat_RGBA8Uint => Some(wgt::TextureFormat::Rgba8Uint),
-        native::WGPUTextureFormat_RGBA8Sint => Some(wgt::TextureFormat::Rgba8Sint),
-        native::WGPUTextureFormat_BGRA8Unorm => Some(wgt::TextureFormat::Bgra8Unorm),
-        native::WGPUTextureFormat_BGRA8UnormSrgb => Some(wgt::TextureFormat::Bgra8UnormSrgb),
-        native::WGPUTextureFormat_RGB10A2Unorm => Some(wgt::TextureFormat::Rgb10a2Unorm),
-        native::WGPUTextureFormat_RG32Float => Some(wgt::TextureFormat::Rg32Float),
-        native::WGPUTextureFormat_RG32Uint => Some(wgt::TextureFormat::Rg32Uint),
-        native::WGPUTextureFormat_RG32Sint => Some(wgt::TextureFormat::Rg32Sint),
-        native::WGPUTextureFormat_RGBA16Uint => Some(wgt::TextureFormat::Rgba16Uint),
-        native::WGPUTextureFormat_RGBA16Sint => Some(wgt::TextureFormat::Rgba16Sint),
-        native::WGPUTextureFormat_RGBA16Float => Some(wgt::TextureFormat::Rgba16Float),
-        native::WGPUTextureFormat_RGBA32Float => Some(wgt::TextureFormat::Rgba32Float),
-        native::WGPUTextureFormat_RGBA32Uint => Some(wgt::TextureFormat::Rgba32Uint),
-        native::WGPUTextureFormat_RGBA32Sint => Some(wgt::TextureFormat::Rgba32Sint),
-        native::WGPUTextureFormat_Depth32Float => Some(wgt::TextureFormat::Depth32Float),
-        native::WGPUTextureFormat_Depth24Plus => Some(wgt::TextureFormat::Depth24Plus),
-        native::WGPUTextureFormat_Depth24PlusStencil8 => {
-            Some(wgt::TextureFormat::Depth24PlusStencil8)
-        }
-        _ => None,
-    }
 }
