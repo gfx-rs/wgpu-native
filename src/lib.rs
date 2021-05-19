@@ -2,6 +2,7 @@ use std::{borrow::Cow, marker::PhantomData, sync::Arc};
 use wgc::id;
 
 pub mod command;
+pub mod conv;
 pub mod device;
 pub mod logging;
 
