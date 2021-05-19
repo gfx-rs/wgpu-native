@@ -327,6 +327,49 @@ pub fn map_texture_format(value: crate::EnumConstant) -> Option<wgt::TextureForm
     }
 }
 
+pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> crate::EnumConstant {
+    match rs_type {
+        wgt::TextureFormat::R8Unorm => native::WGPUTextureFormat_R8Unorm,
+        wgt::TextureFormat::R8Snorm => native::WGPUTextureFormat_R8Snorm,
+        wgt::TextureFormat::R8Uint => native::WGPUTextureFormat_R8Uint,
+        wgt::TextureFormat::R8Sint => native::WGPUTextureFormat_R8Sint,
+        wgt::TextureFormat::R16Uint => native::WGPUTextureFormat_R16Uint,
+        wgt::TextureFormat::R16Sint => native::WGPUTextureFormat_R16Sint,
+        wgt::TextureFormat::R16Float => native::WGPUTextureFormat_R16Float,
+        wgt::TextureFormat::Rg8Unorm => native::WGPUTextureFormat_RG8Unorm,
+        wgt::TextureFormat::Rg8Snorm => native::WGPUTextureFormat_RG8Snorm,
+        wgt::TextureFormat::Rg8Uint => native::WGPUTextureFormat_RG8Uint,
+        wgt::TextureFormat::Rg8Sint => native::WGPUTextureFormat_RG8Sint,
+        wgt::TextureFormat::R32Float => native::WGPUTextureFormat_R32Float,
+        wgt::TextureFormat::R32Uint => native::WGPUTextureFormat_R32Uint,
+        wgt::TextureFormat::R32Sint => native::WGPUTextureFormat_R32Sint,
+        wgt::TextureFormat::Rg16Uint => native::WGPUTextureFormat_RG16Uint,
+        wgt::TextureFormat::Rg16Sint => native::WGPUTextureFormat_RG16Sint,
+        wgt::TextureFormat::Rg16Float => native::WGPUTextureFormat_RG16Float,
+        wgt::TextureFormat::Rgba8Unorm => native::WGPUTextureFormat_RGBA8Unorm,
+        wgt::TextureFormat::Rgba8UnormSrgb => native::WGPUTextureFormat_RGBA8UnormSrgb,
+        wgt::TextureFormat::Rgba8Snorm => native::WGPUTextureFormat_RGBA8Snorm,
+        wgt::TextureFormat::Rgba8Uint => native::WGPUTextureFormat_RGBA8Uint,
+        wgt::TextureFormat::Rgba8Sint => native::WGPUTextureFormat_RGBA8Sint,
+        wgt::TextureFormat::Bgra8Unorm => native::WGPUTextureFormat_BGRA8Unorm,
+        wgt::TextureFormat::Bgra8UnormSrgb => native::WGPUTextureFormat_BGRA8UnormSrgb,
+        wgt::TextureFormat::Rgb10a2Unorm => native::WGPUTextureFormat_RGB10A2Unorm,
+        wgt::TextureFormat::Rg32Float => native::WGPUTextureFormat_RG32Float,
+        wgt::TextureFormat::Rg32Uint => native::WGPUTextureFormat_RG32Uint,
+        wgt::TextureFormat::Rg32Sint => native::WGPUTextureFormat_RG32Sint,
+        wgt::TextureFormat::Rgba16Uint => native::WGPUTextureFormat_RGBA16Uint,
+        wgt::TextureFormat::Rgba16Sint => native::WGPUTextureFormat_RGBA16Sint,
+        wgt::TextureFormat::Rgba16Float => native::WGPUTextureFormat_RGBA16Float,
+        wgt::TextureFormat::Rgba32Float => native::WGPUTextureFormat_RGBA32Float,
+        wgt::TextureFormat::Rgba32Uint => native::WGPUTextureFormat_RGBA32Uint,
+        wgt::TextureFormat::Rgba32Sint => native::WGPUTextureFormat_RGBA32Sint,
+        wgt::TextureFormat::Depth32Float => native::WGPUTextureFormat_Depth32Float,
+        wgt::TextureFormat::Depth24Plus => native::WGPUTextureFormat_Depth24Plus,
+        wgt::TextureFormat::Depth24PlusStencil8 => native::WGPUTextureFormat_Depth24PlusStencil8,
+        _ => unimplemented!(),
+    }
+}
+
 pub fn map_stencil_face_state(value: native::WGPUStencilFaceState) -> wgt::StencilFaceState {
     wgt::StencilFaceState {
         compare: map_compare_function(value.compare).unwrap(),

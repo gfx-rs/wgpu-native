@@ -27,6 +27,11 @@
 #endif
 #include <GLFW/glfw3native.h>
 
+void preferred_texture_callback(WGPUTextureFormat format, void* userdata)
+{
+    *(WGPUTextureFormat*)userdata = format;
+}
+
 int main()
 {
     initializeLog();
@@ -137,6 +142,9 @@ int main()
             .bindGroupLayouts = NULL,
             .bindGroupLayoutCount = 0 });
 
+    WGPUTextureFormat swapChainFormat;
+    wgpuSurfaceGetPreferredFormat(surface, adapter, preferred_texture_callback, &swapChainFormat);
+
     WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(
         device,
         &(WGPURenderPipelineDescriptor) {
@@ -164,7 +172,7 @@ int main()
                 .entryPoint = "fs_main",
                 .targetCount = 1,
                 .targets = &(WGPUColorTargetState) {
-                    .format = WGPUTextureFormat_BGRA8Unorm,
+                    .format = swapChainFormat,
                     .blend = &(WGPUBlendState) {
                         .color = (WGPUBlendComponent) {
                             .srcFactor = WGPUBlendFactor_One,
@@ -190,7 +198,7 @@ int main()
     WGPUSwapChain swapChain = wgpuDeviceCreateSwapChain(device, surface,
         &(WGPUSwapChainDescriptor) {
             .usage = WGPUTextureUsage_RenderAttachment,
-            .format = WGPUTextureFormat_BGRA8Unorm,
+            .format = swapChainFormat,
             .width = prevWidth,
             .height = prevHeight,
             .presentMode = WGPUPresentMode_Fifo,
@@ -208,7 +216,7 @@ int main()
             swapChain = wgpuDeviceCreateSwapChain(device, surface,
                 &(WGPUSwapChainDescriptor) {
                     .usage = WGPUTextureUsage_RenderAttachment,
-                    .format = WGPUTextureFormat_BGRA8Unorm,
+                    .format = swapChainFormat,
                     .width = prevWidth,
                     .height = prevHeight,
                     .presentMode = WGPUPresentMode_Fifo,
