@@ -513,19 +513,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 depth_write_enabled: desc.depthWriteEnabled,
                 depth_compare: map_compare_function(desc.depthCompare).unwrap(),
                 stencil: wgt::StencilState {
-                    front: wgt::StencilFaceState {
-                        compare: map_compare_function(desc.stencilFront.compare).unwrap(),
-                        fail_op: map_stencil_operation(desc.stencilFront.failOp).unwrap(),
-                        depth_fail_op: map_stencil_operation(desc.stencilFront.depthFailOp)
-                            .unwrap(),
-                        pass_op: map_stencil_operation(desc.stencilFront.passOp).unwrap(),
-                    },
-                    back: wgt::StencilFaceState {
-                        compare: map_compare_function(desc.stencilBack.compare).unwrap(),
-                        fail_op: map_stencil_operation(desc.stencilBack.failOp).unwrap(),
-                        depth_fail_op: map_stencil_operation(desc.stencilBack.depthFailOp).unwrap(),
-                        pass_op: map_stencil_operation(desc.stencilBack.passOp).unwrap(),
-                    },
+                    front: map_stencil_face_state(desc.stencilFront),
+                    back: map_stencil_face_state(desc.stencilBack),
                     read_mask: desc.stencilReadMask,
                     write_mask: desc.stencilWriteMask,
                 },
@@ -910,5 +899,14 @@ pub fn map_texture_format(value: crate::EnumConstant) -> Option<wgt::TextureForm
             Some(wgt::TextureFormat::Depth24PlusStencil8)
         }
         _ => None,
+    }
+}
+
+pub fn map_stencil_face_state(value: native::WGPUStencilFaceState) -> wgt::StencilFaceState {
+    wgt::StencilFaceState {
+        compare: map_compare_function(value.compare).unwrap(),
+        fail_op: map_stencil_operation(value.failOp).unwrap(),
+        depth_fail_op: map_stencil_operation(value.depthFailOp).unwrap(),
+        pass_op: map_stencil_operation(value.passOp).unwrap(),
     }
 }
