@@ -23,7 +23,7 @@ default = []
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "53eab747a32414232be45d47cae8a43a369395d0"
+rev = "7ce535cc97958d8e224247764f3d57c162594504"
 # path = "../wgpu/wgpu-core"
 version = "0.8"
 features = ["raw-window-handle", "trace", "cross"]
@@ -31,7 +31,7 @@ features = ["raw-window-handle", "trace", "cross"]
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "53eab747a32414232be45d47cae8a43a369395d0"
+rev = "7ce535cc97958d8e224247764f3d57c162594504"
 # path = "../wgpu/wgpu-types"
 version = "0.8"
 
