@@ -1,4 +1,4 @@
-use crate::conv::{map_device_descriptor, map_shader_module};
+use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module};
 use crate::{check_error, conv, follow_chain, make_slice, native, OwnedLabel, GLOBAL};
 use std::{
     borrow::Cow,
@@ -12,19 +12,36 @@ use wgc::{gfx_select, id};
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     _: native::WGPUInstance,
-    options: *const native::WGPURequestAdapterOptions,
+    options: &native::WGPURequestAdapterOptions,
     callback: native::WGPURequestAdapterCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let compatible_surface: Option<id::SurfaceId> =
-        options.as_ref().map(|options| options.compatibleSurface);
+    let (compatible_surface, given_backend_bits) = follow_chain!(
+        map_adapter_options(options,
+        WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
+    );
+    // Convert backend bits. Only consider combinations of primary backends.
+    // If a non-primary backend is selected, it's likely selected by itself.
+    let backend_bits = match given_backend_bits {
+        0 => wgt::BackendBit::PRIMARY, // default
+        1 => wgt::BackendBit::VULKAN,
+        2 => wgt::BackendBit::METAL,
+        3 => wgt::BackendBit::VULKAN | wgt::BackendBit::METAL,
+        4 => wgt::BackendBit::DX12,
+        5 => wgt::BackendBit::VULKAN | wgt::BackendBit::DX12,
+        6 => wgt::BackendBit::METAL | wgt::BackendBit::DX12,
+        7 => wgt::BackendBit::VULKAN | wgt::BackendBit::METAL | wgt::BackendBit::DX12,
+        8 => wgt::BackendBit::DX11,
+        16 => wgt::BackendBit::GL,
+        _ => panic!("Invalid BackendBits {}", given_backend_bits),
+    };
     let id = GLOBAL
         .request_adapter(
             &wgt::RequestAdapterOptions {
                 power_preference: wgt::PowerPreference::default(),
                 compatible_surface,
             },
-            wgc::instance::AdapterInputs::Mask(wgt::BackendBit::PRIMARY, |_| PhantomData),
+            wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
         )
         .expect("Unable to request adapter");
     (callback.unwrap())(id, userdata);

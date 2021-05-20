@@ -1,6 +1,6 @@
 use crate::{make_slice, map_enum, native, Label, OwnedLabel};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32};
-use wgc::pipeline::ShaderModuleSource;
+use wgc::{id, pipeline::ShaderModuleSource};
 
 map_enum!(
     map_load_op,
@@ -176,6 +176,17 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
         x: native.x,
         y: native.y,
         z: native.z,
+    }
+}
+
+pub fn map_adapter_options<'a>(
+    options: &native::WGPURequestAdapterOptions,
+    extras: Option<&native::WGPUAdapterExtras>,
+) -> (Option<id::SurfaceId>, i32) {
+    if let Some(extras) = extras {
+        (Some(options.compatibleSurface), extras.backendBits)
+    } else {
+        (Some(options.compatibleSurface), 0i32)
     }
 }
 
