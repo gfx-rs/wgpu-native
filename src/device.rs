@@ -22,19 +22,19 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     );
     // Convert backend bits. We need to initialize with *something*, thus the xor at the end.
     let mut backend_bits = wgt::BackendBit::VULKAN;
-    if given_backend_bits & native::WGPUBackendBits_Metal > 0 {
+    if given_backend_bits & native::WGPUBackendBits_Metal > 0i32 {
         backend_bits |= wgt::BackendBit::METAL;
     }
-    if given_backend_bits & native::WGPUBackendBits_Dx12 > 0 {
+    if given_backend_bits & native::WGPUBackendBits_Dx12 > 0i32 {
         backend_bits |= wgt::BackendBit::DX12;
     }
-    if given_backend_bits & native::WGPUBackendBits_Dx11 > 0 {
+    if given_backend_bits & native::WGPUBackendBits_Dx11 > 0i32 {
         backend_bits |= wgt::BackendBit::DX11;
     }
-    if given_backend_bits & native::WGPUBackendBits_Gl > 0 {
+    if given_backend_bits & native::WGPUBackendBits_Gl > 0i32 {
         backend_bits |= wgt::BackendBit::GL;
     }
-    if given_backend_bits & native::WGPUBackendBits_Vulkan == 0 {
+    if given_backend_bits & native::WGPUBackendBits_Vulkan == 0i32 {
         backend_bits ^= wgt::BackendBit::VULKAN;
     }
     let id = GLOBAL
