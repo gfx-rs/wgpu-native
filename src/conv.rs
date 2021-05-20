@@ -182,11 +182,11 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
 pub fn map_adapter_options<'a>(
     options: &native::WGPURequestAdapterOptions,
     extras: Option<&native::WGPUAdapterExtras>,
-) -> (Option<id::SurfaceId>, i32) {
+) -> (Option<id::SurfaceId>, u32) {
     if let Some(extras) = extras {
-        (Some(options.compatibleSurface), extras.backendBits)
+        (Some(options.compatibleSurface), extras.backendBits as u32)
     } else {
-        (Some(options.compatibleSurface), 0i32)
+        (Some(options.compatibleSurface), 0u32)
     }
 }
 
