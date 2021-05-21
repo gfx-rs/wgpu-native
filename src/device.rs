@@ -20,22 +20,24 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         map_adapter_options(options,
         WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
     );
-    // Convert backend bits. We need to initialize with *something*, thus the xor at the end.
-    let mut backend_bits = wgt::BackendBit::VULKAN;
-    if given_backend_bits & native::WGPUBackendBits_Metal as u32 > 0 {
-        backend_bits |= wgt::BackendBit::METAL;
-    }
-    if given_backend_bits & native::WGPUBackendBits_Dx12 as u32> 0 {
-        backend_bits |= wgt::BackendBit::DX12;
-    }
-    if given_backend_bits & native::WGPUBackendBits_Dx11 as u32> 0 {
-        backend_bits |= wgt::BackendBit::DX11;
-    }
-    if given_backend_bits & native::WGPUBackendBits_Gl as u32> 0 {
-        backend_bits |= wgt::BackendBit::GL;
-    }
-    if given_backend_bits & native::WGPUBackendBits_Vulkan as u32 == 0 {
-        backend_bits ^= wgt::BackendBit::VULKAN;
+    let mut backend_bits = wgt::BackendBit::PRIMARY;
+    if given_backend_bits != native::WGPUBackendBits_Default as u32 {
+        backend_bits = wgt::BackendBit::VULKAN; // Initialize with *something*, thus the xor at the end.
+        if given_backend_bits & native::WGPUBackendBits_Metal as u32 > 0 {
+            backend_bits |= wgt::BackendBit::METAL;
+        }
+        if given_backend_bits & native::WGPUBackendBits_Dx12 as u32 > 0 {
+            backend_bits |= wgt::BackendBit::DX12;
+        }
+        if given_backend_bits & native::WGPUBackendBits_Dx11 as u32 > 0 {
+            backend_bits |= wgt::BackendBit::DX11;
+        }
+        if given_backend_bits & native::WGPUBackendBits_Gl as u32 > 0 {
+            backend_bits |= wgt::BackendBit::GL;
+        }
+        if given_backend_bits & native::WGPUBackendBits_Vulkan as u32 == 0 {
+            backend_bits ^= wgt::BackendBit::VULKAN;
+        }
     }
     let id = GLOBAL
         .request_adapter(

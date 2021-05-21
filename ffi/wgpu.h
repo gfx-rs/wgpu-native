@@ -4,6 +4,7 @@
 #include "webgpu-headers/webgpu.h"
 
 typedef enum WGPUBackendBits {
+    WGPUBackendBits_Default = 0x00000000,
     WGPUBackendBits_Vulkan = 0x00000001,
     WGPUBackendBits_Metal = 0x00000002,
     WGPUBackendBits_Dx12 = 0x00000004,
