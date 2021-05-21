@@ -60,6 +60,26 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetProperties(
+    adapter: id::AdapterId,
+    properties: &mut native::WGPUAdapterProperties,
+) {
+    //let maybe_props: Result<wgt::AdapterInfo, wgc::instance::InvalidAdapter> = GLOBAL.adapter_get_info(adapter);
+
+    let maybe_props = gfx_select!(adapter => GLOBAL.adapter_get_info(adapter));
+    match maybe_props {
+        Ok(props) => {
+            //properties.name = std::ffi::CString::new(props.name).unwrap().as_ptr();
+            properties.vendorID = props.vendor as u32;
+            properties.deviceID = props.device as u32;
+            // properties.adapterType = props.device_type; -> warning: enum fields dont match
+            // properties.backendType = props.backend;
+        }
+        _ => (),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     device: id::DeviceId,
     descriptor: &native::WGPUShaderModuleDescriptor,
