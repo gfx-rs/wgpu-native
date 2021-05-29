@@ -20,7 +20,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         map_adapter_options(options,
         WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
     );
-    let backend_bits = match given_backend as i32 {
+    let backend_bits = match given_backend {
         native::WGPUBackendType_Null => wgt::BackendBit::PRIMARY,
         native::WGPUBackendType_Vulkan => wgt::BackendBit::VULKAN,
         native::WGPUBackendType_Metal => wgt::BackendBit::METAL,
