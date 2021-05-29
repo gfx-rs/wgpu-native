@@ -16,29 +16,19 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     callback: native::WGPURequestAdapterCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let (compatible_surface, given_backend_bits) = follow_chain!(
+    let (compatible_surface, given_backend) = follow_chain!(
         map_adapter_options(options,
         WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
     );
-    let mut backend_bits = wgt::BackendBit::PRIMARY;
-    if given_backend_bits != native::WGPUBackendBits_Default as u32 {
-        backend_bits = wgt::BackendBit::VULKAN; // Initialize with *something*, thus the xor at the end.
-        if given_backend_bits & native::WGPUBackendBits_Metal as u32 > 0 {
-            backend_bits |= wgt::BackendBit::METAL;
-        }
-        if given_backend_bits & native::WGPUBackendBits_Dx12 as u32 > 0 {
-            backend_bits |= wgt::BackendBit::DX12;
-        }
-        if given_backend_bits & native::WGPUBackendBits_Dx11 as u32 > 0 {
-            backend_bits |= wgt::BackendBit::DX11;
-        }
-        if given_backend_bits & native::WGPUBackendBits_Gl as u32 > 0 {
-            backend_bits |= wgt::BackendBit::GL;
-        }
-        if given_backend_bits & native::WGPUBackendBits_Vulkan as u32 == 0 {
-            backend_bits ^= wgt::BackendBit::VULKAN;
-        }
-    }
+    let backend_bits = match given_backend as i32 {
+        native::WGPUBackendType_Null => wgt::BackendBit::PRIMARY,
+        native::WGPUBackendType_Vulkan => wgt::BackendBit::VULKAN,
+        native::WGPUBackendType_Metal => wgt::BackendBit::METAL,
+        native::WGPUBackendType_D3D12 => wgt::BackendBit::DX12,
+        native::WGPUBackendType_D3D11 => wgt::BackendBit::DX11,
+        native::WGPUBackendType_OpenGL => wgt::BackendBit::GL,
+        _ => panic!("Invalid backend {}", given_backend),
+    };
     let id = GLOBAL
         .request_adapter(
             &wgt::RequestAdapterOptions {
