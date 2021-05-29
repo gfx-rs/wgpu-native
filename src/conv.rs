@@ -184,9 +184,9 @@ pub fn map_adapter_options<'a>(
     extras: Option<&native::WGPUAdapterExtras>,
 ) -> (Option<id::SurfaceId>, u32) {
     if let Some(extras) = extras {
-        (Some(options.compatibleSurface), extras.backendBits as u32)
+        (options.compatibleSurface, extras.backend as u32)
     } else {
-        (Some(options.compatibleSurface), 0u32)
+        (options.compatibleSurface, 0u32)
     }
 }
 
