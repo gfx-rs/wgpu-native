@@ -1,4 +1,4 @@
-use crate::conv::{map_device_descriptor, map_shader_module};
+use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module};
 use crate::{check_error, conv, follow_chain, make_slice, native, OwnedLabel, GLOBAL};
 use std::{
     borrow::Cow,
@@ -12,19 +12,30 @@ use wgc::{gfx_select, id};
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     _: native::WGPUInstance,
-    options: *const native::WGPURequestAdapterOptions,
+    options: &native::WGPURequestAdapterOptions,
     callback: native::WGPURequestAdapterCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let compatible_surface: Option<id::SurfaceId> =
-        options.as_ref().map(|options| options.compatibleSurface);
+    let (compatible_surface, given_backend) = follow_chain!(
+        map_adapter_options(options,
+        WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
+    );
+    let backend_bits = match given_backend {
+        native::WGPUBackendType_Null => wgt::BackendBit::PRIMARY,
+        native::WGPUBackendType_Vulkan => wgt::BackendBit::VULKAN,
+        native::WGPUBackendType_Metal => wgt::BackendBit::METAL,
+        native::WGPUBackendType_D3D12 => wgt::BackendBit::DX12,
+        native::WGPUBackendType_D3D11 => wgt::BackendBit::DX11,
+        native::WGPUBackendType_OpenGL => wgt::BackendBit::GL,
+        _ => panic!("Invalid backend {}", given_backend),
+    };
     let id = GLOBAL
         .request_adapter(
             &wgt::RequestAdapterOptions {
                 power_preference: wgt::PowerPreference::default(),
                 compatible_surface,
             },
-            wgc::instance::AdapterInputs::Mask(wgt::BackendBit::PRIMARY, |_| PhantomData),
+            wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
         )
         .expect("Unable to request adapter");
     (callback.unwrap())(id, userdata);

@@ -6,9 +6,14 @@
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
+    WGPUSType_AdapterExtras = 0x60000002,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
+typedef struct WGPUAdapterExtras {
+    WGPUChainedStruct chain;
+    WGPUBackendType backend;
+} WGPUAdapterExtras;
 
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
@@ -39,4 +44,4 @@ uint32_t wgpuGetVersion(void);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
-#endif 
+#endif

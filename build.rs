@@ -61,6 +61,17 @@ fn main() {
             }",
     );
 
+    // WGPURequestAdapterOptions.compatibleSurface can be Null
+    builder = builder
+        .blacklist_item("WGPURequestAdapterOptions")
+        .raw_line(
+            "#[repr(C)]
+            pub struct WGPURequestAdapterOptions {
+                pub nextInChain: * const crate::native::WGPUChainedStruct,
+                pub compatibleSurface: Option<wgc::id::SurfaceId>,
+            }",
+        );
+
     // See https://github.com/rust-lang/rust-bindgen/issues/1780
     if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
         let output = Command::new("xcrun")
