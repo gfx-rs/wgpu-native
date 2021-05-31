@@ -352,11 +352,11 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueWriteTexture(
     queue: id::QueueId,
-    destination: native::WGPUImageCopyTexture,
+    destination: &native::WGPUImageCopyTexture,
     data: *const u8, // TODO: Check - this might not follow the header
     data_size: usize,
-    data_layout: native::WGPUTextureDataLayout,
-    write_size: native::WGPUExtent3D,
+    data_layout: &native::WGPUTextureDataLayout,
+    write_size: &native::WGPUExtent3D,
 ) {
     let slice = make_slice(data, data_size);
     gfx_select!(queue => GLOBAL.queue_write_texture(
