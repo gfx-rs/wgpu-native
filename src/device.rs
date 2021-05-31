@@ -64,16 +64,30 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     adapter: id::AdapterId,
     properties: &mut native::WGPUAdapterProperties,
 ) {
-    //let maybe_props: Result<wgt::AdapterInfo, wgc::instance::InvalidAdapter> = GLOBAL.adapter_get_info(adapter);
-
     let maybe_props = gfx_select!(adapter => GLOBAL.adapter_get_info(adapter));
     match maybe_props {
         Ok(props) => {
-            //properties.name = std::ffi::CString::new(props.name).unwrap().as_ptr();
+            //let name = std::ffi::CString::new(props.name);
+            //store_object_globally(name); --> how?
+            //properties.name = c_string.unwrap(name).as_ptr();
             properties.vendorID = props.vendor as u32;
             properties.deviceID = props.device as u32;
-            // properties.adapterType = props.device_type; -> warning: enum fields dont match
-            // properties.backendType = props.backend;
+            properties.adapterType = match props.device_type {
+                wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+                wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+                wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+                wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+                wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+            };
+            properties.backendType = match props.backend {
+                wgt::Backend::Empty => native::WGPUBackendType_Null,
+                wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+                wgt::Backend::Metal => native::WGPUBackendType_Metal,
+                wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+                wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
+                wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
+            };
         }
         _ => (),
     }
