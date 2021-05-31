@@ -10,17 +10,9 @@ typedef enum WGPUNativeSType {
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
-typedef struct WGPUAdapterExtras {
-    WGPUChainedStruct chain;
-    WGPUBackendType backend;
-} WGPUAdapterExtras;
-
-typedef struct WGPUDeviceExtras {
-    WGPUChainedStruct chain;
-    uint32_t maxBindGroups;
-    const char* label;
-    const char* tracePath;
-} WGPUDeviceExtras;
+typedef enum WGPUNativeFeature {
+    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x10000000
+} WGPUNativeFeature;
 
 typedef enum WGPULogLevel {
     WGPULogLevel_Off = 0x00000000,
@@ -31,6 +23,22 @@ typedef enum WGPULogLevel {
     WGPULogLevel_Trace = 0x00000005,
     WGPULogLevel_Force32 = 0x7FFFFFFF
 } WGPULogLevel;
+
+typedef struct WGPUAdapterExtras {
+    WGPUChainedStruct chain;
+    WGPUBackendType backend;
+} WGPUAdapterExtras;
+
+typedef struct WGPUDeviceExtras {
+    WGPUChainedStruct chain;
+    uint32_t maxBindGroups;
+    WGPUNativeFeature nativeFeatures;
+
+    const char* label;
+    const char* tracePath;
+} WGPUDeviceExtras;
+
+
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 
