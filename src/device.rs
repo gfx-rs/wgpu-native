@@ -60,6 +60,40 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetProperties(
+    adapter: id::AdapterId,
+    properties: &mut native::WGPUAdapterProperties,
+) {
+    let maybe_props = gfx_select!(adapter => GLOBAL.adapter_get_info(adapter));
+    match maybe_props {
+        Ok(props) => {
+            //let name = std::ffi::CString::new(props.name);
+            //store_object_globally(name); --> how?
+            //properties.name = c_string.unwrap(name).as_ptr();
+            properties.vendorID = props.vendor as u32;
+            properties.deviceID = props.device as u32;
+            properties.adapterType = match props.device_type {
+                wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+                wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+                wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+                wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+                wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+            };
+            properties.backendType = match props.backend {
+                wgt::Backend::Empty => native::WGPUBackendType_Null,
+                wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+                wgt::Backend::Metal => native::WGPUBackendType_Metal,
+                wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+                wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
+                wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
+            };
+        }
+        _ => (),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     device: id::DeviceId,
     descriptor: &native::WGPUShaderModuleDescriptor,
