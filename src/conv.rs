@@ -195,10 +195,17 @@ pub fn map_device_descriptor<'a>(
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
     if let Some(extras) = extras {
+        let mut features = wgt::Features::empty();
+        if (extras.nativeFeatures
+            & native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES)
+            > 0
+        {
+            features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
+        }
         (
             wgt::DeviceDescriptor {
                 label: OwnedLabel::new(extras.label).into_cow(),
-                features: wgt::Features::empty(),
+                features: features,
                 limits: wgt::Limits {
                     max_bind_groups: extras.maxBindGroups,
                     ..wgt::Limits::default()
