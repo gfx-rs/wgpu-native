@@ -202,14 +202,37 @@ pub fn map_device_descriptor<'a>(
         {
             features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         }
+        let mut limits = wgt::Limits::default();
+        if extras.maxTextureDimension1D != 0 {
+            limits.max_texture_dimension_1d = extras.maxTextureDimension1D;
+        }
+        if extras.maxTextureDimension2D != 0 {
+            limits.max_texture_dimension_1d = extras.maxTextureDimension2D;
+        }
+        if extras.maxTextureDimension3D != 0 {
+            limits.max_texture_dimension_2d = extras.maxTextureDimension3D;
+        }
+        if extras.maxTextureArrayLayers != 0 {
+            limits.max_texture_array_layers = extras.maxTextureArrayLayers;
+        }
+        if extras.maxBindGroups != 0 {
+            limits.max_bind_groups = extras.maxBindGroups;
+        }
+        if extras.maxDynamicStorageBuffersPerPipelineLayout != 0 {
+            limits.max_dynamic_storage_buffers_per_pipeline_layout =
+                extras.maxDynamicStorageBuffersPerPipelineLayout;
+        }
+        if extras.maxStorageBuffersPerShaderStage != 0 {
+            limits.max_storage_buffers_per_shader_stage = extras.maxStorageBuffersPerShaderStage;
+        }
+        if extras.maxStorageBufferBindingSize != 0 {
+            limits.max_storage_buffer_binding_size = extras.maxStorageBufferBindingSize;
+        }
         (
             wgt::DeviceDescriptor {
                 label: OwnedLabel::new(extras.label).into_cow(),
                 features: features,
-                limits: wgt::Limits {
-                    max_bind_groups: extras.maxBindGroups,
-                    ..wgt::Limits::default()
-                },
+                limits,
             },
             OwnedLabel::new(extras.tracePath).into_inner(),
         )
