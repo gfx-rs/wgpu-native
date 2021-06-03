@@ -83,17 +83,17 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateBuffer(
     device: id::DeviceId,
-    desc: &native::WGPUBufferDescriptor,
+    descriptor: &native::WGPUBufferDescriptor,
 ) -> id::BufferId {
-    let usage = wgt::BufferUsage::from_bits(desc.usage).expect("Buffer Usage Invalid.");
-    let label = OwnedLabel::new(desc.label);
+    let usage = wgt::BufferUsage::from_bits(descriptor.usage).expect("Buffer Usage Invalid.");
+    let label = OwnedLabel::new(descriptor.label);
     check_error(gfx_select!(device => GLOBAL.device_create_buffer(
         device,
         &wgt::BufferDescriptor {
             label: label.as_cow(),
-            size: desc.size,
+            size: descriptor.size,
             usage,
-            mapped_at_creation: desc.mappedAtCreation,
+            mapped_at_creation: descriptor.mappedAtCreation,
         },
         PhantomData
     )))
@@ -329,9 +329,9 @@ pub unsafe extern "C" fn wgpuDeviceGetQueue(device: id::DeviceId) -> id::QueueId
 pub unsafe extern "C" fn wgpuQueueSubmit(
     queue: id::QueueId,
     command_count: u32,
-    command_buffers: *const id::CommandBufferId,
+    commands: *const id::CommandBufferId,
 ) {
-    let command_buffer_ids = make_slice(command_buffers, command_count as usize);
+    let command_buffer_ids = make_slice(commands, command_count as usize);
     gfx_select!(queue => GLOBAL.queue_submit(queue, command_buffer_ids))
         .expect("Unable to submit queue")
 }
@@ -539,14 +539,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 pub extern "C" fn wgpuDeviceCreateSwapChain(
     device: id::DeviceId,
     surface: id::SurfaceId,
-    desc: &native::WGPUSwapChainDescriptor,
+    descriptor: &native::WGPUSwapChainDescriptor,
 ) -> id::SwapChainId {
     let desc = wgt::SwapChainDescriptor {
-        usage: wgt::TextureUsage::from_bits(desc.usage).unwrap(),
-        format: conv::map_texture_format(desc.format).expect("Texture format not defined"),
-        width: desc.width,
-        height: desc.height,
-        present_mode: conv::map_present_mode(desc.presentMode),
+        usage: wgt::TextureUsage::from_bits(descriptor.usage).unwrap(),
+        format: conv::map_texture_format(descriptor.format).expect("Texture format not defined"),
+        width: descriptor.width,
+        height: descriptor.height,
+        present_mode: conv::map_present_mode(descriptor.presentMode),
     };
     let (id, error) =
         gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc));
