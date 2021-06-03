@@ -8,10 +8,10 @@ use wgc::{
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderFinish(
     encoder: id::CommandEncoderId,
-    desc: &native::WGPUCommandBufferDescriptor,
+    descriptor: &native::WGPUCommandBufferDescriptor,
 ) -> id::CommandBufferId {
     let desc = wgt::CommandBufferDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
+        label: OwnedLabel::new(descriptor.label).into_cow(),
     };
 
     check_error(gfx_select!(encoder => GLOBAL.command_encoder_finish(encoder, &desc)))
