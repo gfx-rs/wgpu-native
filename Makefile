@@ -60,13 +60,13 @@ package: lib-native lib-native-release
 	for RELEASE in debug release; do \
 		ARCHIVE=wgpu-$$RELEASE-$(OS_NAME)-$(GIT_TAG).zip; \
 		rm -f dist/$$ARCHIVE; \
-		sed -i 's/webgpu-headers\/webgpu\.h/webgpu.h/' ffi/wgpu.h
+		sed 's/webgpu-headers\///' ffi/wgpu.h > wgpu.h ;\
 		if [ $(OS_NAME) = windows ]; then \
-			7z a -tzip dist/$$ARCHIVE ./target/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION) ./target/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION).lib ./ffi/*.h ./ffi/webgpu-headers/*.h ./dist/commit-sha; \
+			7z a -tzip dist/$$ARCHIVE ./target/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION) ./target/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION).lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		else \
-			zip -j dist/$$ARCHIVE target/$$RELEASE/lib$(LIB_NAME).$(LIB_EXTENSION) ffi/*.h ./ffi/webgpu-headers/*.h dist/commit-sha; \
+			zip -j dist/$$ARCHIVE target/$$RELEASE/lib$(LIB_NAME).$(LIB_EXTENSION) ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		fi; \
-		sed -i 's/webgpu\.h/webgpu-headers\/webgpu.h/' ffi/wgpu.h
+		rm wgpu.h ;\
 	done
 
 clean:
