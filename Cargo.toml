@@ -45,7 +45,7 @@ log = "0.4"
 # gfx-backend-vulkan = { version = "0.7", features = [] }
 
 [build-dependencies]
-bindgen = "0.53.1"
+bindgen = "0.58.1"
 
 [workspace]
 members = [
