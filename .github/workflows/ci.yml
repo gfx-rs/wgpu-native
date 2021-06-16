@@ -64,6 +64,7 @@ jobs:
             install_deps_command: |
                                 # choco exit with code 1 after successful install
                                 choco install -y --force llvm | exit 0
+                                echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
           - os: windows-2019
             name: Windows Nightly
             channel: nightly
@@ -71,6 +72,7 @@ jobs:
             install_deps_command: |
                                 # choco exit with code 1 after successful install ¯\_(ツ)_/¯
                                 choco install -y --force cmake make llvm | exit 0
+                                echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
                                 curl -sL -o glfw.zip https://github.com/glfw/glfw/archive/3.3.zip
                                 unzip -qq glfw.zip -d $GITHUB_WORKSPACE
                                 cd $GITHUB_WORKSPACE/glfw-3.3/
