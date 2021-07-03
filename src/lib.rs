@@ -18,7 +18,7 @@ pub mod native {
 type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
 lazy_static::lazy_static! {
-    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::BackendBit::PRIMARY));
+    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::Backends::PRIMARY));
 }
 
 pub type Label<'a> = Option<Cow<'a, str>>;
