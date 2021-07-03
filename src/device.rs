@@ -21,12 +21,12 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
     );
     let backend_bits = match given_backend {
-        native::WGPUBackendType_Null => wgt::BackendBit::PRIMARY,
-        native::WGPUBackendType_Vulkan => wgt::BackendBit::VULKAN,
-        native::WGPUBackendType_Metal => wgt::BackendBit::METAL,
-        native::WGPUBackendType_D3D12 => wgt::BackendBit::DX12,
-        native::WGPUBackendType_D3D11 => wgt::BackendBit::DX11,
-        native::WGPUBackendType_OpenGL => wgt::BackendBit::GL,
+        native::WGPUBackendType_Null => wgt::Backends::PRIMARY,
+        native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
+        native::WGPUBackendType_Metal => wgt::Backends::METAL,
+        native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
+        native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
+        native::WGPUBackendType_OpenGL => wgt::Backends::GL,
         _ => panic!("Invalid backend {}", given_backend),
     };
     let id = GLOBAL
@@ -107,7 +107,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: label.as_cow(),
-        flags: wgt::ShaderFlags::VALIDATION,
     };
     check_error(
         gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, source, PhantomData)),
@@ -119,7 +118,7 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
     device: id::DeviceId,
     descriptor: &native::WGPUBufferDescriptor,
 ) -> id::BufferId {
-    let usage = wgt::BufferUsage::from_bits(descriptor.usage).expect("Buffer Usage Invalid.");
+    let usage = wgt::BufferUsages::from_bits(descriptor.usage).expect("Buffer Usage Invalid.");
     let label = OwnedLabel::new(descriptor.label);
     check_error(gfx_select!(device => GLOBAL.device_create_buffer(
         device,
@@ -242,7 +241,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         entries.push(wgt::BindGroupLayoutEntry {
             ty,
             binding: entry.binding,
-            visibility: wgt::ShaderStage::from_bits(entry.visibility).unwrap(),
+            visibility: wgt::ShaderStages::from_bits(entry.visibility).unwrap(),
             count: None, // TODO - What is this?
         });
     }
@@ -556,7 +555,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                                     operation: conv::map_blend_operation(blend.alpha.operation),
                                 },
                             }),
-                            write_mask: wgt::ColorWrite::from_bits(color_target.writeMask).unwrap(),
+                            write_mask: wgt::ColorWrites::from_bits(color_target.writeMask).unwrap(),
                         })
                         .collect(),
                 ),
@@ -576,7 +575,7 @@ pub extern "C" fn wgpuDeviceCreateSwapChain(
     descriptor: &native::WGPUSwapChainDescriptor,
 ) -> id::SwapChainId {
     let desc = wgt::SwapChainDescriptor {
-        usage: wgt::TextureUsage::from_bits(descriptor.usage).unwrap(),
+        usage: wgt::TextureUsages::from_bits(descriptor.usage).unwrap(),
         format: conv::map_texture_format(descriptor.format).expect("Texture format not defined"),
         width: descriptor.width,
         height: descriptor.height,
@@ -616,11 +615,13 @@ pub extern "C" fn wgpuTextureCreateView(
         label: OwnedLabel::new(descriptor.label).into_cow(),
         format: conv::map_texture_format(descriptor.format),
         dimension: conv::map_texture_view_dimension(descriptor.dimension),
-        aspect: conv::map_texture_aspect(descriptor.aspect),
-        base_mip_level: descriptor.baseMipLevel,
-        mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
-        base_array_layer: descriptor.baseArrayLayer,
-        array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
+        range: wgt::ImageSubresourceRange {
+            aspect: conv::map_texture_aspect(descriptor.aspect),
+            base_mip_level: descriptor.baseMipLevel,
+            mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
+            base_array_layer: descriptor.baseArrayLayer,
+            array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
+        },
     };
 
     check_error(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)))
@@ -639,7 +640,7 @@ pub extern "C" fn wgpuDeviceCreateTexture(
         dimension: conv::map_texture_dimension(descriptor.dimension),
         format: conv::map_texture_format(descriptor.format)
             .expect("Texture format must be provided"),
-        usage: wgt::TextureUsage::from_bits(descriptor.usage).expect("Invalid texture usage"),
+        usage: wgt::TextureUsages::from_bits(descriptor.usage).expect("Invalid texture usage"),
     };
 
     check_error(gfx_select!(device => GLOBAL.device_create_texture(device, &desc, PhantomData)))

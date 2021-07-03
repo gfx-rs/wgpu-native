@@ -15,7 +15,7 @@ WGPUShaderModuleDescriptor load_wgsl(const char *name) {
     fseek(file, 0, SEEK_SET);
     fread(bytes, 1, length, file);
     fclose(file);
-    bytes[length] = NULL;
+    bytes[length] = 0;
 
     WGPUShaderModuleWGSLDescriptor *wgslDescriptor = malloc(sizeof(WGPUShaderModuleWGSLDescriptor));
     wgslDescriptor->chain.next = NULL;
@@ -37,7 +37,8 @@ void request_device_callback(WGPUDevice received, void* userdata)
     *(WGPUDevice*)userdata = received;
 }
 
-void readBufferMap(WGPUBufferMapAsyncStatus status, uint8_t* userdata){
+void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata)
+{
 }
 
 void logCallback(WGPULogLevel level, const char *msg) {

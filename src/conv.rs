@@ -1,6 +1,7 @@
 use crate::{make_slice, map_enum, native, Label, OwnedLabel};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32};
 use wgc::{id, pipeline::ShaderModuleSource};
+use naga;
 
 map_enum!(
     map_load_op,
@@ -259,7 +260,15 @@ pub fn map_shader_module<'a>(
         ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
     } else if let Some(spirv) = spirv {
         let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
-        ShaderModuleSource::SpirV(Cow::Borrowed(slice))
+        // Parse the given shader code and store its representation.
+        let options = naga::front::spv::Options {
+            adjust_coordinate_space: false, // we require NDC_Y_UP feature
+            strict_capabilities: true,
+            flow_graph_dump_prefix: None,
+        };
+        let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
+        let module = parser.parse().unwrap();
+        ShaderModuleSource::Naga(module)
     } else {
         panic!("Shader not provided.");
     }
@@ -272,6 +281,7 @@ pub fn map_image_copy_texture(
         texture: native.texture,
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
+        aspect: map_texture_aspect(native.aspect),
     }
 }
 

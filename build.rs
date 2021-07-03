@@ -34,8 +34,8 @@ fn main() {
         .header("ffi/webgpu-headers/webgpu.h")
         .header("ffi/wgpu.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .blacklist_type("(^WGPUProc).*")
-        .blacklist_function("wgpuGetProcAddress")
+        .blocklist_type("(^WGPUProc).*")
+        .blocklist_function("wgpuGetProcAddress")
         .prepend_enum_name(false)
         .size_t_is_usize(true)
         .ignore_functions()
@@ -43,13 +43,13 @@ fn main() {
 
     for (old_name, new_name) in types_to_rename {
         builder = builder
-            .blacklist_type(old_name)
-            .blacklist_type(format!("{}Impl", old_name))
+            .blocklist_type(old_name)
+            .blocklist_type(format!("{}Impl", old_name))
             .raw_line(format!("type {} = wgc::id::{};", old_name, new_name));
     }
 
     // WGPUBindGroupEntry has fields that are id's which can be 0
-    builder = builder.blacklist_item("WGPUBindGroupEntry").raw_line(
+    builder = builder.blocklist_item("WGPUBindGroupEntry").raw_line(
         "#[repr(C)]
             pub struct WGPUBindGroupEntry {
                 pub binding: u32,
@@ -63,7 +63,7 @@ fn main() {
 
     // WGPURequestAdapterOptions.compatibleSurface can be Null
     builder = builder
-        .blacklist_item("WGPURequestAdapterOptions")
+        .blocklist_item("WGPURequestAdapterOptions")
         .raw_line(
             "#[repr(C)]
             pub struct WGPURequestAdapterOptions {
