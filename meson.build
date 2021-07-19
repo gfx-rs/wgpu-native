@@ -1,5 +1,5 @@
 
-project('wgpu-native', 'c', version : '0.6.0', license : 'MPL 2.0')
+project('wgpu-native', 'c', version : '0.6.0', license : 'MIT OR Apache-2.0')
 
 inc_dirs = [include_directories('ffi', is_system: true)]
 

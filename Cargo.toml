@@ -10,7 +10,7 @@ description = "WebGPU native implementation on gfx-hal"
 homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
 keywords = ["graphics"]
-license = "MPL-2.0"
+license = "MIT OR Apache-2.0"
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
