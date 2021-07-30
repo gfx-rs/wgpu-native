@@ -11,14 +11,23 @@ map_enum!(
     Clear,
     Load
 );
+/*  Temporary explicit map functions while webgpu.h uses Clear instead of Discard.
 map_enum!(
     map_store_op,
     WGPUStoreOp,
     wgc::command::StoreOp,
     "Unknown store op",
-    Clear,
+    Discard,
     Store
 );
+*/
+pub fn map_store_op(value: native::WGPUStoreOp) -> wgc::command::StoreOp {
+    match value {
+        native::WGPUStoreOp_Clear => wgc::command::StoreOp::Discard,
+        native::WGPUStoreOp_Store => wgc::command::StoreOp::Store,
+        x => panic!("Unknown store op: {}", x),
+    }
+}
 map_enum!(
     map_address_mode,
     WGPUAddressMode,
