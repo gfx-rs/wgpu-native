@@ -466,8 +466,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 .map(|buffer| wgc::pipeline::VertexBufferLayout {
                     array_stride: buffer.arrayStride,
                     step_mode: match buffer.stepMode {
-                        native::WGPUInputStepMode_Vertex => wgt::InputStepMode::Vertex,
-                        native::WGPUInputStepMode_Instance => wgt::InputStepMode::Instance,
+                        native::WGPUInputStepMode_Vertex => wgt::VertexStepMode::Vertex,
+                        native::WGPUInputStepMode_Instance => wgt::VertexStepMode::Instance,
                         x => panic!("Unknown step mode {}", x),
                     },
                     attributes: Cow::Owned(
