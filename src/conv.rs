@@ -101,17 +101,17 @@ map_enum!(
     "Unknown blend factor",
     Zero: Zero,
     One: One,
-    SrcColor: Src,
-    OneMinusSrcColor: OneMinusSrc,
+    Src: Src,
+    OneMinusSrc: OneMinusSrc,
     SrcAlpha: SrcAlpha,
     OneMinusSrcAlpha: OneMinusSrcAlpha,
-    DstColor: Dst,
-    OneMinusDstColor: OneMinusDst,
+    Dst: Dst,
+    OneMinusDst: OneMinusDst,
     DstAlpha: DstAlpha,
     OneMinusDstAlpha: OneMinusDstAlpha,
     SrcAlphaSaturated: SrcAlphaSaturated,
-    BlendColor: Constant,
-    OneMinusBlendColor: OneMinusConstant
+    Constant: Constant,
+    OneMinusConstant: OneMinusConstant
 );
 map_enum!(
     map_blend_operation,
@@ -177,7 +177,7 @@ pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
         width: native.width,
         height: native.height,
-        depth_or_array_layers: native.depth,
+        depth_or_array_layers: native.depthOrArrayLayers,
     }
 }
 
