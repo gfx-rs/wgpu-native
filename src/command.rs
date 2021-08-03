@@ -100,7 +100,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
 ) -> id::RenderPassEncoderId {
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
-            view: desc.attachment,
+            view: desc.view,
             depth: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
@@ -124,7 +124,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
             )
             .iter()
             .map(|color_attachment| wgc::command::RenderPassColorAttachment {
-                view: color_attachment.attachment,
+                view: color_attachment.view,
                 resolve_target: Some(color_attachment.resolveTarget),
                 channel: wgc::command::PassChannel {
                     load_op: conv::map_load_op(color_attachment.loadOp),
@@ -345,7 +345,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendColor(
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
     pass: id::RenderPassEncoderId,
     color: &native::WGPUColor,
 ) {

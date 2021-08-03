@@ -51,7 +51,7 @@ int main(
     WGPUExtent3D textureExtent = (WGPUExtent3D) {
         .width = bufferDimensions.width,
         .height = bufferDimensions.height,
-        .depth = 1,
+        .depthOrArrayLayers = 1,
     };
     WGPUTexture texture = wgpuDeviceCreateTexture(device,
         &(WGPUTextureDescriptor) {
@@ -74,9 +74,9 @@ int main(
         .nextInChain = NULL,
         .label = NULL,
         .format = WGPUTextureFormat_Undefined,
-        .dimension = WGPUTextureViewDimension_Undefined, 
+        .dimension = WGPUTextureViewDimension_Undefined,
         .aspect = WGPUTextureAspect_All,
-        .arrayLayerCount = 0, 
+        .arrayLayerCount = 0,
         .baseArrayLayer = 0,
         .baseMipLevel = 0,
         .mipLevelCount = 0,
@@ -84,8 +84,8 @@ int main(
 
     WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(encoder,
         &(WGPURenderPassDescriptor) {
-            .colorAttachments = &(WGPURenderPassColorAttachmentDescriptor) {
-                .attachment = outputAttachment,
+            .colorAttachments = &(WGPURenderPassColorAttachment) {
+                .view = outputAttachment,
                 .resolveTarget = 0,
                 .loadOp = WGPULoadOp_Clear,
                 .storeOp = WGPUStoreOp_Store,
@@ -110,7 +110,7 @@ int main(
                     .x = 0,
                     .y = 0,
                     .z = 0,
-                },  
+                },
             },
             &(WGPUImageCopyBuffer) {
                 .buffer = outputBuffer,

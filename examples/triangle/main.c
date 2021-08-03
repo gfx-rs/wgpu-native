@@ -58,8 +58,8 @@ int main()
         [ns_window.contentView setWantsLayer:YES];
         metal_layer = [CAMetalLayer layer];
         [ns_window.contentView setLayer:metal_layer];
-        surface = wgpuInstanceCreateSurface(NULL, &(WGPUSurfaceDescriptor) { 
-            .label = NULL, 
+        surface = wgpuInstanceCreateSurface(NULL, &(WGPUSurfaceDescriptor) {
+            .label = NULL,
             .nextInChain = (const WGPUChainedStruct*)&(WGPUSurfaceDescriptorFromMetalLayer) {
                 .chain = (WGPUChainedStruct) {
                     .next = NULL,
@@ -67,7 +67,7 @@ int main()
                 },
                 .layer = metal_layer,
             },
-        });    
+        });
     }
 #elif WGPU_TARGET == WGPU_TARGET_LINUX_X11
     {
@@ -93,8 +93,8 @@ int main()
     {
         HWND hwnd = glfwGetWin32Window(window);
         HINSTANCE hinstance = GetModuleHandle(NULL);
-        surface = wgpuInstanceCreateSurface(NULL, &(WGPUSurfaceDescriptor) { 
-            .label = NULL, 
+        surface = wgpuInstanceCreateSurface(NULL, &(WGPUSurfaceDescriptor) {
+            .label = NULL,
             .nextInChain = (const WGPUChainedStruct*)&(WGPUSurfaceDescriptorFromWindowsHWND) {
                 .chain = (WGPUChainedStruct) {
                     .next = NULL,
@@ -163,7 +163,7 @@ int main()
                 .cullMode = WGPUCullMode_None
             },
             .multisample = (WGPUMultisampleState) {
-                .count = 1, 
+                .count = 1,
                 .mask = ~0,
                 .alphaToCoverageEnabled = false,
             },
@@ -188,7 +188,7 @@ int main()
                     .writeMask = WGPUColorWriteMask_All
                 },
             },
-            .depthStencil = NULL, 
+            .depthStencil = NULL,
             });
 
     int prevWidth = 0;
@@ -234,8 +234,8 @@ int main()
 
         WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(encoder,
             &(WGPURenderPassDescriptor) {
-                .colorAttachments = &(WGPURenderPassColorAttachmentDescriptor) {
-                    .attachment = nextTexture,
+                .colorAttachments = &(WGPURenderPassColorAttachment) {
+                    .view = nextTexture,
                     .resolveTarget = 0,
                     .loadOp = WGPULoadOp_Clear,
                     .storeOp = WGPUStoreOp_Store,
