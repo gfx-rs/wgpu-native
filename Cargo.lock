@@ -528,7 +528,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.5.0"
-source = "git+https://github.com/gfx-rs/naga?rev=a7ac13a#a7ac13a61d63620b8a0821db9176ed467fc282f7"
+source = "git+https://github.com/gfx-rs/naga?rev=300039e#300039e24703bc823cc932985947dfda66616e1e"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -940,7 +940,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.9.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=bbeb30a2c982ac9a7bdc6f7815d46eb311678b7a#bbeb30a2c982ac9a7bdc6f7815d46eb311678b7a"
+source = "git+https://github.com/gfx-rs/wgpu?rev=9310f264f1c3d70cd8665fc7e7e15d810577c3f5#9310f264f1c3d70cd8665fc7e7e15d810577c3f5"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -963,7 +963,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.9.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=bbeb30a2c982ac9a7bdc6f7815d46eb311678b7a#bbeb30a2c982ac9a7bdc6f7815d46eb311678b7a"
+source = "git+https://github.com/gfx-rs/wgpu?rev=9310f264f1c3d70cd8665fc7e7e15d810577c3f5#9310f264f1c3d70cd8665fc7e7e15d810577c3f5"
 dependencies = [
  "arrayvec",
  "ash",
@@ -1010,7 +1010,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.9.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=bbeb30a2c982ac9a7bdc6f7815d46eb311678b7a#bbeb30a2c982ac9a7bdc6f7815d46eb311678b7a"
+source = "git+https://github.com/gfx-rs/wgpu?rev=9310f264f1c3d70cd8665fc7e7e15d810577c3f5#9310f264f1c3d70cd8665fc7e7e15d810577c3f5"
 dependencies = [
  "bitflags",
  "serde",
