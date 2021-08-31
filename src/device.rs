@@ -689,3 +689,78 @@ pub extern "C" fn wgpuBufferUnmap(buffer_id: id::BufferId) {
 pub extern "C" fn wgpuSurface(buffer_id: id::BufferId) {
     gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
 }
+
+#[no_mangle]
+pub extern "C" fn wgpuBufferDrop(buffer_id: id::BufferId) {
+    gfx_select!(buffer_id => GLOBAL.buffer_drop(buffer_id, false))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuTextureDrop(texture_id: id::TextureId) {
+    gfx_select!(texture_id => GLOBAL.texture_drop(texture_id, false))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuTextureViewDrop(texture_view_id: id::TextureViewId) {
+    gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id, false)).expect("Unable to drop texture view")
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuSamplerDrop(sampler_id: id::SamplerId) {
+    gfx_select!(sampler_id => GLOBAL.sampler_drop(sampler_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBindGroupLayoutDrop(bind_group_layout_id: id::BindGroupLayoutId) {
+    gfx_select!(bind_group_layout_id => GLOBAL.bind_group_layout_drop(bind_group_layout_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuPipelineLayoutDrop(pipeline_layout_id: id::PipelineLayoutId) {
+    gfx_select!(pipeline_layout_id => GLOBAL.pipeline_layout_drop(pipeline_layout_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBindGroupDrop(bind_group_id: id::BindGroupId) {
+    gfx_select!(bind_group_id => GLOBAL.bind_group_drop(bind_group_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuShaderModuleDrop(shader_module_id: id::ShaderModuleId) {
+    gfx_select!(shader_module_id => GLOBAL.shader_module_drop(shader_module_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuCommandEncoderDrop(command_encoder_id: id::CommandEncoderId) {
+    gfx_select!(command_encoder_id => GLOBAL.command_encoder_drop(command_encoder_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuCommandBufferDrop(command_buffer_id: id::CommandBufferId) {
+    gfx_select!(command_buffer_id => GLOBAL.command_buffer_drop(command_buffer_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderBundleDrop(render_bundle_id: id::RenderBundleId) {
+    gfx_select!(render_bundle_id => GLOBAL.render_bundle_drop(render_bundle_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuQuerySetDrop(query_set_id: id::QuerySetId) {
+    gfx_select!(query_set_id => GLOBAL.query_set_drop(query_set_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderPipelineDrop(render_pipeline_id: id::RenderPipelineId) {
+    gfx_select!(render_pipeline_id => GLOBAL.render_pipeline_drop(render_pipeline_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuComputePipelineDrop(compute_pipeline_id: id::ComputePipelineId) {
+    gfx_select!(compute_pipeline_id => GLOBAL.compute_pipeline_drop(compute_pipeline_id))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuDeviceDrop(device_id: id::DeviceId) {
+    gfx_select!(device_id => GLOBAL.device_drop(device_id))
+}

@@ -60,4 +60,20 @@ uint32_t wgpuGetVersion(void);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
+void wgpuBufferDrop(WGPUBuffer buffer);
+void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
+void wgpuDeviceDrop(WGPUDevice device);
+void wgpuQuerySetDrop(WGPUQuerySet querySet);
+void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
+void wgpuTextureDrop(WGPUTexture texture);
+void wgpuTextureViewDrop(WGPUTextureView textureView);
+void wgpuSamplerDrop(WGPUSampler sampler);
+void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
+void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
+void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
+void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
+void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
+void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
+void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
+
 #endif
