@@ -62,6 +62,7 @@ void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUSh
 
 void wgpuBufferDrop(WGPUBuffer buffer);
 void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
+void wgpuDeviceDrop(WGPUDevice device);
 void wgpuQuerySetDrop(WGPUQuerySet querySet);
 void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
 void wgpuTextureDrop(WGPUTexture texture);
@@ -70,7 +71,9 @@ void wgpuSamplerDrop(WGPUSampler sampler);
 void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
 void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
 void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
+void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
 void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
+void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 
 #endif
