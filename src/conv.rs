@@ -1,7 +1,7 @@
 use crate::{make_slice, map_enum, native, Label, OwnedLabel};
+use naga;
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32};
 use wgc::{id, pipeline::ShaderModuleSource};
-use naga;
 
 map_enum!(
     map_load_op,
@@ -11,7 +11,6 @@ map_enum!(
     Clear,
     Load
 );
-/*  Temporary explicit map functions while webgpu.h uses Clear instead of Discard.
 map_enum!(
     map_store_op,
     WGPUStoreOp,
@@ -20,14 +19,6 @@ map_enum!(
     Discard,
     Store
 );
-*/
-pub fn map_store_op(value: native::WGPUStoreOp) -> wgc::command::StoreOp {
-    match value {
-        native::WGPUStoreOp_Clear => wgc::command::StoreOp::Discard,
-        native::WGPUStoreOp_Store => wgc::command::StoreOp::Store,
-        x => panic!("Unknown store op: {}", x),
-    }
-}
 map_enum!(
     map_address_mode,
     WGPUAddressMode,

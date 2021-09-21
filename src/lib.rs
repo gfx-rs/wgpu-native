@@ -279,14 +279,11 @@ unsafe fn map_surface(
 pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: id::SurfaceId,
     adapter: id::AdapterId,
-    callback: native::WGPUSurfaceGetPreferredFormatCallback,
-    userdata: *mut std::os::raw::c_void,
-) {
+) -> native::WGPUTextureFormat {
     let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.adapter_get_swap_chain_preferred_format(adapter, surface))
     {
         Ok(format) => conv::to_native_texture_format(format),
         Err(err) => panic!("Could not get preferred swap chain format: {}", err),
     };
-
-    (callback.unwrap())(preferred_format, userdata);
+    return preferred_format;
 }

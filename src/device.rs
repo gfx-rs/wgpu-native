@@ -29,7 +29,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         native::WGPUBackendType_OpenGL => wgt::Backends::GL,
         _ => panic!("Invalid backend {}", given_backend),
     };
-    let id = GLOBAL
+    let adapter_id = GLOBAL
         .request_adapter(
             &wgt::RequestAdapterOptions {
                 power_preference: wgt::PowerPreference::default(),
@@ -38,7 +38,9 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
             wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
         )
         .expect("Unable to request adapter");
-    (callback.unwrap())(id, userdata);
+    let status = native::WGPURequestAdapterStatus_Success; // todo: cleanly communicate a non-success
+    let message_ptr = std::ptr::null();
+    (callback.unwrap())(status, adapter_id, message_ptr, userdata);
 }
 
 #[no_mangle]
@@ -56,7 +58,9 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     let device_id = check_error(
         gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, PhantomData)),
     );
-    (callback.unwrap())(device_id, userdata);
+    let status = native::WGPURequestDeviceStatus_Success;
+    let message_ptr = std::ptr::null();
+    (callback.unwrap())(status, device_id, message_ptr, userdata);
 }
 
 #[no_mangle]
@@ -197,9 +201,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         } else if is_storage_texture {
             wgt::BindingType::StorageTexture {
                 access: match entry.storageTexture.access {
-                    native::WGPUStorageTextureAccess_ReadOnly => {
-                        wgt::StorageTextureAccess::ReadOnly
-                    }
                     native::WGPUStorageTextureAccess_WriteOnly => {
                         wgt::StorageTextureAccess::WriteOnly
                     }
@@ -324,8 +325,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     descriptor: &native::WGPUComputePipelineDescriptor,
 ) -> id::ComputePipelineId {
     let stage = wgc::pipeline::ProgrammableStageDescriptor {
-        module: descriptor.computeStage.module,
-        entry_point: OwnedLabel::new(descriptor.computeStage.entryPoint)
+        module: descriptor.compute.module,
+        entry_point: OwnedLabel::new(descriptor.compute.entryPoint)
             .into_cow()
             .expect("Entry point not provided"),
     };
@@ -415,6 +416,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         host: match mode as crate::EnumConstant {
             native::WGPUMapMode_Write => wgc::device::HostMap::Write,
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
+            native::WGPUMapMode_None =>  panic!("Buffer map mode None is not supported."),
             x => panic!("Unknown map mode: {}", x),
         },
         // TODO: Change wgpu-core to follow new API
@@ -466,8 +468,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 .map(|buffer| wgc::pipeline::VertexBufferLayout {
                     array_stride: buffer.arrayStride,
                     step_mode: match buffer.stepMode {
-                        native::WGPUInputStepMode_Vertex => wgt::VertexStepMode::Vertex,
-                        native::WGPUInputStepMode_Instance => wgt::VertexStepMode::Instance,
+                        native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
+                        native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
                         x => panic!("Unknown step mode {}", x),
                     },
                     attributes: Cow::Owned(
@@ -555,7 +557,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                                     operation: conv::map_blend_operation(blend.alpha.operation),
                                 },
                             }),
-                            write_mask: wgt::ColorWrites::from_bits(color_target.writeMask).unwrap(),
+                            write_mask: wgt::ColorWrites::from_bits(color_target.writeMask)
+                                .unwrap(),
                         })
                         .collect(),
                 ),
@@ -702,7 +705,8 @@ pub extern "C" fn wgpuTextureDrop(texture_id: id::TextureId) {
 
 #[no_mangle]
 pub extern "C" fn wgpuTextureViewDrop(texture_view_id: id::TextureViewId) {
-    gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id, false)).expect("Unable to drop texture view")
+    gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id, false))
+        .expect("Unable to drop texture view")
 }
 
 #[no_mangle]
