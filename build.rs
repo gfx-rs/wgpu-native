@@ -52,6 +52,7 @@ fn main() {
     builder = builder.blocklist_item("WGPUBindGroupEntry").raw_line(
         "#[repr(C)]
             pub struct WGPUBindGroupEntry {
+                pub nextInChain: * const crate::native::WGPUChainedStruct,
                 pub binding: u32,
                 pub buffer: Option<wgc::id::BufferId>,
                 pub offset: u64,
@@ -69,6 +70,8 @@ fn main() {
             pub struct WGPURequestAdapterOptions {
                 pub nextInChain: * const crate::native::WGPUChainedStruct,
                 pub compatibleSurface: Option<wgc::id::SurfaceId>,
+                pub powerPreference: crate::native::WGPUPowerPreference,
+                pub forceFallbackAdapter: bool,
             }",
         );
 
