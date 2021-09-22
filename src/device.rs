@@ -20,6 +20,10 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         map_adapter_options(options,
         WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
     );
+    let power_preference = match options.powerPreference {
+        native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
+        _ => wgt::PowerPreference::HighPerformance,
+    };
     let backend_bits = match given_backend {
         native::WGPUBackendType_Null => wgt::Backends::PRIMARY,
         native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
@@ -32,7 +36,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     let adapter_id = GLOBAL
         .request_adapter(
             &wgt::RequestAdapterOptions {
-                power_preference: wgt::PowerPreference::default(),
+                power_preference: power_preference,
                 compatible_surface,
             },
             wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
@@ -95,6 +99,72 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
         }
         _ => (),
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetLimits(
+    adapter: id::AdapterId,
+    supported_limits: &mut native::WGPUSupportedLimits,
+) -> bool {
+    let result = gfx_select!(adapter => GLOBAL.adapter_limits(adapter));
+    match result {
+        Ok(wgt_limits) => write_limits_struct(wgt_limits, supported_limits),
+        _ => panic!("Calling wgpuAdapterGetLimits() on an invalid adapter."),
+    }
+    return false; // todo: what is the purpose of this return value?
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetLimits(
+    device: id::DeviceId,
+    supported_limits: &mut native::WGPUSupportedLimits,
+) -> bool {
+    let result = gfx_select!(device => GLOBAL.device_limits(device));
+    match result {
+        Ok(wgt_limits) => write_limits_struct(wgt_limits, supported_limits),
+        _ => panic!("Calling wgpuDeviceGetLimits() on an invalid device."),
+    }
+    return false;
+}
+
+fn write_limits_struct(
+    wgt_limits: wgt::Limits,
+    supported_limits: &mut native::WGPUSupportedLimits,
+) {
+    let mut limits = supported_limits.limits; // This makes a copy - we copy back at the end
+    limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
+    limits.maxTextureDimension2D = 2; //wgt_limits.max_texture_dimension_2d;
+    limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
+    limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
+    limits.maxBindGroups = wgt_limits.max_bind_groups;
+    limits.maxDynamicUniformBuffersPerPipelineLayout =
+        wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout;
+    limits.maxDynamicStorageBuffersPerPipelineLayout =
+        wgt_limits.max_dynamic_storage_buffers_per_pipeline_layout;
+    limits.maxSampledTexturesPerShaderStage = wgt_limits.max_sampled_textures_per_shader_stage;
+    limits.maxSamplersPerShaderStage = wgt_limits.max_samplers_per_shader_stage;
+    limits.maxStorageBuffersPerShaderStage = wgt_limits.max_storage_buffers_per_shader_stage;
+    limits.maxStorageTexturesPerShaderStage = wgt_limits.max_storage_textures_per_shader_stage;
+    limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
+    limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as u64;
+    limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as u64;
+    /* not yet available in wgpu-core
+    limits.minUniformBufferOffsetAlignment = wgt_limits.yyyy;
+    limits.minStorageBufferOffsetAlignment = wgt_limits.yyyy;
+    */
+    limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
+    limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
+    /* not yet available in wgpu-core
+    limits.maxVertexBufferArrayStride = wgt_limits.yyyy;
+    limits.maxInterStageShaderComponents = wgt_limits.yyyy;
+    limits.maxComputeWorkgroupStorageSize = wgt_limits.yyyy;
+    limits.maxComputeInvocationsPerWorkgroup = wgt_limits.yyyy;
+    limits.maxComputeWorkgroupSizeX = wgt_limits.yyyy;
+    limits.maxComputeWorkgroupSizeY = wgt_limits.yyyy ;
+    limits.maxComputeWorkgroupSizeZ = wgt_limits.yyyy;
+    limits.maxComputeWorkgroupsPerDimension = wgt_limits.yyyy;
+    */
+    supported_limits.limits = limits;
 }
 
 #[no_mangle]
@@ -416,7 +486,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         host: match mode as crate::EnumConstant {
             native::WGPUMapMode_Write => wgc::device::HostMap::Write,
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
-            native::WGPUMapMode_None =>  panic!("Buffer map mode None is not supported."),
+            native::WGPUMapMode_None => panic!("Buffer map mode None is not supported."),
             x => panic!("Unknown map mode: {}", x),
         },
         // TODO: Change wgpu-core to follow new API

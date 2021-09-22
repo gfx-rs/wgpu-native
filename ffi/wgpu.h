@@ -31,22 +31,10 @@ typedef struct WGPUAdapterExtras {
 
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
-    uint32_t maxTextureDimension1D;
-    uint32_t maxTextureDimension2D;
-    uint32_t maxTextureDimension3D;
-    uint32_t maxTextureArrayLayers;
-    uint32_t maxBindGroups;
-    uint32_t maxDynamicStorageBuffersPerPipelineLayout;
-    uint32_t maxStorageBuffersPerShaderStage;
-    uint32_t maxStorageBufferBindingSize;
-
     WGPUNativeFeature nativeFeatures;
-
     const char* label;
     const char* tracePath;
 } WGPUDeviceExtras;
-
-
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 
