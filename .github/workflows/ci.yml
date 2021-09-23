@@ -10,6 +10,22 @@ on:
 
 jobs:
 
+  # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
+  ios-build:
+    name: Code integrity checks
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - run: python checks.py
+
   # A matrix with common builds
 
   test-build:
