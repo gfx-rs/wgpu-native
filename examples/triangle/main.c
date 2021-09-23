@@ -27,11 +27,6 @@
 #endif
 #include <GLFW/glfw3native.h>
 
-void preferred_texture_callback(WGPUTextureFormat format, void* userdata)
-{
-    *(WGPUTextureFormat*)userdata = format;
-}
-
 int main()
 {
     initializeLog();
@@ -126,9 +121,14 @@ int main()
                     .next = NULL,
                     .sType = WGPUSType_DeviceExtras,
                 },
-                .maxBindGroups = 1,
                 .label = "Device",
                 .tracePath = NULL,
+            },
+            .requiredLimits = &(WGPURequiredLimits) {
+                .nextInChain = NULL,
+                .limits = (WGPULimits) {
+                    .maxBindGroups = 1,
+                },
             },
         },
         request_device_callback,
@@ -142,8 +142,7 @@ int main()
             .bindGroupLayouts = NULL,
             .bindGroupLayoutCount = 0 });
 
-    WGPUTextureFormat swapChainFormat;
-    wgpuSurfaceGetPreferredFormat(surface, adapter, preferred_texture_callback, &swapChainFormat);
+    WGPUTextureFormat swapChainFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
 
     WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(
         device,
