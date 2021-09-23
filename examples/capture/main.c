@@ -29,9 +29,14 @@ int main(
                     .next = NULL,
                     .sType = WGPUSType_DeviceExtras,
                 },
-                .maxBindGroups = 1,
                 .label = "Device",
                 .tracePath = NULL,
+            },
+            .requiredLimits = &(WGPURequiredLimits) {
+                .nextInChain = NULL,
+                .limits = (WGPULimits) {
+                    .maxBindGroups = 1,
+                },
             },
         },
         request_device_callback, (void*)&device);

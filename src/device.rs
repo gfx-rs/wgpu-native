@@ -133,7 +133,7 @@ fn write_limits_struct(
 ) {
     let mut limits = supported_limits.limits; // This makes a copy - we copy back at the end
     limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
-    limits.maxTextureDimension2D = 2; //wgt_limits.max_texture_dimension_2d;
+    limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
     limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
     limits.maxBindGroups = wgt_limits.max_bind_groups;

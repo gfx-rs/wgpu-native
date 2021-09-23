@@ -30,9 +30,15 @@ int main()
                     .next = NULL,
                     .sType = WGPUSType_DeviceExtras,
                 },
-                .maxBindGroups = 1,
+                
                 .label = "Device",
                 .tracePath = NULL,
+            },
+            .requiredLimits = &(WGPURequiredLimits) {
+                .nextInChain = NULL,
+                .limits = (WGPULimits) {
+                    .maxBindGroups = 1,
+                },
             },
         },
         request_device_callback, (void*)&device);
@@ -100,7 +106,7 @@ int main()
     WGPUComputePipeline computePipeline = wgpuDeviceCreateComputePipeline(device,
         &(WGPUComputePipelineDescriptor) {
             .layout = pipelineLayout,
-            .computeStage = (WGPUProgrammableStageDescriptor) {
+            .compute = (WGPUProgrammableStageDescriptor) {
                 .module = shader,
                 .entryPoint = "main" } });
 
@@ -137,3 +143,4 @@ int main()
 
     return 0;
 }
+
