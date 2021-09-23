@@ -104,11 +104,11 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: id::AdapterId,
-    supported_limits: &mut native::WGPUSupportedLimits,
+    limits: &mut native::WGPUSupportedLimits,
 ) -> bool {
     let result = gfx_select!(adapter => GLOBAL.adapter_limits(adapter));
     match result {
-        Ok(wgt_limits) => write_limits_struct(wgt_limits, supported_limits),
+        Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
         _ => panic!("Calling wgpuAdapterGetLimits() on an invalid adapter."),
     }
     return false; // todo: what is the purpose of this return value?
@@ -117,11 +117,11 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: id::DeviceId,
-    supported_limits: &mut native::WGPUSupportedLimits,
+    limits: &mut native::WGPUSupportedLimits,
 ) -> bool {
     let result = gfx_select!(device => GLOBAL.device_limits(device));
     match result {
-        Ok(wgt_limits) => write_limits_struct(wgt_limits, supported_limits),
+        Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
         _ => panic!("Calling wgpuDeviceGetLimits() on an invalid device."),
     }
     return false;

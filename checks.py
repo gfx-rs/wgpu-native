@@ -158,7 +158,7 @@ def check_rust_wrapper_args():
                         #print(f"  {status} {argname}: {typ}\n       {' '*len(argname)}{c_arg}")
                 missing = set(funcs[funcname]).difference(covered)
                 if missing:
-                    message = f"missing: {missing}"
+                    message = f"{funcname} has missing args: {missing}"
                     print(message)
                     fails.append(message)
 
