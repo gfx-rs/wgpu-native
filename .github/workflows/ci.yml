@@ -11,7 +11,7 @@ on:
 jobs:
 
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
-  ios-build:
+  integrity-build:
     name: Code integrity checks
     runs-on: ubuntu-18.04
     strategy:
