@@ -9,7 +9,6 @@ fn main() {
     let types_to_rename = vec![
         ("WGPUAdapter", "AdapterId"),
         ("WGPUSurface", "SurfaceId"),
-        ("WGPUSwapchain", "SwapChainId"),
         ("WGPUDevice", "DeviceId"),
         ("WGPUQueue", "QueueId"),
         ("WGPUBuffer", "BufferId"),

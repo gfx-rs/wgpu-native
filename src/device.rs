@@ -1,11 +1,14 @@
 use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module};
 use crate::{check_error, conv, follow_chain, make_slice, native, OwnedLabel, GLOBAL};
+use lazy_static::lazy_static;
 use std::{
     borrow::Cow,
+    collections::HashMap,
     convert::TryInto,
     marker::PhantomData,
     num::{NonZeroU32, NonZeroU64, NonZeroU8},
     path::Path,
+    sync::Mutex,
 };
 use wgc::{gfx_select, id};
 
@@ -22,10 +25,11 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     );
     let power_preference = match options.powerPreference {
         native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
-        _ => wgt::PowerPreference::HighPerformance,
+        native::WGPUPowerPreference_HighPerformance => wgt::PowerPreference::HighPerformance,
+        _ => wgt::PowerPreference::default(),
     };
     let backend_bits = match given_backend {
-        native::WGPUBackendType_Null => wgt::Backends::PRIMARY,
+        native::WGPUBackendType_Null => wgt::Backends::all(),
         native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
         native::WGPUBackendType_Metal => wgt::Backends::METAL,
         native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
@@ -36,7 +40,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     let adapter_id = GLOBAL
         .request_adapter(
             &wgt::RequestAdapterOptions {
-                power_preference: power_preference,
+                power_preference,
                 compatible_surface,
             },
             wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
@@ -181,6 +185,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: label.as_cow(),
+        shader_bound_checks: wgt::ShaderBoundChecks::default(),
     };
     check_error(
         gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, source, PhantomData)),
@@ -641,41 +646,64 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     id
 }
 
+lazy_static! {
+    static ref SURFACE_TO_DEVICE: Mutex<HashMap<id::SurfaceId, id::DeviceId>> =
+        Mutex::new(HashMap::new());
+}
+
+fn get_device_from_surface(surface: id::SurfaceId) -> id::DeviceId {
+    return SURFACE_TO_DEVICE
+        .lock()
+        .unwrap()
+        .get(&surface)
+        .unwrap()
+        .clone();
+}
+
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateSwapChain(
     device: id::DeviceId,
     surface: id::SurfaceId,
     descriptor: &native::WGPUSwapChainDescriptor,
-) -> id::SwapChainId {
-    let desc = wgt::SwapChainDescriptor {
+) -> id::SurfaceId {
+    // The swap chain API of wgpu-core (and WebGPU) has been merged into the surface API,
+    // so this gets a bit weird until the webgpu.h changes accordingly.
+    let config = wgt::SurfaceConfiguration {
         usage: wgt::TextureUsages::from_bits(descriptor.usage).unwrap(),
         format: conv::map_texture_format(descriptor.format).expect("Texture format not defined"),
         width: descriptor.width,
         height: descriptor.height,
         present_mode: conv::map_present_mode(descriptor.presentMode),
     };
-    let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_swap_chain(device, surface, &desc));
+    let error = gfx_select!(device => GLOBAL.surface_configure(surface, device, &config));
     if let Some(error) = error {
-        panic!("Failed to create swapchain: {}", error);
+        panic!("Failed to configure surface: {}", error);
     }
-
-    id
+    SURFACE_TO_DEVICE.lock().unwrap().insert(surface, device);
+    surface // swap chain_id == surface_id
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
-    swap_chain: id::SwapChainId,
+    swap_chain: id::SurfaceId,
 ) -> Option<id::TextureViewId> {
-    gfx_select!(swap_chain => GLOBAL.swap_chain_get_current_texture_view(swap_chain, PhantomData))
+    let surface_id = swap_chain;
+    let device_id = get_device_from_surface(surface_id);
+    let result =
+        gfx_select!(device_id => GLOBAL.surface_get_current_texture(surface_id, PhantomData));
+    let texture = result
         .expect("Unable to get swap chain texture view")
-        .view_id
+        .texture_id
+        .unwrap();
+    let desc = wgc::resource::TextureViewDescriptor::default();
+    Some(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)).0)
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSwapChainPresent(swap_chain: id::SwapChainId) {
-    //TODO: Header does not return swap chain status?
-    gfx_select!(swap_chain => GLOBAL.swap_chain_present(swap_chain))
+pub extern "C" fn wgpuSwapChainPresent(swap_chain: id::SurfaceId) {
+    let surface_id = swap_chain;
+    let device_id = get_device_from_surface(surface_id);
+    gfx_select!(device_id => GLOBAL.surface_present(surface_id))
         .expect("Unable to present swap chain");
 }
 
@@ -697,7 +725,7 @@ pub extern "C" fn wgpuTextureCreateView(
         },
     };
 
-    check_error(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)))
+    gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)).0
 }
 
 #[no_mangle]
