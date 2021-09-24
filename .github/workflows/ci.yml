@@ -126,7 +126,7 @@ jobs:
         if: contains(matrix.os, 'windows') && matrix.channel == 'nightly'
         run: |
           make run-example-compute;
-          make run example-capture;
+          make run-example-capture;
         # Don't run example-triangle, because it will get stuck in its main-loop.
 
   # Some smaller test builds
