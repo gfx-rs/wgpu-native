@@ -330,7 +330,7 @@ pub fn map_shader_module<'a>(
         let options = naga::front::spv::Options {
             adjust_coordinate_space: false, // we require NDC_Y_UP feature
             strict_capabilities: true,
-            flow_graph_dump_prefix: None,
+            block_ctx_dump_prefix: None,
         };
         let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
         let module = parser.parse().unwrap();

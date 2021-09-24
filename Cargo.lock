@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "ash"
-version = "0.32.1"
+version = "0.33.3+1.2.191"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06063a002a77d2734631db74e8f4ce7148b77fe522e6bca46f2ae7774fd48112"
+checksum = "cc4f1d82f164f838ae413296d1131aa6fa79b917d25bebaa7033d25620c09219"
 dependencies = [
  "libloading",
 ]
@@ -116,6 +116,16 @@ name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+
+[[package]]
+name = "bitflags_serde_shim"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25c3d626f0280ec39b33a6fc5c6c1067432b4c41e94aee40ded197a6649bf025"
+dependencies = [
+ "bitflags",
+ "serde",
+]
 
 [[package]]
 name = "block"
@@ -243,8 +253,9 @@ dependencies = [
 
 [[package]]
 name = "d3d12"
-version = "0.4.0"
-source = "git+https://github.com/gfx-rs/d3d12-rs?rev=79f29c8#79f29c8809d3dc4f97785815567e5efda20e639a"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2daefd788d1e96e0a9d66dee4b828b883509bc3ea9ce30665f04c3246372690c"
 dependencies = [
  "bitflags",
  "libloading",
@@ -276,9 +287,9 @@ dependencies = [
 
 [[package]]
 name = "fixedbitset"
-version = "0.2.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
+checksum = "398ea4fabe40b9b0d885340a2a991a44c8a645624075ad966d21f88688e2b69e"
 
 [[package]]
 name = "foreign-types"
@@ -312,8 +323,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "glow"
-version = "0.10.0"
-source = "git+https://github.com/grovesNL/glow?rev=0864897a28bbdd43f89f4fd8fdd4ed781b719f8a#0864897a28bbdd43f89f4fd8fdd4ed781b719f8a"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f04649123493bc2483cbef4daddb45d40bbdae5adb221a63a23efdb0cc99520"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -323,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "gpu-alloc"
-version = "0.4.7"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbc1b6ca374e81862526786d9cb42357ce03706ed1b8761730caafd02ab91f3a"
+checksum = "ab8524eac5fc9d05625c891adf78fcf64dc0ee9f8d0882874b9f220f42b442bf"
 dependencies = [
  "bitflags",
  "gpu-alloc-types",
@@ -342,9 +354,9 @@ dependencies = [
 
 [[package]]
 name = "gpu-descriptor"
-version = "0.1.1"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a70f1e87a3840ed6a3e99e02c2b861e4dbdf26f0d07e38f42ea5aff46cfce2"
+checksum = "d7a237f0419ab10d17006d55c62ac4f689a6bf52c75d3f38b8361d249e8d4b0b"
 dependencies = [
  "bitflags",
  "gpu-descriptor-types",
@@ -391,6 +403,12 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "hexf-parse"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "humantime"
@@ -505,8 +523,9 @@ checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
 name = "metal"
-version = "0.22.0"
-source = "git+https://github.com/gfx-rs/metal-rs?rev=08cc15a3be5a57fc07bb27091eff3569dd60cfd3#08cc15a3be5a57fc07bb27091eff3569dd60cfd3"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0514f491f4cc03632ab399ee01e2c1c1b12d3e1cf2d667c1ff5f87d6dcd2084"
 dependencies = [
  "bitflags",
  "block",
@@ -527,19 +546,19 @@ dependencies = [
 
 [[package]]
 name = "naga"
-version = "0.5.0"
-source = "git+https://github.com/gfx-rs/naga?rev=300039e#300039e24703bc823cc932985947dfda66616e1e"
+version = "0.6.0"
+source = "git+https://github.com/gfx-rs/naga?rev=52d74e9#52d74e91a4b062d317304250b5461890913d3bb8"
 dependencies = [
  "bit-set",
  "bitflags",
  "codespan-reporting",
  "fxhash",
+ "hexf-parse",
  "log",
  "num-traits",
  "petgraph",
- "rose_tree",
  "serde",
- "spirv_headers",
+ "spirv",
  "thiserror",
 ]
 
@@ -620,9 +639,9 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 
 [[package]]
 name = "petgraph"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
+checksum = "4a13a2fa9d0b63e5f22328828741e523766fff0ee9e779316902290dff3f824f"
 dependencies = [
  "fixedbitset",
  "indexmap",
@@ -723,15 +742,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rose_tree"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284de9dae38774e2813aaabd7e947b4a6fe9b8c58c2309f754a487cdd50de1c2"
-dependencies = [
- "petgraph",
-]
-
-[[package]]
 name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -785,10 +795,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
-name = "spirv_headers"
-version = "1.5.0"
+name = "spirv"
+version = "0.2.0+1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f5b132530b1ac069df335577e3581765995cba5a13995cdbbdbc8fb057c532c"
+checksum = "246bfa38fe3db3f1dfc8ca5a2cdeb7348c78be2112740cc0ec8ef18b6d94f830"
 dependencies = [
  "bitflags",
  "num-traits",
@@ -939,8 +949,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.9.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=9310f264f1c3d70cd8665fc7e7e15d810577c3f5#9310f264f1c3d70cd8665fc7e7e15d810577c3f5"
+version = "0.10.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=8fa3ca731bb5e0d54366ae4e28dfd14cb8483444#8fa3ca731bb5e0d54366ae4e28dfd14cb8483444"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -962,8 +972,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.9.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=9310f264f1c3d70cd8665fc7e7e15d810577c3f5#9310f264f1c3d70cd8665fc7e7e15d810577c3f5"
+version = "0.10.1"
+source = "git+https://github.com/gfx-rs/wgpu?rev=8fa3ca731bb5e0d54366ae4e28dfd14cb8483444#8fa3ca731bb5e0d54366ae4e28dfd14cb8483444"
 dependencies = [
  "arrayvec",
  "ash",
@@ -1009,10 +1019,11 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.9.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=9310f264f1c3d70cd8665fc7e7e15d810577c3f5#9310f264f1c3d70cd8665fc7e7e15d810577c3f5"
+version = "0.10.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=8fa3ca731bb5e0d54366ae4e28dfd14cb8483444#8fa3ca731bb5e0d54366ae4e28dfd14cb8483444"
 dependencies = [
  "bitflags",
+ "bitflags_serde_shim",
  "serde",
 ]
 
