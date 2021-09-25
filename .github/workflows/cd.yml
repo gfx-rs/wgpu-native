@@ -6,6 +6,12 @@
 # is designed such that that the resulting binary has minimal dependencies on system
 # libraries, and thus works on as many linuxes as possible. It's a thing from the
 # Python world, but generally useful.
+#
+# Each target (os + architecture) is build in a seperate job. This is kinda verbose,
+# resulting in some duplication, but at least its easy to read and maintain.
+# Don't forget to add new jobs to the needs of the publish job.
+#
+# See https://doc.rust-lang.org/nightly/rustc/platform-support.html for Rust build targets.
 
 name: CD
 
@@ -15,76 +21,36 @@ on:
     branches: [ master, cd ]
 
 jobs:
-      
-  release-build:
-    name: release-build - ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Linux-64
-            os: ubuntu-18.04
-            RUST_TOOLCHAIN: stable
-            ARCH: 64
-            OS_NAME: linux
-            IMAGE: manylinux_2_24_x86_64
-          - name: Linux-32
-            os: ubuntu-18.04
-            RUST_TOOLCHAIN: stable-i686-unknown-linux-gnu
-            ARCH: 32
-            OS_NAME: linux
-            IMAGE: manylinux_2_24_i686
-          - name: MacOS-64
-            os: macOS-10.15
-            RUST_TOOLCHAIN: stable
-            ARCH: 64
-            OS_NAME: macos
-            MACOSX_DEPLOYMENT_TARGET: '10.13'
-          - name: Windows-64
-            os: vs2017-win2016
-            RUST_TOOLCHAIN: stable-msvc
-            ARCH: 64
-            OS_NAME: windows
-          - name: Windows-32
-            os: vs2017-win2016
-            RUST_TOOLCHAIN: stable-i686-pc-windows-msvc
-            ARCH: 32
-            OS_NAME: windows
+  
+  # -----
+  linux-x86_64:
+    # Config
+    name: release - linux-x86_64
+    runs-on: ubuntu-latest
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+      ARCHIVE_NAME: wgpu-linux-x86_64
+      TOOLCHAIN: stable-x86_64-unknown-linux-gnu
+      IMAGE: manylinux_2_24_x86_64
     steps:
+    # Common part (same for nearly each build)
     - uses: actions/checkout@v2
       with:
-        submodules: 'true'
-    - name: set version (which gets baked into wgpuGetVersion)
-      run: |
-          echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
-    - name: Windows 64 deps
-      if: success() && matrix.OS_NAME == 'windows' && matrix.ARCH == 64
+    # Build
+    - name: Build
       run: |
-          choco install -y --force llvm | exit 0
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      shell: bash
-    - name: Windows 32 deps
-      if: success() && matrix.OS_NAME == 'windows' && matrix.ARCH == 32
-      run: |
-          choco install -y --force --x86 llvm | exit 0
-          echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
-      shell: bash
-    - name: Docker build
-      if: success() && matrix.OS_NAME == 'linux'
-      env:
-        IMAGE: ${{ matrix.IMAGE }}
-        RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
-      run: |
-          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro quay.io/pypa/$IMAGE bash -c "\
+          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME quay.io/pypa/$IMAGE bash -c "\
             cp -r /tmp/src/. . && \
             rm -rf ./dist && \
             export PATH=/root/.cargo/bin:\$PATH && \
             export USER=root && \
             curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
-            rustup toolchain install --no-self-update $RUST_TOOLCHAIN && \
-            rustup default $RUST_TOOLCHAIN && \
+            rustup toolchain install --no-self-update $TOOLCHAIN && \
+            rustup default $TOOLCHAIN && \
             apt update && \
             apt install -y clang-3.9 zip && \
             make package")
@@ -92,29 +58,202 @@ jobs:
           mkdir -p dist
           docker cp $CID:/tmp/wgpu-native/dist/. dist/.
           docker rm $CID
-    - name: Host build
-      if: success() && matrix.OS_NAME != 'linux'
-      env:
-        RUST_TOOLCHAIN: ${{ matrix.RUST_TOOLCHAIN }}
-        MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
-      run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --default-toolchain none
-          export PATH=$HOME/.cargo/bin:$PATH
-          rustup toolchain install --no-self-update $RUST_TOOLCHAIN
-          rustup default $RUST_TOOLCHAIN
-          make package
+    # Upload (same for each build)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # -----
+  linux-i686:
+    # Config
+    name: release - linux-i686
+    runs-on: ubuntu-latest
+    env:
+      TARGET: i686-unknown-linux-gnu
+      ARCHIVE_NAME: wgpu-linux-i686
+      TOOLCHAIN: stable-i686-unknown-linux-gnu
+      IMAGE: manylinux_2_24_i686
+    steps:
+    # Common part (same for nearly each build)
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
-    - name: Pre-publish
-      env:
-        OS_NAME: ${{ matrix.OS_NAME }}
-        ARCH: ${{ matrix.ARCH }}
+    # Build
+    - name: Build
       run: |
-          mkdir -p ./dist
-          mv dist/*debug*.zip ./dist/wgpu-$OS_NAME-$ARCH-debug.zip
-          mv dist/*release*.zip ./dist/wgpu-$OS_NAME-$ARCH-release.zip
+          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME quay.io/pypa/$IMAGE bash -c "\
+            cp -r /tmp/src/. . && \
+            rm -rf ./dist && \
+            export PATH=/root/.cargo/bin:\$PATH && \
+            export USER=root && \
+            curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
+            rustup toolchain install --no-self-update $TOOLCHAIN && \
+            rustup default $TOOLCHAIN && \
+            apt update && \
+            apt install -y clang-3.9 zip && \
+            make package")
+          docker start -ai $CID
+          mkdir -p dist
+          docker cp $CID:/tmp/wgpu-native/dist/. dist/.
+          docker rm $CID
+    # Upload (same for each build)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # -----
+  windows-x86_64:
+    # Config
+    name: release - windows-x86_64
+    runs-on: vs2017-win2016
+    env:
+      TARGET: x86_64-pc-windows-msvc
+      ARCHIVE_NAME: wgpu-windows-x86_64
+    steps:
+    # Common part (same for each build)
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
-    - name: Publish
-      if: success()
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable-msvc
+        target: ${{ env.TARGET }}
+        profile: minimal
+        override: true
+    # Build
+    - name: Install llvm
+      run: |
+        choco install -y --force llvm | exit 0
+        echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+      shell: bash
+    - name: Build
+      run: make package
+      shell: bash
+    # Upload (same for each build)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # -----
+  windows-i686:
+    # Config
+    name: release - windows-i686
+    runs-on: vs2017-win2016
+    env:
+      TARGET: i686-pc-windows-msvc
+      ARCHIVE_NAME: wgpu-windows-i686
+    steps:
+    # Common part (same for each build)
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      shell: bash
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable-i686-pc-windows-msvc
+        target: ${{ env.TARGET }}
+        profile: minimal
+        override: true
+    # Build
+    - name: Install llvm
+      run: |
+        choco install -y --force --x86 llvm | exit 0
+        echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
+      shell: bash
+    - name: Build
+      run: make package
+      shell: bash
+    # Upload (same for each build)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # -----
+  macos-x86_64:
+    # Config
+    name: release - macos-x86_64
+    runs-on: macos-latest
+    env:
+      TARGET: x86_64-apple-darwin
+      ARCHIVE_NAME: wgpu-macos-x86_64
+      SELECT_XCODE: /Applications/Xcode_12.2.app
+      MACOSX_DEPLOYMENT_TARGET: 10.13
+    steps:
+    # Common part (same for each build)
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      shell: bash
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ env.TARGET }}
+        profile: minimal
+        override: true
+    # Build
+    - name: Select XCode version
+      run: sudo xcode-select -s "${SELECT_XCODE}"
+    - name: Build
+      run: make package
+    # Upload (same for each build)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # -----
+  macos-arm64:
+    # Config
+    name: release - macos-arm64
+    runs-on: macos-latest
+    env:
+      TARGET: aarch64-apple-darwin
+      ARCHIVE_NAME: wgpu-macos-arm64
+      SELECT_XCODE: /Applications/Xcode_12.2.app
+    steps:
+    # Common part (same for each build)
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      shell: bash
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ env.TARGET }}
+        profile: minimal
+        override: true
+    # Build
+    - name: Select XCode version
+      run: sudo xcode-select -s "${SELECT_XCODE}"
+    - name: Build
+      run: SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version) make package
+    # Upload (same for each build)
+    - name: Upload
       uses: actions/upload-artifact@v2
       with:
         path: dist
@@ -125,7 +264,7 @@ jobs:
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
-    needs: [release-build]
+    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
     runs-on: ubuntu-18.04
     if: success() && contains(github.ref, 'tags/v')
     steps:
