@@ -99,27 +99,35 @@ jobs:
             make_command: CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/glfw-3.3/install make VERBOSE=1
             make_shell: cmd
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
         with:
           submodules: 'true'
-      - if: matrix.channel == 'nightly'
-        name: Install latest nightly
+      - name: Install latest nightly
+        if: matrix.channel == 'nightly'
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           override: true
-      - if: contains(matrix.build_command, 'clippy')
+      - name: Install clippy
+        if: contains(matrix.build_command, 'clippy')
         run: rustup component add clippy
       - name: Install dependencies
         run: ${{ matrix.install_deps_command }}
         shell: bash
-      - name: cargo test
+      - name: Run tests
         run: cargo test
-      - if: contains(matrix.build_command, 'clippy')
-        name: cargo clippy
+      - name: Build
         run: ${{ matrix.build_command }}
-      - run: ${{ matrix.make_command }}
+      - name: Make
+        run: ${{ matrix.make_command }}
         shell: bash
+      - name: Run examples
+        if: contains(matrix.os, 'windows') && matrix.channel == 'nightly'
+        run: |
+          make run-example-compute;
+          make run-example-capture;
+        # Don't run example-triangle, because it will get stuck in its main-loop.
 
   # Some smaller test builds
 
