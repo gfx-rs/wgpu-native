@@ -43,7 +43,7 @@ jobs:
     # Build
     - name: Build
       run: |
-          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME quay.io/pypa/$IMAGE bash -c "\
+          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME -e WGPU_NATIVE_VERSION quay.io/pypa/$IMAGE bash -c "\
             cp -r /tmp/src/. . && \
             rm -rf ./dist && \
             export PATH=/root/.cargo/bin:\$PATH && \
@@ -86,7 +86,7 @@ jobs:
     # Build
     - name: Build
       run: |
-          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME quay.io/pypa/$IMAGE bash -c "\
+          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME -e WGPU_NATIVE_VERSION quay.io/pypa/$IMAGE bash -c "\
             cp -r /tmp/src/. . && \
             rm -rf ./dist && \
             export PATH=/root/.cargo/bin:\$PATH && \
