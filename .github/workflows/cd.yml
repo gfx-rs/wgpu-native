@@ -11,6 +11,11 @@
 # resulting in some duplication, but at least its easy to read and maintain.
 # Don't forget to add new jobs to the needs of the publish job.
 #
+# Each job should specify at least these env vars:
+# * TARGET: used in makefile to do cargo build --target $TARGET
+# * ARCHIVE_NAME: used by the makfile to package things up
+# * WGPU_NATIVE_VERSION: is backed into the binary at compile time
+#
 # See https://doc.rust-lang.org/nightly/rustc/platform-support.html for Rust build targets.
 
 name: CD
