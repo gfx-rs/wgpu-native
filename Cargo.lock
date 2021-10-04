@@ -950,7 +950,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=8fa3ca731bb5e0d54366ae4e28dfd14cb8483444#8fa3ca731bb5e0d54366ae4e28dfd14cb8483444"
+source = "git+https://github.com/gfx-rs/wgpu?rev=c3d906856f11821ab75f7318089704c20922359d#c3d906856f11821ab75f7318089704c20922359d"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -973,7 +973,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.10.1"
-source = "git+https://github.com/gfx-rs/wgpu?rev=8fa3ca731bb5e0d54366ae4e28dfd14cb8483444#8fa3ca731bb5e0d54366ae4e28dfd14cb8483444"
+source = "git+https://github.com/gfx-rs/wgpu?rev=c3d906856f11821ab75f7318089704c20922359d#c3d906856f11821ab75f7318089704c20922359d"
 dependencies = [
  "arrayvec",
  "ash",
@@ -995,6 +995,7 @@ dependencies = [
  "naga",
  "objc",
  "parking_lot",
+ "profiling",
  "range-alloc",
  "raw-window-handle",
  "renderdoc-sys",
@@ -1020,7 +1021,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=8fa3ca731bb5e0d54366ae4e28dfd14cb8483444#8fa3ca731bb5e0d54366ae4e28dfd14cb8483444"
+source = "git+https://github.com/gfx-rs/wgpu?rev=c3d906856f11821ab75f7318089704c20922359d#c3d906856f11821ab75f7318089704c20922359d"
 dependencies = [
  "bitflags",
  "bitflags_serde_shim",
