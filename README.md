@@ -7,7 +7,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 
 # Bindings
 
-- [gfx-rs/wgpu-rs](https://github.com/gfx-rs/wgpu-rs) - idiomatic Rust wrapper with [a few more examples](https://github.com/gfx-rs/wgpu-rs/tree/master/examples) to get a feel of the API
+- [gfx-rs/wgpu-rs](https://github.com/gfx-rs/wgpu/tree/master/wgpu) - idiomatic Rust wrapper with [a few more examples](https://github.com/gfx-rs/wgpu/tree/master/wgpu/examples) to get a feel of the API
 - [pygfx/wgpu-py](https://github.com/pygfx/wgpu-py) - Python wrapper
 - [trivaxy/wgpu.NET](https://github.com/trivaxy/WGPU.NET) - .Net wrapper
 - [bindc-wgpu](https://github.com/gecko0307/bindbc-wgpu) - D wrapper ([package](https://code.dlang.org/packages/bindbc-wgpu))
