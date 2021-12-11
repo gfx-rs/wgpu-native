@@ -4,6 +4,8 @@ version = "0.6.0"
 authors = [
 	"Dzmitry Malyshau <kvark@mozilla.com>",
 	"Joshua Groves <josh@joshgroves.com>",
+	"Noah Charlton <ncharlton002@gmail.com>",
+	"Almar Klein <almar@almarklein.org>",
 ]
 edition = "2018"
 description = "WebGPU native implementation on gfx-hal"
@@ -23,30 +25,27 @@ default = []
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "c3d906856f11821ab75f7318089704c20922359d"
+rev = "3b48ed2"
 # path = "../wgpu/wgpu-core"
-version = "0.10"
+#version = "0.10"
 features = ["raw-window-handle", "trace"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "c3d906856f11821ab75f7318089704c20922359d"
+rev = "3b48ed2"
 # path = "../wgpu/wgpu-types"
-version = "0.10"
+#version = "0.10"
 
 [dependencies]
 lazy_static = "1.1"
-raw-window-handle = "0.3"
+raw-window-handle = "0.4"
 paste = "1.0"
 log = "0.4"
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "52d74e9"
+rev = "c69f676"
 features = ["spv-in"]
-
-# [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
-# gfx-backend-vulkan = { version = "0.7", features = [] }
 
 [build-dependencies]
 bindgen = "0.58.1"
