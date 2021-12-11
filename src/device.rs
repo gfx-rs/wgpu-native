@@ -260,18 +260,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             }
         } else if is_sampler {
             match entry.sampler.type_ {
-                native::WGPUSamplerBindingType_Filtering => wgt::BindingType::Sampler {
-                    filtering: true,
-                    comparison: false,
-                },
-                native::WGPUSamplerBindingType_NonFiltering => wgt::BindingType::Sampler {
-                    filtering: false,
-                    comparison: false,
-                },
-                native::WGPUSamplerBindingType_Comparison => wgt::BindingType::Sampler {
-                    filtering: false,
-                    comparison: true,
-                },
+                native::WGPUSamplerBindingType_Filtering => {
+                    wgt::BindingType::Sampler(wgt::SamplerBindingType::Filtering)
+                }
+                native::WGPUSamplerBindingType_NonFiltering => {
+                    wgt::BindingType::Sampler(wgt::SamplerBindingType::NonFiltering)
+                }
+                native::WGPUSamplerBindingType_Comparison => {
+                    wgt::BindingType::Sampler(wgt::SamplerBindingType::Comparison)
+                }
                 x => panic!("Unknown Sampler Type: {}", x),
             }
         } else if is_storage_texture {
@@ -576,7 +573,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 native::WGPUCullMode_Back => Some(wgt::Face::Back),
                 _ => None,
             },
-            clamp_depth: false, // todo: fill this via extras
+            unclipped_depth: false, // todo: fill this via extras
             polygon_mode: wgt::PolygonMode::Fill,
             conservative: false,
         },
@@ -639,6 +636,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .collect(),
                 ),
             }),
+        multiview: None,
     };
     let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
     if let Some(err) = error {

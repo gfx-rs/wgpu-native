@@ -321,7 +321,7 @@ pub fn map_shader_module<'a>(
     wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
 ) -> ShaderModuleSource<'a> {
     if let Some(wgsl) = wgsl {
-        let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.source) };
+        let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
         ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
     } else if let Some(spirv) = spirv {

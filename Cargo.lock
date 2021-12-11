@@ -252,6 +252,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
 name = "d3d12"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -424,6 +430,7 @@ checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg",
  "hashbrown 0.11.2",
+ "serde",
 ]
 
 [[package]]
@@ -546,17 +553,18 @@ dependencies = [
 
 [[package]]
 name = "naga"
-version = "0.6.0"
-source = "git+https://github.com/gfx-rs/naga?rev=52d74e9#52d74e91a4b062d317304250b5461890913d3bb8"
+version = "0.7.1"
+source = "git+https://github.com/gfx-rs/naga?rev=c69f676#c69f67660973a3bffa3b27c295f698dc4aa01524"
 dependencies = [
  "bit-set",
  "bitflags",
  "codespan-reporting",
- "fxhash",
  "hexf-parse",
+ "indexmap",
  "log",
  "num-traits",
  "petgraph",
+ "rustc-hash",
  "serde",
  "spirv",
  "thiserror",
@@ -691,11 +699,11 @@ checksum = "63e935c45e09cc6dcf00d2f0b2d630a58f4095320223d47fc68918722f0538b6"
 
 [[package]]
 name = "raw-window-handle"
-version = "0.3.3"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a441a7a6c80ad6473bd4b74ec1c9a4c951794285bf941c2126f607c72e48211"
+checksum = "fba75eee94a9d5273a68c9e1e105d9cffe1ef700532325788389e5a83e2522b7"
 dependencies = [
- "libc",
+ "cty",
 ]
 
 [[package]]
@@ -732,9 +740,9 @@ checksum = "f1382d1f0a252c4bf97dc20d979a2fdd05b024acd7c2ed0f7595d7817666a157"
 
 [[package]]
 name = "ron"
-version = "0.6.4"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "064ea8613fb712a19faf920022ec8ddf134984f100090764a4e1d768f3827f1f"
+checksum = "1b861ecaade43ac97886a512b360d01d66be9f41f3c61088b42cedf92e03d678"
 dependencies = [
  "base64",
  "bitflags",
@@ -949,12 +957,13 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c3d906856f11821ab75f7318089704c20922359d#c3d906856f11821ab75f7318089704c20922359d"
+version = "0.11.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=3b48ed2#3b48ed28f37d41aaac53ce76501cd801bc41bdc1"
 dependencies = [
  "arrayvec",
  "bitflags",
  "cfg_aliases",
+ "codespan-reporting",
  "copyless",
  "fxhash",
  "log",
@@ -972,8 +981,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.10.1"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c3d906856f11821ab75f7318089704c20922359d#c3d906856f11821ab75f7318089704c20922359d"
+version = "0.11.2"
+source = "git+https://github.com/gfx-rs/wgpu?rev=3b48ed2#3b48ed28f37d41aaac53ce76501cd801bc41bdc1"
 dependencies = [
  "arrayvec",
  "ash",
@@ -988,6 +997,7 @@ dependencies = [
  "gpu-alloc",
  "gpu-descriptor",
  "inplace_it",
+ "js-sys",
  "khronos-egl",
  "libloading",
  "log",
@@ -1000,6 +1010,8 @@ dependencies = [
  "raw-window-handle",
  "renderdoc-sys",
  "thiserror",
+ "wasm-bindgen",
+ "web-sys",
  "wgpu-types",
  "winapi",
 ]
@@ -1020,8 +1032,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.10.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=c3d906856f11821ab75f7318089704c20922359d#c3d906856f11821ab75f7318089704c20922359d"
+version = "0.11.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=3b48ed2#3b48ed28f37d41aaac53ce76501cd801bc41bdc1"
 dependencies = [
  "bitflags",
  "bitflags_serde_shim",
