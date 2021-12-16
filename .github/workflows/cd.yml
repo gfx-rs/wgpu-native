@@ -118,7 +118,7 @@ jobs:
   windows-x86_64:
     # Config
     name: release - windows-x86_64
-    runs-on: vs2017-win2016
+    runs-on: windows-latest
     env:
       TARGET: x86_64-pc-windows-msvc
       ARCHIVE_NAME: wgpu-windows-x86_64
@@ -157,7 +157,7 @@ jobs:
   windows-i686:
     # Config
     name: release - windows-i686
-    runs-on: vs2017-win2016
+    runs-on: windows-latest
     env:
       TARGET: i686-pc-windows-msvc
       ARCHIVE_NAME: wgpu-windows-i686
