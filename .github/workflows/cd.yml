@@ -117,6 +117,43 @@ jobs:
         name: dist
 
   # -----
+  linux-armv7:
+    # Config
+    name: release - linux-armv7
+    runs-on: ubuntu-latest
+    env:
+      TARGET: armv7-unknown-linux-gnueabihf
+      ARCHIVE_NAME: wgpu-linux-armv7
+      BINDGEN_EXTRA_CLANG_ARGS: -I/usr/arm-linux-gnueabihf/include/
+      CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: /usr/bin/arm-linux-gnueabihf-gcc
+    steps:
+    # Common part (same for nearly each build)
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set WGPU_NATIVE_VERSION
+      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+      shell: bash
+    - name: Install Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: ${{ env.TARGET }}
+        profile: minimal
+        override: true
+    # Build
+    - name: Install clang
+      run: sudo apt update && sudo apt install -y gcc-arm-linux-gnueabihf
+    - name: Build
+      run: make package
+    # Upload (same for each build)
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with:
+        path: dist
+        name: dist
+
+  # -----
   windows-x86_64:
     # Config
     name: release - windows-x86_64
@@ -276,7 +313,7 @@ jobs:
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
-    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    needs: [linux-x86_64, linux-i686, linux-armv7, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
     runs-on: ubuntu-18.04
     if: success() && contains(github.ref, 'tags/v')
     steps:
