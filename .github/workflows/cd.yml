@@ -13,7 +13,7 @@
 #
 # Each job should specify at least these env vars:
 # * TARGET: used in makefile to do cargo build --target $TARGET
-# * ARCHIVE_NAME: used by the makfile to package things up
+# * ARCHIVE_NAME: used by the makefile to package things up
 # * WGPU_NATIVE_VERSION: is backed into the binary at compile time
 #
 # See https://doc.rust-lang.org/nightly/rustc/platform-support.html for Rust build targets.
@@ -21,6 +21,7 @@
 name: CD
 
 on:
+  workflow_dispatch:
   push:
     tags: [ 'v*' ]
     branches: [ master, cd ]
@@ -112,7 +113,7 @@ jobs:
       with:
         path: dist
         name: dist
-
+  
   # -----
   windows-x86_64:
     # Config
@@ -199,7 +200,6 @@ jobs:
     env:
       TARGET: x86_64-apple-darwin
       ARCHIVE_NAME: wgpu-macos-x86_64
-      SELECT_XCODE: /Applications/Xcode_12.2.app
       MACOSX_DEPLOYMENT_TARGET: 10.13
     steps:
     # Common part (same for each build)
@@ -218,7 +218,10 @@ jobs:
         override: true
     # Build
     - name: Select XCode version
-      run: sudo xcode-select -s "${SELECT_XCODE}"
+      run:
+        xcode_app=$(ls -1v /Applications/Xcode_*.app | tail -1)
+        echo $xcode_app
+        sudo xcode-select -s "$xcode_app"
     - name: Build
       run: make package
     # Upload (same for each build)
@@ -236,7 +239,6 @@ jobs:
     env:
       TARGET: aarch64-apple-darwin
       ARCHIVE_NAME: wgpu-macos-arm64
-      SELECT_XCODE: /Applications/Xcode_12.2.app
     steps:
     # Common part (same for each build)
     - uses: actions/checkout@v2
@@ -254,7 +256,10 @@ jobs:
         override: true
     # Build
     - name: Select XCode version
-      run: sudo xcode-select -s "${SELECT_XCODE}"
+      run:
+        xcode_app=$(ls -1v /Applications/Xcode_*.app | tail -1)
+        echo $xcode_app
+        sudo xcode-select -s "$xcode_app"
     - name: Build
       run: SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version) make package
     # Upload (same for each build)
