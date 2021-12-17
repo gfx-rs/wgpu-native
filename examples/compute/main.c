@@ -6,141 +6,144 @@
 #include <stdlib.h>
 #include <string.h>
 
-int main()
-{
-    uint32_t numbers[] = { 1, 2, 3, 4 };
-    uint32_t numbersSize = sizeof(numbers);
-    uint32_t numbersLength = numbersSize / sizeof(uint32_t);
+int main() {
+  uint32_t numbers[] = {1, 2, 3, 4};
+  uint32_t numbersSize = sizeof(numbers);
+  uint32_t numbersLength = numbersSize / sizeof(uint32_t);
 
-    initializeLog();
-    WGPUAdapter adapter;
-    wgpuInstanceRequestAdapter(NULL,
-        &(WGPURequestAdapterOptions) {
-            .nextInChain = NULL,
-            .compatibleSurface = NULL,
-        },
-        request_adapter_callback,
-        (void*)&adapter);
+  initializeLog();
+  WGPUAdapter adapter;
+  wgpuInstanceRequestAdapter(NULL,
+                             &(WGPURequestAdapterOptions){
+                                 .nextInChain = NULL,
+                                 .compatibleSurface = NULL,
+                             },
+                             request_adapter_callback, (void *)&adapter);
 
-    WGPUDevice device;
-    wgpuAdapterRequestDevice(adapter,
-        &(WGPUDeviceDescriptor) {
-            .nextInChain = (const WGPUChainedStruct*)&(WGPUDeviceExtras) {
-                .chain = (WGPUChainedStruct) {
-                    .next = NULL,
-                    .sType = WGPUSType_DeviceExtras,
-                },
-                
-                .label = "Device",
-                .tracePath = NULL,
-            },
-            .requiredLimits = &(WGPURequiredLimits) {
-                .nextInChain = NULL,
-                .limits = (WGPULimits) {
-                    .maxBindGroups = 1,
-                },
-            },
-        },
-        request_device_callback, (void*)&device);
+  WGPUDevice device;
+  wgpuAdapterRequestDevice(
+      adapter,
+      &(WGPUDeviceDescriptor){
+          .nextInChain =
+              (const WGPUChainedStruct *)&(WGPUDeviceExtras){
+                  .chain =
+                      (WGPUChainedStruct){
+                          .next = NULL,
+                          .sType = WGPUSType_DeviceExtras,
+                      },
 
-    WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
-    WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
+                  .label = "Device",
+                  .tracePath = NULL,
+              },
+          .requiredLimits =
+              &(WGPURequiredLimits){
+                  .nextInChain = NULL,
+                  .limits =
+                      (WGPULimits){
+                          .maxBindGroups = 1,
+                      },
+              },
+      },
+      request_device_callback, (void *)&device);
 
-    WGPUBuffer stagingBuffer = wgpuDeviceCreateBuffer(
-        device,
-        &(WGPUBufferDescriptor) {
-            .nextInChain = NULL,
-            .label = "StagingBuffer",
-            .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
-            .size = numbersSize,
-            .mappedAtCreation = false,
-        });
-    WGPUBuffer storageBuffer = wgpuDeviceCreateBuffer(
-        device,
-        &(WGPUBufferDescriptor) {
-            .nextInChain = NULL,
-            .label = "StorageBuffer",
-            .usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst | WGPUBufferUsage_CopySrc,
-            .size = numbersSize,
-            .mappedAtCreation = false,
-        });
+  WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
+  WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
 
-    WGPUBindGroupLayout bindGroupLayout = wgpuDeviceCreateBindGroupLayout(device,
-        &(WGPUBindGroupLayoutDescriptor) {
-            .label = "Bind Group Layout",
-            .entries = &(WGPUBindGroupLayoutEntry) {
-                .nextInChain = NULL,
-                .binding = 0,
-                .visibility = WGPUShaderStage_Compute,
-                .buffer = (WGPUBufferBindingLayout) {
-                    .type = WGPUBufferBindingType_Storage,
-                },
-                .sampler = (WGPUSamplerBindingLayout) {
-                    .type = WGPUSamplerBindingType_Undefined,
-                },
-                .texture = (WGPUTextureBindingLayout) {
-                    .sampleType = WGPUTextureSampleType_Undefined,
-                },
-                .storageTexture = (WGPUStorageTextureBindingLayout) {
-                    .access = WGPUStorageTextureAccess_Undefined,
-                } },
-            .entryCount = 1 });
+  WGPUBuffer stagingBuffer = wgpuDeviceCreateBuffer(
+      device, &(WGPUBufferDescriptor){
+                  .nextInChain = NULL,
+                  .label = "StagingBuffer",
+                  .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
+                  .size = numbersSize,
+                  .mappedAtCreation = false,
+              });
+  WGPUBuffer storageBuffer = wgpuDeviceCreateBuffer(
+      device, &(WGPUBufferDescriptor){
+                  .nextInChain = NULL,
+                  .label = "StorageBuffer",
+                  .usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst |
+                           WGPUBufferUsage_CopySrc,
+                  .size = numbersSize,
+                  .mappedAtCreation = false,
+              });
 
-    WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(device,
-        &(WGPUBindGroupDescriptor) {
-            .label = "Bind Group",
-            .layout = bindGroupLayout,
-            .entries = &(WGPUBindGroupEntry) {
-                .binding = 0,
-                .buffer = storageBuffer,
-                .offset = 0,
-                .size = numbersSize },
-            .entryCount = 1 });
+  WGPUBindGroupLayout bindGroupLayout = wgpuDeviceCreateBindGroupLayout(
+      device, &(WGPUBindGroupLayoutDescriptor){
+                  .label = "Bind Group Layout",
+                  .entries =
+                      &(WGPUBindGroupLayoutEntry){
+                          .nextInChain = NULL,
+                          .binding = 0,
+                          .visibility = WGPUShaderStage_Compute,
+                          .buffer =
+                              (WGPUBufferBindingLayout){
+                                  .type = WGPUBufferBindingType_Storage,
+                              },
+                          .sampler =
+                              (WGPUSamplerBindingLayout){
+                                  .type = WGPUSamplerBindingType_Undefined,
+                              },
+                          .texture =
+                              (WGPUTextureBindingLayout){
+                                  .sampleType = WGPUTextureSampleType_Undefined,
+                              },
+                          .storageTexture =
+                              (WGPUStorageTextureBindingLayout){
+                                  .access = WGPUStorageTextureAccess_Undefined,
+                              }},
+                  .entryCount = 1});
 
-    WGPUBindGroupLayout bindGroupLayouts[1] = { bindGroupLayout };
-    WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(device,
-        &(WGPUPipelineLayoutDescriptor) {
-            .bindGroupLayouts = bindGroupLayouts,
-            .bindGroupLayoutCount = 1 });
+  WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(
+      device, &(WGPUBindGroupDescriptor){
+                  .label = "Bind Group",
+                  .layout = bindGroupLayout,
+                  .entries = &(WGPUBindGroupEntry){.binding = 0,
+                                                   .buffer = storageBuffer,
+                                                   .offset = 0,
+                                                   .size = numbersSize},
+                  .entryCount = 1});
 
-    WGPUComputePipeline computePipeline = wgpuDeviceCreateComputePipeline(device,
-        &(WGPUComputePipelineDescriptor) {
-            .layout = pipelineLayout,
-            .compute = (WGPUProgrammableStageDescriptor) {
-                .module = shader,
-                .entryPoint = "main" } });
+  WGPUBindGroupLayout bindGroupLayouts[1] = {bindGroupLayout};
+  WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(
+      device,
+      &(WGPUPipelineLayoutDescriptor){.bindGroupLayouts = bindGroupLayouts,
+                                      .bindGroupLayoutCount = 1});
 
-    WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
-        device, &(WGPUCommandEncoderDescriptor) { .label = "Command Encoder" });
+  WGPUComputePipeline computePipeline = wgpuDeviceCreateComputePipeline(
+      device, &(WGPUComputePipelineDescriptor){
+                  .layout = pipelineLayout,
+                  .compute = (WGPUProgrammableStageDescriptor){
+                      .module = shader, .entryPoint = "main"}});
 
-    WGPUComputePassEncoder computePass = wgpuCommandEncoderBeginComputePass(
-        encoder, &(WGPUComputePassDescriptor) { .label = "Compute Pass" });
+  WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
+      device, &(WGPUCommandEncoderDescriptor){.label = "Command Encoder"});
 
-    wgpuComputePassEncoderSetPipeline(computePass, computePipeline);
-    wgpuComputePassEncoderSetBindGroup(computePass, 0, bindGroup, 0, NULL);
-    wgpuComputePassEncoderDispatch(computePass, numbersLength, 1, 1);
-    wgpuComputePassEncoderEndPass(computePass);
-    wgpuCommandEncoderCopyBufferToBuffer(encoder, storageBuffer, 0, stagingBuffer, 0, numbersSize);
+  WGPUComputePassEncoder computePass = wgpuCommandEncoderBeginComputePass(
+      encoder, &(WGPUComputePassDescriptor){.label = "Compute Pass"});
 
-    WGPUQueue queue = wgpuDeviceGetQueue(device);
-    WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(
-        encoder, &(WGPUCommandBufferDescriptor) { .label = NULL });
-    wgpuQueueWriteBuffer(queue, storageBuffer, 0, &numbers, numbersSize);
-    wgpuQueueSubmit(queue, 1, &cmdBuffer);
+  wgpuComputePassEncoderSetPipeline(computePass, computePipeline);
+  wgpuComputePassEncoderSetBindGroup(computePass, 0, bindGroup, 0, NULL);
+  wgpuComputePassEncoderDispatch(computePass, numbersLength, 1, 1);
+  wgpuComputePassEncoderEndPass(computePass);
+  wgpuCommandEncoderCopyBufferToBuffer(encoder, storageBuffer, 0, stagingBuffer,
+                                       0, numbersSize);
 
-    wgpuBufferMapAsync(stagingBuffer, WGPUMapMode_Read, 0, numbersSize, readBufferMap, NULL);
-    wgpuDevicePoll(device, true);
+  WGPUQueue queue = wgpuDeviceGetQueue(device);
+  WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(
+      encoder, &(WGPUCommandBufferDescriptor){.label = NULL});
+  wgpuQueueWriteBuffer(queue, storageBuffer, 0, &numbers, numbersSize);
+  wgpuQueueSubmit(queue, 1, &cmdBuffer);
 
-    uint32_t *times = (uint32_t *) wgpuBufferGetMappedRange(stagingBuffer, 0, numbersSize);
+  wgpuBufferMapAsync(stagingBuffer, WGPUMapMode_Read, 0, numbersSize,
+                     readBufferMap, NULL);
+  wgpuDevicePoll(device, true);
 
-    printf("Times: [%d, %d, %d, %d]\n",
-        times[0],
-        times[1],
-        times[2],
-        times[3]);
+  uint32_t *times =
+      (uint32_t *)wgpuBufferGetMappedRange(stagingBuffer, 0, numbersSize);
 
-    wgpuBufferUnmap(stagingBuffer);
+  printf("Times: [%d, %d, %d, %d]\n", times[0], times[1], times[2], times[3]);
 
-    return 0;
+  wgpuBufferUnmap(stagingBuffer);
+
+  return 0;
 }
-

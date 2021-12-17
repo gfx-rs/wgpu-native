@@ -27,7 +27,7 @@ package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
 rev = "3b48ed2"
 # path = "../wgpu/wgpu-core"
-#version = "0.10"
+#version = "0.11"
 features = ["raw-window-handle", "trace"]
 
 [dependencies.wgt]
@@ -35,7 +35,7 @@ package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
 rev = "3b48ed2"
 # path = "../wgpu/wgpu-types"
-#version = "0.10"
+#version = "0.11"
 
 [dependencies]
 lazy_static = "1.1"
