@@ -48,9 +48,9 @@ impl OwnedLabel {
 }
 
 #[track_caller]
-pub fn check_error<I, E: std::fmt::Debug>(input: (I, Option<E>)) -> I {
+pub fn check_error<I, E: std::error::Error>(input: (I, Option<E>)) -> I {
     if let Some(error) = input.1 {
-        panic!("{:?}", error);
+        panic!("{}", error);
     }
 
     input.0
