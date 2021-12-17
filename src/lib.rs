@@ -241,12 +241,10 @@ unsafe fn map_surface(
 ) -> id::SurfaceId {
     #[cfg(windows)]
     if let Some(win) = _win {
-        use raw_window_handle::WindowsHandle;
-
-        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Windows(WindowsHandle {
-            hwnd: win.hwnd,
-            ..WindowsHandle::empty()
-        }));
+        let mut handle = raw_window_handle::Win32Handle::empty();
+        handle.hwnd = win.hwnd;
+        handle.hinstance = win.hinstance;
+        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Win32(handle));
     }
 
     #[cfg(all(
@@ -256,13 +254,11 @@ unsafe fn map_surface(
         not(target_os = "macos")
     ))]
     if let Some(x11) = _x11 {
-        use raw_window_handle::XlibHandle;
+        let mut handle = raw_window_handle::XlibHandle::empty();
+        handle.window = x11.window as _;
+        handle.display = x11.display as *mut _;
 
-        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(XlibHandle {
-            window: x11.window as _,
-            display: x11.display as *mut _,
-            ..XlibHandle::empty()
-        }));
+        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(handle));
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
