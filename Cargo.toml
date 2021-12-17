@@ -25,7 +25,7 @@ default = []
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "3b48ed2"
+rev = "ec1d022"
 # path = "../wgpu/wgpu-core"
 #version = "0.11"
 features = ["raw-window-handle", "trace"]
@@ -33,7 +33,7 @@ features = ["raw-window-handle", "trace"]
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "3b48ed2"
+rev = "ec1d022"
 # path = "../wgpu/wgpu-types"
 #version = "0.11"
 
@@ -42,9 +42,10 @@ lazy_static = "1.1"
 raw-window-handle = "0.4"
 paste = "1.0"
 log = "0.4"
+
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "c69f676"
+rev = "8ffd6ba"
 features = ["spv-in"]
 
 [build-dependencies]
