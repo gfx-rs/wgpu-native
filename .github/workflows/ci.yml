@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [ master, staging ]
+    branches: [ master ]
   pull_request:
-    branches-ignore: [ staging.tmp ]
+    branches-ignore: []
 
 jobs:
 
@@ -51,26 +51,25 @@ jobs:
             channel: stable
             build_command: cargo clippy
             install_deps_command: |
-                    sudo apt-get update
-                    sudo apt-get install -f -y libegl1-mesa-dev
-                    sudo apt-get install -f -y mesa-vulkan-drivers
+              sudo apt-get update
+              sudo apt-get install -f -y libegl1-mesa-dev
+              sudo apt-get install -f -y mesa-vulkan-drivers
             make_command: make lib-native
           - os: ubuntu-18.04
             name: Ubuntu Nightly
             channel: nightly
             build_command: cargo check
             install_deps_command: |
-                                sudo apt-get update
-                                sudo apt install -f -y cmake
-                                sudo apt-get install -f -y libegl1-mesa-dev
-                                sudo apt-get install -f -y mesa-vulkan-drivers
-                                GLFW_DIR="$GITHUB_WORKSPACE/libglfw3"
-                                mkdir $GLFW_DIR
-                                curl -o $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3-dev_3.3.2-1_amd64.deb
-                                curl -o $GLFW_DIR/libglfw3_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3_3.3.2-1_amd64.deb
-                                sudo apt install -f -y $GLFW_DIR/libglfw3_3.3.2-1_amd64.deb
-                                sudo apt install -f -y $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb
-                                rm -rf $GLFW_DIR
+              sudo apt-get update
+              sudo apt install -f -y cmake
+              sudo apt-get install -f -y libegl1-mesa-dev
+              sudo apt-get install -f -y mesa-vulkan-drivers
+              GLFW_DIR="$GITHUB_WORKSPACE/libglfw3"
+              mkdir $GLFW_DIR
+              curl -o $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3-dev_3.3.2-1_amd64.deb
+              curl -o $GLFW_DIR/libglfw3_3.3.2-1_amd64.deb http://security.ubuntu.com/ubuntu/pool/universe/g/glfw3/libglfw3_3.3.2-1_amd64.deb
+              sudo apt install -f -y $GLFW_DIR/libglfw3_3.3.2-1_amd64.deb $GLFW_DIR/libglfw3-dev_3.3.2-1_amd64.deb
+              rm -rf $GLFW_DIR
             make_command: make VERBOSE=1
           - os: windows-2019
             name: Windows Stable
@@ -78,24 +77,26 @@ jobs:
             build_command: rustup default stable-msvc; cargo clippy
             make_command: make lib-native
             install_deps_command: |
-                                # choco exit with code 1 after successful install
-                                choco install -y --force llvm | exit 0
-                                echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+              # choco exit with code 1 after successful install
+              choco install -y --force llvm | exit 0
+              echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
           - os: windows-2019
             name: Windows Nightly
             channel: nightly
-            build_command: rustup default nightly-msvc; cargo check
+            #build_command: rustup default nightly-msvc; cargo check
+            # speed up this build a little
+            build_command:
             install_deps_command: |
-                                # choco exit with code 1 after successful install ¯\_(ツ)_/¯
-                                choco install -y --force cmake make llvm | exit 0
-                                echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-                                curl -sL -o glfw.zip https://github.com/glfw/glfw/archive/3.3.zip
-                                unzip -qq glfw.zip -d $GITHUB_WORKSPACE
-                                cd $GITHUB_WORKSPACE/glfw-3.3/
-                                export GLFW3_INCLUDE_DIR=`pwd`/include
-                                export GLFW3_INSTALL_DIR=`pwd`/install
-                                cmake . -DCMAKE_INSTALL_PREFIX=$GLFW3_INSTALL_DIR -DCMAKE_GENERATOR_PLATFORM=x64
-                                cmake --build . --target install
+              # choco exit with code 1 after successful install ¯\_(ツ)_/¯
+              choco install -y --force cmake make llvm | exit 0
+              echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+              curl -sL -o glfw.zip https://github.com/glfw/glfw/archive/3.3.zip
+              unzip -qq glfw.zip -d $GITHUB_WORKSPACE
+              cd $GITHUB_WORKSPACE/glfw-3.3/
+              export GLFW3_INCLUDE_DIR=`pwd`/include
+              export GLFW3_INSTALL_DIR=`pwd`/install
+              cmake . -DCMAKE_INSTALL_PREFIX=$GLFW3_INSTALL_DIR -DCMAKE_GENERATOR_PLATFORM=x64 -DGLFW_BUILD_EXAMPLES=NO -DGLFW_BUILD_TESTS=NO
+              cmake --build . --target install
             make_command: CMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/glfw-3.3/install make VERBOSE=1
             make_shell: cmd
     steps:
