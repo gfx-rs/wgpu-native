@@ -723,7 +723,7 @@ pub extern "C" fn wgpuDeviceCreateSwapChain(
         None
     } else {
         SURFACE_TO_DEVICE.lock().unwrap().insert(surface, device);
-        Some(surface)
+        Some(surface) // swap chain_id == surface_id
     }
 }
 
