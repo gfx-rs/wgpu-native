@@ -1025,6 +1025,7 @@ dependencies = [
  "naga",
  "paste",
  "raw-window-handle",
+ "thiserror",
  "wgpu-core",
  "wgpu-types",
 ]

@@ -1,4 +1,6 @@
-use std::{borrow::Cow, marker::PhantomData, sync::Arc};
+use log;
+use std::ffi::CString;
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData, sync::Arc, sync::Mutex};
 use wgc::id;
 
 pub mod command;
@@ -45,15 +47,6 @@ impl OwnedLabel {
     fn into_cow<'a>(self) -> Option<Cow<'a, str>> {
         self.0.map(|s| Cow::Owned(s))
     }
-}
-
-#[track_caller]
-pub fn check_error<I, E: std::error::Error>(input: (I, Option<E>)) -> I {
-    if let Some(error) = input.1 {
-        panic!("{}", error);
-    }
-
-    input.0
 }
 
 pub unsafe fn make_slice<'a, T: 'a>(pointer: *const T, count: usize) -> &'a [T] {
@@ -280,4 +273,90 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
         Err(err) => panic!("Could not get preferred swap chain format: {}", err),
     };
     return preferred_format;
+}
+
+struct DeviceCallback<T> {
+    callback: T,
+    userdata: *mut std::os::raw::c_void,
+}
+
+type UncapturedErrorCallback = DeviceCallback<native::WGPUErrorCallback>;
+type DeviceLostCallback = DeviceCallback<native::WGPUDeviceLostCallback>;
+
+unsafe impl<T> Send for DeviceCallback<T> {}
+
+lazy_static::lazy_static! {
+    static ref UNCAPTURED_ERROR_CALLBACKS: Arc<Mutex<HashMap<id::DeviceId, UncapturedErrorCallback>>> = Arc::new(Mutex::new(HashMap::new()));
+    static ref DEVICE_LOST_CALLBACKS: Arc<Mutex<HashMap<id::DeviceId, DeviceLostCallback>>> = Arc::new(Mutex::new(HashMap::new()));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
+    device: id::DeviceId,
+    callback: native::WGPUErrorCallback,
+    userdata: *mut std::os::raw::c_void,
+) {
+    UNCAPTURED_ERROR_CALLBACKS.lock().unwrap().insert(
+        device,
+        UncapturedErrorCallback {
+            callback: callback,
+            userdata: userdata,
+        },
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
+    device: id::DeviceId,
+    callback: native::WGPUDeviceLostCallback,
+    userdata: *mut std::os::raw::c_void,
+) {
+    DEVICE_LOST_CALLBACKS.lock().unwrap().insert(
+        device,
+        DeviceLostCallback {
+            callback: callback,
+            userdata: userdata,
+        },
+    );
+}
+
+pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType, msg: &str) {
+    log::debug!("Device error ({}): {}", typ, msg);
+    let msg_c = CString::new(msg).unwrap();
+    unsafe {
+        match typ {
+            native::WGPUErrorType_DeviceLost => {
+                let cbs = DEVICE_LOST_CALLBACKS.lock().unwrap();
+                let cb = cbs.get(&device);
+                if let Some(cb) = cb {
+                    (*cb).callback.unwrap()(
+                        native::WGPUDeviceLostReason_Destroyed,
+                        msg_c.as_ptr(),
+                        (*cb).userdata,
+                    );
+                }
+            }
+            _ => {
+                let cbs = UNCAPTURED_ERROR_CALLBACKS.lock().unwrap();
+                let cb = cbs.get(&device);
+                if let Some(cb) = cb {
+                    (*cb).callback.unwrap()(typ, msg_c.as_ptr(), (*cb).userdata);
+                }
+            }
+        }
+    }
+}
+
+pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::DeviceId, error: &E) {
+    let error_any = error as &dyn std::any::Any;
+
+    let typ = match error_any.downcast_ref::<wgc::device::DeviceError>() {
+        Some(device_error) => match device_error {
+            wgc::device::DeviceError::Lost => native::WGPUErrorType_DeviceLost,
+            _ => native::WGPUErrorType_Unknown,
+        },
+        None => native::WGPUErrorType_Unknown,
+    };
+
+    handle_device_error_raw(device, typ, &format!("{:?}", error));
 }
