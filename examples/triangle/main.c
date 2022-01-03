@@ -27,6 +27,16 @@
 #endif
 #include <GLFW/glfw3native.h>
 
+static void handle_device_lost(WGPUDeviceLostReason reason, char const * message, void * userdata)
+{
+  printf("DEVICE LOST (%d): %s\n", reason, message);
+}
+
+static void handle_uncaptured_error(WGPUErrorType type, char const * message, void * userdata)
+{
+  printf("UNCAPTURED ERROR (%d): %s\n", type, message);
+}
+
 int main() {
   initializeLog();
 
@@ -150,6 +160,9 @@ int main() {
       },
       request_device_callback, (void *)&device);
 
+  wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
+  wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
+
   WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
   WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
 
@@ -226,26 +239,42 @@ int main() {
                                 });
 
   while (!glfwWindowShouldClose(window)) {
-    int width = 0;
-    int height = 0;
-    glfwGetWindowSize(window, &width, &height);
 
-    if (width != prevWidth || height != prevHeight) {
-      prevWidth = width;
-      prevHeight = height;
+    WGPUTextureView nextTexture = NULL;
 
-      swapChain = wgpuDeviceCreateSwapChain(
-          device, surface,
-          &(WGPUSwapChainDescriptor){
-              .usage = WGPUTextureUsage_RenderAttachment,
-              .format = swapChainFormat,
-              .width = prevWidth,
-              .height = prevHeight,
-              .presentMode = WGPUPresentMode_Fifo,
-          });
+    for (int attempt = 0; attempt < 2; attempt++) {
+
+      int width = 0;
+      int height = 0;
+      glfwGetWindowSize(window, &width, &height);
+
+      if (width != prevWidth || height != prevHeight) {
+        prevWidth = width;
+        prevHeight = height;
+
+        swapChain = wgpuDeviceCreateSwapChain(
+            device, surface,
+            &(WGPUSwapChainDescriptor){
+                .usage = WGPUTextureUsage_RenderAttachment,
+                .format = swapChainFormat,
+                .width = prevWidth,
+                .height = prevHeight,
+                .presentMode = WGPUPresentMode_Fifo,
+            });
+      }
+
+      nextTexture = wgpuSwapChainGetCurrentTextureView(swapChain);
+
+      if (attempt == 0 && !nextTexture) {
+        printf("wgpuSwapChainGetCurrentTextureView() failed; trying to create a new swap chain...\n");
+        prevWidth = 0;
+        prevHeight = 0;
+        continue;
+      }
+
+      break;
     }
 
-    WGPUTextureView nextTexture = wgpuSwapChainGetCurrentTextureView(swapChain);
     if (!nextTexture) {
       printf("Cannot acquire next swap chain texture\n");
       return 1;

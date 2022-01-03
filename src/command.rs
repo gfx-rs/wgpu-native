@@ -1,4 +1,4 @@
-use crate::{check_error, conv, make_slice, native, OwnedLabel, GLOBAL};
+use crate::{conv, make_slice, native, OwnedLabel, GLOBAL};
 use std::{borrow::Cow, num::NonZeroU64};
 use wgc::{
     command::{compute_ffi, render_ffi},
@@ -9,12 +9,20 @@ use wgc::{
 pub unsafe extern "C" fn wgpuCommandEncoderFinish(
     encoder: id::CommandEncoderId,
     descriptor: &native::WGPUCommandBufferDescriptor,
-) -> id::CommandBufferId {
+) -> Option<id::CommandBufferId> {
     let desc = wgt::CommandBufferDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
     };
 
-    check_error(gfx_select!(encoder => GLOBAL.command_encoder_finish(encoder, &desc)))
+    let (id, error) = gfx_select!(encoder => GLOBAL.command_encoder_finish(encoder, &desc));
+    if let Some(error) = error {
+        // TODO figure out what device the encoder belongs to and call
+        // handle_device_error()
+        log::error!("command_encoder_finish() failed: {:?}", error);
+        None
+    } else {
+        Some(id)
+    }
 }
 
 #[no_mangle]
