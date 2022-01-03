@@ -1,5 +1,7 @@
 use log;
-use std::{borrow::Cow, collections::HashMap, marker::PhantomData, sync::Arc, sync::Mutex, ffi::CString};
+use std::{
+    borrow::Cow, collections::HashMap, ffi::CString, marker::PhantomData, sync::Arc, sync::Mutex,
+};
 use wgc::id;
 
 pub mod command;
@@ -284,9 +286,16 @@ type DeviceLostCallback = DeviceCallback<native::WGPUDeviceLostCallback>;
 
 unsafe impl<T> Send for DeviceCallback<T> {}
 
+struct Callbacks {
+    uncaptured_errors: HashMap<id::DeviceId, UncapturedErrorCallback>,
+    device_lost: HashMap<id::DeviceId, DeviceLostCallback>,
+}
+
 lazy_static::lazy_static! {
-    static ref UNCAPTURED_ERROR_CALLBACKS: Arc<Mutex<HashMap<id::DeviceId, UncapturedErrorCallback>>> = Arc::new(Mutex::new(HashMap::new()));
-    static ref DEVICE_LOST_CALLBACKS: Arc<Mutex<HashMap<id::DeviceId, DeviceLostCallback>>> = Arc::new(Mutex::new(HashMap::new()));
+    static ref CALLBACKS: Mutex<Callbacks> = Mutex::new(Callbacks{
+        uncaptured_errors: HashMap::new(),
+        device_lost: HashMap::new(),
+    });
 }
 
 #[no_mangle]
@@ -295,13 +304,11 @@ pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
     callback: native::WGPUErrorCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    UNCAPTURED_ERROR_CALLBACKS.lock().unwrap().insert(
-        device,
-        UncapturedErrorCallback {
-            callback,
-            userdata,
-        },
-    );
+    CALLBACKS
+        .lock()
+        .unwrap()
+        .uncaptured_errors
+        .insert(device, UncapturedErrorCallback { callback, userdata });
 }
 
 #[no_mangle]
@@ -310,13 +317,11 @@ pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
     callback: native::WGPUDeviceLostCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    DEVICE_LOST_CALLBACKS.lock().unwrap().insert(
-        device,
-        DeviceLostCallback {
-            callback,
-            userdata,
-        },
-    );
+    CALLBACKS
+        .lock()
+        .unwrap()
+        .device_lost
+        .insert(device, DeviceLostCallback { callback, userdata });
 }
 
 pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType, msg: &str) {
@@ -325,8 +330,8 @@ pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType,
     unsafe {
         match typ {
             native::WGPUErrorType_DeviceLost => {
-                let cbs = DEVICE_LOST_CALLBACKS.lock().unwrap();
-                let cb = cbs.get(&device);
+                let cbs = CALLBACKS.lock().unwrap();
+                let cb = cbs.device_lost.get(&device);
                 if let Some(cb) = cb {
                     (*cb).callback.unwrap()(
                         native::WGPUDeviceLostReason_Destroyed,
@@ -336,8 +341,8 @@ pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType,
                 }
             }
             _ => {
-                let cbs = UNCAPTURED_ERROR_CALLBACKS.lock().unwrap();
-                let cb = cbs.get(&device);
+                let cbs = CALLBACKS.lock().unwrap();
+                let cb = cbs.uncaptured_errors.get(&device);
                 if let Some(cb) = cb {
                     (*cb).callback.unwrap()(typ, msg_c.as_ptr(), (*cb).userdata);
                 }
