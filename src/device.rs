@@ -746,30 +746,28 @@ pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
     match gfx_select!(device => GLOBAL.surface_get_current_texture(surface_id, PhantomData)) {
         Err(error) => {
             handle_device_error(device, &error);
-            return None;
+            None
         }
-        Ok(result) => {
-            match result.status {
-                wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
-                    let texture = result.texture_id.unwrap();
-                    let desc = wgc::resource::TextureViewDescriptor::default();
-                    return Some(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)).0);
-                }
-                wgt::SurfaceStatus::Timeout => {
-                    handle_device_error(device, &SurfaceError::Timeout);
-                    return None;
-                }
-                wgt::SurfaceStatus::Outdated => {
-                    handle_device_error(device, &SurfaceError::Outdated);
-                    return None;
-                }
-                wgt::SurfaceStatus::Lost => {
-                    handle_device_error(device, &SurfaceError::Lost);
-                    return None;
-                }
+        Ok(result) => match result.status {
+            wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
+                let texture = result.texture_id.unwrap();
+                let desc = wgc::resource::TextureViewDescriptor::default();
+                Some(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)).0)
+            }
+            wgt::SurfaceStatus::Timeout => {
+                handle_device_error(device, &SurfaceError::Timeout);
+                None
+            }
+            wgt::SurfaceStatus::Outdated => {
+                handle_device_error(device, &SurfaceError::Outdated);
+                None
+            }
+            wgt::SurfaceStatus::Lost => {
+                handle_device_error(device, &SurfaceError::Lost);
+                None
             }
         }
-    };
+    }
 }
 
 #[no_mangle]

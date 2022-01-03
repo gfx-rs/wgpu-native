@@ -15,9 +15,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
     };
 
     let (id, error) = gfx_select!(encoder => GLOBAL.command_encoder_finish(encoder, &desc));
-    if let Some(_error) = error {
+    if let Some(error) = error {
         // TODO figure out what device the encoder belongs to and call
         // handle_device_error()
+        log::error!("command_encoder_finish() failed: {:?}", error);
         None
     } else {
         Some(id)

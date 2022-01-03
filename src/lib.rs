@@ -1,6 +1,5 @@
 use log;
-use std::ffi::CString;
-use std::{borrow::Cow, collections::HashMap, marker::PhantomData, sync::Arc, sync::Mutex};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData, sync::Arc, sync::Mutex, ffi::CString};
 use wgc::id;
 
 pub mod command;
@@ -299,8 +298,8 @@ pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
     UNCAPTURED_ERROR_CALLBACKS.lock().unwrap().insert(
         device,
         UncapturedErrorCallback {
-            callback: callback,
-            userdata: userdata,
+            callback,
+            userdata,
         },
     );
 }
@@ -314,8 +313,8 @@ pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
     DEVICE_LOST_CALLBACKS.lock().unwrap().insert(
         device,
         DeviceLostCallback {
-            callback: callback,
-            userdata: userdata,
+            callback,
+            userdata,
         },
     );
 }
