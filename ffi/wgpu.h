@@ -38,6 +38,10 @@ typedef struct WGPUDeviceExtras {
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void wgpuDevicePoll(WGPUDevice device, bool force_wait);
 
 void wgpuSetLogCallback(WGPULogCallback callback);
@@ -63,5 +67,9 @@ void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
 void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif
