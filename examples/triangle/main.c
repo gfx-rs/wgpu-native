@@ -100,7 +100,25 @@ int main() {
   }
 #elif WGPU_TARGET == WGPU_TARGET_LINUX_WAYLAND
   {
-#error TODO
+    struct wl_display *wayland_display = glfwGetWaylandDisplay();
+    struct wl_surface *wayland_surface = glfwGetWaylandWindow(window);
+    surface = wgpuInstanceCreateSurface(
+        NULL,
+        &(WGPUSurfaceDescriptor){
+            .label = NULL,
+            .nextInChain =
+                (const WGPUChainedStruct *)&(
+                    WGPUSurfaceDescriptorFromWaylandSurface){
+                    .chain =
+                        (WGPUChainedStruct){
+                            .next = NULL,
+                            .sType =
+                                WGPUSType_SurfaceDescriptorFromWaylandSurface,
+                        },
+                    .display = wayland_display,
+                    .surface = wayland_surface,
+                },
+        });
   }
 #elif WGPU_TARGET == WGPU_TARGET_WINDOWS
   {
