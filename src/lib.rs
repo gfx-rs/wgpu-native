@@ -219,6 +219,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
             WGPUSType_SurfaceDescriptorFromXlib => native::WGPUSurfaceDescriptorFromXlib,
+            WGPUSType_SurfaceDescriptorFromWaylandSurface => native::WGPUSurfaceDescriptorFromWaylandSurface,
             WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer)
     )
 }
@@ -231,6 +232,7 @@ unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
     _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
     _x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
+    _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
 ) -> id::SurfaceId {
     #[cfg(windows)]
@@ -247,12 +249,22 @@ unsafe fn map_surface(
         not(target_os = "ios"),
         not(target_os = "macos")
     ))]
-    if let Some(x11) = _x11 {
-        let mut handle = raw_window_handle::XlibHandle::empty();
-        handle.window = x11.window as _;
-        handle.display = x11.display as *mut _;
+    {
+        if let Some(x11) = _x11 {
+            let mut handle = raw_window_handle::XlibHandle::empty();
+            handle.window = x11.window as _;
+            handle.display = x11.display as *mut _;
 
-        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(handle));
+            return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(handle));
+        }
+
+        if let Some(wl) = _wl {
+            let mut handle = raw_window_handle::WaylandHandle::empty();
+            handle.display = wl.display;
+            handle.surface = wl.surface;
+
+            return wgpu_create_surface(raw_window_handle::RawWindowHandle::Wayland(handle));
+        }
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
