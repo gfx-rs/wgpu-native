@@ -158,22 +158,18 @@ fn write_limits_struct(
     limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
     limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as u64;
     limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as u64;
-    /* not yet available in wgpu-core
-    limits.minUniformBufferOffsetAlignment = wgt_limits.yyyy;
-    limits.minStorageBufferOffsetAlignment = wgt_limits.yyyy;
-    */
+    limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
+    limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
-    /* not yet available in wgpu-core
-    limits.maxVertexBufferArrayStride = wgt_limits.yyyy;
-    limits.maxInterStageShaderComponents = wgt_limits.yyyy;
-    limits.maxComputeWorkgroupStorageSize = wgt_limits.yyyy;
-    limits.maxComputeInvocationsPerWorkgroup = wgt_limits.yyyy;
-    limits.maxComputeWorkgroupSizeX = wgt_limits.yyyy;
-    limits.maxComputeWorkgroupSizeY = wgt_limits.yyyy ;
-    limits.maxComputeWorkgroupSizeZ = wgt_limits.yyyy;
-    limits.maxComputeWorkgroupsPerDimension = wgt_limits.yyyy;
-    */
+    limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
+    limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
+    limits.maxComputeWorkgroupStorageSize = wgt_limits.max_compute_workgroup_storage_size;
+    limits.maxComputeInvocationsPerWorkgroup = wgt_limits.max_compute_invocations_per_workgroup;
+    limits.maxComputeWorkgroupSizeX = wgt_limits.max_compute_workgroup_size_x;
+    limits.maxComputeWorkgroupSizeY = wgt_limits.max_compute_workgroup_size_y;
+    limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
+    limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
     supported_limits.limits = limits;
 }
 
