@@ -120,10 +120,10 @@ macro_rules! follow_chain {
     }}};
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(all(target_os = "windows", target_env = "msvc"))]
 pub type EnumConstant = i32;
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(all(target_os = "windows", target_env = "msvc")))]
 pub type EnumConstant = u32;
 
 /// Creates a function which maps native constants to wgpu enums.
