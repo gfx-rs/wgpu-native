@@ -523,7 +523,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     user_data: *mut u8,
 ) {
     let operation = wgc::resource::BufferMapOperation {
-        host: match mode as crate::EnumConstant {
+        host: match mode as native::WGPUMapMode {
             native::WGPUMapMode_Write => wgc::device::HostMap::Write,
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
             native::WGPUMapMode_None => panic!("Buffer map mode None is not supported."),

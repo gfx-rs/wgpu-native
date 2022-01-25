@@ -377,7 +377,9 @@ pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
     }
 }
 
-pub fn map_texture_view_dimension(value: crate::EnumConstant) -> Option<wgt::TextureViewDimension> {
+pub fn map_texture_view_dimension(
+    value: native::WGPUTextureViewDimension,
+) -> Option<wgt::TextureViewDimension> {
     match value {
         native::WGPUTextureViewDimension_1D => Some(wgt::TextureViewDimension::D1),
         native::WGPUTextureViewDimension_2D => Some(wgt::TextureViewDimension::D2),
@@ -389,7 +391,7 @@ pub fn map_texture_view_dimension(value: crate::EnumConstant) -> Option<wgt::Tex
     }
 }
 
-pub fn map_texture_dimension(value: crate::EnumConstant) -> wgt::TextureDimension {
+pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::TextureDimension {
     match value {
         native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
         native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
@@ -398,7 +400,7 @@ pub fn map_texture_dimension(value: crate::EnumConstant) -> wgt::TextureDimensio
     }
 }
 
-pub fn map_texture_format(value: crate::EnumConstant) -> Option<wgt::TextureFormat> {
+pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::TextureFormat> {
     // TODO: Add support for BC formats
     match value {
         native::WGPUTextureFormat_R8Unorm => Some(wgt::TextureFormat::R8Unorm),
@@ -444,7 +446,7 @@ pub fn map_texture_format(value: crate::EnumConstant) -> Option<wgt::TextureForm
     }
 }
 
-pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> crate::EnumConstant {
+pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUTextureFormat {
     match rs_type {
         wgt::TextureFormat::R8Unorm => native::WGPUTextureFormat_R8Unorm,
         wgt::TextureFormat::R8Snorm => native::WGPUTextureFormat_R8Snorm,

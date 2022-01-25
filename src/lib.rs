@@ -120,12 +120,6 @@ macro_rules! follow_chain {
     }}};
 }
 
-#[cfg(all(target_os = "windows", target_env = "msvc"))]
-pub type EnumConstant = i32;
-
-#[cfg(not(all(target_os = "windows", target_env = "msvc")))]
-pub type EnumConstant = u32;
-
 /// Creates a function which maps native constants to wgpu enums.
 /// If an error message is provided, the function will panic if the
 /// input does not match any known variants. Otherwise a Result<T, i32> is returned
@@ -171,7 +165,7 @@ pub type EnumConstant = u32;
 #[macro_export]
 macro_rules! map_enum {
     ($name:ident, $c_name:ident, $rs_type:ty, $($variant:ident),+) => {
-        pub fn $name(value: crate::EnumConstant) -> Result<$rs_type, crate::EnumConstant> {
+        pub fn $name(value: native::$c_name) -> Result<$rs_type, native::$c_name> {
             match value {
                 $(paste::paste!(native::[<$c_name _ $variant>]) => Ok(<$rs_type>::$variant)),+,
                 x => Err(x),
@@ -179,14 +173,14 @@ macro_rules! map_enum {
         }
     };
     ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($variant:ident),+) => {
-        pub fn $name(value: crate::EnumConstant) -> $rs_type {
+        pub fn $name(value: native::$c_name) -> $rs_type {
             map_enum!(map_fn, $c_name, $rs_type, $($variant),+);
 
             map_fn(value).expect($err_msg)
         }
     };
     ($name:ident, $c_name:ident, $rs_type:ty, $($native_variant:ident:$variant2:ident),+) => {
-        pub fn $name(value: crate::EnumConstant) -> Result<$rs_type, crate::EnumConstant> {
+        pub fn $name(value: native::$c_name) -> Result<$rs_type, native::$c_name> {
             match value {
                 $(paste::paste!(native::[<$c_name _ $native_variant>]) => Ok(<$rs_type>::$variant2)),+,
                 x => Err(x),
@@ -194,7 +188,7 @@ macro_rules! map_enum {
         }
     };
     ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($native_variant:ident:$variant2:ident),+) => {
-        pub fn $name(value: crate::EnumConstant) -> $rs_type {
+        pub fn $name(value: native::$c_name) -> $rs_type {
             map_enum!(map_fn, $c_name, $rs_type, $($native_variant:$variant2),+);
 
             map_fn(value).expect($err_msg)
