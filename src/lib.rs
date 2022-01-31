@@ -214,7 +214,8 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
             WGPUSType_SurfaceDescriptorFromXlib => native::WGPUSurfaceDescriptorFromXlib,
             WGPUSType_SurfaceDescriptorFromWaylandSurface => native::WGPUSurfaceDescriptorFromWaylandSurface,
-            WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer)
+            WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer,
+            WGPUSType_SurfaceDescriptorFromAndroidNativeWindow => native::WGPUSurfaceDescriptorFromAndroidNativeWindow)
     )
 }
 
@@ -228,6 +229,7 @@ unsafe fn map_surface(
     _x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
     _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
 ) -> id::SurfaceId {
     #[cfg(windows)]
     if let Some(win) = _win {
@@ -264,6 +266,14 @@ unsafe fn map_surface(
     #[cfg(any(target_os = "ios", target_os = "macos"))]
     if let Some(metal) = _metal {
         return GLOBAL.instance_create_surface_metal(metal.layer, PhantomData);
+    }
+
+    #[cfg(target_os = "android")]
+    if let Some(android) = _android {
+        let mut handle = raw_window_handle::AndroidNdkHandle::empty();
+        handle.a_native_window = android.window;
+
+        return wgpu_create_surface(raw_window_handle::RawWindowHandle::AndroidNdk(handle));
     }
 
     panic!("Error: Unsupported Surface");
