@@ -50,7 +50,7 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
-void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void* const data);
+void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
 void wgpuBufferDrop(WGPUBuffer buffer);
 void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
