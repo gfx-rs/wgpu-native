@@ -227,7 +227,12 @@ pub fn map_device_descriptor<'a>(
 }
 
 pub fn map_limits(limits: native::WGPULimits) -> wgt::Limits {
+    #[cfg(target_os = "emscripten")]
+    let mut wgt_limits = wgt::Limits::downlevel_webgl2_defaults();
+
+    #[cfg(not(target_os = "emscripten"))]
     let mut wgt_limits = wgt::Limits::default();
+
     if limits.maxTextureDimension1D != 0 {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
     }
@@ -272,46 +277,42 @@ pub fn map_limits(limits: native::WGPULimits) -> wgt::Limits {
     if limits.maxStorageBufferBindingSize != 0 {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
-    /* not yet available in wgpu-core
     if limits.minUniformBufferOffsetAlignment != 0 {
-        wgt_limits.yyyy = limits.minUniformBufferOffsetAlignment;
+        wgt_limits.min_uniform_buffer_offset_alignment = limits.minUniformBufferOffsetAlignment;
     }
     if limits.minStorageBufferOffsetAlignment != 0 {
-        wgt_limits.yyyy = limits.minStorageBufferOffsetAlignment;
+        wgt_limits.min_storage_buffer_offset_alignment = limits.minStorageBufferOffsetAlignment;
     }
-    */
     if limits.maxVertexBuffers != 0 {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
     if limits.maxVertexAttributes != 0 {
         wgt_limits.max_vertex_attributes = limits.maxVertexAttributes;
     }
-    /* not yet available in wgpu-core
     if limits.maxVertexBufferArrayStride != 0 {
-        wgt_limits.yyyy = limits.maxVertexBufferArrayStride;
+        wgt_limits.max_vertex_buffer_array_stride = limits.maxVertexBufferArrayStride;
     }
     if limits.maxInterStageShaderComponents != 0 {
-        wgt_limits.yyyy = limits.maxInterStageShaderComponents;
+        wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
     if limits.maxComputeWorkgroupStorageSize != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupStorageSize;
+        wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
     if limits.maxComputeInvocationsPerWorkgroup != 0 {
-        wgt_limits.yyyy = limits.maxComputeInvocationsPerWorkgroup;
+        wgt_limits.max_compute_invocations_per_workgroup = limits.maxComputeInvocationsPerWorkgroup;
     }
     if limits.maxComputeWorkgroupSizeX != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupSizeX;
+        wgt_limits.max_compute_workgroup_size_x = limits.maxComputeWorkgroupSizeX;
     }
     if limits.maxComputeWorkgroupSizeY != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupSizeY;
+        wgt_limits.max_compute_workgroup_size_y = limits.maxComputeWorkgroupSizeY;
     }
     if limits.maxComputeWorkgroupSizeZ != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupSizeZ;
+        wgt_limits.max_compute_workgroup_size_z = limits.maxComputeWorkgroupSizeZ;
     }
     if limits.maxComputeWorkgroupsPerDimension != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupsPerDimension;
+        wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
-    */
     return wgt_limits;
 }
 

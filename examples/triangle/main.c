@@ -25,7 +25,9 @@
 #elif WGPU_TARGET == WGPU_TARGET_WINDOWS
 #define GLFW_EXPOSE_NATIVE_WIN32
 #endif
+#if WGPU_TARGET != WGPU_TARGET_LINUX_EMSCRIPTEN
 #include <GLFW/glfw3native.h>
+#endif
 
 static void handle_device_lost(WGPUDeviceLostReason reason, char const * message, void * userdata)
 {
@@ -45,7 +47,11 @@ int main() {
     return 1;
   }
 
+#if WGPU_TARGET == WGPU_TARGET_LINUX_EMSCRIPTEN
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+#else
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#endif
   GLFWwindow *window = glfwCreateWindow(640, 480, "wgpu with glfw", NULL, NULL);
 
   if (!window) {
@@ -54,8 +60,16 @@ int main() {
   }
 
   WGPUSurface surface;
-
-#if WGPU_TARGET == WGPU_TARGET_MACOS
+#if WGPU_TARGET == WGPU_TARGET_LINUX_EMSCRIPTEN
+  {
+    surface = wgpuInstanceCreateSurface(
+        NULL,
+        &(WGPUSurfaceDescriptor){
+            .label = NULL,
+            .nextInChain = NULL,
+        });
+  }
+#elif WGPU_TARGET == WGPU_TARGET_MACOS
   {
     id metal_layer = NULL;
     NSWindow *ns_window = glfwGetCocoaWindow(window);
@@ -332,6 +346,11 @@ int main() {
     wgpuSwapChainPresent(swapChain);
 
     glfwPollEvents();
+
+#if WGPU_TARGET == WGPU_TARGET_LINUX_EMSCRIPTEN
+    // you must use emscripten_set_main_loop or asyncify
+    return 0;
+#endif
   }
 
   glfwDestroyWindow(window);

@@ -554,7 +554,7 @@ dependencies = [
 [[package]]
 name = "naga"
 version = "0.8.0"
-source = "git+https://github.com/gfx-rs/naga?rev=81dc674#81dc67402a743b4dc6b2d24c0d306cd18799238b"
+source = "git+https://github.com/gfx-rs/naga?rev=8e2e39e#8e2e39e4d8fa5bbb657c3b170b4f6607d703e284"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -964,7 +964,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.12.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=63dfd98#63dfd98d681a085d1a74307755abaeec9fa65cf0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=8b66507#8b665073b8c334999626b4c5379a7543840452ae"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -988,7 +988,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.12.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=63dfd98#63dfd98d681a085d1a74307755abaeec9fa65cf0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=8b66507#8b665073b8c334999626b4c5379a7543840452ae"
 dependencies = [
  "arrayvec",
  "ash",
@@ -1034,13 +1034,14 @@ dependencies = [
  "raw-window-handle",
  "thiserror",
  "wgpu-core",
+ "wgpu-hal",
  "wgpu-types",
 ]
 
 [[package]]
 name = "wgpu-types"
 version = "0.12.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=63dfd98#63dfd98d681a085d1a74307755abaeec9fa65cf0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=8b66507#8b665073b8c334999626b4c5379a7543840452ae"
 dependencies = [
  "bitflags",
  "bitflags_serde_shim",

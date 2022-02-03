@@ -22,18 +22,34 @@ default = []
 #metal-auto-capture = ["gfx-backend-metal/auto-capture"]
 #vulkan-portability = ["wgc/gfx-backend-vulkan"]
 
-[dependencies.wgc]
+[target.'cfg(not(target_os = "emscripten"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "63dfd98"
+rev = "8b66507"
 # path = "../wgpu/wgpu-core"
 #version = "0.11"
 features = ["raw-window-handle", "trace"]
 
+[target.'cfg(target_os = "emscripten")'.dependencies.wgc]
+package = "wgpu-core"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "8b66507"
+# path = "../wgpu/wgpu-core"
+#version = "0.11"
+features = ["raw-window-handle", "id32"]
+
+[target.'cfg(target_os = "emscripten")'.dependencies.hal]
+package = "wgpu-hal"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "8b66507"
+# path = "../wgpu/wgpu-core"
+#version = "0.11"
+features = ["emscripten"]
+
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "63dfd98"
+rev = "8b66507"
 # path = "../wgpu/wgpu-types"
 #version = "0.11"
 
@@ -46,7 +62,7 @@ thiserror = "1"
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "81dc674"
+rev = "8e2e39e"
 features = ["spv-in"]
 
 [build-dependencies]

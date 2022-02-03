@@ -20,8 +20,14 @@ pub mod native {
 
 type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
+#[cfg(not(target_os = "emscripten"))]
 lazy_static::lazy_static! {
     static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::Backends::PRIMARY));
+}
+
+#[cfg(target_os = "emscripten")]
+lazy_static::lazy_static! {
+    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::Backends::GL));
 }
 
 pub type Label<'a> = Option<Cow<'a, str>>;
@@ -276,6 +282,12 @@ unsafe fn map_surface(
         return wgpu_create_surface(raw_window_handle::RawWindowHandle::AndroidNdk(handle));
     }
 
+    #[cfg(target_os = "emscripten")]
+    return wgpu_create_surface(raw_window_handle::RawWindowHandle::Web(
+        raw_window_handle::WebHandle::empty(),
+    ));
+
+    #[cfg(not(target_os = "emscripten"))]
     panic!("Error: Unsupported Surface");
 }
 

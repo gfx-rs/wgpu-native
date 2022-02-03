@@ -101,6 +101,9 @@ lib-native: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 lib-native-release: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build --release $(EXTRA_BUILD_ARGS)
 
+lib-native-emscripten: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
+	EMCC_CFLAGS="-Oz -g -s ERROR_ON_UNDEFINED_SYMBOLS=0 --no-entry -s ASSERTIONS=0" cargo build --target wasm32-unknown-emscripten --release $(EXTRA_BUILD_ARGS)
+	
 example-compute: lib-native examples/compute/main.c
 	cd examples/compute && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
 
@@ -112,6 +115,9 @@ example-triangle: lib-native examples/triangle/main.c
 
 run-example-triangle: example-triangle
 	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
+
+example-triangle-emscripten: lib-native-emscripten examples/triangle/main.c
+	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && emcmake cmake -DCMAKE_BUILD_TYPE=Debug .. && cmake --build .
 
 build-helper:
 	cargo build -p helper
