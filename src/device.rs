@@ -1,6 +1,7 @@
 use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module};
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel, GLOBAL};
 use lazy_static::lazy_static;
+use std::ffi::CString;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -77,6 +78,10 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     (callback.unwrap())(status, id, message_ptr, userdata);
 }
 
+lazy_static! {
+    static ref ADAPTER_NAMES: Mutex<HashMap<id::AdapterId, CString>> = Mutex::new(HashMap::new());
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetProperties(
     adapter: id::AdapterId,
@@ -85,9 +90,12 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     let maybe_props = gfx_select!(adapter => GLOBAL.adapter_get_info(adapter));
     match maybe_props {
         Ok(props) => {
-            //let name = std::ffi::CString::new(props.name);
-            //store_object_globally(name); --> how?
-            //properties.name = c_string.unwrap(name).as_ptr();
+            properties.name = ADAPTER_NAMES
+                .lock()
+                .unwrap()
+                .entry(adapter)
+                .or_insert_with(|| CString::new((&props.name) as &str).unwrap())
+                .as_ptr();
             properties.vendorID = props.vendor as u32;
             properties.deviceID = props.device as u32;
             properties.adapterType = match props.device_type {
