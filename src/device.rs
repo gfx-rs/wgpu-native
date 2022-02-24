@@ -1,11 +1,11 @@
 use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module};
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel, GLOBAL};
 use lazy_static::lazy_static;
-use std::ffi::CString;
 use std::{
     borrow::Cow,
     collections::HashMap,
     convert::TryInto,
+    ffi::CString,
     marker::PhantomData,
     num::{NonZeroU32, NonZeroU64, NonZeroU8},
     path::Path,
