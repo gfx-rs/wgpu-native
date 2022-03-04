@@ -44,7 +44,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
             &wgt::RequestAdapterOptions {
                 power_preference,
                 compatible_surface,
-                force_fallback_adapter: false,
+                force_fallback_adapter: options.forceFallbackAdapter,
             },
             wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
         )
