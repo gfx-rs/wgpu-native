@@ -205,6 +205,15 @@ unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuCreateInstance(
+    _: *const native::WGPUInstanceDescriptor
+) -> native::WGPUInstance {
+    // Rationale: See https://github.com/gfx-rs/wgpu-native/issues/116
+    // Because WGPUInstance is an opaque type this library controls and does not define the contents of, this is safe.
+    8 as native::WGPUInstance
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     _: native::WGPUInstance,
     descriptor: *const native::WGPUSurfaceDescriptor,
