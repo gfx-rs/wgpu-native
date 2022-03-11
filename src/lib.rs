@@ -221,7 +221,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     follow_chain!(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
-            WGPUSType_SurfaceDescriptorFromXlib => native::WGPUSurfaceDescriptorFromXlib,
+            WGPUSType_SurfaceDescriptorFromXlibWindow => native::WGPUSurfaceDescriptorFromXlibWindow,
             WGPUSType_SurfaceDescriptorFromWaylandSurface => native::WGPUSurfaceDescriptorFromWaylandSurface,
             WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer,
             WGPUSType_SurfaceDescriptorFromAndroidNativeWindow => native::WGPUSurfaceDescriptorFromAndroidNativeWindow)
@@ -235,7 +235,7 @@ pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id
 unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
     _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    _x11: Option<&native::WGPUSurfaceDescriptorFromXlib>,
+    _x11: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
     _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,

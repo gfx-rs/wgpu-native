@@ -87,11 +87,11 @@ int main() {
         &(WGPUSurfaceDescriptor){
             .label = NULL,
             .nextInChain =
-                (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromXlib){
+                (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromXlibWindow){
                     .chain =
                         (WGPUChainedStruct){
                             .next = NULL,
-                            .sType = WGPUSType_SurfaceDescriptorFromXlib,
+                            .sType = WGPUSType_SurfaceDescriptorFromXlibWindow,
                         },
                     .display = x11_display,
                     .window = x11_window,
@@ -309,7 +309,7 @@ int main() {
                              .resolveTarget = 0,
                              .loadOp = WGPULoadOp_Clear,
                              .storeOp = WGPUStoreOp_Store,
-                             .clearColor =
+                             .clearValue =
                                  (WGPUColor){
                                      .r = 0.0,
                                      .g = 1.0,
@@ -323,7 +323,7 @@ int main() {
 
     wgpuRenderPassEncoderSetPipeline(renderPass, pipeline);
     wgpuRenderPassEncoderDraw(renderPass, 3, 1, 0, 0);
-    wgpuRenderPassEncoderEndPass(renderPass);
+    wgpuRenderPassEncoderEnd(renderPass);
 
     WGPUQueue queue = wgpuDeviceGetQueue(device);
     WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(
