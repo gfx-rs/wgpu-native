@@ -112,13 +112,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
             depth: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
-                clear_value: desc.clearDepth,
+                clear_value: desc.depthClearValue,
                 read_only: desc.depthReadOnly,
             },
             stencil: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.stencilLoadOp),
                 store_op: conv::map_store_op(desc.stencilStoreOp),
-                clear_value: desc.clearStencil,
+                clear_value: desc.stencilClearValue,
                 read_only: desc.stencilReadOnly,
             },
         }
@@ -137,7 +137,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 channel: wgc::command::PassChannel {
                     load_op: conv::map_load_op(color_attachment.loadOp),
                     store_op: conv::map_store_op(color_attachment.storeOp),
-                    clear_value: conv::map_color(&color_attachment.clearColor),
+                    clear_value: conv::map_color(&color_attachment.clearValue),
                     read_only: false,
                 },
             })
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderEndPass(pass: id::ComputePassEncoderId) {
+pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: id::ComputePassEncoderId) {
     let pass = Box::from_raw(pass);
     let encoder_id = pass.parent_id();
     gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, &pass))
@@ -158,7 +158,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEndPass(pass: id::ComputePassEnco
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderEndPass(pass: id::RenderPassEncoderId) {
+pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: id::RenderPassEncoderId) {
     let pass = Box::from_raw(pass);
     let encoder_id = pass.parent_id();
     gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, &pass))
@@ -223,12 +223,17 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderDispatch(
     pass: id::ComputePassEncoderId,
-    x: u32,
-    y: u32,
-    z: u32,
+    workgroup_count_x: u32,
+    workgroup_count_y: u32,
+    workgroup_count_z: u32,
 ) {
     let pass = pass.as_mut().expect("Compute pass invalid");
-    compute_ffi::wgpu_compute_pass_dispatch(pass, x, y, z);
+    compute_ffi::wgpu_compute_pass_dispatch(
+        pass,
+        workgroup_count_x,
+        workgroup_count_y,
+        workgroup_count_z,
+    );
 }
 
 #[no_mangle]

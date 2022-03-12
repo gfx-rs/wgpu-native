@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
                            .resolveTarget = 0,
                            .loadOp = WGPULoadOp_Clear,
                            .storeOp = WGPUStoreOp_Store,
-                           .clearColor =
+                           .clearValue =
                                (WGPUColor){
                                    .r = 1.0,
                                    .g = 0.0,
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
                    .colorAttachmentCount = 1,
                    .depthStencilAttachment = NULL,
                });
-  wgpuRenderPassEncoderEndPass(renderPass);
+  wgpuRenderPassEncoderEnd(renderPass);
 
   wgpuCommandEncoderCopyTextureToBuffer(
       encoder,
