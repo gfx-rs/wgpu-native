@@ -15,6 +15,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 - [porky11/wgpu](https://gitlab.com/scopes-libraries/wgpu) - experimental [Scopes](http://scopes.rocks) wrapper
 - [cshenton/WebGPU.jl](https://github.com/cshenton/WebGPU.jl) - experimental Julia wrapper
 - [kgpu/wgpuj](https://github.com/kgpu/kgpu/tree/master/wgpuj) - Java/Kotlin wrapper
+- [rajveermalviya/go-webgpu](https://github.com/rajveermalviya/go-webgpu) - Go wrapper
 
 Note: the version numbers of `wgpu-native` are not aligned with versions of `wgpu` or other crates!
 
