@@ -206,7 +206,7 @@ unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
 
 #[no_mangle]
 pub extern "C" fn wgpuCreateInstance(
-    _descriptor: *const native::WGPUInstanceDescriptor
+    _descriptor: *const native::WGPUInstanceDescriptor,
 ) -> native::WGPUInstance {
     // Rationale: See https://github.com/gfx-rs/wgpu-native/issues/116
     // Because WGPUInstance is an opaque type this library controls and does not define the contents of, this is safe.
@@ -221,6 +221,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     follow_chain!(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
+            WGPUSType_SurfaceDescriptorFromXcbWindow => native::WGPUSurfaceDescriptorFromXcbWindow,
             WGPUSType_SurfaceDescriptorFromXlibWindow => native::WGPUSurfaceDescriptorFromXlibWindow,
             WGPUSType_SurfaceDescriptorFromWaylandSurface => native::WGPUSurfaceDescriptorFromWaylandSurface,
             WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer,
@@ -235,7 +236,8 @@ pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id
 unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
     _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    _x11: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
+    _xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
+    _xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
     _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
@@ -255,10 +257,18 @@ unsafe fn map_surface(
         not(target_os = "macos")
     ))]
     {
-        if let Some(x11) = _x11 {
+        if let Some(xcb) = _xcb {
+            let mut handle = raw_window_handle::XcbHandle::empty();
+            handle.connection = xcb.connection;
+            handle.window = xcb.window;
+
+            return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xcb(handle));
+        }
+
+        if let Some(xlib) = _xlib {
             let mut handle = raw_window_handle::XlibHandle::empty();
-            handle.window = x11.window as _;
-            handle.display = x11.display as *mut _;
+            handle.window = xlib.window as _;
+            handle.display = xlib.display;
 
             return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(handle));
         }

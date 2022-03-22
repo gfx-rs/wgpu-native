@@ -851,7 +851,7 @@ pub extern "C" fn wgpuDeviceCreateSampler(
         ],
         mag_filter: conv::map_filter_mode(descriptor.magFilter),
         min_filter: conv::map_filter_mode(descriptor.minFilter),
-        mipmap_filter: conv::map_filter_mode(descriptor.mipmapFilter),
+        mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter),
         lod_min_clamp: descriptor.lodMinClamp,
         lod_max_clamp: descriptor.lodMaxClamp,
         compare: conv::map_compare_function(descriptor.compare).ok(),

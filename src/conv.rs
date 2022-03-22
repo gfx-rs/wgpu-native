@@ -37,6 +37,14 @@ map_enum!(
     Linear
 );
 map_enum!(
+    map_mipmap_filter_mode,
+    WGPUMipmapFilterMode,
+    wgt::FilterMode,
+    "Unknown mipmap filter mode",
+    Nearest,
+    Linear
+);
+map_enum!(
     map_compare_function,
     WGPUCompareFunction,
     wgt::CompareFunction,
