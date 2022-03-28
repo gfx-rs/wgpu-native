@@ -71,7 +71,7 @@ package: lib-native lib-native-release
 		if [ $(OS_NAME) = windows ]; then \
 			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).dll $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).dll; \
 			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).dll.lib $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).lib; \
-			7z a -tzip dist/$$ARCHIVE ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./target/$$RELEASE/$(FINAL_LIB_NAME).lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			7z a -tzip dist/$$ARCHIVE ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		else \
 			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION) $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION); \
 			zip -j dist/$$ARCHIVE $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
@@ -97,7 +97,7 @@ clear:
 
 lib-native: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build $(EXTRA_BUILD_ARGS)
-	
+
 lib-native-release: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build --release $(EXTRA_BUILD_ARGS)
 
