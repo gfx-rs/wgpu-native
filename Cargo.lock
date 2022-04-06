@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "ash"
-version = "0.33.3+1.2.191"
+version = "0.37.0+1.3.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc4f1d82f164f838ae413296d1131aa6fa79b917d25bebaa7033d25620c09219"
+checksum = "006ca68e0f2b03f22d6fa9f2860f85aed430d257fec20f8879b2145e7c7ae1a6"
 dependencies = [
  "libloading",
 ]
@@ -260,8 +260,7 @@ checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
 [[package]]
 name = "d3d12"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2daefd788d1e96e0a9d66dee4b828b883509bc3ea9ce30665f04c3246372690c"
+source = "git+https://github.com/gfx-rs/d3d12-rs.git?rev=ffe5e261da0a6cb85332b82ab310abd2a7e849f6#ffe5e261da0a6cb85332b82ab310abd2a7e849f6"
 dependencies = [
  "bitflags",
  "libloading",
@@ -329,8 +328,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "glow"
-version = "0.11.1"
-source = "git+https://github.com/grovesNL/glow?rev=5851ca6#5851ca65e6b6f4f2c59683245c07de1843c85452"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8bd5877156a19b8ac83a29b2306fe20537429d318f3ff0a1a2119f8d9c61919"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -464,6 +464,7 @@ checksum = "8c2352bd1d0bceb871cb9d40f24360c8133c11d7486b68b5381c1dd1a32015e3"
 dependencies = [
  "libc",
  "libloading",
+ "pkg-config",
 ]
 
 [[package]]
@@ -530,8 +531,7 @@ checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 [[package]]
 name = "metal"
 version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0514f491f4cc03632ab399ee01e2c1c1b12d3e1cf2d667c1ff5f87d6dcd2084"
+source = "git+https://github.com/gfx-rs/metal-rs?rev=1aaa903#1aaa9033a22b2af7ff8cae2ed412a4733799c3d3"
 dependencies = [
  "bitflags",
  "block",
@@ -552,8 +552,8 @@ dependencies = [
 
 [[package]]
 name = "naga"
-version = "0.7.1"
-source = "git+https://github.com/gfx-rs/naga?rev=8ffd6ba#8ffd6ba929b4b93c9564f08fe8bb34b23fa72a6f"
+version = "0.8.0"
+source = "git+https://github.com/gfx-rs/naga?rev=f90e563#f90e563c281cfc71c794e0426ebcced9e3999202"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -653,6 +653,12 @@ dependencies = [
  "fixedbitset",
  "indexmap",
 ]
+
+[[package]]
+name = "pkg-config"
+version = "0.3.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1df8c4ec4b0627e53bdf214615ad287367e482558cf84b109250b37464dc03ae"
 
 [[package]]
 name = "png"
@@ -956,8 +962,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=ec1d022#ec1d022a75898a3bc4e03589471d0ba7facc066c"
+version = "0.12.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=988990c#988990c24d0933c82cdd661708a3f5bcb4533ea3"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -980,8 +986,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.11.2"
-source = "git+https://github.com/gfx-rs/wgpu?rev=ec1d022#ec1d022a75898a3bc4e03589471d0ba7facc066c"
+version = "0.12.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=988990c#988990c24d0933c82cdd661708a3f5bcb4533ea3"
 dependencies = [
  "arrayvec",
  "ash",
@@ -1032,8 +1038,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.11.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=ec1d022#ec1d022a75898a3bc4e03589471d0ba7facc066c"
+version = "0.12.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=988990c#988990c24d0933c82cdd661708a3f5bcb4533ea3"
 dependencies = [
  "bitflags",
  "bitflags_serde_shim",
