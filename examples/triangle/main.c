@@ -175,6 +175,11 @@ int main() {
                           .maxBindGroups = 1,
                       },
               },
+          .defaultQueue =
+            (WGPUQueueDescriptor){
+                .nextInChain = NULL,
+                .label = NULL,
+            },
       },
       request_device_callback, (void *)&device);
 

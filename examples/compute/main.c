@@ -29,7 +29,7 @@ int main() {
                   .chain =
                       (WGPUChainedStruct){
                           .next = NULL,
-                          .sType = WGPUSType_DeviceExtras,
+                          .sType = (WGPUSType)WGPUSType_DeviceExtras,
                       },
 
                   .label = "Device",
@@ -43,6 +43,11 @@ int main() {
                           .maxBindGroups = 1,
                       },
               },
+          .defaultQueue =
+            (WGPUQueueDescriptor){
+                .nextInChain = NULL,
+                .label = NULL,
+            },
       },
       request_device_callback, (void *)&device);
 
