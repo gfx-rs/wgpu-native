@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
                   .chain =
                       (WGPUChainedStruct){
                           .next = NULL,
-                          .sType = WGPUSType_DeviceExtras,
+                          .sType = (WGPUSType)WGPUSType_DeviceExtras,
                       },
                   .label = "Device",
                   .tracePath = NULL,
@@ -39,6 +39,11 @@ int main(int argc, char *argv[]) {
                           .maxBindGroups = 1,
                       },
               },
+          .defaultQueue =
+            (WGPUQueueDescriptor){
+                .nextInChain = NULL,
+                .label = NULL,
+            },
       },
       request_device_callback, (void *)&device);
 
