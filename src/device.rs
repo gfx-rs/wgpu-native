@@ -782,6 +782,8 @@ pub extern "C" fn wgpuSwapChainPresent(swap_chain: id::SurfaceId) {
     let device_id = get_device_from_surface(surface_id);
     gfx_select!(device_id => GLOBAL.surface_present(surface_id))
         .expect("Unable to present swap chain");
+    #[cfg(debug_assertions)]
+    log::debug!("Memory report: {:?}", GLOBAL.generate_report());
 }
 
 #[no_mangle]
