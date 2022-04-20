@@ -26,6 +26,21 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
+    command_encoder: id::CommandEncoderId,
+    buffer: id::BufferId,
+    offset: u64,
+    size: u64,
+) {
+    gfx_select!(command_encoder => GLOBAL.command_encoder_clear_buffer(
+        command_encoder,
+        buffer,
+        offset,
+        NonZeroU64::new(size)))
+    .expect("Unable to clear buffer")
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
     command_encoder: id::CommandEncoderId,
     source: id::BufferId,
