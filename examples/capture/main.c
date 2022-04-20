@@ -2,8 +2,12 @@
 #include "helper.h"
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
+#include "unused.h"
 
 int main(int argc, char *argv[]) {
+  UNUSED(argc);
+  UNUSED(argv);
+
   initializeLog();
 
   int width = 100;
