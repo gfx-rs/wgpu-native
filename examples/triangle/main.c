@@ -2,6 +2,7 @@
 #include "wgpu.h"
 
 #include "framework.h"
+#include "unused.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -29,11 +30,15 @@
 
 static void handle_device_lost(WGPUDeviceLostReason reason, char const * message, void * userdata)
 {
+  UNUSED(userdata);
+
   printf("DEVICE LOST (%d): %s\n", reason, message);
 }
 
 static void handle_uncaptured_error(WGPUErrorType type, char const * message, void * userdata)
 {
+  UNUSED(userdata);
+
   printf("UNCAPTURED ERROR (%d): %s\n", type, message);
 }
 
