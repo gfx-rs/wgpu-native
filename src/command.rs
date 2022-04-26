@@ -365,7 +365,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     let pass = pass.as_mut().expect("Render pass invalid");
     render_ffi::wgpu_render_pass_set_push_constants(
         pass,
-        wgt::ShaderStages::from_bits(stages).expect("Invalid shader stage"),
+        wgt::ShaderStages::from_bits(stages as u32).expect("Invalid shader stage"),
         offset,
         size_bytes,
         size,
