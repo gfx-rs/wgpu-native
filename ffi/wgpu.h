@@ -7,10 +7,13 @@ typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
     WGPUSType_AdapterExtras = 0x60000002,
+    WGPUSType_RequiredLimitsExtras = 0x60000003,
+    WGPUSType_PipelineLayoutExtras = 0x60000004,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
 typedef enum WGPUNativeFeature {
+    WGPUNativeFeature_PUSH_CONSTANTS = 0x04000000,
     WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x10000000
 } WGPUNativeFeature;
 
@@ -35,6 +38,23 @@ typedef struct WGPUDeviceExtras {
     const char* label;
     const char* tracePath;
 } WGPUDeviceExtras;
+
+typedef struct WGPURequiredLimitsExtras {
+    WGPUChainedStruct chain;
+    uint32_t maxPushConstantSize;
+} WGPURequiredLimitsExtras;
+
+typedef struct WGPUPushConstantRange {
+    WGPUShaderStageFlags stages;
+    uint32_t start;
+    uint32_t end;
+} WGPUPushConstantRange;
+
+typedef struct WGPUPipelineLayoutExtras {
+    WGPUChainedStruct chain;
+    uint32_t pushConstantRangeCount;
+    WGPUPushConstantRange* pushConstantRanges;
+} WGPUPipelineLayoutExtras;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 

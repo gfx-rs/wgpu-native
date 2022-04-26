@@ -1,7 +1,8 @@
-use crate::{make_slice, map_enum, native, Label, OwnedLabel};
+use crate::{make_slice, map_enum, native, Label, OwnedLabel, follow_chain};
 use naga;
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32};
 use wgc::{id, pipeline::ShaderModuleSource};
+use wgt::{PushConstantRange};
 
 map_enum!(
     map_load_op,
@@ -203,9 +204,12 @@ pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
-    let native_limits = unsafe { (*des.requiredLimits).limits };
+    let required_limits = unsafe { *des.requiredLimits };
     let mut features = wgt::Features::empty();
-    let limits = map_limits(native_limits);
+    let limits = unsafe { follow_chain!(
+        map_required_limits(required_limits,
+        WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+    ) };
     if let Some(extras) = extras {
         // Handle native features speficied in extras
         if (extras.nativeFeatures
@@ -214,10 +218,16 @@ pub fn map_device_descriptor<'a>(
         {
             features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         }
+        if (extras.nativeFeatures
+            & native::WGPUNativeFeature_PUSH_CONSTANTS)
+            > 0
+        {
+            features |= wgt::Features::PUSH_CONSTANTS
+        }
         return (
             wgt::DeviceDescriptor {
                 label: OwnedLabel::new(extras.label).into_cow(),
-                features: features,
+                features,
                 limits,
             },
             OwnedLabel::new(extras.tracePath).into_inner(),
@@ -234,7 +244,40 @@ pub fn map_device_descriptor<'a>(
     }
 }
 
-pub fn map_limits(limits: native::WGPULimits) -> wgt::Limits {
+pub fn map_pipeline_layout_descriptor<'a>(
+    des: &native::WGPUPipelineLayoutDescriptor,
+    extras: Option<&native::WGPUPipelineLayoutExtras>,
+) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
+    let mut push_constant_ranges: Vec<PushConstantRange> = Vec::new();
+
+    if let Some(extras) = extras {
+        for i in 0..extras.pushConstantRangeCount {
+            let range = unsafe { *extras.pushConstantRanges.offset(i as isize) as native::WGPUPushConstantRange };
+            push_constant_ranges.push(wgt::PushConstantRange {
+                stages: wgt::ShaderStages::from_bits(range.stages).expect("Invalid shader stage"),
+                range: core::ops::Range {
+                    start: range.start,
+                    end: range.end,
+                },
+            });
+        }
+    }
+
+    return wgc::binding_model::PipelineLayoutDescriptor {
+        label: OwnedLabel::new(des.label).into_cow(),
+        bind_group_layouts: unsafe { Cow::Borrowed(make_slice(
+            des.bindGroupLayouts,
+            des.bindGroupLayoutCount as usize,
+        )) },
+        push_constant_ranges: Cow::from(push_constant_ranges),
+    };
+}
+
+pub fn map_required_limits(
+    required_limits: native::WGPURequiredLimits,
+    extras: Option<&native::WGPURequiredLimitsExtras>,
+) -> wgt::Limits {
+    let limits = required_limits.limits;
     let mut wgt_limits = wgt::Limits::default();
     if limits.maxTextureDimension1D != 0 {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
@@ -320,6 +363,11 @@ pub fn map_limits(limits: native::WGPULimits) -> wgt::Limits {
         wgt_limits.yyyy = limits.maxComputeWorkgroupsPerDimension;
     }
     */
+    if let Some(extras) = extras {
+        if extras.maxPushConstantSize != 0 {
+            wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
+        }
+    }
     return wgt_limits;
 }
 
