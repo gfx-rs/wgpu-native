@@ -214,6 +214,14 @@ pub extern "C" fn wgpuCreateInstance(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuGetResourceUsageString() -> *const std::os::raw::c_char {
+    let c_string = CString::new(format!("{:?}", GLOBAL.generate_report())).unwrap();
+    let ptr = c_string.as_ptr();
+    std::mem::forget(c_string);
+    ptr
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     _: native::WGPUInstance,
     descriptor: *const native::WGPUSurfaceDescriptor,
