@@ -1,5 +1,6 @@
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
+#include "unused.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -31,16 +32,26 @@ WGPUShaderModuleDescriptor load_wgsl(const char *name) {
 void request_adapter_callback(WGPURequestAdapterStatus status,
                               WGPUAdapter received, const char *message,
                               void *userdata) {
+  UNUSED(status);
+  UNUSED(message);
+
   *(WGPUAdapter *)userdata = received;
 }
 
 void request_device_callback(WGPURequestDeviceStatus status,
                              WGPUDevice received, const char *message,
                              void *userdata) {
+  UNUSED(status);
+  UNUSED(message);
+
   *(WGPUDevice *)userdata = received;
 }
 
-void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata) {}
+void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata)
+{
+  UNUSED(status);
+  UNUSED(userdata);
+}
 
 void logCallback(WGPULogLevel level, const char *msg) {
   char *level_str;

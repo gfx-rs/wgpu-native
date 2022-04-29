@@ -1,4 +1,4 @@
-use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module};
+use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module, map_pipeline_layout_descriptor};
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel, GLOBAL};
 use lazy_static::lazy_static;
 use std::{
@@ -410,14 +410,11 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     device: id::DeviceId,
     descriptor: &native::WGPUPipelineLayoutDescriptor,
 ) -> Option<id::PipelineLayoutId> {
-    let desc = wgc::binding_model::PipelineLayoutDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
-        bind_group_layouts: Cow::Borrowed(make_slice(
-            descriptor.bindGroupLayouts,
-            descriptor.bindGroupLayoutCount as usize,
-        )),
-        push_constant_ranges: Cow::Borrowed(&[]),
-    };
+    let desc = follow_chain!(
+        map_pipeline_layout_descriptor(
+            descriptor,
+            WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
+    );
     let (id, error) =
         gfx_select!(device => GLOBAL.device_create_pipeline_layout(device, &desc, PhantomData));
     if let Some(error) = error {
