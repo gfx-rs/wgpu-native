@@ -70,6 +70,9 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
+// Returns resource usage C string; caller owns the string and must free() it
+char* wgpuGetResourceUsageString();
+
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
 void wgpuBufferDrop(WGPUBuffer buffer);
