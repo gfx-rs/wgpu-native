@@ -74,6 +74,11 @@ uint32_t wgpuGetVersion(void);
 char* wgpuGetResourceUsageString();
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
+void wgpuRenderPassEncoderInsertDebugMarkerColor(WGPURenderPassEncoder renderPassEncoder, char const * markerLabel, uint32_t color);
+void wgpuRenderPassEncoderPushDebugGroupColor(WGPURenderPassEncoder renderPassEncoder, char const * groupLabel, uint32_t color);
+
+void wgpuComputePassEncoderInsertDebugMarkerColor(WGPUComputePassEncoder computePassEncoder, char const * markerLabel, uint32_t color);
+void wgpuComputePassEncoderPushDebugGroupColor(WGPUComputePassEncoder computePassEncoder, char const * groupLabel, uint32_t color);
 
 void wgpuBufferDrop(WGPUBuffer buffer);
 void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);

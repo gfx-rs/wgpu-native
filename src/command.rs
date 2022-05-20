@@ -1,5 +1,7 @@
 use crate::{conv, make_slice, native, OwnedLabel, GLOBAL};
 use std::{borrow::Cow, num::NonZeroU64};
+use std::ffi::CStr;
+use std::os::raw::c_char;
 use wgc::{
     command::{compute_ffi, render_ffi},
     gfx_select, id,
@@ -165,6 +167,24 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderInsertDebugMarker(encoder: id::CommandEncoderId, label: *const c_char) {
+    gfx_select!(encoder => GLOBAL.command_encoder_insert_debug_marker(encoder, CStr::from_ptr(label).to_str().unwrap()))
+        .expect("Unable to insert debug marker");
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuCommandEncoderPopDebugGroup(encoder: id::CommandEncoderId) {
+    gfx_select!(encoder => GLOBAL.command_encoder_pop_debug_group(encoder))
+        .expect("Unable to pop debug group");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(encoder: id::CommandEncoderId, label: *const c_char) {
+    gfx_select!(encoder => GLOBAL.command_encoder_push_debug_group(encoder, CStr::from_ptr(label).to_str().unwrap()))
+        .expect("Unable to push debug group");
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: id::ComputePassEncoderId) {
     let pass = Box::from_raw(pass);
     let encoder_id = pass.parent_id();
@@ -259,6 +279,36 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchIndirect(
 ) {
     let pass = pass.as_mut().expect("Compute pass invalid");
     compute_ffi::wgpu_compute_pass_dispatch_indirect(pass, indirect_buffer, indirect_offset);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderInsertDebugMarker(pass: id::ComputePassEncoderId, label: *const c_char) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_insert_debug_marker(pass, label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderInsertDebugMarkerColor(pass: id::ComputePassEncoderId, label: *const c_char, color: u32) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_insert_debug_marker(pass, label, color);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderPopDebugGroup(pass: id::ComputePassEncoderId) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_pop_debug_group(pass);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroup(pass: id::ComputePassEncoderId, label: *const c_char) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_push_debug_group(pass, label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroupColor(pass: id::ComputePassEncoderId, label: *const c_char, color: u32) {
+    let pass = pass.as_mut().expect("Compute pass invalid");
+    compute_ffi::wgpu_compute_pass_push_debug_group(pass, label, color);
 }
 
 #[no_mangle]
@@ -414,4 +464,34 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
 ) {
     let pass = pass.as_mut().expect("Render pass invalid");
     render_ffi::wgpu_render_pass_set_scissor_rect(pass, x, y, w, h);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarker(pass: id::RenderPassEncoderId, label: *const c_char) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_insert_debug_marker(pass, label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarkerColor(pass: id::RenderPassEncoderId, label: *const c_char, color: u32) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_insert_debug_marker(pass, label, color);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderPopDebugGroup(pass: id::RenderPassEncoderId) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_pop_debug_group(pass);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(pass: id::RenderPassEncoderId, label: *const c_char) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_push_debug_group(pass, label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroupColor(pass: id::RenderPassEncoderId, label: *const c_char, color: u32) {
+    let pass = pass.as_mut().expect("Render pass invalid");
+    render_ffi::wgpu_render_pass_push_debug_group(pass, label, color);
 }
