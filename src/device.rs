@@ -59,7 +59,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     adapter: id::AdapterId,
     descriptor: &native::WGPUDeviceDescriptor,
     callback: native::WGPURequestDeviceCallback,
-    userdata: *mut ::std::os::raw::c_void,
+    userdata: *mut std::os::raw::c_void,
 ) {
     let (desc, trace_str) = follow_chain!(
         map_device_descriptor(descriptor,
@@ -689,6 +689,19 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     }
 }
 
+#[no_mangle]
+pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(pipeline: id::RenderPipelineId, group_index: u32) -> Option<id::BindGroupLayoutId> {
+    let (id, error) = gfx_select!(pipeline => GLOBAL.render_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
+    if let Some(error) = error {
+        // TODO figure out what device the render pipeline belongs to and call
+        // handle_device_error()
+        log::error!("Failed to get render pipeline bind group layout: {:?}", error);
+        None
+    } else {
+        Some(id)
+    }
+}
+
 lazy_static! {
     static ref SURFACE_TO_DEVICE: Mutex<HashMap<id::SurfaceId, id::DeviceId>> =
         Mutex::new(HashMap::new());
@@ -864,6 +877,24 @@ pub extern "C" fn wgpuDeviceCreateSampler(
         gfx_select!(device => GLOBAL.device_create_sampler(device, &desc, PhantomData));
     if let Some(error) = error {
         handle_device_error(device, &error);
+        None
+    } else {
+        Some(id)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuDeviceDestroy(_device: id::DeviceId) {
+    // Empty implementation, maybe call drop?
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(pipeline: id::ComputePipelineId, group_index: u32) -> Option<id::BindGroupLayoutId> {
+    let (id, error) = gfx_select!(pipeline => GLOBAL.compute_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
+    if let Some(_) = error {
+        // TODO figure out what device the compute pipeline belongs to and call
+        // handle_device_error()
+        log::error!("Failed to get compute pipeline bind group layout: {:?}", error);
         None
     } else {
         Some(id)
