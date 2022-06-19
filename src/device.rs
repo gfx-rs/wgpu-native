@@ -1,4 +1,6 @@
-use crate::conv::{map_adapter_options, map_device_descriptor, map_shader_module, map_pipeline_layout_descriptor};
+use crate::conv::{
+    map_adapter_options, map_device_descriptor, map_pipeline_layout_descriptor, map_shader_module,
+};
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel, GLOBAL};
 use lazy_static::lazy_static;
 use std::{
@@ -482,7 +484,7 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
 ) {
     let command_buffer_ids = make_slice(commands, command_count as usize);
     gfx_select!(queue => GLOBAL.queue_submit(queue, command_buffer_ids))
-        .expect("Unable to submit queue")
+        .expect("Unable to submit queue");
 }
 
 #[no_mangle]
@@ -535,8 +537,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             x => panic!("Unknown map mode: {}", x),
         },
         // TODO: Change wgpu-core to follow new API
-        callback: std::mem::transmute(callback.expect("Callback cannot be null")),
-        user_data,
+        callback: wgc::resource::BufferMapCallback::from_c(wgc::resource::BufferMapCallbackC {
+            callback: std::mem::transmute(callback.expect("Callback cannot be null")),
+            user_data,
+        }),
     };
 
     gfx_select!(buffer => GLOBAL.buffer_map_async(buffer, offset as u64 .. (offset + size) as u64, operation))
@@ -545,7 +549,13 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDevicePoll(device: id::DeviceId, force_wait: bool) {
-    gfx_select!(device => GLOBAL.device_poll(device, force_wait)).expect("Unable to poll device")
+    gfx_select!(device => GLOBAL.device_poll(
+        device,
+        match force_wait {
+        true => wgt::Maintain::Wait,
+        false => wgt::Maintain::Poll,
+    }))
+    .expect("Unable to poll device");
 }
 
 #[no_mangle]
@@ -690,12 +700,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(pipeline: id::RenderPipelineId, group_index: u32) -> Option<id::BindGroupLayoutId> {
+pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
+    pipeline: id::RenderPipelineId,
+    group_index: u32,
+) -> Option<id::BindGroupLayoutId> {
     let (id, error) = gfx_select!(pipeline => GLOBAL.render_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
     if let Some(error) = error {
         // TODO figure out what device the render pipeline belongs to and call
         // handle_device_error()
-        log::error!("Failed to get render pipeline bind group layout: {:?}", error);
+        log::error!(
+            "Failed to get render pipeline bind group layout: {:?}",
+            error
+        );
         None
     } else {
         Some(id)
@@ -889,12 +905,18 @@ pub extern "C" fn wgpuDeviceDestroy(_device: id::DeviceId) {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(pipeline: id::ComputePipelineId, group_index: u32) -> Option<id::BindGroupLayoutId> {
+pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
+    pipeline: id::ComputePipelineId,
+    group_index: u32,
+) -> Option<id::BindGroupLayoutId> {
     let (id, error) = gfx_select!(pipeline => GLOBAL.compute_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
     if let Some(_) = error {
         // TODO figure out what device the compute pipeline belongs to and call
         // handle_device_error()
-        log::error!("Failed to get compute pipeline bind group layout: {:?}", error);
+        log::error!(
+            "Failed to get compute pipeline bind group layout: {:?}",
+            error
+        );
         None
     } else {
         Some(id)

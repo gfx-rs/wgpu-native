@@ -128,7 +128,7 @@ int main() {
 
   wgpuComputePassEncoderSetPipeline(computePass, computePipeline);
   wgpuComputePassEncoderSetBindGroup(computePass, 0, bindGroup, 0, NULL);
-  wgpuComputePassEncoderDispatch(computePass, numbersLength, 1, 1);
+  wgpuComputePassEncoderDispatchWorkgroups(computePass, numbersLength, 1, 1);
   wgpuComputePassEncoderEnd(computePass);
   wgpuCommandEncoderCopyBufferToBuffer(encoder, storageBuffer, 0, stagingBuffer,
                                        0, numbersSize);

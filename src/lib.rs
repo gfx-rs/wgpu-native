@@ -311,9 +311,13 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: id::SurfaceId,
     adapter: id::AdapterId,
 ) -> native::WGPUTextureFormat {
-    let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_preferred_format(surface, adapter))
+    let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
     {
-        Ok(format) => conv::to_native_texture_format(format),
+        Ok(formats) => conv::to_native_texture_format(
+            *formats
+                .first()
+                .expect("Could not get preferred swap chain format"),
+        ),
         Err(err) => panic!("Could not get preferred swap chain format: {}", err),
     };
     return preferred_format;
