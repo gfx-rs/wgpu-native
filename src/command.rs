@@ -9,14 +9,15 @@ use wgc::{
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderFinish(
-    encoder: id::CommandEncoderId,
+    command_encoder: id::CommandEncoderId,
     descriptor: &native::WGPUCommandBufferDescriptor,
 ) -> Option<id::CommandBufferId> {
     let desc = wgt::CommandBufferDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
     };
 
-    let (id, error) = gfx_select!(encoder => GLOBAL.command_encoder_finish(encoder, &desc));
+    let (id, error) =
+        gfx_select!(command_encoder => GLOBAL.command_encoder_finish(command_encoder, &desc));
     if let Some(error) = error {
         // TODO figure out what device the encoder belongs to and call
         // handle_device_error()
@@ -108,13 +109,13 @@ pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
-    encoder: id::CommandEncoderId,
+    command_encoder: id::CommandEncoderId,
     descriptor: &native::WGPUComputePassDescriptor,
 ) -> id::ComputePassEncoderId {
     let desc = wgc::command::ComputePassDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
     };
-    let pass = wgc::command::ComputePass::new(encoder, &desc);
+    let pass = wgc::command::ComputePass::new(command_encoder, &desc);
     Box::into_raw(Box::new(pass))
 }
 
