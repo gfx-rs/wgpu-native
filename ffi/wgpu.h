@@ -69,6 +69,19 @@ typedef struct WGPUPipelineLayoutExtras {
     WGPUPushConstantRange* pushConstantRanges;
 } WGPUPipelineLayoutExtras;
 
+typedef struct WGPUShaderDefine {
+    char const * name;
+    char const * value;
+} WGPUShaderDefine;
+
+typedef struct WGPUShaderModuleGLSLDescriptor {
+    WGPUChainedStruct chain;
+    WGPUShaderStageFlags stage;
+    char const * code;
+    uint32_t defineCount;
+    WGPUShaderDefine* defines;
+} WGPUShaderModuleGLSLDescriptor;
+
 typedef uint64_t WGPUSubmissionIndex;
 
 typedef struct WGPUWrappedSubmissionIndex {
