@@ -172,6 +172,15 @@ map_enum!(
     Sint32x4
 );
 
+map_enum!(
+    map_shader_stage,
+    WGPUShaderStage,
+    naga::ShaderStage,
+    Vertex,
+    Fragment,
+    Compute
+);
+
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
         width: native.width,
@@ -371,6 +380,7 @@ pub fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
     spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
     wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
+    glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>
 ) -> ShaderModuleSource<'a> {
     if let Some(wgsl) = wgsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
@@ -386,6 +396,25 @@ pub fn map_shader_module<'a>(
         };
         let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
         let module = parser.parse().unwrap();
+        ShaderModuleSource::Naga(module)
+    } else if let Some(glsl) = glsl {
+        let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
+        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        let mut options = naga::front::glsl::Options::from(map_shader_stage(glsl.stage).expect("Unknown shader stage"));
+
+        let raw_defines = unsafe { slice::from_raw_parts(glsl.defines, glsl.defineCount as usize) };
+        for define in raw_defines {
+            let name_c_str: &CStr = unsafe { CStr::from_ptr(define.name) };
+            let name_str_slice: &str = name_c_str.to_str().expect("not a valid utf-8 string");
+
+            let value_c_str: &CStr = unsafe { CStr::from_ptr(define.value) };
+            let value_str_slice: &str = value_c_str.to_str().expect("not a valid utf-8 string");
+
+            options.defines.insert(String::from(name_str_slice), String::from(value_str_slice));
+        }
+
+        let mut parser = naga::front::glsl::Parser::default();
+        let module = parser.parse(&options, str_slice).unwrap();
         ShaderModuleSource::Naga(module)
     } else {
         panic!("Shader not provided.");

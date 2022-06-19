@@ -47,7 +47,7 @@ thiserror = "1"
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
 rev = "f90e563"
-features = ["spv-in"]
+features = ["spv-in", "glsl-in"]
 
 [build-dependencies]
 bindgen = "0.58.1"
