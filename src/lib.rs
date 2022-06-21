@@ -323,6 +323,31 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     return preferred_format;
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
+    surface: id::SurfaceId,
+    adapter: id::AdapterId,
+    count: Option<&mut usize>,
+) -> *const native::WGPUTextureFormat {
+    assert!(count.is_some(), "count must be non-null");
+
+    let native_formats = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
+    {
+        Ok(formats) => formats
+            .iter()
+            .map(|f| conv::to_native_texture_format(*f))
+            .collect::<Vec<native::WGPUTextureFormat>>(),
+        Err(err) => panic!("Could not get supported swap chain formats: {}", err),
+    };
+
+    if let Some(count) = count {
+        *count = native_formats.len();
+    }
+    let ptr = native_formats.as_ptr();
+    std::mem::forget(native_formats);
+    ptr
+}
+
 struct DeviceCallback<T> {
     callback: T,
     userdata: *mut std::os::raw::c_void,

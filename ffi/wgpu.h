@@ -73,6 +73,9 @@ uint32_t wgpuGetVersion(void);
 // Returns resource usage C string; caller owns the string and must free() it
 char* wgpuGetResourceUsageString();
 
+// Returns slice of supported texture formats; caller owns the formats slice and must free() it
+WGPUTextureFormat const * wgpuSurfaceGetSupportedFormats(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
+
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
 void wgpuBufferDrop(WGPUBuffer buffer);
