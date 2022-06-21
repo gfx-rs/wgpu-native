@@ -64,7 +64,7 @@ typedef struct WGPUShaderDefine {
 
 typedef struct WGPUShaderModuleGLSLDescriptor {
     WGPUChainedStruct chain;
-    WGPUShaderStageFlags stage;
+    WGPUShaderStage stage;
     char const * code;
     uint32_t defineCount;
     WGPUShaderDefine* defines;
