@@ -223,6 +223,12 @@ pub fn map_device_descriptor<'a>(
         {
             features |= wgt::Features::PUSH_CONSTANTS
         }
+        if (extras.nativeFeatures
+            & native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE)
+            > 0
+        {
+            features |= wgt::Features::VERTEX_WRITABLE_STORAGE;
+        }
         return (
             wgt::DeviceDescriptor {
                 label: OwnedLabel::new(extras.label).into_cow(),

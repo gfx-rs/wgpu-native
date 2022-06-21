@@ -14,7 +14,8 @@ typedef enum WGPUNativeSType {
 
 typedef enum WGPUNativeFeature {
     WGPUNativeFeature_PUSH_CONSTANTS = 0x04000000,
-    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x10000000
+    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x10000000,
+    WGPUNativeFeature_VERTEX_WRITABLE_STORAGE = 0x1000000000
 } WGPUNativeFeature;
 
 typedef enum WGPULogLevel {
