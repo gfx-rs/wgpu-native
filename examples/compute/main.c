@@ -141,7 +141,7 @@ int main() {
 
   wgpuBufferMapAsync(stagingBuffer, WGPUMapMode_Read, 0, numbersSize,
                      readBufferMap, NULL);
-  wgpuDevicePoll(device, true);
+  wgpuDevicePoll(device, true, NULL);
 
   uint32_t *times =
       (uint32_t *)wgpuBufferGetMappedRange(stagingBuffer, 0, numbersSize);

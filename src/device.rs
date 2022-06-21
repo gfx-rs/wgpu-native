@@ -488,6 +488,18 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
+    queue: id::QueueId,
+    command_count: u32,
+    commands: *const id::CommandBufferId,
+) -> native::WGPUSubmissionIndex {
+    let command_buffer_ids = make_slice(commands, command_count as usize);
+    let submission_index = gfx_select!(queue => GLOBAL.queue_submit(queue, command_buffer_ids))
+        .expect("Unable to submit queue");
+    submission_index.index
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuQueueWriteBuffer(
     queue: id::QueueId,
     buffer: id::BufferId,
@@ -536,7 +548,6 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             native::WGPUMapMode_None => panic!("Buffer map mode None is not supported."),
             x => panic!("Unknown map mode: {}", x),
         },
-        // TODO: Change wgpu-core to follow new API
         callback: wgc::resource::BufferMapCallback::from_c(wgc::resource::BufferMapCallbackC {
             callback: std::mem::transmute(callback.expect("Callback cannot be null")),
             user_data,
@@ -548,14 +559,25 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDevicePoll(device: id::DeviceId, force_wait: bool) {
-    gfx_select!(device => GLOBAL.device_poll(
-        device,
-        match force_wait {
-        true => wgt::Maintain::Wait,
+pub unsafe extern "C" fn wgpuDevicePoll(
+    device: id::DeviceId,
+    wait: bool,
+    wrapped_submission_index: Option<&native::WGPUWrappedSubmissionIndex>,
+) -> bool {
+    let maintain = match wait {
+        true => match wrapped_submission_index {
+            Some(index) => {
+                wgt::Maintain::WaitForSubmissionIndex(wgc::device::queue::WrappedSubmissionIndex {
+                    queue_id: index.queue,
+                    index: index.submissionIndex,
+                })
+            }
+            None => wgt::Maintain::Wait,
+        },
         false => wgt::Maintain::Poll,
-    }))
-    .expect("Unable to poll device");
+    };
+
+    gfx_select!(device => GLOBAL.device_poll(device, maintain)).expect("Unable to poll device")
 }
 
 #[no_mangle]

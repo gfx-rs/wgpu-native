@@ -56,13 +56,23 @@ typedef struct WGPUPipelineLayoutExtras {
     WGPUPushConstantRange* pushConstantRanges;
 } WGPUPipelineLayoutExtras;
 
+typedef uint64_t WGPUSubmissionIndex;
+
+typedef struct WGPUWrappedSubmissionIndex {
+    WGPUQueue queue;
+    WGPUSubmissionIndex submissionIndex;
+} WGPUWrappedSubmissionIndex;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void wgpuDevicePoll(WGPUDevice device, bool force_wait);
+WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
+
+// Returns true if the queue is empty, or false if there are more queue submissions still in flight.
+bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback);
 
