@@ -3,6 +3,15 @@
 
 #include "webgpu-headers/webgpu.h"
 
+// must be used to free the strings & slices returned by the library,
+// for other wgpu objects use appropriate drop functions.
+//
+// first parameter `type` has to be type of derefrenced value
+// for example ->
+//
+//      char* str = wgpuGetResourceUsageString();
+//      WGPU_FREE(char, str, 1); // notice `char` instead of `char *`
+//
 #define WGPU_FREE(type, ptr, count) wgpuFree(ptr, count * sizeof(type), _Alignof(type))
 
 typedef enum WGPUNativeSType {
@@ -108,7 +117,7 @@ void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 
-// should only be used for strings & slices returned by library,
+// must be used to free the strings & slices returned by the library,
 // for other wgpu objects use appropriate drop functions.
 void wgpuFree(void* ptr, size_t size, size_t align);
 
