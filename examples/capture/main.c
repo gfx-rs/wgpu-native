@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
 
   wgpuBufferMapAsync(outputBuffer, WGPUMapMode_Read, 0, bufferSize,
                      readBufferMap, NULL);
-  wgpuDevicePoll(device, true);
+  wgpuDevicePoll(device, true, NULL);
 
   uint8_t *data =
       (uint8_t *)wgpuBufferGetMappedRange(outputBuffer, 0, bufferSize);

@@ -3,6 +3,17 @@
 
 #include "webgpu-headers/webgpu.h"
 
+// must be used to free the strings & slices returned by the library,
+// for other wgpu objects use appropriate drop functions.
+//
+// first parameter `type` has to be type of derefrenced value
+// for example ->
+//
+//      char* str = wgpuGetResourceUsageString();
+//      WGPU_FREE(char, str, 1); // notice `char` instead of `char *`
+//
+#define WGPU_FREE(type, ptr, count) wgpuFree(ptr, count * sizeof(type), _Alignof(type))
+
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
@@ -57,6 +68,13 @@ typedef struct WGPUPipelineLayoutExtras {
     WGPUPushConstantRange* pushConstantRanges;
 } WGPUPipelineLayoutExtras;
 
+typedef uint64_t WGPUSubmissionIndex;
+
+typedef struct WGPUWrappedSubmissionIndex {
+    WGPUQueue queue;
+    WGPUSubmissionIndex submissionIndex;
+} WGPUWrappedSubmissionIndex;
+
 typedef struct WGPUShaderDefine {
     char const * name;
     char const * value;
@@ -76,7 +94,10 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 extern "C" {
 #endif
 
-void wgpuDevicePoll(WGPUDevice device, bool force_wait);
+WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
+
+// Returns true if the queue is empty, or false if there are more queue submissions still in flight.
+bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback);
 
@@ -84,8 +105,13 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
-// Returns resource usage C string; caller owns the string and must free() it
+// Returns resource usage C string
+// caller owns the string and must WGPU_FREE() it
 char* wgpuGetResourceUsageString();
+
+// Returns slice of supported texture formats
+// caller owns the formats slice and must WGPU_FREE() it
+WGPUTextureFormat const * wgpuSurfaceGetSupportedFormats(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
@@ -104,6 +130,10 @@ void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
 void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
+
+// must be used to free the strings & slices returned by the library,
+// for other wgpu objects use appropriate drop functions.
+void wgpuFree(void* ptr, size_t size, size_t align);
 
 #ifdef __cplusplus
 } // extern "C"

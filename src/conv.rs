@@ -1,5 +1,4 @@
-use crate::{make_slice, map_enum, native, Label, OwnedLabel, follow_chain};
-use naga;
+use crate::{follow_chain, make_slice, map_enum, native, Label, OwnedLabel};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
 use wgc::{id, pipeline::ShaderModuleSource};
 
@@ -214,10 +213,12 @@ pub fn map_device_descriptor<'a>(
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
     let required_limits = unsafe { *des.requiredLimits };
     let mut features = wgt::Features::empty();
-    let limits = unsafe { follow_chain!(
-        map_required_limits(required_limits,
-        WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
-    ) };
+    let limits = unsafe {
+        follow_chain!(
+            map_required_limits(required_limits,
+            WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+        )
+    };
     if let Some(extras) = extras {
         // Handle native features speficied in extras
         if (extras.nativeFeatures
@@ -226,10 +227,7 @@ pub fn map_device_descriptor<'a>(
         {
             features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         }
-        if (extras.nativeFeatures
-            & native::WGPUNativeFeature_PUSH_CONSTANTS)
-            > 0
-        {
+        if (extras.nativeFeatures & native::WGPUNativeFeature_PUSH_CONSTANTS) > 0 {
             features |= wgt::Features::PUSH_CONSTANTS
         }
         return (
@@ -259,7 +257,12 @@ pub fn map_pipeline_layout_descriptor<'a>(
     let mut push_constant_ranges: Vec<wgt::PushConstantRange> = Vec::new();
 
     if let Some(extras) = extras {
-        let raw_push_constant_ranges = unsafe { slice::from_raw_parts(extras.pushConstantRanges, extras.pushConstantRangeCount as usize) };
+        let raw_push_constant_ranges = unsafe {
+            slice::from_raw_parts(
+                extras.pushConstantRanges,
+                extras.pushConstantRangeCount as usize,
+            )
+        };
         for range in raw_push_constant_ranges {
             push_constant_ranges.push(wgt::PushConstantRange {
                 stages: wgt::ShaderStages::from_bits(range.stages).expect("Invalid shader stage"),
@@ -270,10 +273,12 @@ pub fn map_pipeline_layout_descriptor<'a>(
 
     return wgc::binding_model::PipelineLayoutDescriptor {
         label: OwnedLabel::new(des.label).into_cow(),
-        bind_group_layouts: unsafe { Cow::Borrowed(make_slice(
-            des.bindGroupLayouts,
-            des.bindGroupLayoutCount as usize,
-        )) },
+        bind_group_layouts: unsafe {
+            Cow::Borrowed(make_slice(
+                des.bindGroupLayouts,
+                des.bindGroupLayoutCount as usize,
+            ))
+        },
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
 }
