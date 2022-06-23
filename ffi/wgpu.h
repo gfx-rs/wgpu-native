@@ -3,6 +3,8 @@
 
 #include "webgpu-headers/webgpu.h"
 
+#define WGPU_FREE(type, ptr, count) wgpuFree(ptr, count * sizeof(type), _Alignof(type))
+
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
@@ -80,10 +82,12 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
-// Returns resource usage C string; caller owns the string and must free() it
+// Returns resource usage C string
+// caller owns the string and must WGPU_FREE() it
 char* wgpuGetResourceUsageString();
 
-// Returns slice of supported texture formats; caller owns the formats slice and must free() it
+// Returns slice of supported texture formats
+// caller owns the formats slice and must WGPU_FREE() it
 WGPUTextureFormat const * wgpuSurfaceGetSupportedFormats(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
@@ -103,6 +107,10 @@ void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
 void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
+
+// should only be used for strings & slices returned by library,
+// for other wgpu objects use appropriate drop functions.
+void wgpuFree(void* ptr, size_t size, size_t align);
 
 #ifdef __cplusplus
 } // extern "C"
