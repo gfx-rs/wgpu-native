@@ -128,7 +128,7 @@ int main() {
 
   wgpuComputePassEncoderSetPipeline(computePass, computePipeline);
   wgpuComputePassEncoderSetBindGroup(computePass, 0, bindGroup, 0, NULL);
-  wgpuComputePassEncoderDispatch(computePass, numbersLength, 1, 1);
+  wgpuComputePassEncoderDispatchWorkgroups(computePass, numbersLength, 1, 1);
   wgpuComputePassEncoderEnd(computePass);
   wgpuCommandEncoderCopyBufferToBuffer(encoder, storageBuffer, 0, stagingBuffer,
                                        0, numbersSize);
@@ -141,7 +141,7 @@ int main() {
 
   wgpuBufferMapAsync(stagingBuffer, WGPUMapMode_Read, 0, numbersSize,
                      readBufferMap, NULL);
-  wgpuDevicePoll(device, true);
+  wgpuDevicePoll(device, true, NULL);
 
   uint32_t *times =
       (uint32_t *)wgpuBufferGetMappedRange(stagingBuffer, 0, numbersSize);
