@@ -48,9 +48,9 @@ static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action,
   UNUSED(mods);
 
   if (key == GLFW_KEY_R && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
-    char *usage = wgpuGetResourceUsageString();
-    printf("%s\n", usage);
-    WGPU_FREE(char, usage, 1);
+    WGPUGlobalReport report;
+    wgpuGenerateReport(&report);
+    printGlobalReport(report);
   }
 }
 

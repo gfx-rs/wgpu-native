@@ -13,3 +13,5 @@ void request_device_callback(WGPURequestDeviceStatus status,
 void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata);
 
 void initializeLog();
+
+void printGlobalReport(WGPUGlobalReport report);
