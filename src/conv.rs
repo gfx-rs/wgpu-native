@@ -583,3 +583,70 @@ pub fn map_stencil_face_state(value: native::WGPUStencilFaceState) -> wgt::Stenc
         pass_op: map_stencil_operation(value.passOp).unwrap(),
     }
 }
+
+pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorageReport {
+    native::WGPUStorageReport {
+        numOccupied: report.num_occupied,
+        numVacant: report.num_error,
+        numError: report.num_error,
+        elementSize: report.element_size,
+    }
+}
+
+pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
+    native::WGPUHubReport {
+        adapters: map_storage_report(report.adapters),
+        devices: map_storage_report(report.devices),
+        pipelineLayouts: map_storage_report(report.pipeline_layouts),
+        shaderModules: map_storage_report(report.shader_modules),
+        bindGroupLayouts: map_storage_report(report.bind_group_layouts),
+        bindGroups: map_storage_report(report.bind_groups),
+        commandBuffers: map_storage_report(report.command_buffers),
+        renderBundles: map_storage_report(report.render_bundles),
+        renderPipelines: map_storage_report(report.render_pipelines),
+        computePipelines: map_storage_report(report.compute_pipelines),
+        querySets: map_storage_report(report.query_sets),
+        buffers: map_storage_report(report.buffers),
+        textures: map_storage_report(report.textures),
+        textureViews: map_storage_report(report.texture_views),
+        samplers: map_storage_report(report.samplers),
+    }
+}
+
+#[inline]
+pub unsafe fn write_global_report(
+    native_report: &mut native::WGPUGlobalReport,
+    report: wgc::hub::GlobalReport,
+) {
+    native_report.surfaces = map_storage_report(report.surfaces);
+
+    #[cfg(vulkan)]
+    if let Some(vulkan) = report.vulkan {
+        native_report.vulkan = map_hub_report(vulkan);
+        native_report.backendType = native::WGPUBackendType_Vulkan;
+    }
+
+    #[cfg(metal)]
+    if let Some(metal) = report.metal {
+        native_report.metal = map_hub_report(metal);
+        native_report.backendType = native::WGPUBackendType_Metal;
+    }
+
+    #[cfg(dx12)]
+    if let Some(dx12) = report.dx12 {
+        native_report.dx12 = map_hub_report(dx12);
+        native_report.backendType = native::WGPUBackendType_D3D12;
+    }
+
+    #[cfg(dx11)]
+    if let Some(dx11) = report.dx11 {
+        native_report.dx11 = map_hub_report(dx11);
+        native_report.backendType = native::WGPUBackendType_D3D11;
+    }
+
+    #[cfg(gl)]
+    if let Some(gl) = report.gl {
+        native_report.gl = map_hub_report(gl);
+        native_report.backendType = native::WGPUBackendType_OpenGL;
+    }
+}

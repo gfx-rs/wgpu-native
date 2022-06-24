@@ -9,10 +9,11 @@
 // first parameter `type` has to be type of derefrenced value
 // for example ->
 //
-//      char* str = wgpuGetResourceUsageString();
-//      WGPU_FREE(char, str, 1); // notice `char` instead of `char *`
+//      size_t count;
+//      WGPUTextureFormat* formats = wgpuSurfaceGetSupportedFormats(surface, adapter, &count);
+//      WGPU_FREE(WGPUTextureFormat, str, count); // notice `WGPUTextureFormat` instead of `WGPUTextureFormat *`
 //
-#define WGPU_FREE(type, ptr, count) wgpuFree(ptr, count * sizeof(type), _Alignof(type))
+#define WGPU_FREE(type, ptr, len) wgpuFree(ptr, len * sizeof(type), _Alignof(type))
 
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
@@ -88,11 +89,48 @@ typedef struct WGPUShaderModuleGLSLDescriptor {
     WGPUShaderDefine* defines;
 } WGPUShaderModuleGLSLDescriptor;
 
+typedef struct WGPUStorageReport {
+    size_t numOccupied;
+    size_t numVacant;
+    size_t numError;
+    size_t elementSize;
+} WGPUStorageReport;
+
+typedef struct WGPUHubReport {
+    WGPUStorageReport adapters;
+    WGPUStorageReport devices;
+    WGPUStorageReport pipelineLayouts;
+    WGPUStorageReport shaderModules;
+    WGPUStorageReport bindGroupLayouts;
+    WGPUStorageReport bindGroups;
+    WGPUStorageReport commandBuffers;
+    WGPUStorageReport renderBundles;
+    WGPUStorageReport renderPipelines;
+    WGPUStorageReport computePipelines;
+    WGPUStorageReport querySets;
+    WGPUStorageReport buffers;
+    WGPUStorageReport textures;
+    WGPUStorageReport textureViews;
+    WGPUStorageReport samplers;
+} WGPUHubReport;
+
+typedef struct WGPUGlobalReport {
+    WGPUStorageReport surfaces;
+    WGPUBackendType backendType;
+    WGPUHubReport vulkan;
+    WGPUHubReport metal;
+    WGPUHubReport dx12;
+    WGPUHubReport dx11;
+    WGPUHubReport gl;
+} WGPUGlobalReport;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void wgpuGenerateReport(WGPUGlobalReport * report);
 
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
 
@@ -104,10 +142,6 @@ void wgpuSetLogCallback(WGPULogCallback callback);
 void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
-
-// Returns resource usage C string
-// caller owns the string and must WGPU_FREE() it
-char* wgpuGetResourceUsageString();
 
 // Returns slice of supported texture formats
 // caller owns the formats slice and must WGPU_FREE() it
