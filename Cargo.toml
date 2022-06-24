@@ -19,8 +19,8 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
 default = []
-#metal-auto-capture = ["gfx-backend-metal/auto-capture"]
-#vulkan-portability = ["wgc/gfx-backend-vulkan"]
+angle = ["wgc/angle"]
+vulkan-portability = ["wgc/vulkan-portability"]
 
 [dependencies.wgc]
 package = "wgpu-core"
@@ -51,6 +51,7 @@ features = ["spv-in"]
 
 [build-dependencies]
 bindgen = "0.60.1"
+cfg_aliases = "0.1"
 
 [workspace]
 resolver = "2"
