@@ -1,6 +1,6 @@
+#include "unused.h"
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
-#include "unused.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -80,4 +80,53 @@ void logCallback(WGPULogLevel level, const char *msg) {
 void initializeLog() {
   wgpuSetLogCallback(logCallback);
   wgpuSetLogLevel(WGPULogLevel_Warn);
+}
+
+#define printStorageReport(report, prefix)                                     \
+  printf("%snumOccupied=%zu\n", prefix, report.numOccupied);                   \
+  printf("%snumVacant=%zu\n", prefix, report.numVacant);                       \
+  printf("%snumError=%zu\n", prefix, report.numError);                         \
+  printf("%selementSize=%zu\n", prefix, report.elementSize)
+
+#define printHubReport(report, prefix)                                         \
+  printStorageReport(report.adapters, prefix "adapter.");                      \
+  printStorageReport(report.devices, prefix "devices.");                       \
+  printStorageReport(report.pipelineLayouts, prefix "pipelineLayouts.");       \
+  printStorageReport(report.shaderModules, prefix "shaderModules.");           \
+  printStorageReport(report.bindGroupLayouts, prefix "bindGroupLayouts.");     \
+  printStorageReport(report.bindGroups, prefix "bindGroups.");                 \
+  printStorageReport(report.commandBuffers, prefix "commandBuffers.");         \
+  printStorageReport(report.renderBundles, prefix "renderBundles.");           \
+  printStorageReport(report.renderPipelines, prefix "renderPipelines.");       \
+  printStorageReport(report.computePipelines, prefix "computePipelines.");     \
+  printStorageReport(report.querySets, prefix "querySets.");                   \
+  printStorageReport(report.textures, prefix "textures.");                     \
+  printStorageReport(report.textureViews, prefix "textureViews.");             \
+  printStorageReport(report.samplers, prefix "samplers.")
+
+void printGlobalReport(WGPUGlobalReport report) {
+  printf("struct WGPUGlobalReport {\n");
+  printStorageReport(report.surfaces, "\tsurfaces.");
+
+  switch (report.backendType) {
+  case WGPUBackendType_D3D11:
+    printHubReport(report.dx11, "\tdx11.");
+    break;
+  case WGPUBackendType_D3D12:
+    printHubReport(report.dx12, "\tdx12.");
+    break;
+  case WGPUBackendType_Metal:
+    printHubReport(report.metal, "\tmetal.");
+    break;
+  case WGPUBackendType_Vulkan:
+    printHubReport(report.vulkan, "\tvulkan.");
+    break;
+  case WGPUBackendType_OpenGL:
+    printHubReport(report.gl, "\tgl.");
+    break;
+  default:
+    printf("WARN:printGlobalReport: invalid backened type: %d",
+           report.backendType);
+  }
+  printf("}\n");
 }
