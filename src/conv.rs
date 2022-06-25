@@ -585,7 +585,7 @@ pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
 }
 
 #[inline]
-pub unsafe fn write_global_report(
+pub fn write_global_report(
     native_report: &mut native::WGPUGlobalReport,
     report: wgc::hub::GlobalReport,
 ) {
@@ -619,5 +619,69 @@ pub unsafe fn write_global_report(
     if let Some(gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;
+    }
+}
+
+pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName> {
+    let mut temp = Vec::new();
+
+    if features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
+        temp.push(native::WGPUFeatureName_DepthClipControl);
+    }
+    if features.contains(wgt::Features::DEPTH24UNORM_STENCIL8) {
+        temp.push(native::WGPUFeatureName_Depth24UnormStencil8);
+    }
+    if features.contains(wgt::Features::DEPTH32FLOAT_STENCIL8) {
+        temp.push(native::WGPUFeatureName_Depth32FloatStencil8);
+    }
+    if features.contains(wgt::Features::TIMESTAMP_QUERY) {
+        temp.push(native::WGPUFeatureName_TimestampQuery);
+    }
+    if features.contains(wgt::Features::PIPELINE_STATISTICS_QUERY) {
+        temp.push(native::WGPUFeatureName_PipelineStatisticsQuery);
+    }
+    if features.contains(wgt::Features::TEXTURE_COMPRESSION_BC) {
+        temp.push(native::WGPUFeatureName_TextureCompressionBC);
+    }
+    if features.contains(wgt::Features::TEXTURE_COMPRESSION_ETC2) {
+        temp.push(native::WGPUFeatureName_TextureCompressionETC2);
+    }
+    if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC_LDR) {
+        temp.push(native::WGPUFeatureName_TextureCompressionASTC);
+    }
+    if features.contains(wgt::Features::INDIRECT_FIRST_INSTANCE) {
+        temp.push(native::WGPUFeatureName_IndirectFirstInstance);
+    }
+
+    // extras
+    if features.contains(wgt::Features::PUSH_CONSTANTS) {
+        temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
+    }
+    if features.contains(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
+        temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES);
+    }
+
+    temp
+}
+
+pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
+    match feature {
+        native::WGPUFeatureName_DepthClipControl => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_Depth24UnormStencil8 => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_Depth32FloatStencil8 => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_TimestampQuery => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_PipelineStatisticsQuery => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_TextureCompressionBC => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_TextureCompressionETC2 => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_TextureCompressionASTC => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+        native::WGPUFeatureName_IndirectFirstInstance => Some(wgt::Features::DEPTH_CLIP_CONTROL),
+
+        // extras
+        native::WGPUNativeFeature_PUSH_CONSTANTS => Some(wgt::Features::PUSH_CONSTANTS),
+        native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => {
+            Some(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES)
+        }
+
+        _ => None,
     }
 }

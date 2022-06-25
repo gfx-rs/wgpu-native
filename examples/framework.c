@@ -130,3 +130,68 @@ void printGlobalReport(WGPUGlobalReport report) {
   }
   printf("}\n");
 }
+
+void printAdapterFeatures(WGPUAdapter adapter) {
+  size_t count = wgpuAdapterEnumerateFeatures(adapter, NULL);
+  WGPUFeatureName *features =
+      (WGPUFeatureName *)malloc(count * sizeof(WGPUFeatureName));
+  wgpuAdapterEnumerateFeatures(adapter, features);
+
+  printf("[]WGPUFeatureName {\n");
+
+  for (size_t i = 0; i < count; i++) {
+    uint32_t feature = features[i];
+    switch (feature) {
+    case WGPUFeatureName_DepthClipControl:
+      printf("\tDepthClipControl\n");
+      break;
+
+    case WGPUFeatureName_Depth24UnormStencil8:
+      printf("\tDepth24UnormStencil8\n");
+      break;
+
+    case WGPUFeatureName_Depth32FloatStencil8:
+      printf("\tDepth32FloatStencil8\n");
+      break;
+
+    case WGPUFeatureName_TimestampQuery:
+      printf("\tTimestampQuery\n");
+      break;
+
+    case WGPUFeatureName_PipelineStatisticsQuery:
+      printf("\tPipelineStatisticsQuery\n");
+      break;
+
+    case WGPUFeatureName_TextureCompressionBC:
+      printf("\tTextureCompressionBC\n");
+      break;
+
+    case WGPUFeatureName_TextureCompressionETC2:
+      printf("\tTextureCompressionETC2\n");
+      break;
+
+    case WGPUFeatureName_TextureCompressionASTC:
+      printf("\tTextureCompressionASTC\n");
+      break;
+
+    case WGPUFeatureName_IndirectFirstInstance:
+      printf("\tIndirectFirstInstance\n");
+      break;
+
+    case WGPUNativeFeature_PUSH_CONSTANTS:
+      printf("\tWGPUNativeFeature_PUSH_CONSTANTS\n");
+      break;
+
+    case WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES:
+      printf("\tWGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES\n");
+      break;
+
+    default:
+      printf("\tUnknown=%d\n", feature);
+    }
+  }
+
+  printf("}\n");
+
+  free(features);
+}

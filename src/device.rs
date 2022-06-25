@@ -135,6 +135,86 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
+    adapter: id::AdapterId,
+    features: *mut native::WGPUFeatureName,
+) -> usize {
+    let adapter_features = match gfx_select!(adapter => GLOBAL.adapter_features(adapter)) {
+        Ok(features) => features,
+        _ => panic!("Calling wgpuAdapterEnumerateFeatures() on an invalid adapter."),
+    };
+
+    let temp = conv::features_to_slice(adapter_features);
+
+    if !features.is_null() {
+        let out_slice = std::slice::from_raw_parts_mut(features, temp.len());
+        temp.iter().enumerate().for_each(|(i, feature)| {
+            out_slice[i] = *feature;
+        });
+    }
+
+    return temp.len();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterHasFeature(
+    adapter: id::AdapterId,
+    feature: native::WGPUFeatureName,
+) -> bool {
+    let adapter_features = match gfx_select!(adapter => GLOBAL.adapter_features(adapter)) {
+        Ok(features) => features,
+        _ => panic!("Calling wgpuAdapterHasFeature() on an invalid adapter."),
+    };
+
+    let feature = match conv::map_feature(feature) {
+        Some(feature) => feature,
+        None => return false,
+    };
+
+    adapter_features.contains(feature)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
+    device: id::DeviceId,
+    features: *mut native::WGPUFeatureName,
+) -> usize {
+    let device_features = match gfx_select!(device => GLOBAL.device_features(device)) {
+        Ok(features) => features,
+        _ => panic!("Calling wgpuDeviceEnumerateFeatures() on an invalid device."),
+    };
+
+    let temp = conv::features_to_slice(device_features);
+
+    if !features.is_null() {
+        let out_slice = std::slice::from_raw_parts_mut(features, temp.len());
+        temp.iter().enumerate().for_each(|(i, feature)| {
+            out_slice[i] = *feature;
+        });
+    }
+
+    return temp.len();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceHasFeature(
+    device: id::DeviceId,
+    feature: native::WGPUFeatureName,
+) -> bool {
+    let device_features = match gfx_select!(device => GLOBAL.device_features(device)) {
+        Ok(features) => features,
+        _ => panic!("Calling wgpuDeviceHasFeature() on an invalid device."),
+    };
+
+    let feature = match conv::map_feature(feature) {
+        Some(feature) => feature,
+        None => return false,
+    };
+
+    device_features.contains(feature)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: id::DeviceId,
     limits: &mut native::WGPUSupportedLimits,
