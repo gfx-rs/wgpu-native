@@ -1,5 +1,4 @@
-use crate::{make_slice, map_enum, native, Label, OwnedLabel, follow_chain};
-use naga;
+use crate::{follow_chain, make_slice, map_enum, native, Label, OwnedLabel};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
 use wgc::{id, pipeline::ShaderModuleSource};
 
@@ -205,10 +204,12 @@ pub fn map_device_descriptor<'a>(
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
     let required_limits = unsafe { *des.requiredLimits };
     let mut features = wgt::Features::empty();
-    let limits = unsafe { follow_chain!(
-        map_required_limits(required_limits,
-        WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
-    ) };
+    let limits = unsafe {
+        follow_chain!(
+            map_required_limits(required_limits,
+            WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+        )
+    };
     if let Some(extras) = extras {
         // Handle native features speficied in extras
         if (extras.nativeFeatures
@@ -217,10 +218,7 @@ pub fn map_device_descriptor<'a>(
         {
             features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         }
-        if (extras.nativeFeatures
-            & native::WGPUNativeFeature_PUSH_CONSTANTS)
-            > 0
-        {
+        if (extras.nativeFeatures & native::WGPUNativeFeature_PUSH_CONSTANTS) > 0 {
             features |= wgt::Features::PUSH_CONSTANTS
         }
         if (extras.nativeFeatures
@@ -256,7 +254,12 @@ pub fn map_pipeline_layout_descriptor<'a>(
     let mut push_constant_ranges: Vec<wgt::PushConstantRange> = Vec::new();
 
     if let Some(extras) = extras {
-        let raw_push_constant_ranges = unsafe { slice::from_raw_parts(extras.pushConstantRanges, extras.pushConstantRangeCount as usize) };
+        let raw_push_constant_ranges = unsafe {
+            slice::from_raw_parts(
+                extras.pushConstantRanges,
+                extras.pushConstantRangeCount as usize,
+            )
+        };
         for range in raw_push_constant_ranges {
             push_constant_ranges.push(wgt::PushConstantRange {
                 stages: wgt::ShaderStages::from_bits(range.stages).expect("Invalid shader stage"),
@@ -267,10 +270,12 @@ pub fn map_pipeline_layout_descriptor<'a>(
 
     return wgc::binding_model::PipelineLayoutDescriptor {
         label: OwnedLabel::new(des.label).into_cow(),
-        bind_group_layouts: unsafe { Cow::Borrowed(make_slice(
-            des.bindGroupLayouts,
-            des.bindGroupLayoutCount as usize,
-        )) },
+        bind_group_layouts: unsafe {
+            Cow::Borrowed(make_slice(
+                des.bindGroupLayouts,
+                des.bindGroupLayoutCount as usize,
+            ))
+        },
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
 }
@@ -553,5 +558,72 @@ pub fn map_stencil_face_state(value: native::WGPUStencilFaceState) -> wgt::Stenc
         fail_op: map_stencil_operation(value.failOp).unwrap(),
         depth_fail_op: map_stencil_operation(value.depthFailOp).unwrap(),
         pass_op: map_stencil_operation(value.passOp).unwrap(),
+    }
+}
+
+pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorageReport {
+    native::WGPUStorageReport {
+        numOccupied: report.num_occupied,
+        numVacant: report.num_error,
+        numError: report.num_error,
+        elementSize: report.element_size,
+    }
+}
+
+pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
+    native::WGPUHubReport {
+        adapters: map_storage_report(report.adapters),
+        devices: map_storage_report(report.devices),
+        pipelineLayouts: map_storage_report(report.pipeline_layouts),
+        shaderModules: map_storage_report(report.shader_modules),
+        bindGroupLayouts: map_storage_report(report.bind_group_layouts),
+        bindGroups: map_storage_report(report.bind_groups),
+        commandBuffers: map_storage_report(report.command_buffers),
+        renderBundles: map_storage_report(report.render_bundles),
+        renderPipelines: map_storage_report(report.render_pipelines),
+        computePipelines: map_storage_report(report.compute_pipelines),
+        querySets: map_storage_report(report.query_sets),
+        buffers: map_storage_report(report.buffers),
+        textures: map_storage_report(report.textures),
+        textureViews: map_storage_report(report.texture_views),
+        samplers: map_storage_report(report.samplers),
+    }
+}
+
+#[inline]
+pub unsafe fn write_global_report(
+    native_report: &mut native::WGPUGlobalReport,
+    report: wgc::hub::GlobalReport,
+) {
+    native_report.surfaces = map_storage_report(report.surfaces);
+
+    #[cfg(vulkan)]
+    if let Some(vulkan) = report.vulkan {
+        native_report.vulkan = map_hub_report(vulkan);
+        native_report.backendType = native::WGPUBackendType_Vulkan;
+    }
+
+    #[cfg(metal)]
+    if let Some(metal) = report.metal {
+        native_report.metal = map_hub_report(metal);
+        native_report.backendType = native::WGPUBackendType_Metal;
+    }
+
+    #[cfg(dx12)]
+    if let Some(dx12) = report.dx12 {
+        native_report.dx12 = map_hub_report(dx12);
+        native_report.backendType = native::WGPUBackendType_D3D12;
+    }
+
+    #[cfg(dx11)]
+    if let Some(dx11) = report.dx11 {
+        native_report.dx11 = map_hub_report(dx11);
+        native_report.backendType = native::WGPUBackendType_D3D11;
+    }
+
+    #[cfg(gl)]
+    if let Some(gl) = report.gl {
+        native_report.gl = map_hub_report(gl);
+        native_report.backendType = native::WGPUBackendType_OpenGL;
     }
 }

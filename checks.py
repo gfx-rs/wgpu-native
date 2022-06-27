@@ -58,6 +58,7 @@ def collect_function_args():
     ]:
         with open(filename, "rb") as f:
             text = f.read().decode()
+            text = remove_c_comments(text)
 
         for line in text.splitlines():
             if line.startswith("WGPU_EXPORT"):
@@ -85,6 +86,7 @@ def collect_structs():
     ]:
         with open(filename, "rb") as f:
             code = f.read().decode()
+            code = remove_c_comments(code)
 
             i1 = i2 = i3 = i4 = 0
             while True:
@@ -102,7 +104,7 @@ def collect_structs():
                 name = code[i3 + 1 : i4].strip()
                 structs[name] = struct = {}
                 for f in code[i2 + 1 : i3].strip().strip(";").split(";"):
-                    parts = remove_c_comments(f).strip().split()
+                    parts = f.strip().split()
                     typename = " ".join(parts[:-1])
                     typename = typename.replace("const ", "")
                     key = parts[-1].strip("*")

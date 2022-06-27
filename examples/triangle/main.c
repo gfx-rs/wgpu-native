@@ -42,6 +42,18 @@ static void handle_uncaptured_error(WGPUErrorType type, char const * message, vo
   printf("UNCAPTURED ERROR (%d): %s\n", type, message);
 }
 
+static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods) {
+  UNUSED(window);
+  UNUSED(scancode);
+  UNUSED(mods);
+
+  if (key == GLFW_KEY_R && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+    WGPUGlobalReport report;
+    wgpuGenerateReport(&report);
+    printGlobalReport(report);
+  }
+}
+
 int main() {
   initializeLog();
 
@@ -266,6 +278,8 @@ int main() {
                                     .presentMode = WGPUPresentMode_Fifo,
                                 });
 
+  glfwSetKeyCallback(window, handleGlfwKey);
+
   while (!glfwWindowShouldClose(window)) {
 
     WGPUTextureView nextTexture = NULL;
@@ -334,6 +348,7 @@ int main() {
     wgpuRenderPassEncoderSetPipeline(renderPass, pipeline);
     wgpuRenderPassEncoderDraw(renderPass, 3, 1, 0, 0);
     wgpuRenderPassEncoderEnd(renderPass);
+    wgpuTextureViewDrop(nextTexture);
 
     WGPUQueue queue = wgpuDeviceGetQueue(device);
     WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(

@@ -3,6 +3,18 @@
 
 #include "webgpu-headers/webgpu.h"
 
+// must be used to free the strings & slices returned by the library,
+// for other wgpu objects use appropriate drop functions.
+//
+// first parameter `type` has to be type of derefrenced value
+// for example ->
+//
+//      size_t count;
+//      WGPUTextureFormat* formats = wgpuSurfaceGetSupportedFormats(surface, adapter, &count);
+//      WGPU_FREE(WGPUTextureFormat, str, count); // notice `WGPUTextureFormat` instead of `WGPUTextureFormat *`
+//
+#define WGPU_FREE(type, ptr, len) wgpuFree(ptr, len * sizeof(type), _Alignof(type))
+
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
@@ -57,13 +69,60 @@ typedef struct WGPUPipelineLayoutExtras {
     WGPUPushConstantRange* pushConstantRanges;
 } WGPUPipelineLayoutExtras;
 
+typedef uint64_t WGPUSubmissionIndex;
+
+typedef struct WGPUWrappedSubmissionIndex {
+    WGPUQueue queue;
+    WGPUSubmissionIndex submissionIndex;
+} WGPUWrappedSubmissionIndex;
+
+typedef struct WGPUStorageReport {
+    size_t numOccupied;
+    size_t numVacant;
+    size_t numError;
+    size_t elementSize;
+} WGPUStorageReport;
+
+typedef struct WGPUHubReport {
+    WGPUStorageReport adapters;
+    WGPUStorageReport devices;
+    WGPUStorageReport pipelineLayouts;
+    WGPUStorageReport shaderModules;
+    WGPUStorageReport bindGroupLayouts;
+    WGPUStorageReport bindGroups;
+    WGPUStorageReport commandBuffers;
+    WGPUStorageReport renderBundles;
+    WGPUStorageReport renderPipelines;
+    WGPUStorageReport computePipelines;
+    WGPUStorageReport querySets;
+    WGPUStorageReport buffers;
+    WGPUStorageReport textures;
+    WGPUStorageReport textureViews;
+    WGPUStorageReport samplers;
+} WGPUHubReport;
+
+typedef struct WGPUGlobalReport {
+    WGPUStorageReport surfaces;
+    WGPUBackendType backendType;
+    WGPUHubReport vulkan;
+    WGPUHubReport metal;
+    WGPUHubReport dx12;
+    WGPUHubReport dx11;
+    WGPUHubReport gl;
+} WGPUGlobalReport;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void wgpuDevicePoll(WGPUDevice device, bool force_wait);
+void wgpuGenerateReport(WGPUGlobalReport * report);
+
+WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
+
+// Returns true if the queue is empty, or false if there are more queue submissions still in flight.
+bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback);
 
@@ -71,8 +130,9 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
-// Returns resource usage C string; caller owns the string and must free() it
-char* wgpuGetResourceUsageString();
+// Returns slice of supported texture formats
+// caller owns the formats slice and must WGPU_FREE() it
+WGPUTextureFormat const * wgpuSurfaceGetSupportedFormats(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
@@ -91,6 +151,10 @@ void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
 void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
+
+// must be used to free the strings & slices returned by the library,
+// for other wgpu objects use appropriate drop functions.
+void wgpuFree(void* ptr, size_t size, size_t align);
 
 #ifdef __cplusplus
 } // extern "C"

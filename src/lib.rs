@@ -214,14 +214,6 @@ pub extern "C" fn wgpuCreateInstance(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuGetResourceUsageString() -> *const std::os::raw::c_char {
-    let c_string = CString::new(format!("{:?}", GLOBAL.generate_report())).unwrap();
-    let ptr = c_string.as_ptr();
-    std::mem::forget(c_string);
-    ptr
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     _: native::WGPUInstance,
     descriptor: *const native::WGPUSurfaceDescriptor,
@@ -311,12 +303,47 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: id::SurfaceId,
     adapter: id::AdapterId,
 ) -> native::WGPUTextureFormat {
-    let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_preferred_format(surface, adapter))
+    let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
     {
-        Ok(format) => conv::to_native_texture_format(format),
+        Ok(formats) => conv::to_native_texture_format(
+            *formats
+                .first()
+                .expect("Could not get preferred swap chain format"),
+        ),
         Err(err) => panic!("Could not get preferred swap chain format: {}", err),
     };
     return preferred_format;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
+    surface: id::SurfaceId,
+    adapter: id::AdapterId,
+    count: Option<&mut usize>,
+) -> *const native::WGPUTextureFormat {
+    assert!(count.is_some(), "count must be non-null");
+
+    let mut native_formats = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
+    {
+        Ok(formats) => formats
+            .iter()
+            .map(|f| conv::to_native_texture_format(*f))
+            .collect::<Vec<native::WGPUTextureFormat>>(),
+        Err(err) => panic!("Could not get supported swap chain formats: {}", err),
+    };
+    native_formats.shrink_to_fit();
+
+    if let Some(count) = count {
+        *count = native_formats.len();
+    }
+    let ptr = native_formats.as_ptr();
+    std::mem::forget(native_formats);
+    ptr
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGenerateReport(native_report: &mut native::WGPUGlobalReport) {
+    conv::write_global_report(native_report, GLOBAL.generate_report());
 }
 
 struct DeviceCallback<T> {
@@ -406,4 +433,12 @@ pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::Dev
     };
 
     handle_device_error_raw(device, typ, &format!("{:?}", error));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuFree(ptr: *mut u8, size: usize, align: usize) {
+    std::alloc::dealloc(
+        ptr,
+        core::alloc::Layout::from_size_align_unchecked(size, align),
+    );
 }
