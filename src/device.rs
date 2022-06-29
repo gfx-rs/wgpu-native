@@ -192,7 +192,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     let source = follow_chain!(
         map_shader_module(descriptor,
         WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
-        WGPUSType_ShaderModuleWGSLDescriptor => native::WGPUShaderModuleWGSLDescriptor)
+        WGPUSType_ShaderModuleWGSLDescriptor => native::WGPUShaderModuleWGSLDescriptor,
+        WGPUSType_ShaderModuleGLSLDescriptor => native::WGPUShaderModuleGLSLDescriptor)
     );
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {

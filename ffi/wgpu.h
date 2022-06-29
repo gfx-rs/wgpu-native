@@ -21,6 +21,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_AdapterExtras = 0x60000002,
     WGPUSType_RequiredLimitsExtras = 0x60000003,
     WGPUSType_PipelineLayoutExtras = 0x60000004,
+    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -74,6 +75,19 @@ typedef struct WGPUWrappedSubmissionIndex {
     WGPUQueue queue;
     WGPUSubmissionIndex submissionIndex;
 } WGPUWrappedSubmissionIndex;
+
+typedef struct WGPUShaderDefine {
+    char const * name;
+    char const * value;
+} WGPUShaderDefine;
+
+typedef struct WGPUShaderModuleGLSLDescriptor {
+    WGPUChainedStruct chain;
+    WGPUShaderStage stage;
+    char const * code;
+    uint32_t defineCount;
+    WGPUShaderDefine* defines;
+} WGPUShaderModuleGLSLDescriptor;
 
 typedef struct WGPUStorageReport {
     size_t numOccupied;
