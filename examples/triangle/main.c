@@ -170,6 +170,8 @@ int main() {
                              },
                              request_adapter_callback, (void *)&adapter);
 
+  printAdapterFeatures(adapter);
+
   WGPUDevice device;
   wgpuAdapterRequestDevice(
       adapter,

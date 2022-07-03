@@ -15,3 +15,4 @@ void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata);
 void initializeLog();
 
 void printGlobalReport(WGPUGlobalReport report);
+void printAdapterFeatures(WGPUAdapter adapter);
