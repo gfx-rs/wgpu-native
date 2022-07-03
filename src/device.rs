@@ -521,7 +521,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     };
     let desc = wgc::pipeline::ComputePipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        layout: Some(descriptor.layout),
+        layout: descriptor.layout,
         stage,
     };
 
@@ -679,7 +679,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 ) -> Option<id::RenderPipelineId> {
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        layout: Some(descriptor.layout),
+        layout: descriptor.layout,
         vertex: wgc::pipeline::VertexState {
             stage: wgc::pipeline::ProgrammableStageDescriptor {
                 module: descriptor.vertex.module,
@@ -770,24 +770,22 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount as usize)
                         .iter()
-                        .map(|color_target| wgt::ColorTargetState {
-                            format: conv::map_texture_format(color_target.format)
-                                .expect("Texture format must be defined"),
-                            blend: color_target.blend.as_ref().map(|blend| wgt::BlendState {
-                                color: wgt::BlendComponent {
-                                    src_factor: conv::map_blend_factor(blend.color.srcFactor),
-                                    dst_factor: conv::map_blend_factor(blend.color.dstFactor),
-                                    operation: conv::map_blend_operation(blend.color.operation),
-                                },
-                                alpha: wgt::BlendComponent {
-                                    src_factor: conv::map_blend_factor(blend.alpha.srcFactor),
-                                    dst_factor: conv::map_blend_factor(blend.alpha.dstFactor),
-                                    operation: conv::map_blend_operation(blend.alpha.operation),
-                                },
-                            }),
-                            write_mask: wgt::ColorWrites::from_bits(color_target.writeMask)
-                                .unwrap(),
-                        })
+                        .map(
+                            |color_target| match conv::map_texture_format(color_target.format) {
+                                Some(format) => Some(wgt::ColorTargetState {
+                                    format,
+                                    blend: color_target.blend.as_ref().map(|blend| {
+                                        wgt::BlendState {
+                                            color: conv::map_blend_component(blend.color),
+                                            alpha: conv::map_blend_component(blend.alpha),
+                                        }
+                                    }),
+                                    write_mask: wgt::ColorWrites::from_bits(color_target.writeMask)
+                                        .unwrap(),
+                                }),
+                                None => None,
+                            },
+                        )
                         .collect(),
                 ),
             }),

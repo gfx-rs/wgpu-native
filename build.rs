@@ -68,30 +68,74 @@ fn main() {
             .raw_line(format!("type {} = wgc::id::{};", old_name, new_name));
     }
 
-    // WGPUBindGroupEntry has fields that are id's which can be 0
+    // WGPUBindGroupEntry.{buffer, sampler, textureView} is nullable
     builder = builder.blocklist_item("WGPUBindGroupEntry").raw_line(
         "#[repr(C)]
             pub struct WGPUBindGroupEntry {
-                pub nextInChain: * const crate::native::WGPUChainedStruct,
+                pub nextInChain: *const WGPUChainedStruct,
                 pub binding: u32,
-                pub buffer: Option<wgc::id::BufferId>,
+                pub buffer: Option<WGPUBuffer>,
                 pub offset: u64,
                 pub size: u64,
-                pub sampler: Option<wgc::id::SamplerId>,
-                pub textureView: Option<wgc::id::TextureViewId>,
+                pub sampler: Option<WGPUSampler>,
+                pub textureView: Option<WGPUTextureView>,
             }",
     );
 
-    // WGPURequestAdapterOptions.compatibleSurface can be Null
+    // WGPURequestAdapterOptions.compatibleSurface is nullable
     builder = builder
         .blocklist_item("WGPURequestAdapterOptions")
         .raw_line(
             "#[repr(C)]
             pub struct WGPURequestAdapterOptions {
-                pub nextInChain: * const crate::native::WGPUChainedStruct,
-                pub compatibleSurface: Option<wgc::id::SurfaceId>,
-                pub powerPreference: crate::native::WGPUPowerPreference,
+                pub nextInChain: *const WGPUChainedStruct,
+                pub compatibleSurface: Option<WGPUSurface>,
+                pub powerPreference: WGPUPowerPreference,
                 pub forceFallbackAdapter: bool,
+            }",
+        );
+
+    // WGPURenderPassColorAttachment.{view, resolveTarget} is nullable
+    builder = builder
+        .blocklist_item("WGPURenderPassColorAttachment")
+        .raw_line(
+            "#[repr(C)]
+            pub struct WGPURenderPassColorAttachment {
+                pub view: Option<WGPUTextureView>,
+                pub resolveTarget: Option<WGPUTextureView>,
+                pub loadOp: WGPULoadOp,
+                pub storeOp: WGPUStoreOp,
+                pub clearValue: WGPUColor,
+            }",
+        );
+
+    // WGPUComputePipelineDescriptor.layout is nullable
+    builder = builder
+        .blocklist_item("WGPUComputePipelineDescriptor")
+        .raw_line(
+            "#[repr(C)]
+            pub struct WGPUComputePipelineDescriptor {
+                pub nextInChain: *const WGPUChainedStruct,
+                pub label: *const ::std::os::raw::c_char,
+                pub layout: Option<WGPUPipelineLayout>,
+                pub compute: WGPUProgrammableStageDescriptor,
+            }",
+        );
+
+    // WGPURenderPipelineDescriptor.layout is nullable
+    builder = builder
+        .blocklist_item("WGPURenderPipelineDescriptor")
+        .raw_line(
+            "#[repr(C)]
+            pub struct WGPURenderPipelineDescriptor {
+                pub nextInChain: *const WGPUChainedStruct,
+                pub label: *const ::std::os::raw::c_char,
+                pub layout: Option<WGPUPipelineLayout>,
+                pub vertex: WGPUVertexState,
+                pub primitive: WGPUPrimitiveState,
+                pub depthStencil: *const WGPUDepthStencilState,
+                pub multisample: WGPUMultisampleState,
+                pub fragment: *const WGPUFragmentState,
             }",
         );
 
