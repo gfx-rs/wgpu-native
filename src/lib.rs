@@ -342,6 +342,40 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
+    surface: id::SurfaceId,
+    adapter: id::AdapterId,
+    count: Option<&mut usize>,
+) -> *const native::WGPUPresentMode {
+    assert!(count.is_some(), "count must be non-null");
+
+    let mut modes = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_modes(surface, adapter))
+    {
+        Ok(modes) => modes
+            .iter()
+            .filter_map(|f| match *f {
+                wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
+                wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
+                wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
+
+                wgt::PresentMode::AutoVsync
+                | wgt::PresentMode::AutoNoVsync
+                | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
+            })
+            .collect::<Vec<native::WGPUPresentMode>>(),
+        Err(err) => panic!("Could not get supported present modes: {}", err),
+    };
+    modes.shrink_to_fit();
+
+    if let Some(count) = count {
+        *count = modes.len();
+    }
+    let ptr = modes.as_ptr();
+    std::mem::forget(modes);
+    ptr
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuGenerateReport(native_report: &mut native::WGPUGlobalReport) {
     conv::write_global_report(native_report, GLOBAL.generate_report());
 }
