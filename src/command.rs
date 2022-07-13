@@ -149,18 +149,19 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 descriptor.colorAttachmentCount as usize,
             )
             .iter()
-            .map(|color_attachment| match color_attachment.view {
-                Some(view) => Some(wgc::command::RenderPassColorAttachment {
-                    view,
-                    resolve_target: color_attachment.resolveTarget,
-                    channel: wgc::command::PassChannel {
-                        load_op: conv::map_load_op(color_attachment.loadOp),
-                        store_op: conv::map_store_op(color_attachment.storeOp),
-                        clear_value: conv::map_color(&color_attachment.clearValue),
-                        read_only: false,
-                    },
-                }),
-                None => None,
+            .map(|color_attachment| {
+                color_attachment
+                    .view
+                    .map(|view| wgc::command::RenderPassColorAttachment {
+                        view,
+                        resolve_target: color_attachment.resolveTarget,
+                        channel: wgc::command::PassChannel {
+                            load_op: conv::map_load_op(color_attachment.loadOp),
+                            store_op: conv::map_store_op(color_attachment.storeOp),
+                            clear_value: conv::map_color(&color_attachment.clearValue),
+                            read_only: false,
+                        },
+                    })
             })
             .collect(),
         ),

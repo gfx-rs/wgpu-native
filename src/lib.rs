@@ -1,4 +1,3 @@
-use log;
 use std::{
     borrow::Cow, collections::HashMap, ffi::CString, marker::PhantomData, sync::Arc, sync::Mutex,
 };
@@ -46,7 +45,7 @@ impl OwnedLabel {
         self.0.as_ref().map(|s| Cow::Borrowed(s.as_str()))
     }
     fn into_cow<'a>(self) -> Option<Cow<'a, str>> {
-        self.0.map(|s| Cow::Owned(s))
+        self.0.map(Cow::Owned)
     }
 }
 
@@ -200,7 +199,7 @@ macro_rules! map_enum {
 struct PseudoRwh(raw_window_handle::RawWindowHandle);
 unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
     fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
-        self.0.clone()
+        self.0
     }
 }
 
@@ -312,7 +311,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
         ),
         Err(err) => panic!("Could not get preferred swap chain format: {}", err),
     };
-    return preferred_format;
+
+    preferred_format
 }
 
 #[no_mangle]
@@ -459,11 +459,8 @@ pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::Dev
     let error_any = error as &dyn std::any::Any;
 
     let typ = match error_any.downcast_ref::<wgc::device::DeviceError>() {
-        Some(device_error) => match device_error {
-            wgc::device::DeviceError::Lost => native::WGPUErrorType_DeviceLost,
-            _ => native::WGPUErrorType_Unknown,
-        },
-        None => native::WGPUErrorType_Unknown,
+        Some(wgc::device::DeviceError::Lost) => native::WGPUErrorType_DeviceLost,
+        _ => native::WGPUErrorType_Unknown,
     };
 
     handle_device_error_raw(device, typ, &format!("{:?}", error));

@@ -67,7 +67,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         map_device_descriptor(descriptor,
         WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
     );
-    let trace_path = trace_str.as_ref().map(|path| Path::new(path));
+    let trace_path = trace_str.as_ref().map(Path::new);
 
     let (id, error) = gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, PhantomData));
 
@@ -90,34 +90,31 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     properties: &mut native::WGPUAdapterProperties,
 ) {
     let maybe_props = gfx_select!(adapter => GLOBAL.adapter_get_info(adapter));
-    match maybe_props {
-        Ok(props) => {
-            properties.name = ADAPTER_NAMES
-                .lock()
-                .unwrap()
-                .entry(adapter)
-                .or_insert_with(|| CString::new((&props.name) as &str).unwrap())
-                .as_ptr();
-            properties.vendorID = props.vendor as u32;
-            properties.deviceID = props.device as u32;
-            properties.adapterType = match props.device_type {
-                wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
-                wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
-                wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
-                wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
-                wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
-            };
-            properties.backendType = match props.backend {
-                wgt::Backend::Empty => native::WGPUBackendType_Null,
-                wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
-                wgt::Backend::Metal => native::WGPUBackendType_Metal,
-                wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
-                wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
-                wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
-                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
-            };
-        }
-        _ => (),
+    if let Ok(props) = maybe_props {
+        properties.name = ADAPTER_NAMES
+            .lock()
+            .unwrap()
+            .entry(adapter)
+            .or_insert_with(|| CString::new((&props.name) as &str).unwrap())
+            .as_ptr();
+        properties.vendorID = props.vendor as u32;
+        properties.deviceID = props.device as u32;
+        properties.adapterType = match props.device_type {
+            wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+            wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+            wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+            wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+            wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+        };
+        properties.backendType = match props.backend {
+            wgt::Backend::Empty => native::WGPUBackendType_Null,
+            wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+            wgt::Backend::Metal => native::WGPUBackendType_Metal,
+            wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+            wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
+            wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+            wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
+        };
     }
 }
 
@@ -131,7 +128,8 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
         Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
         _ => panic!("Calling wgpuAdapterGetLimits() on an invalid adapter."),
     }
-    return false; // todo: what is the purpose of this return value?
+
+    true // indicates that we can fill WGPUChainedStructOut
 }
 
 #[no_mangle]
@@ -153,7 +151,7 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
         });
     }
 
-    return temp.len();
+    temp.len()
 }
 
 #[no_mangle]
@@ -193,7 +191,7 @@ pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
         });
     }
 
-    return temp.len();
+    temp.len()
 }
 
 #[no_mangle]
@@ -224,7 +222,8 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
         Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
         _ => panic!("Calling wgpuDeviceGetLimits() on an invalid device."),
     }
-    return false;
+
+    true // indicates that we can fill WGPUChainedStructOut
 }
 
 fn write_limits_struct(
@@ -261,6 +260,21 @@ fn write_limits_struct(
     limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
     supported_limits.limits = limits;
+
+    if !supported_limits.nextInChain.is_null() {
+        unsafe {
+            let mut extras = std::mem::transmute::<
+                *mut native::WGPUChainedStructOut,
+                *mut native::WGPUSupportedLimitsExtras,
+            >(supported_limits.nextInChain);
+
+            (*extras).chain.next = std::ptr::null_mut();
+            (*extras).chain.sType = native::WGPUSType_SupportedLimitsExtras;
+
+            (*extras).maxPushConstantSize = wgt_limits.max_push_constant_size;
+            (*extras).maxBufferSize = wgt_limits.max_buffer_size;
+        }
+    }
 }
 
 #[no_mangle]
@@ -605,10 +619,10 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
     let slice = make_slice(data, data_size);
     gfx_select!(queue => GLOBAL.queue_write_texture(
         queue,
-        &conv::map_image_copy_texture(&destination),
+        &conv::map_image_copy_texture(destination),
         slice,
-        &conv::map_texture_data_layout(&data_layout),
-        &conv::map_extent3d(&write_size)
+        &conv::map_texture_data_layout(data_layout),
+        &conv::map_extent3d(write_size)
     ))
     .expect("Unable to write texture")
 }
@@ -770,9 +784,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount as usize)
                         .iter()
-                        .map(
-                            |color_target| match conv::map_texture_format(color_target.format) {
-                                Some(format) => Some(wgt::ColorTargetState {
+                        .map(|color_target| {
+                            conv::map_texture_format(color_target.format).map(|format| {
+                                wgt::ColorTargetState {
                                     format,
                                     blend: color_target.blend.as_ref().map(|blend| {
                                         wgt::BlendState {
@@ -782,10 +796,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                                     }),
                                     write_mask: wgt::ColorWrites::from_bits(color_target.writeMask)
                                         .unwrap(),
-                                }),
-                                None => None,
-                            },
-                        )
+                                }
+                            })
+                        })
                         .collect(),
                 ),
             }),
@@ -825,12 +838,7 @@ lazy_static! {
 }
 
 fn get_device_from_surface(surface: id::SurfaceId) -> id::DeviceId {
-    return SURFACE_TO_DEVICE
-        .lock()
-        .unwrap()
-        .get(&surface)
-        .unwrap()
-        .clone();
+    *SURFACE_TO_DEVICE.lock().unwrap().get(&surface).unwrap()
 }
 
 #[no_mangle]
@@ -986,7 +994,7 @@ pub extern "C" fn wgpuDeviceCreateSampler(
             .maxAnisotropy
             .try_into()
             .ok()
-            .and_then(|clamp| NonZeroU8::new(clamp)),
+            .and_then(NonZeroU8::new),
         border_color: None,
     };
 
@@ -1011,7 +1019,7 @@ pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
     group_index: u32,
 ) -> Option<id::BindGroupLayoutId> {
     let (id, error) = gfx_select!(pipeline => GLOBAL.compute_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
-    if let Some(_) = error {
+    if let Some(error) = error {
         // TODO figure out what device the compute pipeline belongs to and call
         // handle_device_error()
         log::error!(

@@ -9,12 +9,11 @@ pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     // e.g. "v4.1"      -> 0x04010000
     //      "5.4.3.2.1" -> 0x05040302
     let static_str = match option_env!("WGPU_NATIVE_VERSION") {
-        Some(s) => s.trim().trim_start_matches("v"),
+        Some(s) => s.trim().trim_start_matches('v'),
         None => "",
     };
     let mut version: u32 = 0;
-    let mut index: i32 = 0;
-    for part in static_str.split(".") {
+    for (index, part) in (0..).zip(static_str.split('.')) {
         let versionpart: u32 = match part.parse::<u32>() {
             Ok(n) => n,
             Err(_e) => 0,
@@ -24,7 +23,6 @@ pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
             break;
         }
         version += versionpart << shift;
-        index += 1;
     }
     version
 }

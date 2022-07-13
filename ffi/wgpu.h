@@ -22,6 +22,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_RequiredLimitsExtras = 0x60000003,
     WGPUSType_PipelineLayoutExtras = 0x60000004,
     WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
+    WGPUSType_SupportedLimitsExtras = 0x60000003,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -55,7 +56,14 @@ typedef struct WGPUDeviceExtras {
 typedef struct WGPURequiredLimitsExtras {
     WGPUChainedStruct chain;
     uint32_t maxPushConstantSize;
+    uint64_t maxBufferSize;
 } WGPURequiredLimitsExtras;
+
+typedef struct WGPUSupportedLimitsExtras {
+    WGPUChainedStructOut chain;
+    uint32_t maxPushConstantSize;
+    uint64_t maxBufferSize;
+} WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {
     WGPUShaderStageFlags stages;

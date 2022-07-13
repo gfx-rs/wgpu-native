@@ -196,7 +196,7 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     }
 }
 
-pub fn map_adapter_options<'a>(
+pub fn map_adapter_options(
     options: &native::WGPURequestAdapterOptions,
     extras: Option<&native::WGPUAdapterExtras>,
 ) -> (Option<id::SurfaceId>, native::WGPUBackendType) {
@@ -239,14 +239,14 @@ pub fn map_device_descriptor<'a>(
             OwnedLabel::new(extras.tracePath).into_inner(),
         );
     } else {
-        return (
+        (
             wgt::DeviceDescriptor {
                 label: None,
                 features,
                 limits: wgt::Limits::default(),
             },
             None,
-        );
+        )
     }
 }
 
@@ -333,52 +333,51 @@ pub fn map_required_limits(
     if limits.maxStorageBufferBindingSize != 0 {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
-    /* not yet available in wgpu-core
     if limits.minUniformBufferOffsetAlignment != 0 {
-        wgt_limits.yyyy = limits.minUniformBufferOffsetAlignment;
+        wgt_limits.min_uniform_buffer_offset_alignment = limits.minUniformBufferOffsetAlignment;
     }
     if limits.minStorageBufferOffsetAlignment != 0 {
-        wgt_limits.yyyy = limits.minStorageBufferOffsetAlignment;
+        wgt_limits.min_storage_buffer_offset_alignment = limits.minStorageBufferOffsetAlignment;
     }
-    */
     if limits.maxVertexBuffers != 0 {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
     if limits.maxVertexAttributes != 0 {
         wgt_limits.max_vertex_attributes = limits.maxVertexAttributes;
     }
-    /* not yet available in wgpu-core
     if limits.maxVertexBufferArrayStride != 0 {
-        wgt_limits.yyyy = limits.maxVertexBufferArrayStride;
+        wgt_limits.max_vertex_buffer_array_stride = limits.maxVertexBufferArrayStride;
     }
     if limits.maxInterStageShaderComponents != 0 {
-        wgt_limits.yyyy = limits.maxInterStageShaderComponents;
+        wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
     if limits.maxComputeWorkgroupStorageSize != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupStorageSize;
+        wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
     if limits.maxComputeInvocationsPerWorkgroup != 0 {
-        wgt_limits.yyyy = limits.maxComputeInvocationsPerWorkgroup;
+        wgt_limits.max_compute_invocations_per_workgroup = limits.maxComputeInvocationsPerWorkgroup;
     }
     if limits.maxComputeWorkgroupSizeX != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupSizeX;
+        wgt_limits.max_compute_workgroup_size_x = limits.maxComputeWorkgroupSizeX;
     }
     if limits.maxComputeWorkgroupSizeY != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupSizeY;
+        wgt_limits.max_compute_workgroup_size_y = limits.maxComputeWorkgroupSizeY;
     }
     if limits.maxComputeWorkgroupSizeZ != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupSizeZ;
+        wgt_limits.max_compute_workgroup_size_z = limits.maxComputeWorkgroupSizeZ;
     }
     if limits.maxComputeWorkgroupsPerDimension != 0 {
-        wgt_limits.yyyy = limits.maxComputeWorkgroupsPerDimension;
+        wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
-    */
     if let Some(extras) = extras {
         if extras.maxPushConstantSize != 0 {
             wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
         }
+        if extras.maxBufferSize != 0 {
+            wgt_limits.max_buffer_size = extras.maxBufferSize;
+        }
     }
-    return wgt_limits;
+    wgt_limits
 }
 
 pub fn map_shader_module<'a>(
