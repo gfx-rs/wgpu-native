@@ -145,7 +145,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
 
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
-            view: desc.view.expect("invalid texture view for depth stencil attachment"),
+            view: desc
+                .view
+                .expect("invalid texture view for depth stencil attachment"),
             depth: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
@@ -222,7 +224,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePassEncoder) {
-    let pass = pass.as_mut().expect("invalid compute pass encoder");
+    let pass = pass.as_ref().expect("invalid compute pass encoder");
     let encoder_id = pass.parent_id();
     gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, pass))
         .expect("Unable to end compute pass");
