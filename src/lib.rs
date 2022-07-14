@@ -283,7 +283,7 @@ unsafe fn map_surface(
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
     if let Some(metal) = _metal {
-        return GLOBAL.instance_create_surface_metal(metal.layer, PhantomData);
+        return Some(GLOBAL.instance_create_surface_metal(metal.layer, PhantomData));
     }
 
     #[cfg(target_os = "android")]
