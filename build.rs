@@ -49,6 +49,7 @@ fn main() {
         ("WGPURenderBundleEncoder", "ComputePipelineId"),
         ("WGPURenderBundle", "RenderBundleId"),
         ("WGPUQuerySet", "QuerySetId"),
+        ("WGPUSwapChain", "SurfaceId"),
     ];
     let mut builder = bindgen::Builder::default()
         .header("ffi/webgpu-headers/webgpu.h")
@@ -62,82 +63,20 @@ fn main() {
         .layout_tests(true);
 
     for (old_name, new_name) in types_to_rename {
+        let line = match new_name {
+            // wrapping raw pointer types in Option isn't ffi safe
+            "ComputePassEncoderId" | "RenderPassEncoderId" => {
+                format!("pub type {} = wgc::id::{};", old_name, new_name)
+            }
+
+            _ => format!("pub type {} = Option<wgc::id::{}>;", old_name, new_name),
+        };
+
         builder = builder
             .blocklist_type(old_name)
             .blocklist_type(format!("{}Impl", old_name))
-            .raw_line(format!("type {} = wgc::id::{};", old_name, new_name));
+            .raw_line(line);
     }
-
-    // WGPUBindGroupEntry.{buffer, sampler, textureView} is nullable
-    builder = builder.blocklist_item("WGPUBindGroupEntry").raw_line(
-        "#[repr(C)]
-            pub struct WGPUBindGroupEntry {
-                pub nextInChain: *const WGPUChainedStruct,
-                pub binding: u32,
-                pub buffer: Option<WGPUBuffer>,
-                pub offset: u64,
-                pub size: u64,
-                pub sampler: Option<WGPUSampler>,
-                pub textureView: Option<WGPUTextureView>,
-            }",
-    );
-
-    // WGPURequestAdapterOptions.compatibleSurface is nullable
-    builder = builder
-        .blocklist_item("WGPURequestAdapterOptions")
-        .raw_line(
-            "#[repr(C)]
-            pub struct WGPURequestAdapterOptions {
-                pub nextInChain: *const WGPUChainedStruct,
-                pub compatibleSurface: Option<WGPUSurface>,
-                pub powerPreference: WGPUPowerPreference,
-                pub forceFallbackAdapter: bool,
-            }",
-        );
-
-    // WGPURenderPassColorAttachment.{view, resolveTarget} is nullable
-    builder = builder
-        .blocklist_item("WGPURenderPassColorAttachment")
-        .raw_line(
-            "#[repr(C)]
-            pub struct WGPURenderPassColorAttachment {
-                pub view: Option<WGPUTextureView>,
-                pub resolveTarget: Option<WGPUTextureView>,
-                pub loadOp: WGPULoadOp,
-                pub storeOp: WGPUStoreOp,
-                pub clearValue: WGPUColor,
-            }",
-        );
-
-    // WGPUComputePipelineDescriptor.layout is nullable
-    builder = builder
-        .blocklist_item("WGPUComputePipelineDescriptor")
-        .raw_line(
-            "#[repr(C)]
-            pub struct WGPUComputePipelineDescriptor {
-                pub nextInChain: *const WGPUChainedStruct,
-                pub label: *const ::std::os::raw::c_char,
-                pub layout: Option<WGPUPipelineLayout>,
-                pub compute: WGPUProgrammableStageDescriptor,
-            }",
-        );
-
-    // WGPURenderPipelineDescriptor.layout is nullable
-    builder = builder
-        .blocklist_item("WGPURenderPipelineDescriptor")
-        .raw_line(
-            "#[repr(C)]
-            pub struct WGPURenderPipelineDescriptor {
-                pub nextInChain: *const WGPUChainedStruct,
-                pub label: *const ::std::os::raw::c_char,
-                pub layout: Option<WGPUPipelineLayout>,
-                pub vertex: WGPUVertexState,
-                pub primitive: WGPUPrimitiveState,
-                pub depthStencil: *const WGPUDepthStencilState,
-                pub multisample: WGPUMultisampleState,
-                pub fragment: *const WGPUFragmentState,
-            }",
-        );
 
     // See https://github.com/rust-lang/rust-bindgen/issues/1780
     if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {

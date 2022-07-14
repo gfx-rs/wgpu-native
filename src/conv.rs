@@ -1,6 +1,5 @@
 use crate::{follow_chain, make_slice, map_enum, native, Label, OwnedLabel};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
-use wgc::{id, pipeline::ShaderModuleSource};
 
 map_enum!(
     map_load_op,
@@ -199,7 +198,7 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
 pub fn map_adapter_options(
     options: &native::WGPURequestAdapterOptions,
     extras: Option<&native::WGPUAdapterExtras>,
-) -> (Option<id::SurfaceId>, native::WGPUBackendType) {
+) -> (native::WGPUSurface, native::WGPUBackendType) {
     if let Some(extras) = extras {
         (options.compatibleSurface, extras.backend)
     } else {
@@ -254,16 +253,20 @@ pub fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
-    let mut push_constant_ranges: Vec<wgt::PushConstantRange> = Vec::new();
+    let mut bind_group_layouts = Vec::new();
+    for layout in unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) } {
+        bind_group_layouts.push(layout.expect("Invalid bind group layout"));
+    }
+
+    let mut push_constant_ranges = Vec::new();
 
     if let Some(extras) = extras {
-        let raw_push_constant_ranges = unsafe {
-            slice::from_raw_parts(
+        for range in unsafe {
+            make_slice(
                 extras.pushConstantRanges,
                 extras.pushConstantRangeCount as usize,
             )
-        };
-        for range in raw_push_constant_ranges {
+        } {
             push_constant_ranges.push(wgt::PushConstantRange {
                 stages: wgt::ShaderStages::from_bits(range.stages).expect("Invalid shader stage"),
                 range: range.start..range.end,
@@ -273,12 +276,7 @@ pub fn map_pipeline_layout_descriptor<'a>(
 
     return wgc::binding_model::PipelineLayoutDescriptor {
         label: OwnedLabel::new(des.label).into_cow(),
-        bind_group_layouts: unsafe {
-            Cow::Borrowed(make_slice(
-                des.bindGroupLayouts,
-                des.bindGroupLayoutCount as usize,
-            ))
-        },
+        bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
 }
@@ -385,11 +383,11 @@ pub fn map_shader_module<'a>(
     spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
     wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
     glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>,
-) -> ShaderModuleSource<'a> {
+) -> wgc::pipeline::ShaderModuleSource<'a> {
     if let Some(wgsl) = wgsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
-        ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
+        wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
     } else if let Some(spirv) = spirv {
         let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
         // Parse the given shader code and store its representation.
@@ -400,7 +398,7 @@ pub fn map_shader_module<'a>(
         };
         let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
         let module = parser.parse().unwrap();
-        ShaderModuleSource::Naga(module)
+        wgc::pipeline::ShaderModuleSource::Naga(module)
     } else if let Some(glsl) = glsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
@@ -423,7 +421,7 @@ pub fn map_shader_module<'a>(
 
         let mut parser = naga::front::glsl::Parser::default();
         let module = parser.parse(&options, str_slice).unwrap();
-        ShaderModuleSource::Naga(module)
+        wgc::pipeline::ShaderModuleSource::Naga(module)
     } else {
         panic!("Shader not provided.");
     }
@@ -433,7 +431,9 @@ pub fn map_image_copy_texture(
     native: &native::WGPUImageCopyTexture,
 ) -> wgc::command::ImageCopyTexture {
     wgt::ImageCopyTexture {
-        texture: native.texture,
+        texture: native
+            .texture
+            .expect("invalid texture for image copy texture"),
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
         aspect: map_texture_aspect(native.aspect),
@@ -444,7 +444,7 @@ pub fn map_image_copy_buffer(
     native: &native::WGPUImageCopyBuffer,
 ) -> wgc::command::ImageCopyBuffer {
     wgt::ImageCopyBuffer {
-        buffer: native.buffer,
+        buffer: native.buffer.expect("invalid buffer for image copy buffer"),
         layout: map_texture_data_layout(&native.layout),
     }
 }

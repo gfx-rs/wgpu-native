@@ -4,14 +4,16 @@ use std::os::raw::c_char;
 use std::{borrow::Cow, num::NonZeroU64};
 use wgc::{
     command::{compute_ffi, render_ffi},
-    gfx_select, id,
+    gfx_select,
 };
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderFinish(
-    command_encoder: id::CommandEncoderId,
+    command_encoder: native::WGPUCommandEncoder,
     descriptor: &native::WGPUCommandBufferDescriptor,
-) -> Option<id::CommandBufferId> {
+) -> native::WGPUCommandBuffer {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+
     let desc = wgt::CommandBufferDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
     };
@@ -30,11 +32,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
-    command_encoder: id::CommandEncoderId,
-    buffer: id::BufferId,
+    command_encoder: native::WGPUCommandEncoder,
+    buffer: native::WGPUBuffer,
     offset: u64,
     size: u64,
 ) {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+    let buffer = buffer.expect("invalid buffer");
+
     gfx_select!(command_encoder => GLOBAL.command_encoder_clear_buffer(
         command_encoder,
         buffer,
@@ -45,13 +50,17 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
-    command_encoder: id::CommandEncoderId,
-    source: id::BufferId,
+    command_encoder: native::WGPUCommandEncoder,
+    source: native::WGPUBuffer,
     source_offset: u64,
-    destination: id::BufferId,
+    destination: native::WGPUBuffer,
     destination_offset: u64,
     size: u64,
 ) {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+    let source = source.expect("invalid source");
+    let destination = destination.expect("invalid destination");
+
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_buffer_to_buffer(
         command_encoder,
         source,
@@ -64,11 +73,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
 
 #[no_mangle]
 pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
-    command_encoder: id::CommandEncoderId,
+    command_encoder: native::WGPUCommandEncoder,
     source: &native::WGPUImageCopyTexture,
     destination: &native::WGPUImageCopyTexture,
     copy_size: &native::WGPUExtent3D,
 ) {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_texture_to_texture(
         command_encoder,
         &conv::map_image_copy_texture(source),
@@ -79,11 +90,13 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
 
 #[no_mangle]
 pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
-    command_encoder: id::CommandEncoderId,
+    command_encoder: native::WGPUCommandEncoder,
     source: &native::WGPUImageCopyTexture,
     destination: &native::WGPUImageCopyBuffer,
     copy_size: &native::WGPUExtent3D,
 ) {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_texture_to_buffer(
         command_encoder,
         &conv::map_image_copy_texture(source),
@@ -94,11 +107,13 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
 
 #[no_mangle]
 pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
-    command_encoder: id::CommandEncoderId,
+    command_encoder: native::WGPUCommandEncoder,
     source: &native::WGPUImageCopyBuffer,
     destination: &native::WGPUImageCopyTexture,
     copy_size: &native::WGPUExtent3D,
 ) {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+
     gfx_select!(command_encoder => GLOBAL.command_encoder_copy_buffer_to_texture(
         command_encoder,
         &conv::map_image_copy_buffer(source),
@@ -109,9 +124,11 @@ pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
-    command_encoder: id::CommandEncoderId,
+    command_encoder: native::WGPUCommandEncoder,
     descriptor: &native::WGPUComputePassDescriptor,
-) -> id::ComputePassEncoderId {
+) -> native::WGPUComputePassEncoder {
+    let command_encoder = command_encoder.expect("invalid command encoder");
+
     let desc = wgc::command::ComputePassDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
     };
@@ -121,12 +138,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
-    encoder: id::CommandEncoderId,
+    encoder: native::WGPUCommandEncoder,
     descriptor: &native::WGPURenderPassDescriptor,
-) -> id::RenderPassEncoderId {
+) -> native::WGPURenderPassEncoder {
+    let encoder = encoder.expect("invalid command encoder");
+
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
-            view: desc.view,
+            view: desc.view.expect("invalid texture view for depth stencil attachment"),
             depth: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
@@ -173,72 +192,82 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderInsertDebugMarker(
-    encoder: id::CommandEncoderId,
+    encoder: native::WGPUCommandEncoder,
     marker_label: *const c_char,
 ) {
+    let encoder = encoder.expect("invalid command encoder");
+
     gfx_select!(encoder => GLOBAL.command_encoder_insert_debug_marker(encoder, CStr::from_ptr(marker_label).to_str().unwrap()))
         .expect("Unable to insert debug marker");
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandEncoderPopDebugGroup(encoder: id::CommandEncoderId) {
+pub extern "C" fn wgpuCommandEncoderPopDebugGroup(encoder: native::WGPUCommandEncoder) {
+    let encoder = encoder.expect("invalid command encoder");
+
     gfx_select!(encoder => GLOBAL.command_encoder_pop_debug_group(encoder))
         .expect("Unable to pop debug group");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
-    encoder: id::CommandEncoderId,
+    encoder: native::WGPUCommandEncoder,
     group_label: *const c_char,
 ) {
+    let encoder = encoder.expect("invalid command encoder");
+
     gfx_select!(encoder => GLOBAL.command_encoder_push_debug_group(encoder, CStr::from_ptr(group_label).to_str().unwrap()))
         .expect("Unable to push debug group");
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: id::ComputePassEncoderId) {
-    let pass = Box::from_raw(pass);
+pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePassEncoder) {
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, &pass))
+    gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, pass))
         .expect("Unable to end compute pass");
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: id::RenderPassEncoderId) {
-    let pass = Box::from_raw(pass);
+pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEncoder) {
+    let pass = pass.as_ref().expect("invalid render pass encoder");
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, &pass))
+    gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, pass))
         .expect("Unable to end render pass");
 }
 
-// TODO: Move these out of wgc
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
-    pass: id::ComputePassEncoderId,
-    pipeline_id: id::ComputePipelineId,
+    pass: native::WGPUComputePassEncoder,
+    pipeline_id: native::WGPUComputePipeline,
 ) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
+    let pipeline_id = pipeline_id.expect("invalid compute pipeline");
+
     compute_ffi::wgpu_compute_pass_set_pipeline(pass, pipeline_id);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
-    pass: id::RenderPassEncoderId,
-    pipeline_id: id::RenderPipelineId,
+    pass: native::WGPURenderPassEncoder,
+    pipeline_id: native::WGPURenderPipeline,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let pipeline_id = pipeline_id.expect("invalid render pipeline");
     render_ffi::wgpu_render_pass_set_pipeline(pass, pipeline_id);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
-    pass: id::ComputePassEncoderId,
+    pass: native::WGPUComputePassEncoder,
     group_index: u32,
-    group: id::BindGroupId,
+    group: native::WGPUBindGroup,
     dynamic_offset_count: u32,
     dynamic_offsets: *const u32,
 ) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
+    let group = group.expect("invalid bind group");
+
     compute_ffi::wgpu_compute_pass_set_bind_group(
         pass,
         group_index,
@@ -250,13 +279,15 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     group_index: u32,
-    group: id::BindGroupId,
+    group: native::WGPUBindGroup,
     dynamic_offset_count: u32,
     dynamic_offsets: *const u32,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let group = group.expect("invalid bind group");
+
     render_ffi::wgpu_render_pass_set_bind_group(
         pass,
         group_index,
@@ -268,12 +299,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
-    pass: id::ComputePassEncoderId,
+    pass: native::WGPUComputePassEncoder,
     workgroup_count_x: u32,
     workgroup_count_y: u32,
     workgroup_count_z: u32,
 ) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
     compute_ffi::wgpu_compute_pass_dispatch_workgroups(
         pass,
         workgroup_count_x,
@@ -284,11 +315,13 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
-    pass: id::ComputePassEncoderId,
-    indirect_buffer: id::BufferId,
+    pass: native::WGPUComputePassEncoder,
+    indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
+    let indirect_buffer = indirect_buffer.expect("invalid indirect buffer");
+
     compute_ffi::wgpu_compute_pass_dispatch_workgroups_indirect(
         pass,
         indirect_buffer,
@@ -298,37 +331,37 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderInsertDebugMarker(
-    pass: id::ComputePassEncoderId,
+    pass: native::WGPUComputePassEncoder,
     marker_label: *const c_char,
 ) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
     compute_ffi::wgpu_compute_pass_insert_debug_marker(pass, marker_label, 0);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderPopDebugGroup(pass: id::ComputePassEncoderId) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+pub unsafe extern "C" fn wgpuComputePassEncoderPopDebugGroup(pass: native::WGPUComputePassEncoder) {
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
     compute_ffi::wgpu_compute_pass_pop_debug_group(pass);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroup(
-    pass: id::ComputePassEncoderId,
+    pass: native::WGPUComputePassEncoder,
     group_label: *const c_char,
 ) {
-    let pass = pass.as_mut().expect("Compute pass invalid");
+    let pass = pass.as_mut().expect("invalid compute pass encoder");
     compute_ffi::wgpu_compute_pass_push_debug_group(pass, group_label, 0);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     vertex_count: u32,
     instance_count: u32,
     first_vertex: u32,
     first_instance: u32,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_draw(
         pass,
         vertex_count,
@@ -340,14 +373,14 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     index_count: u32,
     instance_count: u32,
     first_index: u32,
     base_vertex: u32,
     first_instance: u32,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_draw_indexed(
         pass,
         index_count,
@@ -360,33 +393,39 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
-    pass: id::RenderPassEncoderId,
-    buffer: id::BufferId,
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+
     render_ffi::wgpu_render_pass_draw_indirect(pass, buffer, indirect_offset);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
-    pass: id::RenderPassEncoderId,
-    buffer: id::BufferId,
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+
     render_ffi::wgpu_render_pass_draw_indexed_indirect(pass, buffer, indirect_offset);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
-    pass: id::RenderPassEncoderId,
-    buffer: id::BufferId,
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
     index_format: native::WGPUIndexFormat,
     offset: u64,
     size: u64,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+
     pass.set_index_buffer(
         buffer,
         conv::map_index_format(index_format).expect("Index format cannot be undefined"),
@@ -397,13 +436,15 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     slot: u32,
-    buffer: id::BufferId,
+    buffer: native::WGPUBuffer,
     offset: u64,
     size: u64,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+
     render_ffi::wgpu_render_pass_set_vertex_buffer(
         pass,
         slot,
@@ -415,13 +456,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     stages: native::WGPUShaderStage,
     offset: u32,
     size_bytes: u32,
     size: *const u8,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_set_push_constants(
         pass,
         wgt::ShaderStages::from_bits(stages as u32).expect("Invalid shader stage"),
@@ -433,25 +474,25 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     color: &native::WGPUColor,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_set_blend_constant(pass, &conv::map_color(color));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     reference: u32,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_set_stencil_reference(pass, reference);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetViewport(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     x: f32,
     y: f32,
     w: f32,
@@ -459,42 +500,42 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetViewport(
     depth_min: f32,
     depth_max: f32,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_set_viewport(pass, x, y, w, h, depth_min, depth_max);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     x: u32,
     y: u32,
     w: u32,
     h: u32,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_set_scissor_rect(pass, x, y, w, h);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarker(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     marker_label: *const c_char,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_insert_debug_marker(pass, marker_label, 0);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderPopDebugGroup(pass: id::RenderPassEncoderId) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+pub unsafe extern "C" fn wgpuRenderPassEncoderPopDebugGroup(pass: native::WGPURenderPassEncoder) {
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_pop_debug_group(pass);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
-    pass: id::RenderPassEncoderId,
+    pass: native::WGPURenderPassEncoder,
     group_label: *const c_char,
 ) {
-    let pass = pass.as_mut().expect("Render pass invalid");
+    let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_push_debug_group(pass, group_label, 0);
 }

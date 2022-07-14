@@ -216,7 +216,7 @@ pub extern "C" fn wgpuCreateInstance(
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     _: native::WGPUInstance,
     descriptor: *const native::WGPUSurfaceDescriptor,
-) -> id::SurfaceId {
+) -> native::WGPUSurface {
     follow_chain!(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
@@ -228,8 +228,8 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     )
 }
 
-pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
-    GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData)
+pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> native::WGPUSurface {
+    Some(GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData))
 }
 
 unsafe fn map_surface(
@@ -240,7 +240,7 @@ unsafe fn map_surface(
     _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
-) -> id::SurfaceId {
+) -> native::WGPUSurface {
     #[cfg(windows)]
     if let Some(win) = _win {
         let mut handle = raw_window_handle::Win32Handle::empty();
@@ -299,9 +299,12 @@ unsafe fn map_surface(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
-    surface: id::SurfaceId,
-    adapter: id::AdapterId,
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
 ) -> native::WGPUTextureFormat {
+    let surface = surface.expect("invalid surface");
+    let adapter = adapter.expect("invalid adapter");
+
     let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
     {
         Ok(formats) => conv::to_native_texture_format(
@@ -317,10 +320,12 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
-    surface: id::SurfaceId,
-    adapter: id::AdapterId,
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
     count: Option<&mut usize>,
 ) -> *const native::WGPUTextureFormat {
+    let surface = surface.expect("invalid surface");
+    let adapter = adapter.expect("invalid adapter");
     assert!(count.is_some(), "count must be non-null");
 
     let mut native_formats = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
@@ -343,10 +348,12 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
-    surface: id::SurfaceId,
-    adapter: id::AdapterId,
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
     count: Option<&mut usize>,
 ) -> *const native::WGPUPresentMode {
+    let surface = surface.expect("invalid surface");
+    let adapter = adapter.expect("invalid adapter");
     assert!(count.is_some(), "count must be non-null");
 
     let mut modes = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_modes(surface, adapter))
@@ -404,10 +411,12 @@ lazy_static::lazy_static! {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     callback: native::WGPUErrorCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
+    let device = device.expect("invalid device");
+
     CALLBACKS
         .lock()
         .unwrap()
@@ -417,10 +426,12 @@ pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     callback: native::WGPUDeviceLostCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
+    let device = device.expect("invalid device");
+
     CALLBACKS
         .lock()
         .unwrap()
