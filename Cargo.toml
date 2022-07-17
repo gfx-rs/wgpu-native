@@ -7,7 +7,7 @@ authors = [
 	"Noah Charlton <ncharlton002@gmail.com>",
 	"Almar Klein <almar@almarklein.org>",
 ]
-edition = "2018"
+edition = "2021"
 description = "WebGPU native implementation on gfx-hal"
 homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
@@ -25,17 +25,23 @@ vulkan-portability = ["wgc/vulkan-portability"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "f27a978"
+rev = "e49ef97"
 # path = "../wgpu/wgpu-core"
-#version = "0.11"
+# version = "0.13"
 features = ["raw-window-handle", "trace"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "f27a978"
+rev = "e49ef97"
 # path = "../wgpu/wgpu-types"
-#version = "0.11"
+# version = "0.13"
+
+[dependencies.naga]
+# git = "https://github.com/gfx-rs/naga"
+# rev = "0b60f410"
+version = "0.9"
+features = ["spv-in", "glsl-in"]
 
 [dependencies]
 lazy_static = "1.4"
@@ -43,11 +49,6 @@ raw-window-handle = "0.4"
 paste = "1.0"
 log = "0.4"
 thiserror = "1"
-
-[dependencies.naga]
-git = "https://github.com/gfx-rs/naga"
-rev = "0b60f410"
-features = ["spv-in", "glsl-in"]
 
 [build-dependencies]
 bindgen = "0.60.1"

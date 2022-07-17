@@ -53,21 +53,23 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         .expect("Unable to request adapter");
     let status = native::WGPURequestAdapterStatus_Success; // todo: cleanly communicate a non-success
     let message_ptr = std::ptr::null();
-    (callback.unwrap())(status, adapter_id, message_ptr, userdata);
+    (callback.unwrap())(status, Some(adapter_id), message_ptr, userdata);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterRequestDevice(
-    adapter: id::AdapterId,
+    adapter: native::WGPUAdapter,
     descriptor: &native::WGPUDeviceDescriptor,
     callback: native::WGPURequestDeviceCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
+    let adapter = adapter.expect("invalid adapter");
+
     let (desc, trace_str) = follow_chain!(
         map_device_descriptor(descriptor,
         WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
     );
-    let trace_path = trace_str.as_ref().map(|path| Path::new(path));
+    let trace_path = trace_str.as_ref().map(Path::new);
 
     let (id, error) = gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, PhantomData));
 
@@ -77,7 +79,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
 
     let message_ptr = std::ptr::null();
-    (callback.unwrap())(status, id, message_ptr, userdata);
+    (callback.unwrap())(status, Some(id), message_ptr, userdata);
 }
 
 lazy_static! {
@@ -86,59 +88,63 @@ lazy_static! {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetProperties(
-    adapter: id::AdapterId,
+    adapter: native::WGPUAdapter,
     properties: &mut native::WGPUAdapterProperties,
 ) {
+    let adapter = adapter.expect("invalid adapter");
+
     let maybe_props = gfx_select!(adapter => GLOBAL.adapter_get_info(adapter));
-    match maybe_props {
-        Ok(props) => {
-            properties.name = ADAPTER_NAMES
-                .lock()
-                .unwrap()
-                .entry(adapter)
-                .or_insert_with(|| CString::new((&props.name) as &str).unwrap())
-                .as_ptr();
-            properties.vendorID = props.vendor as u32;
-            properties.deviceID = props.device as u32;
-            properties.adapterType = match props.device_type {
-                wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
-                wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
-                wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
-                wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
-                wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
-            };
-            properties.backendType = match props.backend {
-                wgt::Backend::Empty => native::WGPUBackendType_Null,
-                wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
-                wgt::Backend::Metal => native::WGPUBackendType_Metal,
-                wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
-                wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
-                wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
-                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
-            };
-        }
-        _ => (),
+    if let Ok(props) = maybe_props {
+        properties.name = ADAPTER_NAMES
+            .lock()
+            .unwrap()
+            .entry(adapter)
+            .or_insert_with(|| CString::new((&props.name) as &str).unwrap())
+            .as_ptr();
+        properties.vendorID = props.vendor as u32;
+        properties.deviceID = props.device as u32;
+        properties.adapterType = match props.device_type {
+            wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+            wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+            wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+            wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+            wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+        };
+        properties.backendType = match props.backend {
+            wgt::Backend::Empty => native::WGPUBackendType_Null,
+            wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+            wgt::Backend::Metal => native::WGPUBackendType_Metal,
+            wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+            wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
+            wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+            wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
+        };
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
-    adapter: id::AdapterId,
+    adapter: native::WGPUAdapter,
     limits: &mut native::WGPUSupportedLimits,
 ) -> bool {
+    let adapter = adapter.expect("invalid adapter");
+
     let result = gfx_select!(adapter => GLOBAL.adapter_limits(adapter));
     match result {
         Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
         _ => panic!("Calling wgpuAdapterGetLimits() on an invalid adapter."),
     }
-    return false; // todo: what is the purpose of this return value?
+
+    true // indicates that we can fill WGPUChainedStructOut
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
-    adapter: id::AdapterId,
+    adapter: native::WGPUAdapter,
     features: *mut native::WGPUFeatureName,
 ) -> usize {
+    let adapter = adapter.expect("invalid adapter");
+
     let adapter_features = match gfx_select!(adapter => GLOBAL.adapter_features(adapter)) {
         Ok(features) => features,
         _ => panic!("Calling wgpuAdapterEnumerateFeatures() on an invalid adapter."),
@@ -153,14 +159,16 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
         });
     }
 
-    return temp.len();
+    temp.len()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterHasFeature(
-    adapter: id::AdapterId,
+    adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
 ) -> bool {
+    let adapter = adapter.expect("invalid adapter");
+
     let adapter_features = match gfx_select!(adapter => GLOBAL.adapter_features(adapter)) {
         Ok(features) => features,
         _ => panic!("Calling wgpuAdapterHasFeature() on an invalid adapter."),
@@ -176,9 +184,11 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     features: *mut native::WGPUFeatureName,
 ) -> usize {
+    let device = device.expect("invalid device");
+
     let device_features = match gfx_select!(device => GLOBAL.device_features(device)) {
         Ok(features) => features,
         _ => panic!("Calling wgpuDeviceEnumerateFeatures() on an invalid device."),
@@ -193,14 +203,16 @@ pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
         });
     }
 
-    return temp.len();
+    temp.len()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceHasFeature(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     feature: native::WGPUFeatureName,
 ) -> bool {
+    let device = device.expect("invalid device");
+
     let device_features = match gfx_select!(device => GLOBAL.device_features(device)) {
         Ok(features) => features,
         _ => panic!("Calling wgpuDeviceHasFeature() on an invalid device."),
@@ -216,15 +228,18 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     limits: &mut native::WGPUSupportedLimits,
 ) -> bool {
+    let device = device.expect("invalid device");
+
     let result = gfx_select!(device => GLOBAL.device_limits(device));
     match result {
         Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
         _ => panic!("Calling wgpuDeviceGetLimits() on an invalid device."),
     }
-    return false;
+
+    true // indicates that we can fill WGPUChainedStructOut
 }
 
 fn write_limits_struct(
@@ -261,13 +276,30 @@ fn write_limits_struct(
     limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
     supported_limits.limits = limits;
+
+    if !supported_limits.nextInChain.is_null() {
+        unsafe {
+            let mut extras = std::mem::transmute::<
+                *mut native::WGPUChainedStructOut,
+                *mut native::WGPUSupportedLimitsExtras,
+            >(supported_limits.nextInChain);
+
+            (*extras).chain.next = std::ptr::null_mut();
+            (*extras).chain.sType = native::WGPUSType_SupportedLimitsExtras;
+
+            (*extras).maxPushConstantSize = wgt_limits.max_push_constant_size;
+            (*extras).maxBufferSize = wgt_limits.max_buffer_size;
+        }
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUShaderModuleDescriptor,
-) -> Option<id::ShaderModuleId> {
+) -> native::WGPUShaderModule {
+    let device = device.expect("invalid device");
+
     let label = OwnedLabel::new(descriptor.label);
     let source = follow_chain!(
         map_shader_module(descriptor,
@@ -291,9 +323,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateBuffer(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUBufferDescriptor,
-) -> Option<id::BufferId> {
+) -> native::WGPUBuffer {
+    let device = device.expect("invalid device");
+
     let usage = wgt::BufferUsages::from_bits(descriptor.usage).expect("Buffer Usage Invalid.");
     let label = OwnedLabel::new(descriptor.label);
     let (id, error) = gfx_select!(device => GLOBAL.device_create_buffer(
@@ -315,15 +349,19 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferDestroy(buffer_id: id::BufferId) {
+pub extern "C" fn wgpuBufferDestroy(buffer_id: native::WGPUBuffer) {
+    let buffer_id = buffer_id.expect("invalid buffer");
+
     gfx_select!(buffer_id => GLOBAL.buffer_destroy(buffer_id)).expect("Unable to destroy buffer");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUBindGroupLayoutDescriptor,
-) -> Option<id::BindGroupLayoutId> {
+) -> native::WGPUBindGroupLayout {
+    let device = device.expect("invalid device");
+
     let mut entries = Vec::new();
 
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
@@ -438,33 +476,33 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUBindGroupDescriptor,
-) -> Option<id::BindGroupId> {
+) -> native::WGPUBindGroup {
+    let device = device.expect("invalid device");
+
     let mut entries = Vec::new();
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        let wgc_entry = if entry.buffer.is_some() {
+        let wgc_entry = if let Some(buffer) = entry.buffer {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::Buffer(
                     wgc::binding_model::BufferBinding {
-                        buffer_id: entry.buffer.unwrap(),
+                        buffer_id: buffer,
                         offset: entry.offset,
                         size: NonZeroU64::new(entry.size),
                     },
                 ),
             }
-        } else if entry.sampler.is_some() {
+        } else if let Some(sampler) = entry.sampler {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::Sampler(entry.sampler.unwrap()),
+                resource: wgc::binding_model::BindingResource::Sampler(sampler),
             }
-        } else if entry.textureView.is_some() {
+        } else if let Some(texture_view) = entry.textureView {
             wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::TextureView(
-                    entry.textureView.unwrap(),
-                ),
+                resource: wgc::binding_model::BindingResource::TextureView(texture_view),
             }
         } else {
             panic!("BindGroup entry does not have buffer nor sampler nor textureView.")
@@ -475,7 +513,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupDescriptor {
         label: label.as_cow(),
-        layout: descriptor.layout,
+        layout: descriptor
+            .layout
+            .expect("invalid bind group layout for bind group descriptor"),
         entries: Cow::Borrowed(&entries),
     };
     let (id, error) =
@@ -490,9 +530,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUPipelineLayoutDescriptor,
-) -> Option<id::PipelineLayoutId> {
+) -> native::WGPUPipelineLayout {
+    let device = device.expect("invalid device");
+
     let desc = follow_chain!(
         map_pipeline_layout_descriptor(
             descriptor,
@@ -510,18 +552,23 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUComputePipelineDescriptor,
-) -> Option<id::ComputePipelineId> {
+) -> native::WGPUComputePipeline {
+    let device = device.expect("invalid device");
+
     let stage = wgc::pipeline::ProgrammableStageDescriptor {
-        module: descriptor.compute.module,
+        module: descriptor
+            .compute
+            .module
+            .expect("invalid shader module for compute pipeline descriptor"),
         entry_point: OwnedLabel::new(descriptor.compute.entryPoint)
             .into_cow()
             .expect("Entry point not provided"),
     };
     let desc = wgc::pipeline::ComputePipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        layout: Some(descriptor.layout),
+        layout: descriptor.layout,
         stage,
     };
 
@@ -536,9 +583,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUCommandEncoderDescriptor,
-) -> Option<id::CommandEncoderId> {
+) -> native::WGPUCommandEncoder {
+    let device = device.expect("invalid device");
+
     let desc = wgt::CommandEncoderDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
     };
@@ -553,41 +602,56 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceGetQueue(device: id::DeviceId) -> id::QueueId {
-    device
+pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> native::WGPUQueue {
+    Some(device.expect("invalid device"))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueSubmit(
-    queue: id::QueueId,
+    queue: native::WGPUQueue,
     command_count: u32,
-    commands: *const id::CommandBufferId,
+    commands: *const native::WGPUCommandBuffer,
 ) {
-    let command_buffer_ids = make_slice(commands, command_count as usize);
-    gfx_select!(queue => GLOBAL.queue_submit(queue, command_buffer_ids))
+    let queue = queue.expect("invalid queue");
+
+    let mut command_buffers = Vec::new();
+    for command_buffer in make_slice(commands, command_count as usize) {
+        command_buffers.push(command_buffer.expect("invalid command buffer"))
+    }
+
+    gfx_select!(queue => GLOBAL.queue_submit(queue, &command_buffers))
         .expect("Unable to submit queue");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
-    queue: id::QueueId,
+    queue: native::WGPUQueue,
     command_count: u32,
-    commands: *const id::CommandBufferId,
+    commands: *const native::WGPUCommandBuffer,
 ) -> native::WGPUSubmissionIndex {
-    let command_buffer_ids = make_slice(commands, command_count as usize);
-    let submission_index = gfx_select!(queue => GLOBAL.queue_submit(queue, command_buffer_ids))
+    let queue = queue.expect("invalid queue");
+
+    let mut command_buffers = Vec::new();
+    for command_buffer in make_slice(commands, command_count as usize) {
+        command_buffers.push(command_buffer.expect("invalid command buffer"))
+    }
+
+    let submission_index = gfx_select!(queue => GLOBAL.queue_submit(queue, &command_buffers))
         .expect("Unable to submit queue");
     submission_index.index
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueWriteBuffer(
-    queue: id::QueueId,
-    buffer: id::BufferId,
+    queue: native::WGPUQueue,
+    buffer: native::WGPUBuffer,
     buffer_offset: u64,
     data: *const u8, // TODO: Check - this might not follow the header
     data_size: usize,
 ) {
+    let queue = queue.expect("invalid queue");
+    let buffer = buffer.expect("invalid buffer");
+
     let slice = make_slice(data, data_size);
     gfx_select!(queue => GLOBAL.queue_write_buffer(queue, buffer, buffer_offset, slice))
         .expect("Unable to write buffer")
@@ -595,33 +659,37 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueWriteTexture(
-    queue: id::QueueId,
+    queue: native::WGPUQueue,
     destination: &native::WGPUImageCopyTexture,
     data: *const u8, // TODO: Check - this might not follow the header
     data_size: usize,
     data_layout: &native::WGPUTextureDataLayout,
     write_size: &native::WGPUExtent3D,
 ) {
+    let queue = queue.expect("invalid queue");
+
     let slice = make_slice(data, data_size);
     gfx_select!(queue => GLOBAL.queue_write_texture(
         queue,
-        &conv::map_image_copy_texture(&destination),
+        &conv::map_image_copy_texture(destination),
         slice,
-        &conv::map_texture_data_layout(&data_layout),
-        &conv::map_extent3d(&write_size)
+        &conv::map_texture_data_layout(data_layout),
+        &conv::map_extent3d(write_size)
     ))
     .expect("Unable to write texture")
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferMapAsync(
-    buffer: id::BufferId,
+    buffer: native::WGPUBuffer,
     mode: native::WGPUMapModeFlags,
     offset: usize,
     size: usize,
     callback: native::WGPUBufferMapCallback,
     user_data: *mut u8,
 ) {
+    let buffer = buffer.expect("invalid buffer");
+
     let operation = wgc::resource::BufferMapOperation {
         host: match mode as native::WGPUMapMode {
             native::WGPUMapMode_Write => wgc::device::HostMap::Write,
@@ -641,15 +709,19 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDevicePoll(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     wait: bool,
     wrapped_submission_index: Option<&native::WGPUWrappedSubmissionIndex>,
 ) -> bool {
+    let device = device.expect("invalid device");
+
     let maintain = match wait {
         true => match wrapped_submission_index {
             Some(index) => {
                 wgt::Maintain::WaitForSubmissionIndex(wgc::device::queue::WrappedSubmissionIndex {
-                    queue_id: index.queue,
+                    queue_id: index
+                        .queue
+                        .expect("invalid queue for wrapped submission index"),
                     index: index.submissionIndex,
                 })
             }
@@ -663,10 +735,12 @@ pub unsafe extern "C" fn wgpuDevicePoll(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferGetMappedRange(
-    buffer: id::BufferId,
+    buffer: native::WGPUBuffer,
     offset: usize,
     size: usize,
 ) -> *mut u8 {
+    let buffer = buffer.expect("invalid buffer");
+
     gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, Some(size as u64)))
         .expect("Unable to get mapped range")
         .0
@@ -674,15 +748,20 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPURenderPipelineDescriptor,
-) -> Option<id::RenderPipelineId> {
+) -> native::WGPURenderPipeline {
+    let device = device.expect("invalid device");
+
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
-        layout: Some(descriptor.layout),
+        layout: descriptor.layout,
         vertex: wgc::pipeline::VertexState {
             stage: wgc::pipeline::ProgrammableStageDescriptor {
-                module: descriptor.vertex.module,
+                module: descriptor
+                    .vertex
+                    .module
+                    .expect("invalid vertex shader module for render pipeline descriptor"),
                 entry_point: OwnedLabel::new(descriptor.vertex.entryPoint)
                     .into_cow()
                     .expect("Entry point not provided"),
@@ -762,7 +841,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             .as_ref()
             .map(|fragment| wgc::pipeline::FragmentState {
                 stage: wgc::pipeline::ProgrammableStageDescriptor {
-                    module: fragment.module,
+                    module: fragment
+                        .module
+                        .expect("invalid fragment shader module for render pipeline descriptor"),
                     entry_point: OwnedLabel::new(fragment.entryPoint)
                         .into_cow()
                         .expect("Entry point not provided"),
@@ -770,23 +851,20 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount as usize)
                         .iter()
-                        .map(|color_target| wgt::ColorTargetState {
-                            format: conv::map_texture_format(color_target.format)
-                                .expect("Texture format must be defined"),
-                            blend: color_target.blend.as_ref().map(|blend| wgt::BlendState {
-                                color: wgt::BlendComponent {
-                                    src_factor: conv::map_blend_factor(blend.color.srcFactor),
-                                    dst_factor: conv::map_blend_factor(blend.color.dstFactor),
-                                    operation: conv::map_blend_operation(blend.color.operation),
-                                },
-                                alpha: wgt::BlendComponent {
-                                    src_factor: conv::map_blend_factor(blend.alpha.srcFactor),
-                                    dst_factor: conv::map_blend_factor(blend.alpha.dstFactor),
-                                    operation: conv::map_blend_operation(blend.alpha.operation),
-                                },
-                            }),
-                            write_mask: wgt::ColorWrites::from_bits(color_target.writeMask)
-                                .unwrap(),
+                        .map(|color_target| {
+                            conv::map_texture_format(color_target.format).map(|format| {
+                                wgt::ColorTargetState {
+                                    format,
+                                    blend: color_target.blend.as_ref().map(|blend| {
+                                        wgt::BlendState {
+                                            color: conv::map_blend_component(blend.color),
+                                            alpha: conv::map_blend_component(blend.alpha),
+                                        }
+                                    }),
+                                    write_mask: wgt::ColorWrites::from_bits(color_target.writeMask)
+                                        .unwrap(),
+                                }
+                            })
                         })
                         .collect(),
                 ),
@@ -804,9 +882,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 
 #[no_mangle]
 pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
-    pipeline: id::RenderPipelineId,
+    pipeline: native::WGPURenderPipeline,
     group_index: u32,
-) -> Option<id::BindGroupLayoutId> {
+) -> native::WGPUBindGroupLayout {
+    let pipeline = pipeline.expect("invalid render pipeline");
+
     let (id, error) = gfx_select!(pipeline => GLOBAL.render_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
     if let Some(error) = error {
         // TODO figure out what device the render pipeline belongs to and call
@@ -827,20 +907,18 @@ lazy_static! {
 }
 
 fn get_device_from_surface(surface: id::SurfaceId) -> id::DeviceId {
-    return SURFACE_TO_DEVICE
-        .lock()
-        .unwrap()
-        .get(&surface)
-        .unwrap()
-        .clone();
+    *SURFACE_TO_DEVICE.lock().unwrap().get(&surface).unwrap()
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateSwapChain(
-    device: id::DeviceId,
-    surface: id::SurfaceId,
+    device: native::WGPUDevice,
+    surface: native::WGPUSurface,
     descriptor: &native::WGPUSwapChainDescriptor,
-) -> Option<id::SurfaceId> {
+) -> native::WGPUSurface {
+    let device = device.expect("invalid device");
+    let surface = surface.expect("invalid surface");
+
     // The swap chain API of wgpu-core (and WebGPU) has been merged into the surface API,
     // so this gets a bit weird until the webgpu.h changes accordingly.
     let config = wgt::SurfaceConfiguration {
@@ -872,9 +950,9 @@ pub enum SurfaceError {
 
 #[no_mangle]
 pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
-    swap_chain: id::SurfaceId,
-) -> Option<id::TextureViewId> {
-    let surface_id = swap_chain;
+    swap_chain: native::WGPUSwapChain,
+) -> native::WGPUTextureView {
+    let surface_id = swap_chain.expect("invalid swapchain");
     let device = get_device_from_surface(surface_id);
     match gfx_select!(device => GLOBAL.surface_get_current_texture(surface_id, PhantomData)) {
         Err(error) => {
@@ -906,8 +984,8 @@ pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSwapChainPresent(swap_chain: id::SurfaceId) {
-    let surface_id = swap_chain;
+pub extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
+    let surface_id = swap_chain.expect("invalid swapchain");
     let device_id = get_device_from_surface(surface_id);
     gfx_select!(device_id => GLOBAL.surface_present(surface_id))
         .expect("Unable to present swap chain");
@@ -915,9 +993,11 @@ pub extern "C" fn wgpuSwapChainPresent(swap_chain: id::SurfaceId) {
 
 #[no_mangle]
 pub extern "C" fn wgpuTextureCreateView(
-    texture: id::TextureId,
+    texture: native::WGPUTexture,
     descriptor: &native::WGPUTextureViewDescriptor,
-) -> id::TextureViewId {
+) -> native::WGPUTextureView {
+    let texture = texture.expect("invalid texture");
+
     let desc = wgc::resource::TextureViewDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
         format: conv::map_texture_format(descriptor.format),
@@ -931,14 +1011,25 @@ pub extern "C" fn wgpuTextureCreateView(
         },
     };
 
-    gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)).0
+    let (id, error) =
+        gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData));
+
+    if let Some(error) = error {
+        // TODO: report via handle_device_error()
+        log::error!("Failed to create texture view for texture: {:?}", error);
+        None
+    } else {
+        Some(id)
+    }
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateTexture(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUTextureDescriptor,
-) -> Option<id::TextureId> {
+) -> native::WGPUTexture {
+    let device = device.expect("invalid device");
+
     let desc = wgt::TextureDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
         size: conv::map_extent3d(&descriptor.size),
@@ -961,16 +1052,19 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureDestroy(texture_id: id::TextureId) {
+pub extern "C" fn wgpuTextureDestroy(texture_id: native::WGPUTexture) {
+    let texture_id = texture_id.expect("invalid texture");
     gfx_select!(texture_id => GLOBAL.texture_destroy(texture_id))
         .expect("Failed to destroy texture");
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateSampler(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     descriptor: &native::WGPUSamplerDescriptor,
-) -> Option<id::SamplerId> {
+) -> native::WGPUSampler {
+    let device = device.expect("invalid device");
+
     let desc = wgc::resource::SamplerDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
         address_modes: [
@@ -988,7 +1082,7 @@ pub extern "C" fn wgpuDeviceCreateSampler(
             .maxAnisotropy
             .try_into()
             .ok()
-            .and_then(|clamp| NonZeroU8::new(clamp)),
+            .and_then(NonZeroU8::new),
         border_color: None,
     };
 
@@ -1003,17 +1097,19 @@ pub extern "C" fn wgpuDeviceCreateSampler(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceDestroy(_device: id::DeviceId) {
+pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
     // Empty implementation, maybe call drop?
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
-    pipeline: id::ComputePipelineId,
+    pipeline: native::WGPUComputePipeline,
     group_index: u32,
-) -> Option<id::BindGroupLayoutId> {
+) -> native::WGPUBindGroupLayout {
+    let pipeline = pipeline.expect("invalid compute pipeline");
+
     let (id, error) = gfx_select!(pipeline => GLOBAL.compute_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
-    if let Some(_) = error {
+    if let Some(error) = error {
         // TODO figure out what device the compute pipeline belongs to and call
         // handle_device_error()
         log::error!(
@@ -1027,87 +1123,104 @@ pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferUnmap(buffer_id: id::BufferId) {
+pub extern "C" fn wgpuBufferUnmap(buffer_id: native::WGPUBuffer) {
+    let buffer_id = buffer_id.expect("invalid buffer");
     gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSurface(buffer_id: id::BufferId) {
+pub extern "C" fn wgpuSurface(buffer_id: native::WGPUBuffer) {
+    let buffer_id = buffer_id.expect("invalid buffer");
     gfx_select!(buffer_id => GLOBAL.buffer_unmap(buffer_id)).expect("Unable to unmap buffer")
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferDrop(buffer_id: id::BufferId) {
+pub extern "C" fn wgpuBufferDrop(buffer_id: native::WGPUBuffer) {
+    let buffer_id = buffer_id.expect("invalid buffer");
     gfx_select!(buffer_id => GLOBAL.buffer_drop(buffer_id, false))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureDrop(texture_id: id::TextureId) {
+pub extern "C" fn wgpuTextureDrop(texture_id: native::WGPUTexture) {
+    let texture_id = texture_id.expect("invalid texture");
     gfx_select!(texture_id => GLOBAL.texture_drop(texture_id, false))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureViewDrop(texture_view_id: id::TextureViewId) {
+pub extern "C" fn wgpuTextureViewDrop(texture_view_id: native::WGPUTextureView) {
+    let texture_view_id = texture_view_id.expect("invalid texture view");
     gfx_select!(texture_view_id => GLOBAL.texture_view_drop(texture_view_id, false))
         .expect("Unable to drop texture view")
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSamplerDrop(sampler_id: id::SamplerId) {
+pub extern "C" fn wgpuSamplerDrop(sampler_id: native::WGPUSampler) {
+    let sampler_id = sampler_id.expect("invalid sampler");
     gfx_select!(sampler_id => GLOBAL.sampler_drop(sampler_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBindGroupLayoutDrop(bind_group_layout_id: id::BindGroupLayoutId) {
+pub extern "C" fn wgpuBindGroupLayoutDrop(bind_group_layout_id: native::WGPUBindGroupLayout) {
+    let bind_group_layout_id = bind_group_layout_id.expect("invalid bind group layout");
     gfx_select!(bind_group_layout_id => GLOBAL.bind_group_layout_drop(bind_group_layout_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuPipelineLayoutDrop(pipeline_layout_id: id::PipelineLayoutId) {
+pub extern "C" fn wgpuPipelineLayoutDrop(pipeline_layout_id: native::WGPUPipelineLayout) {
+    let pipeline_layout_id = pipeline_layout_id.expect("invalid pipeline layout");
     gfx_select!(pipeline_layout_id => GLOBAL.pipeline_layout_drop(pipeline_layout_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBindGroupDrop(bind_group_id: id::BindGroupId) {
+pub extern "C" fn wgpuBindGroupDrop(bind_group_id: native::WGPUBindGroup) {
+    let bind_group_id = bind_group_id.expect("invalid bind group");
     gfx_select!(bind_group_id => GLOBAL.bind_group_drop(bind_group_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuShaderModuleDrop(shader_module_id: id::ShaderModuleId) {
+pub extern "C" fn wgpuShaderModuleDrop(shader_module_id: native::WGPUShaderModule) {
+    let shader_module_id = shader_module_id.expect("invalid shader module");
     gfx_select!(shader_module_id => GLOBAL.shader_module_drop(shader_module_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandEncoderDrop(command_encoder_id: id::CommandEncoderId) {
+pub extern "C" fn wgpuCommandEncoderDrop(command_encoder_id: native::WGPUCommandEncoder) {
+    let command_encoder_id = command_encoder_id.expect("invalid command encoder");
     gfx_select!(command_encoder_id => GLOBAL.command_encoder_drop(command_encoder_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandBufferDrop(command_buffer_id: id::CommandBufferId) {
+pub extern "C" fn wgpuCommandBufferDrop(command_buffer_id: native::WGPUCommandBuffer) {
+    let command_buffer_id = command_buffer_id.expect("invalid command buffer");
     gfx_select!(command_buffer_id => GLOBAL.command_buffer_drop(command_buffer_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderBundleDrop(render_bundle_id: id::RenderBundleId) {
+pub extern "C" fn wgpuRenderBundleDrop(render_bundle_id: native::WGPURenderBundle) {
+    let render_bundle_id = render_bundle_id.expect("invalid render bundle");
     gfx_select!(render_bundle_id => GLOBAL.render_bundle_drop(render_bundle_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuQuerySetDrop(query_set_id: id::QuerySetId) {
+pub extern "C" fn wgpuQuerySetDrop(query_set_id: native::WGPUQuerySet) {
+    let query_set_id = query_set_id.expect("invalid query set");
     gfx_select!(query_set_id => GLOBAL.query_set_drop(query_set_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderPipelineDrop(render_pipeline_id: id::RenderPipelineId) {
+pub extern "C" fn wgpuRenderPipelineDrop(render_pipeline_id: native::WGPURenderPipeline) {
+    let render_pipeline_id = render_pipeline_id.expect("invalid render pipeline");
     gfx_select!(render_pipeline_id => GLOBAL.render_pipeline_drop(render_pipeline_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuComputePipelineDrop(compute_pipeline_id: id::ComputePipelineId) {
+pub extern "C" fn wgpuComputePipelineDrop(compute_pipeline_id: native::WGPUComputePipeline) {
+    let compute_pipeline_id = compute_pipeline_id.expect("invalid compute pipeline");
     gfx_select!(compute_pipeline_id => GLOBAL.compute_pipeline_drop(compute_pipeline_id))
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceDrop(device_id: id::DeviceId) {
+pub extern "C" fn wgpuDeviceDrop(device_id: native::WGPUDevice) {
+    let device_id = device_id.expect("invalid device");
     gfx_select!(device_id => GLOBAL.device_drop(device_id))
 }
