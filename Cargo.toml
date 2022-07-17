@@ -25,7 +25,7 @@ vulkan-portability = ["wgc/vulkan-portability"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6058676"
+rev = "e49ef97"
 # path = "../wgpu/wgpu-core"
 # version = "0.13"
 features = ["raw-window-handle", "trace"]
@@ -33,7 +33,7 @@ features = ["raw-window-handle", "trace"]
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6058676"
+rev = "e49ef97"
 # path = "../wgpu/wgpu-types"
 # version = "0.13"
 
