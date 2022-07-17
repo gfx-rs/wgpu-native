@@ -224,17 +224,17 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePassEncoder) {
-    let pass = pass.as_ref().expect("invalid compute pass encoder");
+    let pass = Box::from_raw(pass);
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, pass))
+    gfx_select!(encoder_id => GLOBAL.command_encoder_run_compute_pass(encoder_id, &pass))
         .expect("Unable to end compute pass");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEncoder) {
-    let pass = pass.as_ref().expect("invalid render pass encoder");
+    let pass = Box::from_raw(pass);
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, pass))
+    gfx_select!(encoder_id => GLOBAL.command_encoder_run_render_pass(encoder_id, &pass))
         .expect("Unable to end render pass");
 }
 
