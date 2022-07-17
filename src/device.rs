@@ -584,12 +584,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUCommandEncoderDescriptor,
+    descriptor: Option<&native::WGPUCommandEncoderDescriptor>,
 ) -> native::WGPUCommandEncoder {
     let device = device.expect("invalid device");
 
-    let desc = wgt::CommandEncoderDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+    let desc = match descriptor {
+        Some(descriptor) => wgt::CommandEncoderDescriptor {
+            label: OwnedLabel::new(descriptor.label).into_cow(),
+        },
+        None => wgt::CommandEncoderDescriptor::default(),
     };
     let (id, error) =
         gfx_select!(device => GLOBAL.device_create_command_encoder(device, &desc, PhantomData));
@@ -994,21 +997,24 @@ pub extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
 #[no_mangle]
 pub extern "C" fn wgpuTextureCreateView(
     texture: native::WGPUTexture,
-    descriptor: &native::WGPUTextureViewDescriptor,
+    descriptor: Option<&native::WGPUTextureViewDescriptor>,
 ) -> native::WGPUTextureView {
     let texture = texture.expect("invalid texture");
 
-    let desc = wgc::resource::TextureViewDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
-        format: conv::map_texture_format(descriptor.format),
-        dimension: conv::map_texture_view_dimension(descriptor.dimension),
-        range: wgt::ImageSubresourceRange {
-            aspect: conv::map_texture_aspect(descriptor.aspect),
-            base_mip_level: descriptor.baseMipLevel,
-            mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
-            base_array_layer: descriptor.baseArrayLayer,
-            array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
+    let desc = match descriptor {
+        Some(descriptor) => wgc::resource::TextureViewDescriptor {
+            label: OwnedLabel::new(descriptor.label).into_cow(),
+            format: conv::map_texture_format(descriptor.format),
+            dimension: conv::map_texture_view_dimension(descriptor.dimension),
+            range: wgt::ImageSubresourceRange {
+                aspect: conv::map_texture_aspect(descriptor.aspect),
+                base_mip_level: descriptor.baseMipLevel,
+                mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
+                base_array_layer: descriptor.baseArrayLayer,
+                array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
+            },
         },
+        None => wgc::resource::TextureViewDescriptor::default(),
     };
 
     let (id, error) =
@@ -1061,29 +1067,32 @@ pub extern "C" fn wgpuTextureDestroy(texture_id: native::WGPUTexture) {
 #[no_mangle]
 pub extern "C" fn wgpuDeviceCreateSampler(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUSamplerDescriptor,
+    descriptor: Option<&native::WGPUSamplerDescriptor>,
 ) -> native::WGPUSampler {
     let device = device.expect("invalid device");
 
-    let desc = wgc::resource::SamplerDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
-        address_modes: [
-            conv::map_address_mode(descriptor.addressModeU),
-            conv::map_address_mode(descriptor.addressModeV),
-            conv::map_address_mode(descriptor.addressModeW),
-        ],
-        mag_filter: conv::map_filter_mode(descriptor.magFilter),
-        min_filter: conv::map_filter_mode(descriptor.minFilter),
-        mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter),
-        lod_min_clamp: descriptor.lodMinClamp,
-        lod_max_clamp: descriptor.lodMaxClamp,
-        compare: conv::map_compare_function(descriptor.compare).ok(),
-        anisotropy_clamp: descriptor
-            .maxAnisotropy
-            .try_into()
-            .ok()
-            .and_then(NonZeroU8::new),
-        border_color: None,
+    let desc = match descriptor {
+        Some(descriptor) => wgc::resource::SamplerDescriptor {
+            label: OwnedLabel::new(descriptor.label).into_cow(),
+            address_modes: [
+                conv::map_address_mode(descriptor.addressModeU),
+                conv::map_address_mode(descriptor.addressModeV),
+                conv::map_address_mode(descriptor.addressModeW),
+            ],
+            mag_filter: conv::map_filter_mode(descriptor.magFilter),
+            min_filter: conv::map_filter_mode(descriptor.minFilter),
+            mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter),
+            lod_min_clamp: descriptor.lodMinClamp,
+            lod_max_clamp: descriptor.lodMaxClamp,
+            compare: conv::map_compare_function(descriptor.compare).ok(),
+            anisotropy_clamp: descriptor
+                .maxAnisotropy
+                .try_into()
+                .ok()
+                .and_then(NonZeroU8::new),
+            border_color: None,
+        },
+        None => wgc::resource::SamplerDescriptor::default(),
     };
 
     let (id, error) =
