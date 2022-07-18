@@ -1106,6 +1106,44 @@ pub extern "C" fn wgpuDeviceCreateSampler(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
+    device: native::WGPUDevice,
+    descriptor: &native::WGPURenderBundleEncoderDescriptor,
+) -> native::WGPURenderBundleEncoder {
+    let device = device.expect("invalid device");
+
+    let desc = wgc::command::RenderBundleEncoderDescriptor {
+        label: OwnedLabel::new(descriptor.label).into_cow(),
+        color_formats: unsafe {
+            make_slice(
+                descriptor.colorFormats,
+                descriptor.colorFormatsCount as usize,
+            )
+        }
+        .iter()
+        .map(|format| conv::map_texture_format(*format))
+        .collect(),
+        depth_stencil: conv::map_texture_format(descriptor.depthStencilFormat).map(|format| {
+            wgt::RenderBundleDepthStencil {
+                format,
+                depth_read_only: descriptor.depthReadOnly,
+                stencil_read_only: descriptor.stencilReadOnly,
+            }
+        }),
+        sample_count: descriptor.sampleCount,
+        multiview: None,
+    };
+
+    match wgc::command::RenderBundleEncoder::new(&desc, device, None) {
+        Ok(encoder) => Box::into_raw(Box::new(encoder)),
+        Err(error) => {
+            handle_device_error(device, &error);
+            std::ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
     // Empty implementation, maybe call drop?
 }

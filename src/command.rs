@@ -1,9 +1,10 @@
-use crate::{conv, make_slice, native, OwnedLabel, GLOBAL};
+use crate::{conv, handle_device_error, make_slice, native, OwnedLabel, GLOBAL};
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::os::raw::c_char;
 use std::{borrow::Cow, num::NonZeroU64};
 use wgc::{
-    command::{compute_ffi, render_ffi},
+    command::{bundle_ffi, compute_ffi, render_ffi},
     gfx_select,
 };
 
@@ -546,4 +547,231 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
 ) {
     let pass = pass.as_mut().expect("invalid render pass encoder");
     render_ffi::wgpu_render_pass_push_debug_group(pass, group_label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+    bundles_count: u32,
+    bundles: *const wgc::id::RenderBundleId,
+) {
+    let render_pass_encoder = render_pass_encoder
+        .as_mut()
+        .expect("invalid render pass encoder");
+
+    render_ffi::wgpu_render_pass_execute_bundles(
+        render_pass_encoder,
+        bundles,
+        bundles_count as usize,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDraw(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    vertex_count: u32,
+    instance_count: u32,
+    first_vertex: u32,
+    first_instance: u32,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    bundle_ffi::wgpu_render_bundle_draw(
+        render_bundle_encoder,
+        vertex_count,
+        instance_count,
+        first_vertex,
+        first_instance,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexed(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    index_count: u32,
+    instance_count: u32,
+    first_index: u32,
+    base_vertex: i32,
+    first_instance: u32,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    bundle_ffi::wgpu_render_bundle_draw_indexed(
+        render_bundle_encoder,
+        index_count,
+        instance_count,
+        first_index,
+        base_vertex,
+        first_instance,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexedIndirect(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    indirect_buffer: native::WGPUBuffer,
+    indirect_offset: u64,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    let indirect_buffer = indirect_buffer.expect("invalid indirect buffer");
+    bundle_ffi::wgpu_render_bundle_draw_indexed_indirect(
+        render_bundle_encoder,
+        indirect_buffer,
+        indirect_offset,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    indirect_buffer: native::WGPUBuffer,
+    indirect_offset: u64,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    let indirect_buffer = indirect_buffer.expect("invalid indirect buffer");
+    bundle_ffi::wgpu_render_bundle_draw_indirect(
+        render_bundle_encoder,
+        indirect_buffer,
+        indirect_offset,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    descriptor: Option<&native::WGPURenderBundleDescriptor>,
+) -> native::WGPURenderBundle {
+    let render_bundle_encoder = Box::from_raw(render_bundle_encoder);
+    let device = render_bundle_encoder.parent();
+
+    let desc = match descriptor {
+        Some(descriptor) => wgt::RenderBundleDescriptor {
+            label: OwnedLabel::new(descriptor.label).into_cow(),
+        },
+        None => wgt::RenderBundleDescriptor::default(),
+    };
+
+    let (render_bundle, error) = gfx_select!(device => GLOBAL.render_bundle_encoder_finish(*render_bundle_encoder, &desc, PhantomData));
+    if let Some(error) = error {
+        handle_device_error(device, &error);
+        None
+    } else {
+        Some(render_bundle)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderInsertDebugMarker(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    marker_label: *const c_char,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    bundle_ffi::wgpu_render_bundle_insert_debug_marker(render_bundle_encoder, marker_label);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderPopDebugGroup(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    bundle_ffi::wgpu_render_bundle_pop_debug_group(render_bundle_encoder);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderPushDebugGroup(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    group_label: *const c_char,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    bundle_ffi::wgpu_render_bundle_push_debug_group(render_bundle_encoder, group_label);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    group_index: u32,
+    group: native::WGPUBindGroup,
+    dynamic_offset_count: u32,
+    dynamic_offsets: *const u32,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    let group = group.expect("invalid bind group");
+    bundle_ffi::wgpu_render_bundle_set_bind_group(
+        render_bundle_encoder,
+        group_index,
+        group,
+        dynamic_offsets,
+        dynamic_offset_count as usize,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    buffer: native::WGPUBuffer,
+    format: native::WGPUIndexFormat,
+    offset: u64,
+    size: u64,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    let buffer = buffer.expect("invalid buffer");
+
+    bundle_ffi::wgpu_render_bundle_set_index_buffer(
+        render_bundle_encoder,
+        buffer,
+        conv::map_index_format(format).unwrap(),
+        offset,
+        NonZeroU64::new(size),
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPipeline(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    pipeline: native::WGPURenderPipeline,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    let pipeline = pipeline.expect("invalid render pipeline");
+
+    bundle_ffi::wgpu_render_bundle_set_pipeline(render_bundle_encoder, pipeline);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+    slot: u32,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    size: u64,
+) {
+    let render_bundle_encoder = render_bundle_encoder
+        .as_mut()
+        .expect("invalid render bundle encoder");
+    let buffer = buffer.expect("invalid buffer");
+
+    bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
+        render_bundle_encoder,
+        slot,
+        buffer,
+        offset,
+        NonZeroU64::new(size),
+    );
 }
