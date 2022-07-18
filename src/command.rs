@@ -10,12 +10,15 @@ use wgc::{
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderFinish(
     command_encoder: native::WGPUCommandEncoder,
-    descriptor: &native::WGPUCommandBufferDescriptor,
+    descriptor: Option<&native::WGPUCommandBufferDescriptor>,
 ) -> native::WGPUCommandBuffer {
     let command_encoder = command_encoder.expect("invalid command encoder");
 
-    let desc = wgt::CommandBufferDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+    let desc = match descriptor {
+        Some(descriptor) => wgt::CommandBufferDescriptor {
+            label: OwnedLabel::new(descriptor.label).into_cow(),
+        },
+        None => wgt::CommandBufferDescriptor::default(),
     };
 
     let (id, error) =
@@ -125,12 +128,15 @@ pub extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     command_encoder: native::WGPUCommandEncoder,
-    descriptor: &native::WGPUComputePassDescriptor,
+    descriptor: Option<&native::WGPUComputePassDescriptor>,
 ) -> native::WGPUComputePassEncoder {
     let command_encoder = command_encoder.expect("invalid command encoder");
 
-    let desc = wgc::command::ComputePassDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+    let desc = match descriptor {
+        Some(descriptor) => wgc::command::ComputePassDescriptor {
+            label: OwnedLabel::new(descriptor.label).into_cow(),
+        },
+        None => wgc::command::ComputePassDescriptor::default(),
     };
     let pass = wgc::command::ComputePass::new(command_encoder, &desc);
     Box::into_raw(Box::new(pass))
