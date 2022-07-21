@@ -46,7 +46,7 @@ fn main() {
         ("WGPUCommandBuffer", "CommandBufferId"),
         ("WGPURenderPassEncoder", "RenderPassEncoderId"),
         ("WGPUComputePassEncoder", "ComputePassEncoderId"),
-        ("WGPURenderBundleEncoder", "ComputePipelineId"),
+        ("WGPURenderBundleEncoder", "RenderBundleEncoderId"),
         ("WGPURenderBundle", "RenderBundleId"),
         ("WGPUQuerySet", "QuerySetId"),
         ("WGPUSwapChain", "SurfaceId"),
@@ -65,7 +65,7 @@ fn main() {
     for (old_name, new_name) in types_to_rename {
         let line = match new_name {
             // wrapping raw pointer types in Option isn't ffi safe
-            "ComputePassEncoderId" | "RenderPassEncoderId" => {
+            "ComputePassEncoderId" | "RenderPassEncoderId" | "RenderBundleEncoderId" => {
                 format!("pub type {} = wgc::id::{};", old_name, new_name)
             }
 
