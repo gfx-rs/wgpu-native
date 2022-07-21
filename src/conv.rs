@@ -1,4 +1,6 @@
-use crate::{follow_chain, make_slice, map_enum, native, Label, OwnedLabel};
+use crate::{
+    follow_chain, get_context_handle_id_optional, make_slice, map_enum, native, Label, OwnedLabel,
+};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
 
 map_enum!(
@@ -232,14 +234,17 @@ pub fn map_device_descriptor<'a>(
     )
 }
 
-pub fn map_pipeline_layout_descriptor<'a>(
+pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
     let bind_group_layouts =
         unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) }
             .iter()
-            .map(|layout| layout.expect("invalid bind group layout for pipeline layout descriptor"))
+            .map(|layout| {
+                get_context_handle_id_optional(*layout)
+                    .expect("invalid bind group layout for pipeline layout descriptor")
+            })
             .collect::<Vec<wgc::id::BindGroupLayoutId>>();
 
     let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
@@ -415,8 +420,7 @@ pub fn map_image_copy_texture(
     native: &native::WGPUImageCopyTexture,
 ) -> wgc::command::ImageCopyTexture {
     wgt::ImageCopyTexture {
-        texture: native
-            .texture
+        texture: get_context_handle_id_optional(native.texture)
             .expect("invalid texture for image copy texture"),
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
@@ -428,7 +432,8 @@ pub fn map_image_copy_buffer(
     native: &native::WGPUImageCopyBuffer,
 ) -> wgc::command::ImageCopyBuffer {
     wgt::ImageCopyBuffer {
-        buffer: native.buffer.expect("invalid buffer for image copy buffer"),
+        buffer: get_context_handle_id_optional(native.buffer)
+            .expect("invalid buffer for image copy buffer"),
         layout: map_texture_data_layout(&native.layout),
     }
 }

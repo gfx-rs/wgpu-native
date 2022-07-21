@@ -139,7 +139,7 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void *
 extern "C" {
 #endif
 
-void wgpuGenerateReport(WGPUGlobalReport * report);
+void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport* report);
 
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
 
@@ -168,6 +168,7 @@ void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder
 void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 
+void wgpuInstanceDrop(WGPUInstance instance);
 void wgpuAdapterDrop(WGPUAdapter adapter);
 void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
 void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
@@ -183,6 +184,7 @@ void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
 void wgpuSamplerDrop(WGPUSampler sampler);
 void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
 void wgpuSurfaceDrop(WGPUSurface surface);
+void wgpuSwapChainDrop(WGPUSwapChain swapChain);
 void wgpuTextureDrop(WGPUTexture texture);
 void wgpuTextureViewDrop(WGPUTextureView textureView);
 
