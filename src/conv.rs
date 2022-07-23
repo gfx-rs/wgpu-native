@@ -501,11 +501,6 @@ pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::Textur
 pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::TextureFormat> {
     use wgt::{AstcBlock, AstcChannel};
 
-    // TODO: unimplemented in upstream
-    // native::WGPUTextureFormat_Stencil8,
-    // native::WGPUTextureFormat_Depth16Unorm,
-    // native::WGPUTextureFormat_BC6HRGBFloat
-
     match value {
         native::WGPUTextureFormat_R8Unorm => Some(wgt::TextureFormat::R8Unorm),
         native::WGPUTextureFormat_R8Snorm => Some(wgt::TextureFormat::R8Snorm),
@@ -532,7 +527,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_BGRA8Unorm => Some(wgt::TextureFormat::Bgra8Unorm),
         native::WGPUTextureFormat_BGRA8UnormSrgb => Some(wgt::TextureFormat::Bgra8UnormSrgb),
         native::WGPUTextureFormat_RGB10A2Unorm => Some(wgt::TextureFormat::Rgb10a2Unorm),
-        native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Float),
+        native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Float), // close enough?
         native::WGPUTextureFormat_RGB9E5Ufloat => Some(wgt::TextureFormat::Rgb9e5Ufloat),
         native::WGPUTextureFormat_RG32Float => Some(wgt::TextureFormat::Rg32Float),
         native::WGPUTextureFormat_RG32Uint => Some(wgt::TextureFormat::Rg32Uint),
@@ -543,6 +538,8 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_RGBA32Float => Some(wgt::TextureFormat::Rgba32Float),
         native::WGPUTextureFormat_RGBA32Uint => Some(wgt::TextureFormat::Rgba32Uint),
         native::WGPUTextureFormat_RGBA32Sint => Some(wgt::TextureFormat::Rgba32Sint),
+        native::WGPUTextureFormat_Stencil8 => None, // unimplmented in wgpu-core
+        native::WGPUTextureFormat_Depth16Unorm => None, // unimplmented in wgpu-core
         native::WGPUTextureFormat_Depth24Plus => Some(wgt::TextureFormat::Depth24Plus),
         native::WGPUTextureFormat_Depth24PlusStencil8 => Some(wgt::TextureFormat::Depth24PlusStencil8),
         native::WGPUTextureFormat_Depth24UnormStencil8 => Some(wgt::TextureFormat::Depth24UnormStencil8),
@@ -559,6 +556,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_BC5RGUnorm => Some(wgt::TextureFormat::Bc5RgUnorm),
         native::WGPUTextureFormat_BC5RGSnorm => Some(wgt::TextureFormat::Bc5RgSnorm),
         native::WGPUTextureFormat_BC6HRGBUfloat => Some(wgt::TextureFormat::Bc6hRgbUfloat),
+        native::WGPUTextureFormat_BC6HRGBFloat => Some(wgt::TextureFormat::Bc6hRgbSfloat),
         native::WGPUTextureFormat_BC7RGBAUnorm => Some(wgt::TextureFormat::Bc7RgbaUnorm),
         native::WGPUTextureFormat_BC7RGBAUnormSrgb => Some(wgt::TextureFormat::Bc7RgbaUnormSrgb),
         native::WGPUTextureFormat_ETC2RGB8Unorm => Some(wgt::TextureFormat::Etc2Rgb8Unorm),
@@ -607,12 +605,20 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
 pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUTextureFormat {
     use wgt::{AstcBlock, AstcChannel};
 
-    // TODO: unimplemented in upstream
+    // TODO: unimplemented in wgpu-core
     // native::WGPUTextureFormat_Stencil8,
-    // native::WGPUTextureFormat_Depth16Unorm,
-    // native::WGPUTextureFormat_BC6HRGBFloat
+    // native::WGPUTextureFormat_Depth16Unorm
 
     match rs_type {
+        // unimplemented in webgpu.h
+        wgt::TextureFormat::R16Unorm => todo!(),
+        wgt::TextureFormat::R16Snorm => todo!(),
+        wgt::TextureFormat::Rg16Unorm => todo!(),
+        wgt::TextureFormat::Rg16Snorm => todo!(),
+        wgt::TextureFormat::Rgba16Unorm => todo!(),
+        wgt::TextureFormat::Rgba16Snorm => todo!(),
+        wgt::TextureFormat::Astc { block: _, channel: AstcChannel::Hdr } => todo!(),
+
         wgt::TextureFormat::R8Unorm => native::WGPUTextureFormat_R8Unorm,
         wgt::TextureFormat::R8Snorm => native::WGPUTextureFormat_R8Snorm,
         wgt::TextureFormat::R8Uint => native::WGPUTextureFormat_R8Uint,
@@ -638,7 +644,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUText
         wgt::TextureFormat::Bgra8Unorm => native::WGPUTextureFormat_BGRA8Unorm,
         wgt::TextureFormat::Bgra8UnormSrgb => native::WGPUTextureFormat_BGRA8UnormSrgb,
         wgt::TextureFormat::Rgb10a2Unorm => native::WGPUTextureFormat_RGB10A2Unorm,
-        wgt::TextureFormat::Rg11b10Float => native::WGPUTextureFormat_RG11B10Ufloat,
+        wgt::TextureFormat::Rg11b10Float => native::WGPUTextureFormat_RG11B10Ufloat, // close enough?
         wgt::TextureFormat::Rgb9e5Ufloat => native::WGPUTextureFormat_RGB9E5Ufloat,
         wgt::TextureFormat::Rg32Float => native::WGPUTextureFormat_RG32Float,
         wgt::TextureFormat::Rg32Uint => native::WGPUTextureFormat_RG32Uint,
@@ -665,6 +671,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUText
         wgt::TextureFormat::Bc5RgUnorm => native::WGPUTextureFormat_BC5RGUnorm,
         wgt::TextureFormat::Bc5RgSnorm => native::WGPUTextureFormat_BC5RGSnorm,
         wgt::TextureFormat::Bc6hRgbUfloat => native::WGPUTextureFormat_BC6HRGBUfloat,
+        wgt::TextureFormat::Bc6hRgbSfloat => native::WGPUTextureFormat_BC6HRGBFloat,
         wgt::TextureFormat::Bc7RgbaUnorm => native::WGPUTextureFormat_BC7RGBAUnorm,
         wgt::TextureFormat::Bc7RgbaUnormSrgb => native::WGPUTextureFormat_BC7RGBAUnormSrgb,
         wgt::TextureFormat::Etc2Rgb8Unorm => native::WGPUTextureFormat_ETC2RGB8Unorm,
@@ -705,7 +712,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUText
         wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC12x10UnormSrgb,
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC12x12Unorm,
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC12x12UnormSrgb,
-        _ => unimplemented!(),
     }
 }
 

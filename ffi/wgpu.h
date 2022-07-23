@@ -161,21 +161,23 @@ WGPUPresentMode const * wgpuSurfaceGetSupportedPresentModes(WGPUSurface surface,
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
+void wgpuAdapterDrop(WGPUAdapter adapter);
+void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
+void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
 void wgpuBufferDrop(WGPUBuffer buffer);
+void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
+void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 void wgpuDeviceDrop(WGPUDevice device);
+void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
 void wgpuQuerySetDrop(WGPUQuerySet querySet);
+void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
+void wgpuSamplerDrop(WGPUSampler sampler);
+void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
+void wgpuSurfaceDrop(WGPUSurface surface);
 void wgpuTextureDrop(WGPUTexture texture);
 void wgpuTextureViewDrop(WGPUTextureView textureView);
-void wgpuSamplerDrop(WGPUSampler sampler);
-void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
-void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
-void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
-void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
-void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
-void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
-void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 
 // must be used to free the strings & slices returned by the library,
 // for other wgpu objects use appropriate drop functions.
