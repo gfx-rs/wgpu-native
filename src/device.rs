@@ -1271,3 +1271,15 @@ pub extern "C" fn wgpuDeviceDrop(device_id: native::WGPUDevice) {
     let device_id = device_id.expect("invalid device");
     gfx_select!(device_id => GLOBAL.device_drop(device_id))
 }
+
+#[no_mangle]
+pub extern "C" fn wgpuAdapterDrop(adapter: native::WGPUAdapter) {
+    let adapter = adapter.expect("invalid surface");
+    gfx_select!(adapter => GLOBAL.adapter_drop(adapter))
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuSurfaceDrop(surface: native::WGPUSurface) {
+    let surface = surface.expect("invalid surface");
+    GLOBAL.surface_drop(surface)
+}
