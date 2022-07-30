@@ -830,13 +830,13 @@ pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName
 
     // extras
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
-        temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS as u32);
+        temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS.try_into().unwrap());
     }
     if features.contains(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
-        temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES as u32);
+        temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES.try_into().unwrap());
     }
     if features.contains(wgt::Features::VERTEX_WRITABLE_STORAGE) {
-        temp.push(native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE as u32);
+        temp.push(native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE.try_into().unwrap());
     }
 
     temp
@@ -845,6 +845,8 @@ pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName
 #[rustfmt::skip]
 pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
     use wgt::Features;
+
+    let a = native::WGPUNativeFeature_PUSH_CONSTANTS as u64;
 
     match feature {
         native::WGPUFeatureName_DepthClipControl => Some(Features::DEPTH_CLIP_CONTROL),
@@ -858,7 +860,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
 
         // extras
-        _ => match feature as u64 {
+        _ => match feature as native::WGPUNativeFeature {
             native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
             native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
             native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE => Some(Features::VERTEX_WRITABLE_STORAGE),
