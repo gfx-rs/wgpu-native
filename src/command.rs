@@ -425,6 +425,64 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    count: u32,
+) {
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+
+    render_ffi::wgpu_render_pass_multi_draw_indirect(pass, buffer, offset, count);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirect(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    count: u32,
+) {
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+
+    render_ffi::wgpu_render_pass_multi_draw_indexed_indirect(pass, buffer, offset, count);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    count_buffer: native::WGPUBuffer,
+    count_buffer_offset: u64,
+    max_count: u32,
+) {
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+    let count_buffer = count_buffer.expect("invalid count buffer");
+
+    render_ffi::wgpu_render_pass_multi_draw_indirect_count(pass, buffer, offset, count_buffer, count_buffer_offset, max_count);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    count_buffer: native::WGPUBuffer,
+    count_buffer_offset: u64,
+    max_count: u32,
+) {
+    let pass = pass.as_mut().expect("invalid render pass encoder");
+    let buffer = buffer.expect("invalid buffer");
+    let count_buffer = count_buffer.expect("invalid count buffer");
+
+    render_ffi::wgpu_render_pass_multi_draw_indexed_indirect_count(pass, buffer, offset, count_buffer, count_buffer_offset, max_count);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     pass: native::WGPURenderPassEncoder,
     buffer: native::WGPUBuffer,

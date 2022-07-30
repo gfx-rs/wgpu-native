@@ -226,6 +226,12 @@ pub fn map_device_descriptor<'a>(
         {
             features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
         }
+        if (extras.nativeFeatures & native::WGPUNativeFeature_MULTI_DRAW_INDIRECT) > 0 {
+            features |= wgt::Features::MULTI_DRAW_INDIRECT
+        }
+        if (extras.nativeFeatures & native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT) > 0 {
+            features |= wgt::Features::MULTI_DRAW_INDIRECT_COUNT
+        }
         if (extras.nativeFeatures & native::WGPUNativeFeature_PUSH_CONSTANTS) > 0 {
             features |= wgt::Features::PUSH_CONSTANTS
         }
@@ -823,6 +829,12 @@ pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName
     }
 
     // extras
+    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT) {
+        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT)
+    }
+    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT_COUNT) {
+        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT)
+    }
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
         temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
     }
@@ -849,6 +861,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
 
         // extras
+        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT => Some(Features::MULTI_DRAW_INDIRECT),
+        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
         native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
         native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
 
