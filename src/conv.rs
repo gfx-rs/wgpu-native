@@ -846,8 +846,6 @@ pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName
 pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
     use wgt::Features;
 
-    let a = native::WGPUNativeFeature_PUSH_CONSTANTS as u64;
-
     match feature {
         native::WGPUFeatureName_DepthClipControl => Some(Features::DEPTH_CLIP_CONTROL),
         native::WGPUFeatureName_Depth24UnormStencil8 => Some(Features::DEPTH24UNORM_STENCIL8),
