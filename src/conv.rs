@@ -830,10 +830,13 @@ pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName
 
     // extras
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
-        temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
+        temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS as u32);
     }
     if features.contains(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
-        temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES);
+        temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES as u32);
+    }
+    if features.contains(wgt::Features::VERTEX_WRITABLE_STORAGE) {
+        temp.push(native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE as u32);
     }
 
     temp
@@ -855,10 +858,12 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
 
         // extras
-        native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
-        native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
+        _ => match feature as u64 {
+            native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
+            native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
+            native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE => Some(Features::VERTEX_WRITABLE_STORAGE),
 
-
-        _ => None,
+            _ => None,
+        },
     }
 }
