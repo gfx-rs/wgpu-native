@@ -10,10 +10,10 @@
 // for example ->
 //
 //      size_t count;
-//      WGPUTextureFormat* formats = wgpuSurfaceGetSupportedFormats(surface, adapter, &count);
-//      WGPU_FREE(WGPUTextureFormat, str, count); // notice `WGPUTextureFormat` instead of `WGPUTextureFormat *`
+//      const WGPUTextureFormat* formats = wgpuSurfaceGetSupportedFormats(surface, adapter, &count);
+//      WGPU_FREE(WGPUTextureFormat, formats, count); // notice `WGPUTextureFormat` instead of `WGPUTextureFormat *`
 //
-#define WGPU_FREE(type, ptr, len) wgpuFree(ptr, len * sizeof(type), _Alignof(type))
+#define WGPU_FREE(type, ptr, len) wgpuFree((void *)ptr, len * sizeof(type), _Alignof(type))
 
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
@@ -21,6 +21,8 @@ typedef enum WGPUNativeSType {
     WGPUSType_AdapterExtras = 0x60000002,
     WGPUSType_RequiredLimitsExtras = 0x60000003,
     WGPUSType_PipelineLayoutExtras = 0x60000004,
+    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
+    WGPUSType_SupportedLimitsExtras = 0x60000003,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -55,7 +57,14 @@ typedef struct WGPUDeviceExtras {
 typedef struct WGPURequiredLimitsExtras {
     WGPUChainedStruct chain;
     uint32_t maxPushConstantSize;
+    uint64_t maxBufferSize;
 } WGPURequiredLimitsExtras;
+
+typedef struct WGPUSupportedLimitsExtras {
+    WGPUChainedStructOut chain;
+    uint32_t maxPushConstantSize;
+    uint64_t maxBufferSize;
+} WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {
     WGPUShaderStageFlags stages;
@@ -75,6 +84,19 @@ typedef struct WGPUWrappedSubmissionIndex {
     WGPUQueue queue;
     WGPUSubmissionIndex submissionIndex;
 } WGPUWrappedSubmissionIndex;
+
+typedef struct WGPUShaderDefine {
+    char const * name;
+    char const * value;
+} WGPUShaderDefine;
+
+typedef struct WGPUShaderModuleGLSLDescriptor {
+    WGPUChainedStruct chain;
+    WGPUShaderStage stage;
+    char const * code;
+    uint32_t defineCount;
+    WGPUShaderDefine* defines;
+} WGPUShaderModuleGLSLDescriptor;
 
 typedef struct WGPUStorageReport {
     size_t numOccupied;
@@ -134,23 +156,29 @@ uint32_t wgpuGetVersion(void);
 // caller owns the formats slice and must WGPU_FREE() it
 WGPUTextureFormat const * wgpuSurfaceGetSupportedFormats(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
 
+// Returns slice of supported present modes
+// caller owns the present modes slice and must WGPU_FREE() it
+WGPUPresentMode const * wgpuSurfaceGetSupportedPresentModes(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
+
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
+void wgpuAdapterDrop(WGPUAdapter adapter);
+void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
+void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
 void wgpuBufferDrop(WGPUBuffer buffer);
+void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
+void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 void wgpuDeviceDrop(WGPUDevice device);
+void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
 void wgpuQuerySetDrop(WGPUQuerySet querySet);
+void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
+void wgpuSamplerDrop(WGPUSampler sampler);
+void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
+void wgpuSurfaceDrop(WGPUSurface surface);
 void wgpuTextureDrop(WGPUTexture texture);
 void wgpuTextureViewDrop(WGPUTextureView textureView);
-void wgpuSamplerDrop(WGPUSampler sampler);
-void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
-void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
-void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
-void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
-void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
-void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
-void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 
 // must be used to free the strings & slices returned by the library,
 // for other wgpu objects use appropriate drop functions.

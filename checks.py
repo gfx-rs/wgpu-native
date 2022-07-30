@@ -152,7 +152,7 @@ def check_rust_wrapper_args():
                     if argname in funcs[funcname]:
                         # This arg is a pointer in C, so we must make it a ref or pointer
                         c_arg = funcs[funcname][argname]
-                        ok = typ.startswith(("&", "*"))
+                        ok = typ.startswith(("&", "*", "Option<&"))
                         message = f"  {'✔' if ok else '✖'} {argname}: {typ}"
                         print(message)
                         if not ok:

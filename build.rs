@@ -46,9 +46,10 @@ fn main() {
         ("WGPUCommandBuffer", "CommandBufferId"),
         ("WGPURenderPassEncoder", "RenderPassEncoderId"),
         ("WGPUComputePassEncoder", "ComputePassEncoderId"),
-        ("WGPURenderBundleEncoder", "ComputePipelineId"),
+        ("WGPURenderBundleEncoder", "RenderBundleEncoderId"),
         ("WGPURenderBundle", "RenderBundleId"),
         ("WGPUQuerySet", "QuerySetId"),
+        ("WGPUSwapChain", "SurfaceId"),
     ];
     let mut builder = bindgen::Builder::default()
         .header("ffi/webgpu-headers/webgpu.h")
@@ -62,38 +63,20 @@ fn main() {
         .layout_tests(true);
 
     for (old_name, new_name) in types_to_rename {
+        let line = match new_name {
+            // wrapping raw pointer types in Option isn't ffi safe
+            "ComputePassEncoderId" | "RenderPassEncoderId" | "RenderBundleEncoderId" => {
+                format!("pub type {} = wgc::id::{};", old_name, new_name)
+            }
+
+            _ => format!("pub type {} = Option<wgc::id::{}>;", old_name, new_name),
+        };
+
         builder = builder
             .blocklist_type(old_name)
             .blocklist_type(format!("{}Impl", old_name))
-            .raw_line(format!("type {} = wgc::id::{};", old_name, new_name));
+            .raw_line(line);
     }
-
-    // WGPUBindGroupEntry has fields that are id's which can be 0
-    builder = builder.blocklist_item("WGPUBindGroupEntry").raw_line(
-        "#[repr(C)]
-            pub struct WGPUBindGroupEntry {
-                pub nextInChain: * const crate::native::WGPUChainedStruct,
-                pub binding: u32,
-                pub buffer: Option<wgc::id::BufferId>,
-                pub offset: u64,
-                pub size: u64,
-                pub sampler: Option<wgc::id::SamplerId>,
-                pub textureView: Option<wgc::id::TextureViewId>,
-            }",
-    );
-
-    // WGPURequestAdapterOptions.compatibleSurface can be Null
-    builder = builder
-        .blocklist_item("WGPURequestAdapterOptions")
-        .raw_line(
-            "#[repr(C)]
-            pub struct WGPURequestAdapterOptions {
-                pub nextInChain: * const crate::native::WGPUChainedStruct,
-                pub compatibleSurface: Option<wgc::id::SurfaceId>,
-                pub powerPreference: crate::native::WGPUPowerPreference,
-                pub forceFallbackAdapter: bool,
-            }",
-        );
 
     // See https://github.com/rust-lang/rust-bindgen/issues/1780
     if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {

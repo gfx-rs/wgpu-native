@@ -1,4 +1,3 @@
-use log;
 use std::{
     borrow::Cow, collections::HashMap, ffi::CString, marker::PhantomData, sync::Arc, sync::Mutex,
 };
@@ -46,7 +45,7 @@ impl OwnedLabel {
         self.0.as_ref().map(|s| Cow::Borrowed(s.as_str()))
     }
     fn into_cow<'a>(self) -> Option<Cow<'a, str>> {
-        self.0.map(|s| Cow::Owned(s))
+        self.0.map(Cow::Owned)
     }
 }
 
@@ -200,7 +199,7 @@ macro_rules! map_enum {
 struct PseudoRwh(raw_window_handle::RawWindowHandle);
 unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
     fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
-        self.0.clone()
+        self.0
     }
 }
 
@@ -217,7 +216,7 @@ pub extern "C" fn wgpuCreateInstance(
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     _: native::WGPUInstance,
     descriptor: *const native::WGPUSurfaceDescriptor,
-) -> id::SurfaceId {
+) -> native::WGPUSurface {
     follow_chain!(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
@@ -229,8 +228,8 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     )
 }
 
-pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> id::SurfaceId {
-    GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData)
+pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> native::WGPUSurface {
+    Some(GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData))
 }
 
 unsafe fn map_surface(
@@ -241,7 +240,7 @@ unsafe fn map_surface(
     _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
-) -> id::SurfaceId {
+) -> native::WGPUSurface {
     #[cfg(windows)]
     if let Some(win) = _win {
         let mut handle = raw_window_handle::Win32Handle::empty();
@@ -284,7 +283,7 @@ unsafe fn map_surface(
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
     if let Some(metal) = _metal {
-        return GLOBAL.instance_create_surface_metal(metal.layer, PhantomData);
+        return Some(GLOBAL.instance_create_surface_metal(metal.layer, PhantomData));
     }
 
     #[cfg(target_os = "android")]
@@ -300,9 +299,12 @@ unsafe fn map_surface(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
-    surface: id::SurfaceId,
-    adapter: id::AdapterId,
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
 ) -> native::WGPUTextureFormat {
+    let surface = surface.expect("invalid surface");
+    let adapter = adapter.expect("invalid adapter");
+
     let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
     {
         Ok(formats) => conv::to_native_texture_format(
@@ -312,15 +314,18 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
         ),
         Err(err) => panic!("Could not get preferred swap chain format: {}", err),
     };
-    return preferred_format;
+
+    preferred_format
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
-    surface: id::SurfaceId,
-    adapter: id::AdapterId,
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
     count: Option<&mut usize>,
 ) -> *const native::WGPUTextureFormat {
+    let surface = surface.expect("invalid surface");
+    let adapter = adapter.expect("invalid adapter");
     assert!(count.is_some(), "count must be non-null");
 
     let mut native_formats = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
@@ -338,6 +343,42 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
     }
     let ptr = native_formats.as_ptr();
     std::mem::forget(native_formats);
+    ptr
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
+    count: Option<&mut usize>,
+) -> *const native::WGPUPresentMode {
+    let surface = surface.expect("invalid surface");
+    let adapter = adapter.expect("invalid adapter");
+    assert!(count.is_some(), "count must be non-null");
+
+    let mut modes = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_modes(surface, adapter))
+    {
+        Ok(modes) => modes
+            .iter()
+            .filter_map(|f| match *f {
+                wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
+                wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
+                wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
+
+                wgt::PresentMode::AutoVsync
+                | wgt::PresentMode::AutoNoVsync
+                | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
+            })
+            .collect::<Vec<native::WGPUPresentMode>>(),
+        Err(err) => panic!("Could not get supported present modes: {}", err),
+    };
+    modes.shrink_to_fit();
+
+    if let Some(count) = count {
+        *count = modes.len();
+    }
+    let ptr = modes.as_ptr();
+    std::mem::forget(modes);
     ptr
 }
 
@@ -370,10 +411,12 @@ lazy_static::lazy_static! {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     callback: native::WGPUErrorCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
+    let device = device.expect("invalid device");
+
     CALLBACKS
         .lock()
         .unwrap()
@@ -383,10 +426,12 @@ pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
-    device: id::DeviceId,
+    device: native::WGPUDevice,
     callback: native::WGPUDeviceLostCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
+    let device = device.expect("invalid device");
+
     CALLBACKS
         .lock()
         .unwrap()
@@ -425,11 +470,8 @@ pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::Dev
     let error_any = error as &dyn std::any::Any;
 
     let typ = match error_any.downcast_ref::<wgc::device::DeviceError>() {
-        Some(device_error) => match device_error {
-            wgc::device::DeviceError::Lost => native::WGPUErrorType_DeviceLost,
-            _ => native::WGPUErrorType_Unknown,
-        },
-        None => native::WGPUErrorType_Unknown,
+        Some(wgc::device::DeviceError::Lost) => native::WGPUErrorType_DeviceLost,
+        _ => native::WGPUErrorType_Unknown,
     };
 
     handle_device_error_raw(device, typ, &format!("{:?}", error));
