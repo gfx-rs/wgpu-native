@@ -27,8 +27,8 @@ typedef enum WGPUNativeSType {
 } WGPUNativeSType;
 
 typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_PUSH_CONSTANTS = 0x04000000,
-    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x10000000
+    WGPUNativeFeature_PUSH_CONSTANTS = 0x60000001,
+    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x60000002
 } WGPUNativeFeature;
 
 typedef enum WGPULogLevel {
@@ -48,8 +48,6 @@ typedef struct WGPUAdapterExtras {
 
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
-    WGPUNativeFeature nativeFeatures;
-    const char* label;
     const char* tracePath;
 } WGPUDeviceExtras;
 

@@ -28,21 +28,22 @@
 #endif
 #include <GLFW/glfw3native.h>
 
-static void handle_device_lost(WGPUDeviceLostReason reason, char const * message, void * userdata)
-{
+static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
+                               void *userdata) {
   UNUSED(userdata);
 
   printf("DEVICE LOST (%d): %s\n", reason, message);
 }
 
-static void handle_uncaptured_error(WGPUErrorType type, char const * message, void * userdata)
-{
+static void handle_uncaptured_error(WGPUErrorType type, char const *message,
+                                    void *userdata) {
   UNUSED(userdata);
 
   printf("UNCAPTURED ERROR (%d): %s\n", type, message);
 }
 
-static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods) {
+static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action,
+                          int mods) {
   UNUSED(window);
   UNUSED(scancode);
   UNUSED(mods);
@@ -104,7 +105,8 @@ int main() {
         &(WGPUSurfaceDescriptor){
             .label = NULL,
             .nextInChain =
-                (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromXlibWindow){
+                (const WGPUChainedStruct *)&(
+                    WGPUSurfaceDescriptorFromXlibWindow){
                     .chain =
                         (WGPUChainedStruct){
                             .next = NULL,
@@ -173,34 +175,25 @@ int main() {
   printAdapterFeatures(adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(
-      adapter,
-      &(WGPUDeviceDescriptor){
-          .nextInChain =
-              (const WGPUChainedStruct *)&(WGPUDeviceExtras){
-                  .chain =
-                      (WGPUChainedStruct){
-                          .next = NULL,
-                          .sType = WGPUSType_DeviceExtras,
-                      },
-                  .label = "Device",
-                  .tracePath = NULL,
-              },
-          .requiredLimits =
-              &(WGPURequiredLimits){
-                  .nextInChain = NULL,
-                  .limits =
-                      (WGPULimits){
-                          .maxBindGroups = 1,
-                      },
-              },
-          .defaultQueue =
-            (WGPUQueueDescriptor){
-                .nextInChain = NULL,
-                .label = NULL,
-            },
-      },
-      request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(adapter,
+                           &(WGPUDeviceDescriptor){
+                               .nextInChain = NULL,
+                               .label = "Device",
+                               .requiredLimits =
+                                   &(WGPURequiredLimits){
+                                       .nextInChain = NULL,
+                                       .limits =
+                                           (WGPULimits){
+                                               .maxBindGroups = 1,
+                                           },
+                                   },
+                               .defaultQueue =
+                                   (WGPUQueueDescriptor){
+                                       .nextInChain = NULL,
+                                       .label = NULL,
+                                   },
+                           },
+                           request_device_callback, (void *)&device);
 
   wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
   wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
@@ -310,7 +303,8 @@ int main() {
       nextTexture = wgpuSwapChainGetCurrentTextureView(swapChain);
 
       if (attempt == 0 && !nextTexture) {
-        printf("wgpuSwapChainGetCurrentTextureView() failed; trying to create a new swap chain...\n");
+        printf("wgpuSwapChainGetCurrentTextureView() failed; trying to create "
+               "a new swap chain...\n");
         prevWidth = 0;
         prevHeight = 0;
         continue;
