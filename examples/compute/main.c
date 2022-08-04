@@ -21,35 +21,25 @@ int main() {
                              request_adapter_callback, (void *)&adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(
-      adapter,
-      &(WGPUDeviceDescriptor){
-          .nextInChain =
-              (const WGPUChainedStruct *)&(WGPUDeviceExtras){
-                  .chain =
-                      (WGPUChainedStruct){
-                          .next = NULL,
-                          .sType = (WGPUSType)WGPUSType_DeviceExtras,
-                      },
-
-                  .label = "Device",
-                  .tracePath = NULL,
-              },
-          .requiredLimits =
-              &(WGPURequiredLimits){
-                  .nextInChain = NULL,
-                  .limits =
-                      (WGPULimits){
-                          .maxBindGroups = 1,
-                      },
-              },
-          .defaultQueue =
-            (WGPUQueueDescriptor){
-                .nextInChain = NULL,
-                .label = NULL,
-            },
-      },
-      request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(adapter,
+                           &(WGPUDeviceDescriptor){
+                               .nextInChain = NULL,
+                               .label = "Device",
+                               .requiredLimits =
+                                   &(WGPURequiredLimits){
+                                       .nextInChain = NULL,
+                                       .limits =
+                                           (WGPULimits){
+                                               .maxBindGroups = 1,
+                                           },
+                                   },
+                               .defaultQueue =
+                                   (WGPUQueueDescriptor){
+                                       .nextInChain = NULL,
+                                       .label = NULL,
+                                   },
+                           },
+                           request_device_callback, (void *)&device);
 
   WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
   WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);

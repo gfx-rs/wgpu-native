@@ -1,8 +1,8 @@
 #include "framework.h"
 #include "helper.h"
+#include "unused.h"
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
-#include "unused.h"
 
 int main(int argc, char *argv[]) {
   UNUSED(argc);
@@ -22,34 +22,25 @@ int main(int argc, char *argv[]) {
                              request_adapter_callback, (void *)&adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(
-      adapter,
-      &(WGPUDeviceDescriptor){
-          .nextInChain =
-              (const WGPUChainedStruct *)&(WGPUDeviceExtras){
-                  .chain =
-                      (WGPUChainedStruct){
-                          .next = NULL,
-                          .sType = (WGPUSType)WGPUSType_DeviceExtras,
-                      },
-                  .label = "Device",
-                  .tracePath = NULL,
-              },
-          .requiredLimits =
-              &(WGPURequiredLimits){
-                  .nextInChain = NULL,
-                  .limits =
-                      (WGPULimits){
-                          .maxBindGroups = 1,
-                      },
-              },
-          .defaultQueue =
-            (WGPUQueueDescriptor){
-                .nextInChain = NULL,
-                .label = NULL,
-            },
-      },
-      request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(adapter,
+                           &(WGPUDeviceDescriptor){
+                               .nextInChain = NULL,
+                               .label = "Device",
+                               .requiredLimits =
+                                   &(WGPURequiredLimits){
+                                       .nextInChain = NULL,
+                                       .limits =
+                                           (WGPULimits){
+                                               .maxBindGroups = 1,
+                                           },
+                                   },
+                               .defaultQueue =
+                                   (WGPUQueueDescriptor){
+                                       .nextInChain = NULL,
+                                       .label = NULL,
+                                   },
+                           },
+                           request_device_callback, (void *)&device);
 
   BufferDimensions bufferDimensions = buffer_dimensions_new(width, height);
   uint64_t bufferSize =
