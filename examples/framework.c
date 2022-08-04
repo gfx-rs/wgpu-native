@@ -47,8 +47,7 @@ void request_device_callback(WGPURequestDeviceStatus status,
   *(WGPUDevice *)userdata = received;
 }
 
-void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata)
-{
+void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata) {
   UNUSED(status);
   UNUSED(userdata);
 }

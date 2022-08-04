@@ -150,13 +150,11 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
         _ => panic!("Calling wgpuAdapterEnumerateFeatures() on an invalid adapter."),
     };
 
-    let temp = conv::features_to_slice(adapter_features);
+    let temp = conv::features_to_native(adapter_features);
 
     if !features.is_null() {
         let out_slice = std::slice::from_raw_parts_mut(features, temp.len());
-        temp.iter().enumerate().for_each(|(i, feature)| {
-            out_slice[i] = *feature;
-        });
+        out_slice.copy_from_slice(&temp);
     }
 
     temp.len()
@@ -194,13 +192,11 @@ pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
         _ => panic!("Calling wgpuDeviceEnumerateFeatures() on an invalid device."),
     };
 
-    let temp = conv::features_to_slice(device_features);
+    let temp = conv::features_to_native(device_features);
 
     if !features.is_null() {
         let out_slice = std::slice::from_raw_parts_mut(features, temp.len());
-        temp.iter().enumerate().for_each(|(i, feature)| {
-            out_slice[i] = *feature;
-        });
+        out_slice.copy_from_slice(&temp);
     }
 
     temp.len()

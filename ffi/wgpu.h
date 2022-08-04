@@ -27,10 +27,8 @@ typedef enum WGPUNativeSType {
 } WGPUNativeSType;
 
 typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_MULTI_DRAW_INDIRECT = 0x00800000,
-    WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT = 0x01000000,
-    WGPUNativeFeature_PUSH_CONSTANTS = 0x04000000,
-    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x10000000
+    WGPUNativeFeature_PUSH_CONSTANTS = 0x60000001,
+    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x60000002
 } WGPUNativeFeature;
 
 typedef enum WGPULogLevel {
@@ -50,8 +48,6 @@ typedef struct WGPUAdapterExtras {
 
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
-    WGPUNativeFeature nativeFeatures;
-    const char* label;
     const char* tracePath;
 } WGPUDeviceExtras;
 
@@ -160,12 +156,6 @@ WGPUTextureFormat const * wgpuSurfaceGetSupportedFormats(WGPUSurface surface, WG
 // Returns slice of supported present modes
 // caller owns the present modes slice and must WGPU_FREE() it
 WGPUPresentMode const * wgpuSurfaceGetSupportedPresentModes(WGPUSurface surface, WGPUAdapter adapter, size_t * count);
-
-void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
-void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
-
-void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
-void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 

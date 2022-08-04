@@ -210,49 +210,26 @@ pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
-    let required_limits = unsafe { *des.requiredLimits };
-    let mut features = wgt::Features::empty();
-    let limits = unsafe {
-        follow_chain!(
-            map_required_limits(required_limits,
-            WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
-        )
-    };
-    if let Some(extras) = extras {
-        // Handle native features speficied in extras
-        if (extras.nativeFeatures
-            & native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES)
-            > 0
-        {
-            features |= wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES;
-        }
-        if (extras.nativeFeatures & native::WGPUNativeFeature_MULTI_DRAW_INDIRECT) > 0 {
-            features |= wgt::Features::MULTI_DRAW_INDIRECT
-        }
-        if (extras.nativeFeatures & native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT) > 0 {
-            features |= wgt::Features::MULTI_DRAW_INDIRECT_COUNT
-        }
-        if (extras.nativeFeatures & native::WGPUNativeFeature_PUSH_CONSTANTS) > 0 {
-            features |= wgt::Features::PUSH_CONSTANTS
-        }
-        return (
-            wgt::DeviceDescriptor {
-                label: OwnedLabel::new(extras.label).into_cow(),
-                features,
-                limits,
-            },
-            OwnedLabel::new(extras.tracePath).into_inner(),
-        );
-    } else {
-        (
-            wgt::DeviceDescriptor {
-                label: None,
-                features,
-                limits: wgt::Limits::default(),
-            },
-            None,
-        )
-    }
+    let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
+        wgt::Limits::downlevel_defaults(),
+        |required_limits| unsafe {
+            follow_chain!(
+                map_required_limits(required_limits,
+                WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+            )
+        },
+    );
+
+    (
+        wgt::DeviceDescriptor {
+            label: OwnedLabel::new(des.label).into_cow(),
+            features: map_features(unsafe {
+                make_slice(des.requiredFeatures, des.requiredFeaturesCount as usize)
+            }),
+            limits,
+        },
+        extras.and_then(|extras| OwnedLabel::new(extras.tracePath).into_inner()),
+    )
 }
 
 pub fn map_pipeline_layout_descriptor<'a>(
@@ -288,7 +265,7 @@ pub fn map_pipeline_layout_descriptor<'a>(
 }
 
 pub fn map_required_limits(
-    required_limits: native::WGPURequiredLimits,
+    required_limits: &native::WGPURequiredLimits,
     extras: Option<&native::WGPURequiredLimitsExtras>,
 ) -> wgt::Limits {
     let limits = required_limits.limits;
@@ -797,7 +774,19 @@ pub fn write_global_report(
     }
 }
 
-pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName> {
+pub fn map_features(features: &[native::WGPUFeatureName]) -> wgt::Features {
+    let mut temp = wgt::Features::empty();
+
+    features.iter().for_each(|f| {
+        if let Some(feature) = map_feature(*f) {
+            temp.insert(feature);
+        };
+    });
+
+    temp
+}
+
+pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureName> {
     let mut temp = Vec::new();
 
     if features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
@@ -828,13 +817,7 @@ pub fn features_to_slice(features: wgt::Features) -> Vec<native::WGPUFeatureName
         temp.push(native::WGPUFeatureName_IndirectFirstInstance);
     }
 
-    // extras
-    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT) {
-        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT)
-    }
-    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT_COUNT) {
-        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT)
-    }
+    // native only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
         temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
     }
@@ -860,9 +843,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC_LDR),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
 
-        // extras
-        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT => Some(Features::MULTI_DRAW_INDIRECT),
-        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
+        // native only features
         native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
         native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
 
