@@ -824,6 +824,12 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
         temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES);
     }
+    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT) {
+        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT);
+    }
+    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT_COUNT) {
+        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT);
+    }
 
     temp
 }
@@ -846,7 +852,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // native only features
         native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
         native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
-
+        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT => Some(Features::MULTI_DRAW_INDIRECT),
+        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
 
         _ => None,
     }
