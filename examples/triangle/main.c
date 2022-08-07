@@ -201,10 +201,6 @@ int main() {
   WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
   WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
 
-  WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(
-      device, &(WGPUPipelineLayoutDescriptor){.bindGroupLayouts = NULL,
-                                              .bindGroupLayoutCount = 0});
-
   WGPUTextureFormat swapChainFormat =
       wgpuSurfaceGetPreferredFormat(surface, adapter);
 
@@ -212,7 +208,6 @@ int main() {
       device,
       &(WGPURenderPipelineDescriptor){
           .label = "Render pipeline",
-          .layout = pipelineLayout,
           .vertex =
               (WGPUVertexState){
                   .module = shader,

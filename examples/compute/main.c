@@ -62,53 +62,37 @@ int main() {
                   .mappedAtCreation = false,
               });
 
-  WGPUBindGroupLayout bindGroupLayout = wgpuDeviceCreateBindGroupLayout(
-      device, &(WGPUBindGroupLayoutDescriptor){
-                  .label = "Bind Group Layout",
-                  .entries =
-                      &(WGPUBindGroupLayoutEntry){
-                          .nextInChain = NULL,
-                          .binding = 0,
-                          .visibility = WGPUShaderStage_Compute,
-                          .buffer =
-                              (WGPUBufferBindingLayout){
-                                  .type = WGPUBufferBindingType_Storage,
-                              },
-                          .sampler =
-                              (WGPUSamplerBindingLayout){
-                                  .type = WGPUSamplerBindingType_Undefined,
-                              },
-                          .texture =
-                              (WGPUTextureBindingLayout){
-                                  .sampleType = WGPUTextureSampleType_Undefined,
-                              },
-                          .storageTexture =
-                              (WGPUStorageTextureBindingLayout){
-                                  .access = WGPUStorageTextureAccess_Undefined,
-                              }},
-                  .entryCount = 1});
-
-  WGPUBindGroup bindGroup = wgpuDeviceCreateBindGroup(
-      device, &(WGPUBindGroupDescriptor){
-                  .label = "Bind Group",
-                  .layout = bindGroupLayout,
-                  .entries = &(WGPUBindGroupEntry){.binding = 0,
-                                                   .buffer = storageBuffer,
-                                                   .offset = 0,
-                                                   .size = numbersSize},
-                  .entryCount = 1});
-
-  WGPUBindGroupLayout bindGroupLayouts[1] = {bindGroupLayout};
-  WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(
-      device,
-      &(WGPUPipelineLayoutDescriptor){.bindGroupLayouts = bindGroupLayouts,
-                                      .bindGroupLayoutCount = 1});
-
   WGPUComputePipeline computePipeline = wgpuDeviceCreateComputePipeline(
       device, &(WGPUComputePipelineDescriptor){
-                  .layout = pipelineLayout,
-                  .compute = (WGPUProgrammableStageDescriptor){
-                      .module = shader, .entryPoint = "main"}});
+                  .nextInChain = NULL,
+                  .label = "Compute Pipeline",
+                  .layout = NULL,
+                  .compute =
+                      (WGPUProgrammableStageDescriptor){
+                          .module = shader,
+                          .entryPoint = "main",
+                      },
+              });
+
+  WGPUBindGroupLayout bindGroupLayout =
+      wgpuComputePipelineGetBindGroupLayout(computePipeline, 0);
+
+  WGPUBindGroup bindGroup =
+      wgpuDeviceCreateBindGroup(device, &(WGPUBindGroupDescriptor){
+                                            .nextInChain = NULL,
+                                            .label = "Bind Group",
+                                            .layout = bindGroupLayout,
+                                            .entries =
+                                                (WGPUBindGroupEntry[]){
+                                                    (WGPUBindGroupEntry){
+                                                        .binding = 0,
+                                                        .buffer = storageBuffer,
+                                                        .offset = 0,
+                                                        .size = numbersSize,
+                                                    },
+                                                },
+                                            .entryCount = 1,
+                                        });
 
   WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
       device, &(WGPUCommandEncoderDescriptor){.label = "Command Encoder"});

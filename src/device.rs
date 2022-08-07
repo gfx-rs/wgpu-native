@@ -568,7 +568,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
         stage,
     };
 
-    let (id, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, None));
+    let implicit_pipeline_ids = match desc.layout {
+        Some(_) => None,
+        None => Some(wgc::device::ImplicitPipelineIds {
+            root_id: PhantomData,
+            group_ids: &[PhantomData; wgc::MAX_BIND_GROUPS],
+        }),
+    };
+
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, implicit_pipeline_ids));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -870,7 +878,16 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             }),
         multiview: None,
     };
-    let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, None));
+
+    let implicit_pipeline_ids = match desc.layout {
+        Some(_) => None,
+        None => Some(wgc::device::ImplicitPipelineIds {
+            root_id: PhantomData,
+            group_ids: &[PhantomData; wgc::MAX_BIND_GROUPS],
+        }),
+    };
+
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, implicit_pipeline_ids));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None

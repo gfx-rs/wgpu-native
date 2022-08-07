@@ -236,26 +236,27 @@ pub fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
-    let mut bind_group_layouts = Vec::new();
-    for layout in unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) } {
-        bind_group_layouts.push(layout.expect("Invalid bind group layout"));
-    }
+    let bind_group_layouts =
+        unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) }
+            .iter()
+            .map(|layout| layout.expect("invalid bind group layout for pipeline layout descriptor"))
+            .collect::<Vec<wgc::id::BindGroupLayoutId>>();
 
-    let mut push_constant_ranges = Vec::new();
-
-    if let Some(extras) = extras {
-        for range in unsafe {
+    let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
+        unsafe {
             make_slice(
                 extras.pushConstantRanges,
                 extras.pushConstantRangeCount as usize,
             )
-        } {
-            push_constant_ranges.push(wgt::PushConstantRange {
-                stages: wgt::ShaderStages::from_bits(range.stages).expect("Invalid shader stage"),
-                range: range.start..range.end,
-            });
         }
-    }
+        .iter()
+        .map(|range| wgt::PushConstantRange {
+            stages: wgt::ShaderStages::from_bits(range.stages)
+                .expect("invalid shader stage for push constant range"),
+            range: range.start..range.end,
+        })
+        .collect()
+    });
 
     return wgc::binding_model::PipelineLayoutDescriptor {
         label: OwnedLabel::new(des.label).into_cow(),
