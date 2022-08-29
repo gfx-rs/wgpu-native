@@ -72,10 +72,8 @@ int main(int argc, char *argv[]) {
           .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopySrc,
       });
 
-  WGPUCommandEncoder encoder =
-      wgpuDeviceCreateCommandEncoder(device, &(WGPUCommandEncoderDescriptor){
-                                                 .label = NULL,
-                                             });
+  WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
+      device, &(WGPUCommandEncoderDescriptor){.label = NULL});
 
   WGPUTextureView outputAttachment = wgpuTextureCreateView(
       texture, &(WGPUTextureViewDescriptor){
