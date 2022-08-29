@@ -133,7 +133,7 @@ typedef struct WGPUGlobalReport {
     WGPUHubReport gl;
 } WGPUGlobalReport;
 
-typedef void (*WGPULogCallback)(WGPULogLevel level, const char *msg);
+typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 
 #ifdef __cplusplus
 extern "C" {
@@ -146,7 +146,7 @@ WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCou
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
 bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
-void wgpuSetLogCallback(WGPULogCallback callback);
+void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
 
 void wgpuSetLogLevel(WGPULogLevel level);
 

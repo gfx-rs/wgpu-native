@@ -52,7 +52,9 @@ void readBufferMap(WGPUBufferMapAsyncStatus status, void *userdata) {
   UNUSED(userdata);
 }
 
-void logCallback(WGPULogLevel level, const char *msg) {
+void logCallback(WGPULogLevel level, const char *msg, void *userdata) {
+  UNUSED(userdata);
+
   char *level_str;
   switch (level) {
   case WGPULogLevel_Error:
@@ -77,7 +79,7 @@ void logCallback(WGPULogLevel level, const char *msg) {
 }
 
 void initializeLog() {
-  wgpuSetLogCallback(logCallback);
+  wgpuSetLogCallback(logCallback, NULL);
   wgpuSetLogLevel(WGPULogLevel_Warn);
 }
 

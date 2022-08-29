@@ -1,9 +1,10 @@
 use crate::{map_enum, native};
+use lazy_static::lazy_static;
 use log::{Level, LevelFilter, Metadata, Record};
-use std::ffi::CString;
+use std::{ffi::CString, sync::Mutex};
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
+pub extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     // Take the string of WGPU_NATIVE_VERSION, strip any leading v's, split on dots,
     // and map the first 4 parts to the bytes of an uint32, consuming MSB first.
     // e.g. "v4.1"      -> 0x04010000
@@ -27,10 +28,7 @@ pub unsafe extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     version
 }
 
-struct Logger {
-    callback: native::WGPULogCallback,
-    initialized: bool,
-}
+struct Logger;
 
 impl log::Log for Logger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
@@ -38,49 +36,68 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &Record) {
-        unsafe {
-            if self.enabled(record.metadata()) && LOGGER.callback.is_some() {
-                let callback = LOGGER.callback.unwrap();
-                let msg = record.args().to_string();
-                let msg_c = CString::new(msg).unwrap();
-                let level = match record.level() {
-                    Level::Error => native::WGPULogLevel_Error,
-                    Level::Warn => native::WGPULogLevel_Warn,
-                    Level::Info => native::WGPULogLevel_Info,
-                    Level::Debug => native::WGPULogLevel_Debug,
-                    Level::Trace => native::WGPULogLevel_Trace,
-                };
-                callback(level, msg_c.as_ptr());
+        let (callback, userdata) = {
+            let logger = LOGGER_INFO.lock().unwrap();
+            (logger.callback, logger.userdata)
+        };
 
-                // We do not use std::mem::forget(msg_c), so Rust will reclaim the memory
-                // once msg_c gets cleared. The callback should thus make a copy.
+        if let Some(callback) = callback {
+            let msg = record.args().to_string();
+            let msg_c = CString::new(msg).unwrap();
+            let level = match record.level() {
+                Level::Error => native::WGPULogLevel_Error,
+                Level::Warn => native::WGPULogLevel_Warn,
+                Level::Info => native::WGPULogLevel_Info,
+                Level::Debug => native::WGPULogLevel_Debug,
+                Level::Trace => native::WGPULogLevel_Trace,
+            };
+
+            unsafe {
+                callback(level, msg_c.as_ptr(), userdata);
             }
+
+            // We do not use std::mem::forget(msg_c), so Rust will reclaim the memory
+            // once msg_c gets cleared. The callback should thus make a copy.
         }
     }
 
     fn flush(&self) {}
 }
 
-static mut LOGGER: Logger = Logger {
-    callback: None,
-    initialized: false,
-};
+struct LoggerInfo {
+    initialized: bool,
+    callback: native::WGPULogCallback,
+    userdata: *mut std::os::raw::c_void,
+}
+unsafe impl Send for LoggerInfo {}
+
+lazy_static! {
+    static ref LOGGER_INFO: Mutex<LoggerInfo> = Mutex::new(LoggerInfo {
+        initialized: false,
+        callback: None,
+        userdata: std::ptr::null_mut(),
+    });
+}
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSetLogCallback(callback: native::WGPULogCallback) {
-    if !LOGGER.initialized {
-        LOGGER.initialized = true;
-        log::set_logger(&LOGGER).unwrap();
+pub extern "C" fn wgpuSetLogCallback(
+    callback: native::WGPULogCallback,
+    userdata: *mut std::os::raw::c_void,
+) {
+    let mut logger = LOGGER_INFO.lock().unwrap();
+    logger.callback = callback;
+    logger.userdata = userdata;
+    if !logger.initialized {
+        logger.initialized = true;
+        log::set_logger(&Logger).unwrap();
         if log::max_level() == LevelFilter::Off {
             log::set_max_level(LevelFilter::Warn);
         }
     }
-
-    LOGGER.callback = callback;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSetLogLevel(level: native::WGPULogLevel) {
+pub extern "C" fn wgpuSetLogLevel(level: native::WGPULogLevel) {
     log::set_max_level(map_log_level(level));
 }
 
