@@ -78,6 +78,17 @@ fn main() {
             .raw_line(line);
     }
 
+    // See https://github.com/rust-lang/rust-bindgen/issues/923
+    builder = builder
+        .blocklist_item("WGPU_LIMIT_U64_UNDEFINED")
+        .raw_line("pub const WGPU_LIMIT_U64_UNDEFINED: u64 = 0xffffffffffffffff;");
+    builder = builder
+        .blocklist_item("WGPU_WHOLE_MAP_SIZE")
+        .raw_line("pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;");
+    builder = builder
+        .blocklist_item("WGPU_WHOLE_SIZE")
+        .raw_line("pub const WGPU_WHOLE_SIZE: usize = 0xffffffffffffffff;");
+
     // See https://github.com/rust-lang/rust-bindgen/issues/1780
     if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
         let output = Command::new("xcrun")

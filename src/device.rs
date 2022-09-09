@@ -442,7 +442,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     x => panic!("Unknown Buffer Type: {}", x),
                 },
                 has_dynamic_offset: entry.buffer.hasDynamicOffset,
-                min_binding_size: NonZeroU64::new(entry.buffer.minBindingSize),
+                min_binding_size: match entry.buffer.minBindingSize as usize {
+                    native::WGPU_WHOLE_SIZE => None,
+                    _ => NonZeroU64::new(entry.buffer.minBindingSize),
+                },
             }
         } else {
             panic!("No entry type specified.");
@@ -486,7 +489,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                     wgc::binding_model::BufferBinding {
                         buffer_id: buffer,
                         offset: entry.offset,
-                        size: NonZeroU64::new(entry.size),
+                        size: match entry.size as usize {
+                            native::WGPU_WHOLE_SIZE => None,
+                            _ => NonZeroU64::new(entry.size),
+                        },
                     },
                 ),
             }
@@ -748,9 +754,16 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
 ) -> *mut u8 {
     let buffer = buffer.expect("invalid buffer");
 
-    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(buffer, offset as u64, Some(size as u64)))
-        .expect("Unable to get mapped range")
-        .0
+    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(
+        buffer,
+        offset as u64,
+        match size {
+            native::WGPU_WHOLE_MAP_SIZE => None,
+            _ => Some(size as u64),
+        }
+    ))
+    .expect("Unable to get mapped range")
+    .0
 }
 
 #[no_mangle]
@@ -1022,9 +1035,15 @@ pub extern "C" fn wgpuTextureCreateView(
             range: wgt::ImageSubresourceRange {
                 aspect: conv::map_texture_aspect(descriptor.aspect),
                 base_mip_level: descriptor.baseMipLevel,
-                mip_level_count: NonZeroU32::new(descriptor.mipLevelCount),
+                mip_level_count: match descriptor.mipLevelCount {
+                    native::WGPU_MIP_LEVEL_COUNT_UNDEFINED => None,
+                    _ => NonZeroU32::new(descriptor.mipLevelCount),
+                },
                 base_array_layer: descriptor.baseArrayLayer,
-                array_layer_count: NonZeroU32::new(descriptor.arrayLayerCount),
+                array_layer_count: match descriptor.arrayLayerCount {
+                    native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED => None,
+                    _ => NonZeroU32::new(descriptor.arrayLayerCount),
+                },
             },
         },
         None => wgc::resource::TextureViewDescriptor::default(),
