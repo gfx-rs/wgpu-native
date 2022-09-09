@@ -28,22 +28,19 @@
 #endif
 #include <GLFW/glfw3native.h>
 
-static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
-                               void *userdata) {
+static void handle_device_lost(WGPUDeviceLostReason reason, char const *message, void *userdata) {
   UNUSED(userdata);
 
   printf("DEVICE LOST (%d): %s\n", reason, message);
 }
 
-static void handle_uncaptured_error(WGPUErrorType type, char const *message,
-                                    void *userdata) {
+static void handle_uncaptured_error(WGPUErrorType type, char const *message, void *userdata) {
   UNUSED(userdata);
 
   printf("UNCAPTURED ERROR (%d): %s\n", type, message);
 }
 
-static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action,
-                          int mods) {
+static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods) {
   UNUSED(window);
   UNUSED(scancode);
   UNUSED(mods);
@@ -81,84 +78,75 @@ int main() {
     metal_layer = [CAMetalLayer layer];
     [ns_window.contentView setLayer:metal_layer];
     surface = wgpuInstanceCreateSurface(
-        NULL,
-        &(WGPUSurfaceDescriptor){
-            .label = NULL,
-            .nextInChain =
-                (const WGPUChainedStruct *)&(
-                    WGPUSurfaceDescriptorFromMetalLayer){
-                    .chain =
-                        (WGPUChainedStruct){
-                            .next = NULL,
-                            .sType = WGPUSType_SurfaceDescriptorFromMetalLayer,
-                        },
-                    .layer = metal_layer,
-                },
-        });
+        NULL, &(WGPUSurfaceDescriptor){
+                  .label = NULL,
+                  .nextInChain =
+                      (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromMetalLayer){
+                          .chain =
+                              (WGPUChainedStruct){
+                                  .next = NULL,
+                                  .sType = WGPUSType_SurfaceDescriptorFromMetalLayer,
+                              },
+                          .layer = metal_layer,
+                      },
+              });
   }
 #elif WGPU_TARGET == WGPU_TARGET_LINUX_X11
   {
     Display *x11_display = glfwGetX11Display();
     Window x11_window = glfwGetX11Window(window);
     surface = wgpuInstanceCreateSurface(
-        NULL,
-        &(WGPUSurfaceDescriptor){
-            .label = NULL,
-            .nextInChain =
-                (const WGPUChainedStruct *)&(
-                    WGPUSurfaceDescriptorFromXlibWindow){
-                    .chain =
-                        (WGPUChainedStruct){
-                            .next = NULL,
-                            .sType = WGPUSType_SurfaceDescriptorFromXlibWindow,
-                        },
-                    .display = x11_display,
-                    .window = x11_window,
-                },
-        });
+        NULL, &(WGPUSurfaceDescriptor){
+                  .label = NULL,
+                  .nextInChain =
+                      (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromXlibWindow){
+                          .chain =
+                              (WGPUChainedStruct){
+                                  .next = NULL,
+                                  .sType = WGPUSType_SurfaceDescriptorFromXlibWindow,
+                              },
+                          .display = x11_display,
+                          .window = x11_window,
+                      },
+              });
   }
 #elif WGPU_TARGET == WGPU_TARGET_LINUX_WAYLAND
   {
     struct wl_display *wayland_display = glfwGetWaylandDisplay();
     struct wl_surface *wayland_surface = glfwGetWaylandWindow(window);
     surface = wgpuInstanceCreateSurface(
-        NULL,
-        &(WGPUSurfaceDescriptor){
-            .label = NULL,
-            .nextInChain =
-                (const WGPUChainedStruct *)&(
-                    WGPUSurfaceDescriptorFromWaylandSurface){
-                    .chain =
-                        (WGPUChainedStruct){
-                            .next = NULL,
-                            .sType =
-                                WGPUSType_SurfaceDescriptorFromWaylandSurface,
-                        },
-                    .display = wayland_display,
-                    .surface = wayland_surface,
-                },
-        });
+        NULL, &(WGPUSurfaceDescriptor){
+                  .label = NULL,
+                  .nextInChain =
+                      (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromWaylandSurface){
+                          .chain =
+                              (WGPUChainedStruct){
+                                  .next = NULL,
+                                  .sType = WGPUSType_SurfaceDescriptorFromWaylandSurface,
+                              },
+                          .display = wayland_display,
+                          .surface = wayland_surface,
+                      },
+              });
   }
 #elif WGPU_TARGET == WGPU_TARGET_WINDOWS
   {
     HWND hwnd = glfwGetWin32Window(window);
     HINSTANCE hinstance = GetModuleHandle(NULL);
     surface = wgpuInstanceCreateSurface(
-        NULL,
-        &(WGPUSurfaceDescriptor){
-            .label = NULL,
-            .nextInChain =
-                (const WGPUChainedStruct *)&(
-                    WGPUSurfaceDescriptorFromWindowsHWND){
-                    .chain =
-                        (WGPUChainedStruct){
-                            .next = NULL,
-                            .sType = WGPUSType_SurfaceDescriptorFromWindowsHWND,
-                        },
-                    .hinstance = hinstance,
-                    .hwnd = hwnd,
-                },
-        });
+        NULL, &(WGPUSurfaceDescriptor){
+                  .label = NULL,
+                  .nextInChain =
+                      (const WGPUChainedStruct *)&(WGPUSurfaceDescriptorFromWindowsHWND){
+                          .chain =
+                              (WGPUChainedStruct){
+                                  .next = NULL,
+                                  .sType = WGPUSType_SurfaceDescriptorFromWindowsHWND,
+                              },
+                          .hinstance = hinstance,
+                          .hwnd = hwnd,
+                      },
+              });
   }
 #else
 #error "Unsupported WGPU_TARGET"
@@ -175,25 +163,51 @@ int main() {
   printAdapterFeatures(adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(adapter,
-                           &(WGPUDeviceDescriptor){
-                               .nextInChain = NULL,
-                               .label = "Device",
-                               .requiredLimits =
-                                   &(WGPURequiredLimits){
-                                       .nextInChain = NULL,
-                                       .limits =
-                                           (WGPULimits){
-                                               .maxBindGroups = 1,
-                                           },
-                                   },
-                               .defaultQueue =
-                                   (WGPUQueueDescriptor){
-                                       .nextInChain = NULL,
-                                       .label = NULL,
-                                   },
-                           },
-                           request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(
+      adapter,
+      &(WGPUDeviceDescriptor){
+          .nextInChain = NULL,
+          .label = "Device",
+          .requiredLimits =
+              &(WGPURequiredLimits){
+                  .nextInChain = NULL,
+                  .limits =
+                      (WGPULimits){
+                          .maxBindGroups = 1,
+                          .maxTextureDimension1D = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxTextureDimension2D = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxTextureArrayLayers = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxDynamicUniformBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxDynamicStorageBuffersPerPipelineLayout = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxSampledTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxSamplersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxStorageBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxStorageTexturesPerShaderStage = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxUniformBuffersPerShaderStage = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxUniformBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED,
+                          .maxStorageBufferBindingSize = WGPU_LIMIT_U64_UNDEFINED,
+                          .minUniformBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED,
+                          .minStorageBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxVertexBuffers = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxInterStageShaderComponents = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxComputeWorkgroupStorageSize = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxComputeInvocationsPerWorkgroup = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxComputeWorkgroupSizeX = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxComputeWorkgroupSizeY = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxComputeWorkgroupSizeZ = WGPU_LIMIT_U32_UNDEFINED,
+                          .maxComputeWorkgroupsPerDimension = WGPU_LIMIT_U32_UNDEFINED,
+                      },
+              },
+          .defaultQueue =
+              (WGPUQueueDescriptor){
+                  .nextInChain = NULL,
+                  .label = NULL,
+              },
+      },
+      request_device_callback, (void *)&device);
 
   wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
   wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
@@ -201,58 +215,59 @@ int main() {
   WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
   WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
 
-  WGPUTextureFormat swapChainFormat =
-      wgpuSurfaceGetPreferredFormat(surface, adapter);
+  WGPUTextureFormat swapChainFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
 
   WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(
-      device,
-      &(WGPURenderPipelineDescriptor){
-          .label = "Render pipeline",
-          .vertex =
-              (WGPUVertexState){
-                  .module = shader,
-                  .entryPoint = "vs_main",
-                  .bufferCount = 0,
-                  .buffers = NULL,
-              },
-          .primitive =
-              (WGPUPrimitiveState){
-                  .topology = WGPUPrimitiveTopology_TriangleList,
-                  .stripIndexFormat = WGPUIndexFormat_Undefined,
-                  .frontFace = WGPUFrontFace_CCW,
-                  .cullMode = WGPUCullMode_None},
-          .multisample =
-              (WGPUMultisampleState){
-                  .count = 1,
-                  .mask = ~0,
-                  .alphaToCoverageEnabled = false,
-              },
-          .fragment =
-              &(WGPUFragmentState){
-                  .module = shader,
-                  .entryPoint = "fs_main",
-                  .targetCount = 1,
-                  .targets =
-                      &(WGPUColorTargetState){
-                          .format = swapChainFormat,
-                          .blend =
-                              &(WGPUBlendState){
-                                  .color =
-                                      (WGPUBlendComponent){
-                                          .srcFactor = WGPUBlendFactor_One,
-                                          .dstFactor = WGPUBlendFactor_Zero,
-                                          .operation = WGPUBlendOperation_Add,
+      device, &(WGPURenderPipelineDescriptor){
+                  .label = "Render pipeline",
+                  .vertex =
+                      (WGPUVertexState){
+                          .module = shader,
+                          .entryPoint = "vs_main",
+                          .bufferCount = 0,
+                          .buffers = NULL,
+                      },
+                  .primitive =
+                      (WGPUPrimitiveState){
+                          .topology = WGPUPrimitiveTopology_TriangleList,
+                          .stripIndexFormat = WGPUIndexFormat_Undefined,
+                          .frontFace = WGPUFrontFace_CCW,
+                          .cullMode = WGPUCullMode_None,
+                      },
+                  .multisample =
+                      (WGPUMultisampleState){
+                          .count = 1,
+                          .mask = ~0,
+                          .alphaToCoverageEnabled = false,
+                      },
+                  .fragment =
+                      &(WGPUFragmentState){
+                          .module = shader,
+                          .entryPoint = "fs_main",
+                          .targetCount = 1,
+                          .targets =
+                              &(WGPUColorTargetState){
+                                  .format = swapChainFormat,
+                                  .blend =
+                                      &(WGPUBlendState){
+                                          .color =
+                                              (WGPUBlendComponent){
+                                                  .srcFactor = WGPUBlendFactor_One,
+                                                  .dstFactor = WGPUBlendFactor_Zero,
+                                                  .operation = WGPUBlendOperation_Add,
+                                              },
+                                          .alpha =
+                                              (WGPUBlendComponent){
+                                                  .srcFactor = WGPUBlendFactor_One,
+                                                  .dstFactor = WGPUBlendFactor_Zero,
+                                                  .operation = WGPUBlendOperation_Add,
+                                              },
                                       },
-                                  .alpha =
-                                      (WGPUBlendComponent){
-                                          .srcFactor = WGPUBlendFactor_One,
-                                          .dstFactor = WGPUBlendFactor_Zero,
-                                          .operation = WGPUBlendOperation_Add,
-                                      }},
-                          .writeMask = WGPUColorWriteMask_All},
-              },
-          .depthStencil = NULL,
-      });
+                                  .writeMask = WGPUColorWriteMask_All,
+                              },
+                      },
+                  .depthStencil = NULL,
+              });
 
   int prevWidth = 0;
   int prevHeight = 0;
@@ -284,15 +299,14 @@ int main() {
         prevWidth = width;
         prevHeight = height;
 
-        swapChain = wgpuDeviceCreateSwapChain(
-            device, surface,
-            &(WGPUSwapChainDescriptor){
-                .usage = WGPUTextureUsage_RenderAttachment,
-                .format = swapChainFormat,
-                .width = prevWidth,
-                .height = prevHeight,
-                .presentMode = WGPUPresentMode_Fifo,
-            });
+        swapChain = wgpuDeviceCreateSwapChain(device, surface,
+                                              &(WGPUSwapChainDescriptor){
+                                                  .usage = WGPUTextureUsage_RenderAttachment,
+                                                  .format = swapChainFormat,
+                                                  .width = prevWidth,
+                                                  .height = prevHeight,
+                                                  .presentMode = WGPUPresentMode_Fifo,
+                                              });
       }
 
       nextTexture = wgpuSwapChainGetCurrentTextureView(swapChain);
@@ -316,36 +330,36 @@ int main() {
     WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
         device, &(WGPUCommandEncoderDescriptor){.label = "Command Encoder"});
 
-    WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(
-        encoder, &(WGPURenderPassDescriptor){
-                     .colorAttachments =
-                         &(WGPURenderPassColorAttachment){
-                             .view = nextTexture,
-                             .resolveTarget = 0,
-                             .loadOp = WGPULoadOp_Clear,
-                             .storeOp = WGPUStoreOp_Store,
-                             .clearValue =
-                                 (WGPUColor){
-                                     .r = 0.0,
-                                     .g = 1.0,
-                                     .b = 0.0,
-                                     .a = 1.0,
-                                 },
-                         },
-                     .colorAttachmentCount = 1,
-                     .depthStencilAttachment = NULL,
-                 });
+    WGPURenderPassEncoder renderPass =
+        wgpuCommandEncoderBeginRenderPass(encoder, &(WGPURenderPassDescriptor){
+                                                       .colorAttachments =
+                                                           &(WGPURenderPassColorAttachment){
+                                                               .view = nextTexture,
+                                                               .resolveTarget = 0,
+                                                               .loadOp = WGPULoadOp_Clear,
+                                                               .storeOp = WGPUStoreOp_Store,
+                                                               .clearValue =
+                                                                   (WGPUColor){
+                                                                       .r = 0.0,
+                                                                       .g = 1.0,
+                                                                       .b = 0.0,
+                                                                       .a = 1.0,
+                                                                   },
+                                                           },
+                                                       .colorAttachmentCount = 1,
+                                                       .depthStencilAttachment = NULL,
+                                                   });
 
     wgpuRenderPassEncoderSetPipeline(renderPass, pipeline);
     wgpuRenderPassEncoderDraw(renderPass, 3, 1, 0, 0);
     wgpuRenderPassEncoderEnd(renderPass);
-    wgpuTextureViewDrop(nextTexture);
 
     WGPUQueue queue = wgpuDeviceGetQueue(device);
-    WGPUCommandBuffer cmdBuffer = wgpuCommandEncoderFinish(
-        encoder, &(WGPUCommandBufferDescriptor){.label = NULL});
+    WGPUCommandBuffer cmdBuffer =
+        wgpuCommandEncoderFinish(encoder, &(WGPUCommandBufferDescriptor){.label = NULL});
     wgpuQueueSubmit(queue, 1, &cmdBuffer);
     wgpuSwapChainPresent(swapChain);
+    wgpuTextureViewDrop(nextTexture);
 
     glfwPollEvents();
   }

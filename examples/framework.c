@@ -18,8 +18,7 @@ WGPUShaderModuleDescriptor load_wgsl(const char *name) {
   fclose(file);
   bytes[length] = 0;
 
-  WGPUShaderModuleWGSLDescriptor *wgslDescriptor =
-      malloc(sizeof(WGPUShaderModuleWGSLDescriptor));
+  WGPUShaderModuleWGSLDescriptor *wgslDescriptor = malloc(sizeof(WGPUShaderModuleWGSLDescriptor));
   wgslDescriptor->chain.next = NULL;
   wgslDescriptor->chain.sType = WGPUSType_ShaderModuleWGSLDescriptor;
   wgslDescriptor->code = (const char *)bytes;
@@ -29,18 +28,16 @@ WGPUShaderModuleDescriptor load_wgsl(const char *name) {
   };
 }
 
-void request_adapter_callback(WGPURequestAdapterStatus status,
-                              WGPUAdapter received, const char *message,
-                              void *userdata) {
+void request_adapter_callback(WGPURequestAdapterStatus status, WGPUAdapter received,
+                              const char *message, void *userdata) {
   UNUSED(status);
   UNUSED(message);
 
   *(WGPUAdapter *)userdata = received;
 }
 
-void request_device_callback(WGPURequestDeviceStatus status,
-                             WGPUDevice received, const char *message,
-                             void *userdata) {
+void request_device_callback(WGPURequestDeviceStatus status, WGPUDevice received,
+                             const char *message, void *userdata) {
   UNUSED(status);
   UNUSED(message);
 
@@ -83,26 +80,26 @@ void initializeLog() {
   wgpuSetLogLevel(WGPULogLevel_Warn);
 }
 
-#define printStorageReport(report, prefix)                                     \
-  printf("%snumOccupied=%zu\n", prefix, report.numOccupied);                   \
-  printf("%snumVacant=%zu\n", prefix, report.numVacant);                       \
-  printf("%snumError=%zu\n", prefix, report.numError);                         \
+#define printStorageReport(report, prefix)                                                         \
+  printf("%snumOccupied=%zu\n", prefix, report.numOccupied);                                       \
+  printf("%snumVacant=%zu\n", prefix, report.numVacant);                                           \
+  printf("%snumError=%zu\n", prefix, report.numError);                                             \
   printf("%selementSize=%zu\n", prefix, report.elementSize)
 
-#define printHubReport(report, prefix)                                         \
-  printStorageReport(report.adapters, prefix "adapter.");                      \
-  printStorageReport(report.devices, prefix "devices.");                       \
-  printStorageReport(report.pipelineLayouts, prefix "pipelineLayouts.");       \
-  printStorageReport(report.shaderModules, prefix "shaderModules.");           \
-  printStorageReport(report.bindGroupLayouts, prefix "bindGroupLayouts.");     \
-  printStorageReport(report.bindGroups, prefix "bindGroups.");                 \
-  printStorageReport(report.commandBuffers, prefix "commandBuffers.");         \
-  printStorageReport(report.renderBundles, prefix "renderBundles.");           \
-  printStorageReport(report.renderPipelines, prefix "renderPipelines.");       \
-  printStorageReport(report.computePipelines, prefix "computePipelines.");     \
-  printStorageReport(report.querySets, prefix "querySets.");                   \
-  printStorageReport(report.textures, prefix "textures.");                     \
-  printStorageReport(report.textureViews, prefix "textureViews.");             \
+#define printHubReport(report, prefix)                                                             \
+  printStorageReport(report.adapters, prefix "adapter.");                                          \
+  printStorageReport(report.devices, prefix "devices.");                                           \
+  printStorageReport(report.pipelineLayouts, prefix "pipelineLayouts.");                           \
+  printStorageReport(report.shaderModules, prefix "shaderModules.");                               \
+  printStorageReport(report.bindGroupLayouts, prefix "bindGroupLayouts.");                         \
+  printStorageReport(report.bindGroups, prefix "bindGroups.");                                     \
+  printStorageReport(report.commandBuffers, prefix "commandBuffers.");                             \
+  printStorageReport(report.renderBundles, prefix "renderBundles.");                               \
+  printStorageReport(report.renderPipelines, prefix "renderPipelines.");                           \
+  printStorageReport(report.computePipelines, prefix "computePipelines.");                         \
+  printStorageReport(report.querySets, prefix "querySets.");                                       \
+  printStorageReport(report.textures, prefix "textures.");                                         \
+  printStorageReport(report.textureViews, prefix "textureViews.");                                 \
   printStorageReport(report.samplers, prefix "samplers.")
 
 void printGlobalReport(WGPUGlobalReport report) {
@@ -126,16 +123,14 @@ void printGlobalReport(WGPUGlobalReport report) {
     printHubReport(report.gl, "\tgl.");
     break;
   default:
-    printf("WARN:printGlobalReport: invalid backened type: %d",
-           report.backendType);
+    printf("WARN:printGlobalReport: invalid backened type: %d", report.backendType);
   }
   printf("}\n");
 }
 
 void printAdapterFeatures(WGPUAdapter adapter) {
   size_t count = wgpuAdapterEnumerateFeatures(adapter, NULL);
-  WGPUFeatureName *features =
-      (WGPUFeatureName *)malloc(count * sizeof(WGPUFeatureName));
+  WGPUFeatureName *features = (WGPUFeatureName *)malloc(count * sizeof(WGPUFeatureName));
   wgpuAdapterEnumerateFeatures(adapter, features);
 
   printf("[]WGPUFeatureName {\n");
