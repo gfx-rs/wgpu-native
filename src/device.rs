@@ -471,8 +471,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     x => panic!("Unknown Buffer Type: {}", x),
                 },
                 has_dynamic_offset: entry.buffer.hasDynamicOffset,
-                min_binding_size: match entry.buffer.minBindingSize as usize {
-                    native::WGPU_WHOLE_SIZE => None,
+                min_binding_size: match entry.buffer.minBindingSize {
+                    conv::WGPU_WHOLE_SIZE => None,
                     _ => NonZeroU64::new(entry.buffer.minBindingSize),
                 },
             }
@@ -518,8 +518,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                     wgc::binding_model::BufferBinding {
                         buffer_id: buffer,
                         offset: entry.offset,
-                        size: match entry.size as usize {
-                            native::WGPU_WHOLE_SIZE => None,
+                        size: match entry.size {
+                            conv::WGPU_WHOLE_SIZE => None,
                             _ => NonZeroU64::new(entry.size),
                         },
                     },
@@ -787,7 +787,7 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
         buffer,
         offset as u64,
         match size {
-            native::WGPU_WHOLE_MAP_SIZE => None,
+            conv::WGPU_WHOLE_MAP_SIZE => None,
             _ => Some(size as u64),
         }
     ))

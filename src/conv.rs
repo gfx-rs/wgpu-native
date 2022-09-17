@@ -179,6 +179,11 @@ map_enum!(
     Compute
 );
 
+pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
+pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
+    native::WGPU_LIMIT_U64_UNDEFINED as _;
+pub const WGPU_WHOLE_MAP_SIZE: usize = native::WGPU_WHOLE_MAP_SIZE as _;
+
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
         width: native.width,
@@ -309,10 +314,10 @@ pub fn map_required_limits(
     if limits.maxUniformBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_uniform_buffers_per_shader_stage = limits.maxUniformBuffersPerShaderStage;
     }
-    if limits.maxUniformBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED {
+    if limits.maxUniformBufferBindingSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_uniform_buffer_binding_size = limits.maxUniformBufferBindingSize as u32;
     }
-    if limits.maxStorageBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED {
+    if limits.maxStorageBufferBindingSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
     if limits.minUniformBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -355,7 +360,7 @@ pub fn map_required_limits(
         if extras.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
         }
-        if extras.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED {
+        if extras.maxBufferSize != WGPU_LIMIT_U64_UNDEFINED {
             wgt_limits.max_buffer_size = extras.maxBufferSize;
         }
     }
