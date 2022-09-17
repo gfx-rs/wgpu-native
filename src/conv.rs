@@ -211,7 +211,7 @@ pub fn map_device_descriptor<'a>(
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
-        wgt::Limits::downlevel_webgl2_defaults(),
+        wgt::Limits::default(),
         |required_limits| unsafe {
             follow_chain!(
                 map_required_limits(required_limits,
@@ -270,7 +270,7 @@ pub fn map_required_limits(
     extras: Option<&native::WGPURequiredLimitsExtras>,
 ) -> wgt::Limits {
     let limits = required_limits.limits;
-    let mut wgt_limits = wgt::Limits::downlevel_webgl2_defaults();
+    let mut wgt_limits = wgt::Limits::default();
     if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
     }
