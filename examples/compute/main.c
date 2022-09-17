@@ -1,10 +1,23 @@
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
 
+#include "unused.h"
 #include "framework.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+static void handle_device_lost(WGPUDeviceLostReason reason, char const *message, void *userdata) {
+  UNUSED(userdata);
+
+  printf("DEVICE LOST (%d): %s\n", reason, message);
+}
+
+static void handle_uncaptured_error(WGPUErrorType type, char const *message, void *userdata) {
+  UNUSED(userdata);
+
+  printf("UNCAPTURED ERROR (%d): %s\n", type, message);
+}
 
 int main() {
   uint32_t numbers[] = {1, 2, 3, 4};
@@ -31,7 +44,7 @@ int main() {
                   .nextInChain = NULL,
                   .limits =
                       (WGPULimits){
-                          .maxBindGroups = 1,
+                          .maxBindGroups = WGPU_LIMIT_U32_UNDEFINED,
                           .maxTextureDimension1D = WGPU_LIMIT_U32_UNDEFINED,
                           .maxTextureDimension2D = WGPU_LIMIT_U32_UNDEFINED,
                           .maxTextureDimension3D = WGPU_LIMIT_U32_UNDEFINED,
@@ -66,6 +79,9 @@ int main() {
               },
       },
       request_device_callback, (void *)&device);
+
+  wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
+  wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
 
   WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
   WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);
