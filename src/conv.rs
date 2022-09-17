@@ -182,7 +182,7 @@ map_enum!(
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
 pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
     native::WGPU_LIMIT_U64_UNDEFINED as _;
-pub const WGPU_WHOLE_MAP_SIZE: usize = native::WGPU_WHOLE_MAP_SIZE as _;
+pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX; // SIZE_MAX
 
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
