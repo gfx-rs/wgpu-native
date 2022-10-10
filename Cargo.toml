@@ -25,27 +25,27 @@ vulkan-portability = ["wgc/vulkan-portability"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "e49ef97"
+rev = "261069d"
 # path = "../wgpu/wgpu-core"
-# version = "0.13"
+version = "0.14"
 features = ["raw-window-handle", "trace"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "e49ef97"
+rev = "261069d"
 # path = "../wgpu/wgpu-types"
-# version = "0.13"
+version = "0.14"
 
 [dependencies.naga]
-# git = "https://github.com/gfx-rs/naga"
-# rev = "0b60f410"
-version = "0.9"
+git = "https://github.com/gfx-rs/naga"
+rev = "c52d9102"
+# version = "0.10"
 features = ["spv-in", "glsl-in"]
 
 [dependencies]
 lazy_static = "1.4"
-raw-window-handle = "0.4"
+raw-window-handle = "0.5"
 paste = "1.0"
 log = "0.4"
 thiserror = "1"

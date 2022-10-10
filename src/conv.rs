@@ -382,7 +382,7 @@ pub fn map_shader_module<'a>(
         };
         let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
         let module = parser.parse().unwrap();
-        wgc::pipeline::ShaderModuleSource::Naga(module)
+        wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module))
     } else if let Some(glsl) = glsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
@@ -405,7 +405,7 @@ pub fn map_shader_module<'a>(
 
         let mut parser = naga::front::glsl::Parser::default();
         let module = parser.parse(&options, str_slice).unwrap();
-        wgc::pipeline::ShaderModuleSource::Naga(module)
+        wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module))
     } else {
         panic!("Shader not provided.");
     }
@@ -523,10 +523,10 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_RGBA32Uint => Some(wgt::TextureFormat::Rgba32Uint),
         native::WGPUTextureFormat_RGBA32Sint => Some(wgt::TextureFormat::Rgba32Sint),
         native::WGPUTextureFormat_Stencil8 => None, // unimplmented in wgpu-core
-        native::WGPUTextureFormat_Depth16Unorm => None, // unimplmented in wgpu-core
+        native::WGPUTextureFormat_Depth16Unorm => Some(wgt::TextureFormat::Depth16Unorm),
         native::WGPUTextureFormat_Depth24Plus => Some(wgt::TextureFormat::Depth24Plus),
         native::WGPUTextureFormat_Depth24PlusStencil8 => Some(wgt::TextureFormat::Depth24PlusStencil8),
-        native::WGPUTextureFormat_Depth24UnormStencil8 => Some(wgt::TextureFormat::Depth24UnormStencil8),
+        native::WGPUTextureFormat_Depth24UnormStencil8 =>  None, // unimplmented in wgpu-core
         native::WGPUTextureFormat_Depth32Float => Some(wgt::TextureFormat::Depth32Float),
         native::WGPUTextureFormat_Depth32FloatStencil8 => Some(wgt::TextureFormat::Depth32FloatStencil8),
         native::WGPUTextureFormat_BC1RGBAUnorm => Some(wgt::TextureFormat::Bc1RgbaUnorm),
@@ -639,9 +639,9 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUText
         wgt::TextureFormat::Rgba32Float => native::WGPUTextureFormat_RGBA32Float,
         wgt::TextureFormat::Rgba32Uint => native::WGPUTextureFormat_RGBA32Uint,
         wgt::TextureFormat::Rgba32Sint => native::WGPUTextureFormat_RGBA32Sint,
+        wgt::TextureFormat::Depth16Unorm => native::WGPUTextureFormat_Depth16Unorm,
         wgt::TextureFormat::Depth24Plus => native::WGPUTextureFormat_Depth24Plus,
         wgt::TextureFormat::Depth24PlusStencil8 => native::WGPUTextureFormat_Depth24PlusStencil8,
-        wgt::TextureFormat::Depth24UnormStencil8 => native::WGPUTextureFormat_Depth24UnormStencil8,
         wgt::TextureFormat::Depth32Float => native::WGPUTextureFormat_Depth32Float,
         wgt::TextureFormat::Depth32FloatStencil8 => native::WGPUTextureFormat_Depth32FloatStencil8,
         wgt::TextureFormat::Bc1RgbaUnorm => native::WGPUTextureFormat_BC1RGBAUnorm,
@@ -793,9 +793,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::DEPTH_CLIP_CONTROL) {
         temp.push(native::WGPUFeatureName_DepthClipControl);
     }
-    if features.contains(wgt::Features::DEPTH24UNORM_STENCIL8) {
-        temp.push(native::WGPUFeatureName_Depth24UnormStencil8);
-    }
     if features.contains(wgt::Features::DEPTH32FLOAT_STENCIL8) {
         temp.push(native::WGPUFeatureName_Depth32FloatStencil8);
     }
@@ -844,7 +841,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
 
     match feature {
         native::WGPUFeatureName_DepthClipControl => Some(Features::DEPTH_CLIP_CONTROL),
-        native::WGPUFeatureName_Depth24UnormStencil8 => Some(Features::DEPTH24UNORM_STENCIL8),
         native::WGPUFeatureName_Depth32FloatStencil8 => Some(Features::DEPTH32FLOAT_STENCIL8),
         native::WGPUFeatureName_TimestampQuery => Some(Features::TIMESTAMP_QUERY),
         native::WGPUFeatureName_PipelineStatisticsQuery => Some(Features::PIPELINE_STATISTICS_QUERY),

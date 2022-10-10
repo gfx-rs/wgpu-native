@@ -1,6 +1,4 @@
-use std::{
-    borrow::Cow, collections::HashMap, ffi::CString, marker::PhantomData, sync::Arc, sync::Mutex,
-};
+use std::{borrow::Cow, collections::HashMap, ffi::CString, sync::Arc, sync::Mutex};
 use wgc::id;
 
 pub mod command;
@@ -195,14 +193,6 @@ macro_rules! map_enum {
     };
 }
 
-// see https://github.com/rust-windowing/raw-window-handle/issues/49
-struct PseudoRwh(raw_window_handle::RawWindowHandle);
-unsafe impl raw_window_handle::HasRawWindowHandle for PseudoRwh {
-    fn raw_window_handle(&self) -> raw_window_handle::RawWindowHandle {
-        self.0
-    }
-}
-
 #[no_mangle]
 pub extern "C" fn wgpuCreateInstance(
     _descriptor: *const native::WGPUInstanceDescriptor,
@@ -228,8 +218,11 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     )
 }
 
-pub fn wgpu_create_surface(raw_handle: raw_window_handle::RawWindowHandle) -> native::WGPUSurface {
-    Some(GLOBAL.instance_create_surface(&PseudoRwh(raw_handle), PhantomData))
+pub fn wgpu_create_surface(
+    rdh: raw_window_handle::RawDisplayHandle,
+    rwh: raw_window_handle::RawWindowHandle,
+) -> native::WGPUSurface {
+    Some(GLOBAL.instance_create_surface(rdh, rwh, ()))
 }
 
 unsafe fn map_surface(
@@ -243,10 +236,15 @@ unsafe fn map_surface(
 ) -> native::WGPUSurface {
     #[cfg(windows)]
     if let Some(win) = _win {
-        let mut handle = raw_window_handle::Win32Handle::empty();
-        handle.hwnd = win.hwnd;
-        handle.hinstance = win.hinstance;
-        return wgpu_create_surface(raw_window_handle::RawWindowHandle::Win32(handle));
+        let display_handle = raw_window_handle::WindowsDisplayHandle::empty();
+        let mut window_handle = raw_window_handle::Win32WindowHandle::empty();
+        window_handle.hwnd = win.hwnd;
+        window_handle.hinstance = win.hinstance;
+
+        return wgpu_create_surface(
+            raw_window_handle::RawDisplayHandle::Windows(display_handle),
+            raw_window_handle::RawWindowHandle::Win32(window_handle),
+        );
     }
 
     #[cfg(all(
@@ -257,41 +255,57 @@ unsafe fn map_surface(
     ))]
     {
         if let Some(xcb) = _xcb {
-            let mut handle = raw_window_handle::XcbHandle::empty();
-            handle.connection = xcb.connection;
-            handle.window = xcb.window;
+            let mut display_handle = raw_window_handle::XcbDisplayHandle::empty();
+            display_handle.connection = xcb.connection;
+            let mut window_handle = raw_window_handle::XcbWindowHandle::empty();
+            window_handle.window = xcb.window;
 
-            return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xcb(handle));
+            return wgpu_create_surface(
+                raw_window_handle::RawDisplayHandle::Xcb(display_handle),
+                raw_window_handle::RawWindowHandle::Xcb(window_handle),
+            );
         }
 
         if let Some(xlib) = _xlib {
-            let mut handle = raw_window_handle::XlibHandle::empty();
-            handle.window = xlib.window as _;
-            handle.display = xlib.display;
+            let mut display_handle = raw_window_handle::XlibDisplayHandle::empty();
+            display_handle.display = xlib.display;
+            let mut window_handle = raw_window_handle::XlibWindowHandle::empty();
+            window_handle.window = xlib.window as _;
 
-            return wgpu_create_surface(raw_window_handle::RawWindowHandle::Xlib(handle));
+            return wgpu_create_surface(
+                raw_window_handle::RawDisplayHandle::Xlib(display_handle),
+                raw_window_handle::RawWindowHandle::Xlib(window_handle),
+            );
         }
 
         if let Some(wl) = _wl {
-            let mut handle = raw_window_handle::WaylandHandle::empty();
-            handle.display = wl.display;
-            handle.surface = wl.surface;
+            let mut display_handle = raw_window_handle::WaylandDisplayHandle::empty();
+            display_handle.display = wl.display;
+            let mut window_handle = raw_window_handle::WaylandWindowHandle::empty();
+            window_handle.surface = wl.surface;
 
-            return wgpu_create_surface(raw_window_handle::RawWindowHandle::Wayland(handle));
+            return wgpu_create_surface(
+                raw_window_handle::RawDisplayHandle::Wayland(display_handle),
+                raw_window_handle::RawWindowHandle::Wayland(window_handle),
+            );
         }
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
     if let Some(metal) = _metal {
-        return Some(GLOBAL.instance_create_surface_metal(metal.layer, PhantomData));
+        return Some(GLOBAL.instance_create_surface_metal(metal.layer, ()));
     }
 
     #[cfg(target_os = "android")]
     if let Some(android) = _android {
-        let mut handle = raw_window_handle::AndroidNdkHandle::empty();
-        handle.a_native_window = android.window;
+        let display_handle = raw_window_handle::AndroidDisplayHandle::empty();
+        let mut window_handle = raw_window_handle::AndroidNdkWindowHandle::empty();
+        window_handle.a_native_window = android.window;
 
-        return wgpu_create_surface(raw_window_handle::RawWindowHandle::AndroidNdk(handle));
+        return wgpu_create_surface(
+            raw_window_handle::RawDisplayHandle::Android(display_handle),
+            raw_window_handle::RawWindowHandle::AndroidNdk(window_handle),
+        );
     }
 
     panic!("Error: Unsupported Surface");
@@ -356,7 +370,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
     let adapter = adapter.expect("invalid adapter");
     assert!(count.is_some(), "count must be non-null");
 
-    let mut modes = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_modes(surface, adapter))
+    let mut modes = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_present_modes(surface, adapter))
     {
         Ok(modes) => modes
             .iter()
