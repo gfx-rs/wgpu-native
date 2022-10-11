@@ -84,7 +84,11 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
         command_encoder,
         buffer,
         offset,
-        NonZeroU64::new(size)))
+        match size {
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => NonZeroU64::new(size),
+        }
+    ))
     .expect("Unable to clear buffer")
 }
 
@@ -562,7 +566,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
         buffer,
         conv::map_index_format(index_format).expect("Index format cannot be undefined"),
         offset,
-        NonZeroU64::new(size),
+        match size {
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => NonZeroU64::new(size),
+        },
     );
 }
 
@@ -582,7 +589,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
         slot,
         buffer,
         offset,
-        NonZeroU64::new(size),
+        match size {
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => NonZeroU64::new(size),
+        },
     );
 }
 
@@ -848,7 +858,10 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
         buffer,
         conv::map_index_format(format).unwrap(),
         offset,
-        NonZeroU64::new(size),
+        match size {
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => NonZeroU64::new(size),
+        },
     );
 }
 
@@ -879,6 +892,9 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
         slot,
         buffer,
         offset,
-        NonZeroU64::new(size),
+        match size {
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => NonZeroU64::new(size),
+        },
     );
 }

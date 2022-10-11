@@ -180,6 +180,12 @@ map_enum!(
     Compute
 );
 
+pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
+pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
+    native::WGPU_LIMIT_U64_UNDEFINED as _;
+// it's SIZE_MAX in headers but it's not available in some compilers
+pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
+
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
         width: native.width,
@@ -246,7 +252,7 @@ pub fn map_device_descriptor<'a>(
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
-        wgt::Limits::downlevel_defaults(),
+        wgt::Limits::default(),
         |required_limits| unsafe {
             follow_chain!(
                 map_required_limits(required_limits,
@@ -310,91 +316,91 @@ pub fn map_required_limits(
 ) -> wgt::Limits {
     let limits = required_limits.limits;
     let mut wgt_limits = wgt::Limits::default();
-    if limits.maxTextureDimension1D != 0 {
+    if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
     }
-    if limits.maxTextureDimension2D != 0 {
+    if limits.maxTextureDimension2D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_2d = limits.maxTextureDimension2D;
     }
-    if limits.maxTextureDimension3D != 0 {
+    if limits.maxTextureDimension3D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_3d = limits.maxTextureDimension3D;
     }
-    if limits.maxTextureArrayLayers != 0 {
+    if limits.maxTextureArrayLayers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_array_layers = limits.maxTextureArrayLayers;
     }
-    if limits.maxBindGroups != 0 {
+    if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
-    if limits.maxDynamicUniformBuffersPerPipelineLayout != 0 {
+    if limits.maxDynamicUniformBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout =
             limits.maxDynamicUniformBuffersPerPipelineLayout;
     }
-    if limits.maxDynamicStorageBuffersPerPipelineLayout != 0 {
+    if limits.maxDynamicStorageBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_storage_buffers_per_pipeline_layout =
             limits.maxDynamicStorageBuffersPerPipelineLayout;
     }
-    if limits.maxSampledTexturesPerShaderStage != 0 {
+    if limits.maxSampledTexturesPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_sampled_textures_per_shader_stage = limits.maxSampledTexturesPerShaderStage;
     }
-    if limits.maxSamplersPerShaderStage != 0 {
+    if limits.maxSamplersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_samplers_per_shader_stage = limits.maxSamplersPerShaderStage;
     }
-    if limits.maxStorageBuffersPerShaderStage != 0 {
+    if limits.maxStorageBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_storage_buffers_per_shader_stage = limits.maxStorageBuffersPerShaderStage;
     }
-    if limits.maxStorageTexturesPerShaderStage != 0 {
+    if limits.maxStorageTexturesPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_storage_textures_per_shader_stage = limits.maxStorageTexturesPerShaderStage;
     }
-    if limits.maxUniformBuffersPerShaderStage != 0 {
+    if limits.maxUniformBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_uniform_buffers_per_shader_stage = limits.maxUniformBuffersPerShaderStage;
     }
-    if limits.maxUniformBufferBindingSize != 0 {
+    if limits.maxUniformBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
         wgt_limits.max_uniform_buffer_binding_size = limits.maxUniformBufferBindingSize as u32;
     }
-    if limits.maxStorageBufferBindingSize != 0 {
+    if limits.maxStorageBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
-    if limits.minUniformBufferOffsetAlignment != 0 {
+    if limits.minUniformBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.min_uniform_buffer_offset_alignment = limits.minUniformBufferOffsetAlignment;
     }
-    if limits.minStorageBufferOffsetAlignment != 0 {
+    if limits.minStorageBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.min_storage_buffer_offset_alignment = limits.minStorageBufferOffsetAlignment;
     }
-    if limits.maxVertexBuffers != 0 {
+    if limits.maxVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
-    if limits.maxVertexAttributes != 0 {
+    if limits.maxVertexAttributes != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_attributes = limits.maxVertexAttributes;
     }
-    if limits.maxVertexBufferArrayStride != 0 {
+    if limits.maxVertexBufferArrayStride != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffer_array_stride = limits.maxVertexBufferArrayStride;
     }
-    if limits.maxInterStageShaderComponents != 0 {
+    if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
-    if limits.maxComputeWorkgroupStorageSize != 0 {
+    if limits.maxComputeWorkgroupStorageSize != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
-    if limits.maxComputeInvocationsPerWorkgroup != 0 {
+    if limits.maxComputeInvocationsPerWorkgroup != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_invocations_per_workgroup = limits.maxComputeInvocationsPerWorkgroup;
     }
-    if limits.maxComputeWorkgroupSizeX != 0 {
+    if limits.maxComputeWorkgroupSizeX != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_size_x = limits.maxComputeWorkgroupSizeX;
     }
-    if limits.maxComputeWorkgroupSizeY != 0 {
+    if limits.maxComputeWorkgroupSizeY != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_size_y = limits.maxComputeWorkgroupSizeY;
     }
-    if limits.maxComputeWorkgroupSizeZ != 0 {
+    if limits.maxComputeWorkgroupSizeZ != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_size_z = limits.maxComputeWorkgroupSizeZ;
     }
-    if limits.maxComputeWorkgroupsPerDimension != 0 {
+    if limits.maxComputeWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
     if let Some(extras) = extras {
-        if extras.maxPushConstantSize != 0 {
+        if extras.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
         }
-        if extras.maxBufferSize != 0 {
+        if extras.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
             wgt_limits.max_buffer_size = extras.maxBufferSize;
         }
     }
@@ -479,8 +485,14 @@ pub fn map_image_copy_buffer(
 pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::ImageDataLayout {
     wgt::ImageDataLayout {
         offset: native.offset,
-        bytes_per_row: NonZeroU32::new(native.bytesPerRow),
-        rows_per_image: NonZeroU32::new(native.rowsPerImage),
+        bytes_per_row: match native.bytesPerRow {
+            native::WGPU_COPY_STRIDE_UNDEFINED => None,
+            _ => NonZeroU32::new(native.bytesPerRow),
+        },
+        rows_per_image: match native.rowsPerImage {
+            native::WGPU_COPY_STRIDE_UNDEFINED => None,
+            _ => NonZeroU32::new(native.rowsPerImage),
+        },
     }
 }
 
