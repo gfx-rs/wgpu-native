@@ -8,7 +8,6 @@ use std::{
     collections::HashMap,
     convert::TryInto,
     ffi::CString,
-    marker::PhantomData,
     num::{NonZeroU32, NonZeroU64, NonZeroU8},
     path::Path,
     sync::Mutex,
@@ -48,7 +47,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 compatible_surface,
                 force_fallback_adapter: options.forceFallbackAdapter,
             },
-            wgc::instance::AdapterInputs::Mask(backend_bits, |_| PhantomData),
+            wgc::instance::AdapterInputs::Mask(backend_bits, |_| ()),
         )
         .expect("Unable to request adapter");
     let status = native::WGPURequestAdapterStatus_Success; // todo: cleanly communicate a non-success
@@ -71,7 +70,8 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     );
     let trace_path = trace_str.as_ref().map(Path::new);
 
-    let (id, error) = gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, PhantomData));
+    let (id, error) =
+        gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, ()));
 
     let status = match error {
         Some(_error) => native::WGPURequestDeviceStatus_Error,
@@ -308,7 +308,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         label: label.as_cow(),
         shader_bound_checks: wgt::ShaderBoundChecks::default(),
     };
-    let (id, error) = gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, source, PhantomData));
+    let (id, error) =
+        gfx_select!(device => GLOBAL.device_create_shader_module(device, &desc, source, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -334,7 +335,7 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
             usage,
             mapped_at_creation: descriptor.mappedAtCreation,
         },
-        PhantomData
+        ()
     ));
     if let Some(error) = error {
         handle_device_error(device, &error);
@@ -461,7 +462,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         entries: Cow::Borrowed(&entries),
     };
     let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_bind_group_layout(device, &desc, PhantomData));
+        gfx_select!(device => GLOBAL.device_create_bind_group_layout(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -514,8 +515,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
             .expect("invalid bind group layout for bind group descriptor"),
         entries: Cow::Borrowed(&entries),
     };
-    let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_bind_group(device, &desc, PhantomData));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_bind_group(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -537,7 +537,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
             WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
     );
     let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_pipeline_layout(device, &desc, PhantomData));
+        gfx_select!(device => GLOBAL.device_create_pipeline_layout(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -571,12 +571,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     let implicit_pipeline_ids = match desc.layout {
         Some(_) => None,
         None => Some(wgc::device::ImplicitPipelineIds {
-            root_id: PhantomData,
-            group_ids: &[PhantomData; wgc::MAX_BIND_GROUPS],
+            root_id: (),
+            group_ids: &[(); wgc::MAX_BIND_GROUPS],
         }),
     };
 
-    let (id, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, PhantomData, implicit_pipeline_ids));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_compute_pipeline(device, &desc, (), implicit_pipeline_ids));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -599,7 +599,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
         None => wgt::CommandEncoderDescriptor::default(),
     };
     let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_command_encoder(device, &desc, PhantomData));
+        gfx_select!(device => GLOBAL.device_create_command_encoder(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -882,12 +882,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     let implicit_pipeline_ids = match desc.layout {
         Some(_) => None,
         None => Some(wgc::device::ImplicitPipelineIds {
-            root_id: PhantomData,
-            group_ids: &[PhantomData; wgc::MAX_BIND_GROUPS],
+            root_id: (),
+            group_ids: &[(); wgc::MAX_BIND_GROUPS],
         }),
     };
 
-    let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, PhantomData, implicit_pipeline_ids));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_render_pipeline(device, &desc, (), implicit_pipeline_ids));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -903,7 +903,7 @@ pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
 ) -> native::WGPUBindGroupLayout {
     let pipeline = pipeline.expect("invalid render pipeline");
 
-    let (id, error) = gfx_select!(pipeline => GLOBAL.render_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
+    let (id, error) = gfx_select!(pipeline => GLOBAL.render_pipeline_get_bind_group_layout(pipeline, group_index, ()));
     if let Some(error) = error {
         // TODO figure out what device the render pipeline belongs to and call
         // handle_device_error()
@@ -943,6 +943,7 @@ pub extern "C" fn wgpuDeviceCreateSwapChain(
         width: descriptor.width,
         height: descriptor.height,
         present_mode: conv::map_present_mode(descriptor.presentMode),
+        alpha_mode: wgt::CompositeAlphaMode::Auto,
     };
     let error = gfx_select!(device => GLOBAL.surface_configure(surface, device, &config));
     if let Some(error) = error {
@@ -970,32 +971,30 @@ pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
 ) -> native::WGPUTextureView {
     let surface_id = swap_chain.expect("invalid swapchain");
     let device = get_device_from_surface(surface_id);
-    match gfx_select!(device => GLOBAL.surface_get_current_texture(surface_id, PhantomData)) {
+    match gfx_select!(device => GLOBAL.surface_get_current_texture(surface_id, ())) {
         Err(error) => {
             handle_device_error(device, &error);
             None
         }
-        Ok(result) => {
-            match result.status {
-                wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
-                    let texture = result.texture_id.unwrap();
-                    let desc = wgc::resource::TextureViewDescriptor::default();
-                    Some(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData)).0)
-                }
-                wgt::SurfaceStatus::Timeout => {
-                    handle_device_error(device, &SurfaceError::Timeout);
-                    None
-                }
-                wgt::SurfaceStatus::Outdated => {
-                    handle_device_error(device, &SurfaceError::Outdated);
-                    None
-                }
-                wgt::SurfaceStatus::Lost => {
-                    handle_device_error(device, &SurfaceError::Lost);
-                    None
-                }
+        Ok(result) => match result.status {
+            wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
+                let texture = result.texture_id.unwrap();
+                let desc = wgc::resource::TextureViewDescriptor::default();
+                Some(gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, ())).0)
             }
-        }
+            wgt::SurfaceStatus::Timeout => {
+                handle_device_error(device, &SurfaceError::Timeout);
+                None
+            }
+            wgt::SurfaceStatus::Outdated => {
+                handle_device_error(device, &SurfaceError::Outdated);
+                None
+            }
+            wgt::SurfaceStatus::Lost => {
+                handle_device_error(device, &SurfaceError::Lost);
+                None
+            }
+        },
     }
 }
 
@@ -1030,8 +1029,7 @@ pub extern "C" fn wgpuTextureCreateView(
         None => wgc::resource::TextureViewDescriptor::default(),
     };
 
-    let (id, error) =
-        gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, PhantomData));
+    let (id, error) = gfx_select!(texture => GLOBAL.texture_create_view(texture, &desc, ()));
 
     if let Some(error) = error {
         // TODO: report via handle_device_error()
@@ -1060,8 +1058,7 @@ pub extern "C" fn wgpuDeviceCreateTexture(
         usage: wgt::TextureUsages::from_bits(descriptor.usage).expect("Invalid texture usage"),
     };
 
-    let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_texture(device, &desc, PhantomData));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_texture(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -1108,8 +1105,7 @@ pub extern "C" fn wgpuDeviceCreateSampler(
         None => wgc::resource::SamplerDescriptor::default(),
     };
 
-    let (id, error) =
-        gfx_select!(device => GLOBAL.device_create_sampler(device, &desc, PhantomData));
+    let (id, error) = gfx_select!(device => GLOBAL.device_create_sampler(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
@@ -1168,7 +1164,7 @@ pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
 ) -> native::WGPUBindGroupLayout {
     let pipeline = pipeline.expect("invalid compute pipeline");
 
-    let (id, error) = gfx_select!(pipeline => GLOBAL.compute_pipeline_get_bind_group_layout(pipeline, group_index, PhantomData));
+    let (id, error) = gfx_select!(pipeline => GLOBAL.compute_pipeline_get_bind_group_layout(pipeline, group_index, ()));
     if let Some(error) = error {
         // TODO figure out what device the compute pipeline belongs to and call
         // handle_device_error()

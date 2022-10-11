@@ -1,6 +1,5 @@
 use crate::{conv, handle_device_error, make_slice, native, OwnedLabel, GLOBAL};
 use std::ffi::CStr;
-use std::marker::PhantomData;
 use std::os::raw::c_char;
 use std::{borrow::Cow, num::NonZeroU64};
 use wgc::{
@@ -463,7 +462,14 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     let buffer = buffer.expect("invalid buffer");
     let count_buffer = count_buffer.expect("invalid count buffer");
 
-    render_ffi::wgpu_render_pass_multi_draw_indirect_count(pass, buffer, offset, count_buffer, count_buffer_offset, max_count);
+    render_ffi::wgpu_render_pass_multi_draw_indirect_count(
+        pass,
+        buffer,
+        offset,
+        count_buffer,
+        count_buffer_offset,
+        max_count,
+    );
 }
 
 #[no_mangle]
@@ -479,7 +485,14 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
     let buffer = buffer.expect("invalid buffer");
     let count_buffer = count_buffer.expect("invalid count buffer");
 
-    render_ffi::wgpu_render_pass_multi_draw_indexed_indirect_count(pass, buffer, offset, count_buffer, count_buffer_offset, max_count);
+    render_ffi::wgpu_render_pass_multi_draw_indexed_indirect_count(
+        pass,
+        buffer,
+        offset,
+        count_buffer,
+        count_buffer_offset,
+        max_count,
+    );
 }
 
 #[no_mangle]
@@ -715,7 +728,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
         None => wgt::RenderBundleDescriptor::default(),
     };
 
-    let (render_bundle, error) = gfx_select!(device => GLOBAL.render_bundle_encoder_finish(*render_bundle_encoder, &desc, PhantomData));
+    let (render_bundle, error) = gfx_select!(device => GLOBAL.render_bundle_encoder_finish(*render_bundle_encoder, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         None
