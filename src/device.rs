@@ -40,19 +40,41 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         native::WGPUBackendType_OpenGL => wgt::Backends::GL,
         _ => panic!("Invalid backend {}", given_backend),
     };
-    let adapter_id = GLOBAL
-        .request_adapter(
-            &wgt::RequestAdapterOptions {
-                power_preference,
-                compatible_surface,
-                force_fallback_adapter: options.forceFallbackAdapter,
-            },
-            wgc::instance::AdapterInputs::Mask(backend_bits, |_| ()),
-        )
-        .expect("Unable to request adapter");
-    let status = native::WGPURequestAdapterStatus_Success; // todo: cleanly communicate a non-success
-    let message_ptr = std::ptr::null();
-    (callback.unwrap())(status, Some(adapter_id), message_ptr, userdata);
+
+    match GLOBAL.request_adapter(
+        &wgt::RequestAdapterOptions {
+            power_preference,
+            compatible_surface,
+            force_fallback_adapter: options.forceFallbackAdapter,
+        },
+        wgc::instance::AdapterInputs::Mask(backend_bits, |_| ()),
+    ) {
+        Ok(adapter) => {
+            (callback.unwrap())(
+                native::WGPURequestAdapterStatus_Success,
+                Some(adapter),
+                std::ptr::null(),
+                userdata,
+            );
+        }
+        Err(err) => {
+            let message = CString::new(format!("{:?}", err)).unwrap();
+
+            (callback.unwrap())(
+                match err {
+                    wgc::instance::RequestAdapterError::NotFound => {
+                        native::WGPURequestAdapterStatus_Unavailable
+                    }
+                    wgc::instance::RequestAdapterError::InvalidSurface(_) => {
+                        native::WGPURequestAdapterStatus_Error
+                    }
+                },
+                None,
+                message.as_ptr(),
+                userdata,
+            );
+        }
+    };
 }
 
 #[no_mangle]
@@ -70,16 +92,28 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     );
     let trace_path = trace_str.as_ref().map(Path::new);
 
-    let (id, error) =
+    let (device, err) =
         gfx_select!(adapter => GLOBAL.adapter_request_device(adapter, &desc, trace_path, ()));
+    match err {
+        None => {
+            (callback.unwrap())(
+                native::WGPURequestDeviceStatus_Success,
+                Some(device),
+                std::ptr::null(),
+                userdata,
+            );
+        }
+        Some(err) => {
+            let message = CString::new(format!("{:?}", err)).unwrap();
 
-    let status = match error {
-        Some(_error) => native::WGPURequestDeviceStatus_Error,
-        None => native::WGPURequestDeviceStatus_Success,
-    };
-
-    let message_ptr = std::ptr::null();
-    (callback.unwrap())(status, Some(id), message_ptr, userdata);
+            (callback.unwrap())(
+                native::WGPURequestDeviceStatus_Error,
+                None,
+                message.as_ptr(),
+                userdata,
+            );
+        }
+    }
 }
 
 lazy_static! {

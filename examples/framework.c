@@ -187,6 +187,18 @@ void printAdapterFeatures(WGPUAdapter adapter) {
       printf("\tWGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES\n");
       break;
 
+    case WGPUNativeFeature_MULTI_DRAW_INDIRECT:
+      printf("\tWGPUNativeFeature_MULTI_DRAW_INDIRECT\n");
+      break;
+
+    case WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT:
+      printf("\tWGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT\n");
+      break;
+
+    case WGPUNativeFeature_VERTEX_WRITABLE_STORAGE:
+      printf("\tWGPUNativeFeature_VERTEX_WRITABLE_STORAGE\n");
+      break;
+
     default:
       printf("\tUnknown=%d\n", feature);
     }
