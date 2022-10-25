@@ -2392,6 +2392,37 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
+    instance: native::WGPUInstance,
+    output: *mut native::WGPUAdapter,
+) -> usize {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+
+    let mut adapters = context.enumerate_adapters(wgc::instance::AdapterInputs::Mask(
+        wgt::Backends::all(),
+        |_| (),
+    ));
+    if !output.is_null() {
+        let mut i = 0;
+        for adapter in adapters.drain(..) {
+            *output.add(i) = Box::into_raw(Box::new(WGPUAdapterImpl {
+                context: context.clone(),
+                id: adapter,
+                name: CString::default(),
+                vendor_name: CString::default(),
+                architecture_name: CString::default(),
+                driver_desc: CString::default(),
+            }));
+            i += 1;
+        }
+        i
+    } else {
+        adapters.len()
+    }
+}
+
 // QuerySet methods
 
 #[no_mangle]

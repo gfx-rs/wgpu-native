@@ -184,7 +184,8 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void *
 extern "C" {
 #endif
 
-void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport* report);
+void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
+size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUAdapter * adapters);
 
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
 
