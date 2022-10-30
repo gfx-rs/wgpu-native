@@ -6,7 +6,7 @@ pub mod conv;
 pub mod device;
 pub mod logging;
 
-type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
+pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
 pub mod native {
     #![allow(non_upper_case_globals)]
