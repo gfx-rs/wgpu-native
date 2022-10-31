@@ -1,4 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, ffi::CString, sync::Arc, sync::Mutex};
+use native::UnwrapId;
 use wgc::id;
 
 pub mod command;
@@ -19,23 +20,18 @@ pub mod native {
     use wgc::{
         command::{ComputePass, RenderBundleEncoder, RenderPass},
         id::{
-            AdapterId, BindGroupId, BindGroupLayoutId, BufferId, CommandBufferId,
+            AdapterId, BindGroupId, BindGroupLayoutId, BufferId, CommandBufferId, CommandEncoderId,
             ComputePipelineId, DeviceId, PipelineLayoutId, QuerySetId, QueueId, RenderBundleId,
             RenderPipelineId, SamplerId, ShaderModuleId, StagingBufferId, SurfaceId, TextureId,
             TextureViewId,
         },
     };
 
-    pub struct WGPUInstanceImpl {
-        pub context: Arc<Context>,
-    }
-
     pub struct WGPUContextHandle<I: wgc::id::TypedId> {
         pub context: Arc<Context>,
         pub id: I,
     }
 
-    type WGPUAdapterImpl = WGPUContextHandle<AdapterId>;
     type WGPUDeviceImpl = WGPUContextHandle<DeviceId>;
     type WGPUQueueImpl = WGPUContextHandle<QueueId>;
     type WGPUPipelineLayoutImpl = WGPUContextHandle<PipelineLayoutId>;
@@ -43,6 +39,7 @@ pub mod native {
     type WGPUBindGroupLayoutImpl = WGPUContextHandle<BindGroupLayoutId>;
     type WGPUBindGroupImpl = WGPUContextHandle<BindGroupId>;
     type WGPUCommandBufferImpl = WGPUContextHandle<CommandBufferId>;
+    type WGPUCommandEncoderImpl = WGPUContextHandle<CommandEncoderId>;
     type WGPURenderBundleImpl = WGPUContextHandle<RenderBundleId>;
     type WGPURenderPipelineImpl = WGPUContextHandle<RenderPipelineId>;
     type WGPUComputePipelineImpl = WGPUContextHandle<ComputePipelineId>;
@@ -52,8 +49,17 @@ pub mod native {
     type WGPUTextureImpl = WGPUContextHandle<TextureId>;
     type WGPUTextureViewImpl = WGPUContextHandle<TextureViewId>;
     type WGPUSamplerImpl = WGPUContextHandle<SamplerId>;
-    type WGPUCommandEncoderImpl = WGPUContextHandle<CommandBufferId>;
     type WGPUSurfaceImpl = WGPUContextHandle<SurfaceId>;
+
+    pub struct WGPUInstanceImpl {
+        pub context: Arc<Context>,
+    }
+
+    pub struct WGPUAdapterImpl {
+        pub context: Arc<Context>,
+        pub id: AdapterId,
+        pub name: std::ffi::CString,
+    }
 
     pub struct WGPUSwapChainImpl {
         pub context: Arc<Context>,
@@ -75,6 +81,102 @@ pub mod native {
         pub context: Arc<Context>,
         pub encoder: RenderBundleEncoder,
     }
+
+    pub trait IntoHandle {
+        fn into_handle(self) -> *mut Self;
+    }
+
+    pub trait Handle {
+        fn drop(self);
+    }
+
+    pub trait UnwrapId<I: wgc::id::TypedId> {
+        fn unwrap_id(&self) -> (I, &Arc<Context>);
+        fn as_option(&self) -> Option<I>;
+    }
+
+    // This macro implements the IntoHandle & Handle for the struct and it's *mut type
+    // xxxImpl{}.into_handle will return a boxed pointer to the struct
+    // the box can be dropped by calling ptr.drop()
+    macro_rules! implement_handle {
+        ($impl_type:ty) => {
+            impl $crate::native::IntoHandle for $impl_type {
+                fn into_handle(self) -> *mut Self {
+                     Box::into_raw(Box::new(self))
+                }
+            }
+            impl $crate::native::Handle for *mut $impl_type {
+                fn drop(self) {
+                    unsafe { drop(Box::from_raw(self)) }
+                }
+            }
+        };
+    }
+
+    // This macro implements the UnwrapId for the *mut type passed
+    // ptr.unwrap_id() will return an (Id, &Arc<Context>) tuple or panic on invalid pointers
+    // ptr.as_option() will return Option<Id> based on if the pointer is null or not
+    macro_rules! implement_unwrap_handle {
+        ($impl_type:ty, $id_type:ty) => {
+            impl $crate::native::UnwrapId<$id_type> for *mut $impl_type {
+                fn unwrap_id(&self) -> ($id_type, &Arc<Context>) {
+                    unsafe {
+                        let v = self.as_ref().expect(stringify!(invalid $id_type));
+                        (v.id, &v.context)
+                    }
+                }
+                fn as_option(&self) -> Option<$id_type> {
+                    unsafe { self.as_ref().map(|v| v.id)}
+                }
+            }
+        };
+    }
+
+    implement_handle!(WGPUInstanceImpl);
+    implement_handle!(WGPURenderPassEncoderImpl);
+    implement_handle!(WGPUComputePassEncoderImpl);
+    implement_handle!(WGPURenderBundleEncoderImpl);
+
+    implement_handle!(WGPUAdapterImpl);
+    implement_unwrap_handle!(WGPUAdapterImpl, AdapterId);
+    implement_handle!(WGPUDeviceImpl);
+    implement_unwrap_handle!(WGPUDeviceImpl, DeviceId);
+    // NORE: QueueId == DeviceId
+    // implement_handle!(WGPUQueueImpl);
+    // implement_unwrap_handle!(WGPUQueueImpl, QueueId);
+    implement_handle!(WGPUPipelineLayoutImpl);
+    implement_unwrap_handle!(WGPUPipelineLayoutImpl, PipelineLayoutId);
+    implement_handle!(WGPUShaderModuleImpl);
+    implement_unwrap_handle!(WGPUShaderModuleImpl, ShaderModuleId);
+    implement_handle!(WGPUBindGroupLayoutImpl);
+    implement_unwrap_handle!(WGPUBindGroupLayoutImpl, BindGroupLayoutId);
+    implement_handle!(WGPUBindGroupImpl);
+    implement_unwrap_handle!(WGPUBindGroupImpl, BindGroupId);
+    implement_handle!(WGPUCommandBufferImpl);
+    implement_unwrap_handle!(WGPUCommandBufferImpl, CommandBufferId);
+    // NOTE: CommandEncoderId == CommandBufferId
+    // implement_handle!(WGPUCommandEncoderImpl);
+    // implement_unwrap_handle!(WGPUCommandEncoderImpl, CommandBufferId);
+    implement_handle!(WGPURenderBundleImpl);
+    implement_unwrap_handle!(WGPURenderBundleImpl, RenderBundleId);
+    implement_handle!(WGPURenderPipelineImpl);
+    implement_unwrap_handle!(WGPURenderPipelineImpl, RenderPipelineId);
+    implement_handle!(WGPUComputePipelineImpl);
+    implement_unwrap_handle!(WGPUComputePipelineImpl, ComputePipelineId);
+    implement_handle!(WGPUQuerySetImpl);
+    implement_unwrap_handle!(WGPUQuerySetImpl, QuerySetId);
+    implement_handle!(WGPUBufferImpl);
+    implement_unwrap_handle!(WGPUBufferImpl, BufferId);
+    implement_handle!(WGPUStagingBufferImpl);
+    implement_unwrap_handle!(WGPUStagingBufferImpl, StagingBufferId);
+    implement_handle!(WGPUTextureImpl);
+    implement_unwrap_handle!(WGPUTextureImpl, TextureId);
+    implement_handle!(WGPUTextureViewImpl);
+    implement_unwrap_handle!(WGPUTextureViewImpl, TextureViewId);
+    implement_handle!(WGPUSamplerImpl);
+    implement_unwrap_handle!(WGPUSamplerImpl, SamplerId);
+    implement_handle!(WGPUSurfaceImpl);
+    implement_unwrap_handle!(WGPUSurfaceImpl, SurfaceId);
 
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
@@ -440,7 +542,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
 ) -> native::WGPUTextureFormat {
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let (adapter, context) = adapter.unwrap_id();
     let (surface, _) = unsafe {
         let v = surface.as_ref().expect("invalid surface");
         (v.id, &v.context)
@@ -470,7 +572,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
         (v.id, &v.context)
     };
 
-    let (adapter, _) = unwrap_context_handle(adapter);
+    let (adapter, _) = adapter.unwrap_id();
     assert!(count.is_some(), "count must be non-null");
 
     let mut native_formats = match wgc::gfx_select!(adapter => context.surface_get_supported_formats(surface, adapter))
@@ -498,7 +600,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
     count: Option<&mut usize>,
 ) -> *const native::WGPUPresentMode {
     let (surface, _) = unwrap_context_handle(surface);
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let (adapter, context) = adapter.unwrap_id();
     assert!(count.is_some(), "count must be non-null");
 
     let mut modes = match wgc::gfx_select!(adapter => context.surface_get_supported_present_modes(surface, adapter))

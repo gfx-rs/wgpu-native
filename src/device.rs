@@ -1,6 +1,7 @@
 use crate::conv::{
     map_adapter_options, map_device_descriptor, map_pipeline_layout_descriptor, map_shader_module,
 };
+use crate::native::WGPUAdapterImpl;
 use crate::{
     conv, drop_context_handle, follow_chain, get_context_handle_id_optional, handle_device_error,
     make_context_handle, make_slice, native, unwrap_context_handle, unwrap_swap_chain_handle,
@@ -18,6 +19,8 @@ use std::{
 };
 use thiserror::Error;
 use wgc::{gfx_select, id};
+
+use native::{Handle, IntoHandle, UnwrapId};
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
@@ -61,7 +64,12 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         Ok(adapter) => {
             (callback.unwrap())(
                 native::WGPURequestAdapterStatus_Success,
-                make_context_handle(context, adapter),
+                WGPUAdapterImpl {
+                    context: context.clone(),
+                    id: adapter,
+                    name: CString::default(),
+                }
+                .into_handle(),
                 std::ptr::null(),
                 userdata,
             );
@@ -93,7 +101,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     callback: native::WGPURequestDeviceCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let (adapter, context) = adapter.unwrap_id();
 
     let (desc, trace_str) = follow_chain!(
         map_device_descriptor(descriptor,
@@ -134,16 +142,15 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     adapter: native::WGPUAdapter,
     properties: &mut native::WGPUAdapterProperties,
 ) {
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let adapter = adapter.as_mut().expect("invalid adapter");
+    let context = &adapter.context;
+    let id = adapter.id;
 
-    let maybe_props = gfx_select!(adapter => context.adapter_get_info(adapter));
+    let maybe_props = gfx_select!(id => context.adapter_get_info(id));
     if let Ok(props) = maybe_props {
-        properties.name = ADAPTER_NAMES
-            .lock()
-            .unwrap()
-            .entry(adapter)
-            .or_insert_with(|| CString::new((&props.name) as &str).unwrap())
-            .as_ptr();
+        adapter.name = CString::new((&props.name) as &str).unwrap();
+
+        properties.name = adapter.name.as_ptr();
         properties.vendorID = props.vendor as u32;
         properties.deviceID = props.device as u32;
         properties.adapterType = match props.device_type {
@@ -170,7 +177,7 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
     limits: &mut native::WGPUSupportedLimits,
 ) -> bool {
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let (adapter, context) = adapter.unwrap_id();
 
     let result = gfx_select!(adapter => context.adapter_limits(adapter));
     match result {
@@ -186,7 +193,7 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
     adapter: native::WGPUAdapter,
     features: *mut native::WGPUFeatureName,
 ) -> usize {
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let (adapter, context) = adapter.unwrap_id();
 
     let adapter_features = match gfx_select!(adapter => context.adapter_features(adapter)) {
         Ok(features) => features,
@@ -208,7 +215,7 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
     adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
 ) -> bool {
-    let (adapter, context) = unwrap_context_handle(adapter);
+    let (adapter, context) = adapter.unwrap_id();
 
     let adapter_features = match gfx_select!(adapter => context.adapter_features(adapter)) {
         Ok(features) => features,
@@ -1331,9 +1338,9 @@ pub extern "C" fn wgpuDeviceDrop(device: native::WGPUDevice) {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterDrop(adapter: native::WGPUAdapter) {
-    let (id, context) = unwrap_context_handle(adapter);
+    let (id, context) = adapter.unwrap_id();
     gfx_select!(id => context.adapter_drop(id));
-    drop_context_handle(adapter);
+    adapter.drop();
 }
 
 #[no_mangle]
