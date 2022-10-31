@@ -393,7 +393,6 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
 pub extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
     let (id, context) = buffer.unwrap_handle();
     gfx_select!(id => context.buffer_destroy(id)).expect("Unable to destroy buffer");
-    buffer.drop()
 }
 
 #[no_mangle]
@@ -1116,7 +1115,6 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 pub extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
     let (id, context) = texture.unwrap_handle();
     gfx_select!(id => context.texture_destroy(id)).expect("Failed to destroy texture");
-    texture.drop();
 }
 
 #[no_mangle]
@@ -1201,9 +1199,8 @@ pub extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceDestroy(device: native::WGPUDevice) {
+pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
     // Empty implementation, maybe call drop?
-    device.drop();
 }
 
 #[no_mangle]
