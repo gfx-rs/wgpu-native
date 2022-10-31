@@ -7,7 +7,6 @@ use crate::{
     OwnedLabel,
 };
 use lazy_static::lazy_static;
-use std::ptr::null_mut;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -79,7 +78,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                         native::WGPURequestAdapterStatus_Error
                     }
                 },
-                null_mut(),
+                std::ptr::null_mut(),
                 message.as_ptr(),
                 userdata,
             );
@@ -118,7 +117,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
 
             (callback.unwrap())(
                 native::WGPURequestDeviceStatus_Error,
-                null_mut(),
+                std::ptr::null_mut(),
                 message.as_ptr(),
                 userdata,
             );
@@ -356,7 +355,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         gfx_select!(device => context.device_create_shader_module(device, &desc, source, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -383,7 +382,7 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
     ));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -509,7 +508,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         gfx_select!(device => context.device_create_bind_group_layout(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -561,7 +560,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     let (id, error) = gfx_select!(device => context.device_create_bind_group(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -583,7 +582,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
         gfx_select!(device => context.device_create_pipeline_layout(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -620,7 +619,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     let (id, error) = gfx_select!(device => context.device_create_compute_pipeline(device, &desc, (), implicit_pipeline_ids));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -643,7 +642,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
         gfx_select!(device => context.device_create_command_encoder(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -929,7 +928,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     let (id, error) = gfx_select!(device => context.device_create_render_pipeline(device, &desc, (), implicit_pipeline_ids));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -950,7 +949,7 @@ pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
             "Failed to get render pipeline bind group layout: {:?}",
             error
         );
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -978,7 +977,7 @@ pub extern "C" fn wgpuDeviceCreateSwapChain(
     let error = gfx_select!(device => context.surface_configure(surface, device, &config));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         Box::into_raw(Box::new(native::WGPUSwapChainImpl {
             context: context.clone(),
@@ -1007,7 +1006,7 @@ pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
     match gfx_select!(device => context.surface_get_current_texture(surface, ())) {
         Err(error) => {
             handle_device_error(device, &error);
-            null_mut()
+            std::ptr::null_mut()
         }
         Ok(result) => match result.status {
             wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
@@ -1020,15 +1019,15 @@ pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
             }
             wgt::SurfaceStatus::Timeout => {
                 handle_device_error(device, &SurfaceError::Timeout);
-                null_mut()
+                std::ptr::null_mut()
             }
             wgt::SurfaceStatus::Outdated => {
                 handle_device_error(device, &SurfaceError::Outdated);
-                null_mut()
+                std::ptr::null_mut()
             }
             wgt::SurfaceStatus::Lost => {
                 handle_device_error(device, &SurfaceError::Lost);
-                null_mut()
+                std::ptr::null_mut()
             }
         },
     }
@@ -1068,7 +1067,7 @@ pub extern "C" fn wgpuTextureCreateView(
     if let Some(error) = error {
         // TODO: report via handle_device_error()
         log::error!("Failed to create texture view for texture: {:?}", error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -1095,7 +1094,7 @@ pub extern "C" fn wgpuDeviceCreateTexture(
     let (id, error) = gfx_select!(device => context.device_create_texture(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -1142,7 +1141,7 @@ pub extern "C" fn wgpuDeviceCreateSampler(
     let (id, error) = gfx_select!(device => context.device_create_sampler(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }
@@ -1184,7 +1183,7 @@ pub extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
         })),
         Err(error) => {
             handle_device_error(device, &error);
-            null_mut()
+            std::ptr::null_mut()
         }
     }
 }
@@ -1210,7 +1209,7 @@ pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
             "Failed to get compute pipeline bind group layout: {:?}",
             error
         );
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(context, id)
     }

@@ -4,7 +4,6 @@ use crate::{
 };
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use std::ptr::null_mut;
 use std::sync::Arc;
 use std::{borrow::Cow, num::NonZeroU64};
 use wgc::command::{ComputePass, RenderBundleEncoder, RenderPass};
@@ -64,7 +63,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
         // TODO figure out what device the encoder belongs to and call
         // handle_device_error()
         log::error!("command_encoder_finish() failed: {:?}", error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(&context, id)
     }
@@ -768,7 +767,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
     let (render_bundle, error) = gfx_select!(device => context.render_bundle_encoder_finish(render_bundle_encoder, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
-        null_mut()
+        std::ptr::null_mut()
     } else {
         make_context_handle(&context, render_bundle)
     }
