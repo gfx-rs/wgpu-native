@@ -1,7 +1,5 @@
-use crate::{
-    conv, get_context_handle_id_optional, handle_device_error, make_context_handle, make_slice,
-    native, unwrap_context_handle, Context, OwnedLabel,
-};
+use crate::native::{IntoHandleWithContext, UnwrapId, IntoHandle};
+use crate::{conv, handle_device_error, make_slice, native, Context, OwnedLabel};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::sync::Arc;
@@ -65,7 +63,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
         log::error!("command_encoder_finish() failed: {:?}", error);
         std::ptr::null_mut()
     } else {
-        make_context_handle(&context, id)
+        id.into_handle_with_context(&context)
     }
 }
 
@@ -76,8 +74,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
     offset: u64,
     size: u64,
 ) {
-    let (command_encoder, _) = unwrap_context_handle(command_encoder);
-    let (buffer, context) = unwrap_context_handle(buffer);
+    let (command_encoder, _) = command_encoder.unwrap_handle();
+    let (buffer, context) = buffer.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_clear_buffer(
         command_encoder,
@@ -96,9 +94,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
     destination_offset: u64,
     size: u64,
 ) {
-    let (command_encoder, _) = unwrap_context_handle(command_encoder);
-    let (source, _) = unwrap_context_handle(source);
-    let (destination, context) = unwrap_context_handle(destination);
+    let (command_encoder, _) = command_encoder.unwrap_handle();
+    let (source, _) = source.unwrap_handle();
+    let (destination, context) = destination.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_buffer_to_buffer(
         command_encoder,
@@ -117,7 +115,7 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
     destination: &native::WGPUImageCopyTexture,
     copy_size: &native::WGPUExtent3D,
 ) {
-    let (command_encoder, context) = unwrap_context_handle(command_encoder);
+    let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_texture_to_texture(
         command_encoder,
@@ -134,7 +132,7 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
     destination: &native::WGPUImageCopyBuffer,
     copy_size: &native::WGPUExtent3D,
 ) {
-    let (command_encoder, context) = unwrap_context_handle(command_encoder);
+    let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_texture_to_buffer(
         command_encoder,
@@ -151,7 +149,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
     destination: &native::WGPUImageCopyTexture,
     copy_size: &native::WGPUExtent3D,
 ) {
-    let (command_encoder, context) = unwrap_context_handle(command_encoder);
+    let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_buffer_to_texture(
         command_encoder,
@@ -166,7 +164,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     command_encoder: native::WGPUCommandEncoder,
     descriptor: Option<&native::WGPUComputePassDescriptor>,
 ) -> native::WGPUComputePassEncoder {
-    let (command_encoder, context) = unwrap_context_handle(command_encoder);
+    let (command_encoder, context) = command_encoder.unwrap_handle();
 
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
@@ -175,10 +173,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
         None => wgc::command::ComputePassDescriptor::default(),
     };
     let pass = wgc::command::ComputePass::new(command_encoder, &desc);
-    Box::into_raw(Box::new(native::WGPUComputePassEncoderImpl {
+    native::WGPUComputePassEncoderImpl {
         context: context.clone(),
         encoder: pass,
-    }))
+    }.into_handle()
 }
 
 #[no_mangle]
@@ -186,11 +184,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     encoder: native::WGPUCommandEncoder,
     descriptor: &native::WGPURenderPassDescriptor,
 ) -> native::WGPURenderPassEncoder {
-    let (encoder, context) = unwrap_context_handle(encoder);
+    let (encoder, context) = encoder.unwrap_handle();
 
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
-            view: get_context_handle_id_optional(desc.view)
+            view: desc
+                .view
+                .as_option()
                 .expect("invalid texture view for depth stencil attachment"),
             depth: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.depthLoadOp),
@@ -215,12 +215,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
             )
             .iter()
             .map(|color_attachment| {
-                get_context_handle_id_optional(color_attachment.view).map(|view| {
+                color_attachment.view.as_option().map(|view| {
                     wgc::command::RenderPassColorAttachment {
                         view,
-                        resolve_target: get_context_handle_id_optional(
-                            color_attachment.resolveTarget,
-                        ),
+                        resolve_target: color_attachment.resolveTarget.as_option(),
                         channel: wgc::command::PassChannel {
                             load_op: conv::map_load_op(color_attachment.loadOp),
                             store_op: conv::map_store_op(color_attachment.storeOp),
@@ -235,10 +233,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
     };
     let pass = wgc::command::RenderPass::new(encoder, &desc);
-    Box::into_raw(Box::new(native::WGPURenderPassEncoderImpl {
+    native::WGPURenderPassEncoderImpl {
         context: context.clone(),
         encoder: pass,
-    }))
+    }.into_handle()
 }
 
 #[no_mangle]
@@ -246,7 +244,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderInsertDebugMarker(
     encoder: native::WGPUCommandEncoder,
     marker_label: *const c_char,
 ) {
-    let (encoder, context) = unwrap_context_handle(encoder);
+    let (encoder, context) = encoder.unwrap_handle();
 
     gfx_select!(encoder => context.command_encoder_insert_debug_marker(encoder, CStr::from_ptr(marker_label).to_str().unwrap()))
         .expect("Unable to insert debug marker");
@@ -254,7 +252,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderInsertDebugMarker(
 
 #[no_mangle]
 pub extern "C" fn wgpuCommandEncoderPopDebugGroup(encoder: native::WGPUCommandEncoder) {
-    let (encoder, context) = unwrap_context_handle(encoder);
+    let (encoder, context) = encoder.unwrap_handle();
 
     gfx_select!(encoder => context.command_encoder_pop_debug_group(encoder))
         .expect("Unable to pop debug group");
@@ -265,7 +263,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
     encoder: native::WGPUCommandEncoder,
     group_label: *const c_char,
 ) {
-    let (encoder, context) = unwrap_context_handle(encoder);
+    let (encoder, context) = encoder.unwrap_handle();
 
     gfx_select!(encoder => context.command_encoder_push_debug_group(encoder, CStr::from_ptr(group_label).to_str().unwrap()))
         .expect("Unable to push debug group");
@@ -293,7 +291,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
     pipeline_id: native::WGPUComputePipeline,
 ) {
     let (pass, _) = unwrap_compute_pass_encoder(pass);
-    let (pipeline_id, _) = unwrap_context_handle(pipeline_id);
+    let (pipeline_id, _) = pipeline_id.unwrap_handle();
 
     compute_ffi::wgpu_compute_pass_set_pipeline(pass, pipeline_id);
 }
@@ -304,7 +302,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
     pipeline_id: native::WGPURenderPipeline,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (pipeline_id, _) = unwrap_context_handle(pipeline_id);
+    let (pipeline_id, _) = pipeline_id.unwrap_handle();
     render_ffi::wgpu_render_pass_set_pipeline(pass, pipeline_id);
 }
 
@@ -317,7 +315,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     dynamic_offsets: *const u32,
 ) {
     let (pass, _) = unwrap_compute_pass_encoder(pass);
-    let (group, _) = unwrap_context_handle(group);
+    let (group, _) = group.unwrap_handle();
 
     compute_ffi::wgpu_compute_pass_set_bind_group(
         pass,
@@ -337,7 +335,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     dynamic_offsets: *const u32,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (group, _) = unwrap_context_handle(group);
+    let (group, _) = group.unwrap_handle();
 
     render_ffi::wgpu_render_pass_set_bind_group(
         pass,
@@ -371,7 +369,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
     indirect_offset: u64,
 ) {
     let (pass, _) = unwrap_compute_pass_encoder(pass);
-    let (indirect_buffer, _) = unwrap_context_handle(indirect_buffer);
+    let (indirect_buffer, _) = indirect_buffer.unwrap_handle();
 
     compute_ffi::wgpu_compute_pass_dispatch_workgroups_indirect(
         pass,
@@ -449,7 +447,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
     indirect_offset: u64,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_draw_indirect(pass, buffer, indirect_offset);
 }
@@ -461,7 +459,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
     indirect_offset: u64,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_draw_indexed_indirect(pass, buffer, indirect_offset);
 }
@@ -474,7 +472,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
     count: u32,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_multi_draw_indirect(pass, buffer, offset, count);
 }
@@ -487,7 +485,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirect(
     count: u32,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_multi_draw_indexed_indirect(pass, buffer, offset, count);
 }
@@ -502,8 +500,8 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     max_count: u32,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
-    let (count_buffer, _) = unwrap_context_handle(count_buffer);
+    let (buffer, _) = buffer.unwrap_handle();
+    let (count_buffer, _) = count_buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_multi_draw_indirect_count(
         pass,
@@ -525,8 +523,8 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
     max_count: u32,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
-    let (count_buffer, _) = unwrap_context_handle(count_buffer);
+    let (buffer, _) = buffer.unwrap_handle();
+    let (count_buffer, _) = count_buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_multi_draw_indexed_indirect_count(
         pass,
@@ -547,7 +545,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     size: u64,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     pass.set_index_buffer(
         buffer,
@@ -566,7 +564,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     size: u64,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     render_ffi::wgpu_render_pass_set_vertex_buffer(
         pass,
@@ -723,7 +721,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexedIndirect(
     indirect_offset: u64,
 ) {
     let (render_bundle_encoder, _) = unwrap_render_bundle_encoder(render_bundle_encoder);
-    let (indirect_buffer, _) = unwrap_context_handle(indirect_buffer);
+    let (indirect_buffer, _) = indirect_buffer.unwrap_handle();
     bundle_ffi::wgpu_render_bundle_draw_indexed_indirect(
         render_bundle_encoder,
         indirect_buffer,
@@ -738,7 +736,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
     indirect_offset: u64,
 ) {
     let (render_bundle_encoder, _) = unwrap_render_bundle_encoder(render_bundle_encoder);
-    let (indirect_buffer, _) = unwrap_context_handle(indirect_buffer);
+    let (indirect_buffer, _) = indirect_buffer.unwrap_handle();
     bundle_ffi::wgpu_render_bundle_draw_indirect(
         render_bundle_encoder,
         indirect_buffer,
@@ -769,7 +767,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
         handle_device_error(device, &error);
         std::ptr::null_mut()
     } else {
-        make_context_handle(&context, render_bundle)
+        render_bundle.into_handle_with_context(&context)
     }
 }
 
@@ -808,7 +806,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     dynamic_offsets: *const u32,
 ) {
     let (render_bundle_encoder, _) = unwrap_render_bundle_encoder(render_bundle_encoder);
-    let (group, _) = unwrap_context_handle(group);
+    let (group, _) = group.unwrap_handle();
     bundle_ffi::wgpu_render_bundle_set_bind_group(
         render_bundle_encoder,
         group_index,
@@ -827,7 +825,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
     size: u64,
 ) {
     let (render_bundle_encoder, _) = unwrap_render_bundle_encoder(render_bundle_encoder);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     bundle_ffi::wgpu_render_bundle_set_index_buffer(
         render_bundle_encoder,
@@ -844,7 +842,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPipeline(
     pipeline: native::WGPURenderPipeline,
 ) {
     let (render_bundle_encoder, _) = unwrap_render_bundle_encoder(render_bundle_encoder);
-    let (pipeline, _) = unwrap_context_handle(pipeline);
+    let (pipeline, _) = pipeline.unwrap_handle();
 
     bundle_ffi::wgpu_render_bundle_set_pipeline(render_bundle_encoder, pipeline);
 }
@@ -858,7 +856,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     size: u64,
 ) {
     let (render_bundle_encoder, _) = unwrap_render_bundle_encoder(render_bundle_encoder);
-    let (buffer, _) = unwrap_context_handle(buffer);
+    let (buffer, _) = buffer.unwrap_handle();
 
     bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
         render_bundle_encoder,
