@@ -427,7 +427,7 @@ enum CreateSurfaceParams {
         ),
     ),
     #[cfg(any(target_os = "ios", target_os = "macos"))]
-    Metal(*const c_void),
+    Metal(*const std::ffi::c_void),
 }
 
 #[no_mangle]
