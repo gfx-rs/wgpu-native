@@ -109,7 +109,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
+pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
     command_encoder: native::WGPUCommandEncoder,
     source: &native::WGPUImageCopyTexture,
     destination: &native::WGPUImageCopyTexture,
@@ -126,7 +126,7 @@ pub extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
+pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
     command_encoder: native::WGPUCommandEncoder,
     source: &native::WGPUImageCopyTexture,
     destination: &native::WGPUImageCopyBuffer,
@@ -251,7 +251,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderInsertDebugMarker(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandEncoderPopDebugGroup(encoder: native::WGPUCommandEncoder) {
+pub unsafe extern "C" fn wgpuCommandEncoderPopDebugGroup(encoder: native::WGPUCommandEncoder) {
     let (encoder, context) = encoder.unwrap_handle();
 
     gfx_select!(encoder => context.command_encoder_pop_debug_group(encoder))

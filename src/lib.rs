@@ -93,12 +93,12 @@ pub mod native {
     ///
     /// this is equivalent to calling `drop(Box::from_raw(ptr))`
     pub trait Handle {
-        fn drop(self);
+        unsafe fn drop(self);
     }
 
     /// Convenience trait for converting handle pointers to Ids
     pub trait UnwrapId<I: wgc::id::TypedId> {
-        fn unwrap_handle(&self) -> (I, &Arc<Context>);
+        unsafe fn unwrap_handle(&self) -> (I, &Arc<Context>);
         fn as_option(&self) -> Option<I>;
     }
 
@@ -119,8 +119,8 @@ pub mod native {
                 }
             }
             impl $crate::native::Handle for *mut $impl_type {
-                fn drop(self) {
-                    unsafe { drop(Box::from_raw(self)) }
+                unsafe fn drop(self) {
+                    drop(Box::from_raw(self))
                 }
             }
         };
@@ -133,7 +133,7 @@ pub mod native {
     macro_rules! implement_unwrap_handle {
         ($impl_type:ty, $id_type:ty) => {
             impl $crate::native::UnwrapId<$id_type> for *mut $impl_type {
-                fn unwrap_handle(&self) -> ($id_type, &Arc<Context>) {
+                unsafe fn unwrap_handle(&self) -> ($id_type, &Arc<Context>) {
                     unsafe {
                         let v = self.as_ref().expect(stringify!(invalid $id_type));
                         (v.id, &v.context)
@@ -187,7 +187,7 @@ pub mod native {
     implement_handle!(WGPURenderBundleEncoderImpl);
     implement_handle!(WGPUSwapChainImpl);
 
-    pub fn unwrap_swap_chain_handle<'a>(
+    pub unsafe fn unwrap_swap_chain_handle<'a>(
         handle: *mut WGPUSwapChainImpl,
     ) -> (SurfaceId, DeviceId, &'a Arc<Context>) {
         unsafe {
@@ -398,15 +398,13 @@ macro_rules! map_enum {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCreateInstance(
-    _descriptor: *const native::WGPUInstanceDescriptor,
+pub unsafe extern "C" fn wgpuCreateInstance(
+    descriptor: *const native::WGPUInstanceDescriptor,
 ) -> native::WGPUInstance {
     use conv::map_instance_descriptor;
-    let (backends) = unsafe {
-        follow_chain!(map_instance_descriptor(_descriptor.as_ref().unwrap(),
-            WGPUSType_InstanceExtras => native::WGPUInstanceExtras
-        ))
-    };
+    let backends = follow_chain!(map_instance_descriptor(descriptor.as_ref().unwrap(),
+        WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+    ));
 
     let context = Context::new("wgpu", wgc::hub::IdentityManagerFactory, backends);
 

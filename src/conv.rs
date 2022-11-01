@@ -222,11 +222,11 @@ pub fn map_instance_backend_flags(flags: i32) -> wgt::Backends {
 pub fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
-) -> (wgt::Backends) {
+) -> wgt::Backends {
     if let Some(extras) = extras {
-        (map_instance_backend_flags(extras.backends as i32))
+        map_instance_backend_flags(extras.backends as i32)
     } else {
-        (wgt::Backends::PRIMARY)
+        wgt::Backends::PRIMARY
     }
 }
 

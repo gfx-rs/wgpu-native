@@ -356,7 +356,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceCreateBuffer(
+pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     device: native::WGPUDevice,
     descriptor: &native::WGPUBufferDescriptor,
 ) -> native::WGPUBuffer {
@@ -383,7 +383,7 @@ pub extern "C" fn wgpuDeviceCreateBuffer(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
+pub unsafe extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
     let (id, context) = buffer.unwrap_handle();
     gfx_select!(id => context.buffer_destroy(id)).expect("Unable to destroy buffer");
 }
@@ -940,7 +940,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
+pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
     pipeline: native::WGPURenderPipeline,
     group_index: u32,
 ) -> native::WGPUBindGroupLayout {
@@ -961,7 +961,7 @@ pub extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceCreateSwapChain(
+pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
     device: native::WGPUDevice,
     surface: native::WGPUSurface,
     descriptor: &native::WGPUSwapChainDescriptor,
@@ -1003,7 +1003,7 @@ pub enum SurfaceError {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
+pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
     swap_chain: native::WGPUSwapChain,
 ) -> native::WGPUTextureView {
     let (surface, device, context) = unwrap_swap_chain_handle(swap_chain);
@@ -1038,13 +1038,13 @@ pub extern "C" fn wgpuSwapChainGetCurrentTextureView(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
+pub unsafe extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
     let (surface, device, context) = unwrap_swap_chain_handle(swap_chain);
     gfx_select!(device => context.surface_present(surface)).expect("Unable to present swap chain");
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureCreateView(
+pub unsafe extern "C" fn wgpuTextureCreateView(
     texture: native::WGPUTexture,
     descriptor: Option<&native::WGPUTextureViewDescriptor>,
 ) -> native::WGPUTextureView {
@@ -1078,7 +1078,7 @@ pub extern "C" fn wgpuTextureCreateView(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceCreateTexture(
+pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     device: native::WGPUDevice,
     descriptor: &native::WGPUTextureDescriptor,
 ) -> native::WGPUTexture {
@@ -1105,13 +1105,13 @@ pub extern "C" fn wgpuDeviceCreateTexture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
+pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
     let (id, context) = texture.unwrap_handle();
     gfx_select!(id => context.texture_destroy(id)).expect("Failed to destroy texture");
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceCreateSampler(
+pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUSamplerDescriptor>,
 ) -> native::WGPUSampler {
@@ -1151,7 +1151,7 @@ pub extern "C" fn wgpuDeviceCreateSampler(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
+pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     device: native::WGPUDevice,
     descriptor: &native::WGPURenderBundleEncoderDescriptor,
 ) -> native::WGPURenderBundleEncoder {
@@ -1197,7 +1197,7 @@ pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
+pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
     pipeline: native::WGPUComputePipeline,
     group_index: u32,
 ) -> native::WGPUBindGroupLayout {
@@ -1218,62 +1218,62 @@ pub extern "C" fn wgpuComputePipelineGetBindGroupLayout(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
+pub unsafe extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
     let (id, context) = buffer.unwrap_handle();
     gfx_select!(id => context.buffer_unmap(id)).expect("Unable to unmap buffer")
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferDrop(buffer: native::WGPUBuffer) {
+pub unsafe extern "C" fn wgpuBufferDrop(buffer: native::WGPUBuffer) {
     let (id, context) = buffer.unwrap_handle();
     gfx_select!(id => context.buffer_drop(id, false));
     buffer.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureDrop(texture: native::WGPUTexture) {
+pub unsafe extern "C" fn wgpuTextureDrop(texture: native::WGPUTexture) {
     let (id, context) = texture.unwrap_handle();
     gfx_select!(id => context.texture_drop(id, false));
     texture.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureViewDrop(texture_view: native::WGPUTextureView) {
+pub unsafe extern "C" fn wgpuTextureViewDrop(texture_view: native::WGPUTextureView) {
     let (id, context) = texture_view.unwrap_handle();
     gfx_select!(id => context.texture_view_drop(id, false)).expect("Unable to drop texture view");
     texture_view.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuSamplerDrop(sampler: native::WGPUSampler) {
+pub unsafe extern "C" fn wgpuSamplerDrop(sampler: native::WGPUSampler) {
     let (id, context) = sampler.unwrap_handle();
     gfx_select!(id => context.sampler_drop(id));
     sampler.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBindGroupLayoutDrop(bind_group_layout: native::WGPUBindGroupLayout) {
+pub unsafe extern "C" fn wgpuBindGroupLayoutDrop(bind_group_layout: native::WGPUBindGroupLayout) {
     let (id, context) = bind_group_layout.unwrap_handle();
     gfx_select!(id => context.bind_group_layout_drop(id));
     bind_group_layout.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuPipelineLayoutDrop(pipeline_layout: native::WGPUPipelineLayout) {
+pub unsafe extern "C" fn wgpuPipelineLayoutDrop(pipeline_layout: native::WGPUPipelineLayout) {
     let (id, context) = pipeline_layout.unwrap_handle();
     gfx_select!(id => context.pipeline_layout_drop(id));
     pipeline_layout.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBindGroupDrop(bind_group: native::WGPUBindGroup) {
+pub unsafe extern "C" fn wgpuBindGroupDrop(bind_group: native::WGPUBindGroup) {
     let (id, context) = bind_group.unwrap_handle();
     gfx_select!(id => context.bind_group_drop(id));
     bind_group.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuShaderModuleDrop(shader_module: native::WGPUShaderModule) {
+pub unsafe extern "C" fn wgpuShaderModuleDrop(shader_module: native::WGPUShaderModule) {
     let (id, context) = shader_module.unwrap_handle();
     gfx_select!(id => context.shader_module_drop(id));
     shader_module.drop();
@@ -1290,42 +1290,42 @@ pub unsafe extern "C" fn wgpuCommandEncoderDrop(command_encoder: native::WGPUCom
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandBufferDrop(command_buffer: native::WGPUCommandBuffer) {
+pub unsafe extern "C" fn wgpuCommandBufferDrop(command_buffer: native::WGPUCommandBuffer) {
     let (id, context) = command_buffer.unwrap_handle();
     gfx_select!(id => context.command_buffer_drop(id));
     command_buffer.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderBundleDrop(render_bundle: native::WGPURenderBundle) {
+pub unsafe extern "C" fn wgpuRenderBundleDrop(render_bundle: native::WGPURenderBundle) {
     let (id, context) = render_bundle.unwrap_handle();
     gfx_select!(id => context.render_bundle_drop(id));
     render_bundle.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuQuerySetDrop(query_set: native::WGPUQuerySet) {
+pub unsafe extern "C" fn wgpuQuerySetDrop(query_set: native::WGPUQuerySet) {
     let (id, context) = query_set.unwrap_handle();
     gfx_select!(id => context.query_set_drop(id));
     query_set.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderPipelineDrop(render_pipeline: native::WGPURenderPipeline) {
+pub unsafe extern "C" fn wgpuRenderPipelineDrop(render_pipeline: native::WGPURenderPipeline) {
     let (id, context) = render_pipeline.unwrap_handle();
     gfx_select!(id => context.render_pipeline_drop(id));
     render_pipeline.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuComputePipelineDrop(compute_pipeline: native::WGPUComputePipeline) {
+pub unsafe extern "C" fn wgpuComputePipelineDrop(compute_pipeline: native::WGPUComputePipeline) {
     let (id, context) = compute_pipeline.unwrap_handle();
     gfx_select!(id => context.compute_pipeline_drop(id));
     compute_pipeline.drop();
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceDrop(device: native::WGPUDevice) {
+pub unsafe extern "C" fn wgpuDeviceDrop(device: native::WGPUDevice) {
     let (id, context) = device.unwrap_handle();
     gfx_select!(id => context.device_drop(id));
     device.drop();
