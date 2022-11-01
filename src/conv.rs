@@ -1,7 +1,5 @@
-use crate::{
-    follow_chain,  make_slice, map_enum, Label, OwnedLabel,
-};
 use crate::native::{self, UnwrapId};
+use crate::{follow_chain, make_slice, map_enum, Label, OwnedLabel};
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
 
 map_enum!(
@@ -198,6 +196,40 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     }
 }
 
+pub fn map_instance_backend_flags(flags: i32) -> wgt::Backends {
+    let mut result: wgt::Backends = wgt::Backends::empty();
+    if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
+        result |= wgt::Backends::BROWSER_WEBGPU;
+    }
+    if (flags & native::WGPUInstanceBackend_Vulkan) != 0 {
+        result |= wgt::Backends::VULKAN;
+    }
+    if (flags & native::WGPUInstanceBackend_GL) != 0 {
+        result |= wgt::Backends::GL;
+    }
+    if (flags & native::WGPUInstanceBackend_Metal) != 0 {
+        result |= wgt::Backends::METAL;
+    }
+    if (flags & native::WGPUInstanceBackend_DX12) != 0 {
+        result |= wgt::Backends::DX12;
+    }
+    if (flags & native::WGPUInstanceBackend_DX11) != 0 {
+        result |= wgt::Backends::DX11;
+    }
+    result
+}
+
+pub fn map_instance_descriptor(
+    _base: &native::WGPUInstanceDescriptor,
+    extras: Option<&native::WGPUInstanceExtras>,
+) -> (wgt::Backends) {
+    if let Some(extras) = extras {
+        (map_instance_backend_flags(extras.backends as i32))
+    } else {
+        (wgt::Backends::PRIMARY)
+    }
+}
+
 pub fn map_adapter_options(
     options: &native::WGPURequestAdapterOptions,
     extras: Option<&native::WGPUAdapterExtras>,
@@ -243,7 +275,8 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) }
             .iter()
             .map(|layout| {
-                layout.as_option()
+                layout
+                    .as_option()
                     .expect("invalid bind group layout for pipeline layout descriptor")
             })
             .collect::<Vec<wgc::id::BindGroupLayoutId>>();
@@ -421,7 +454,9 @@ pub fn map_image_copy_texture(
     native: &native::WGPUImageCopyTexture,
 ) -> wgc::command::ImageCopyTexture {
     wgt::ImageCopyTexture {
-        texture: native.texture.as_option()
+        texture: native
+            .texture
+            .as_option()
             .expect("invalid texture for image copy texture"),
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
@@ -433,7 +468,9 @@ pub fn map_image_copy_buffer(
     native: &native::WGPUImageCopyBuffer,
 ) -> wgc::command::ImageCopyBuffer {
     wgt::ImageCopyBuffer {
-        buffer: native.buffer.as_option()
+        buffer: native
+            .buffer
+            .as_option()
             .expect("invalid buffer for image copy buffer"),
         layout: map_texture_data_layout(&native.layout),
     }

@@ -1,4 +1,4 @@
-use native::{IntoHandleWithContext, UnwrapId, IntoHandle, Handle};
+use native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use std::{borrow::Cow, collections::HashMap, ffi::CString, sync::Arc, sync::Mutex};
 use wgc::id;
 
@@ -394,15 +394,19 @@ macro_rules! map_enum {
 pub extern "C" fn wgpuCreateInstance(
     _descriptor: *const native::WGPUInstanceDescriptor,
 ) -> native::WGPUInstance {
-    let context = Context::new(
-        "wgpu",
-        wgc::hub::IdentityManagerFactory,
-        wgt::Backends::PRIMARY,
-    );
+    use conv::map_instance_descriptor;
+    let (backends) = unsafe {
+        follow_chain!(map_instance_descriptor(_descriptor.as_ref().unwrap(),
+            WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+        ))
+    };
+
+    let context = Context::new("wgpu", wgc::hub::IdentityManagerFactory, backends);
 
     native::WGPUInstanceImpl {
         context: Arc::new(context),
-    }.into_handle()
+    }
+    .into_handle()
 }
 
 #[no_mangle]

@@ -23,6 +23,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_PipelineLayoutExtras = 0x60000004,
     WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
     WGPUSType_SupportedLimitsExtras = 0x60000003,
+    WGPUSType_InstanceExtras = 0x60000006,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -43,6 +44,27 @@ typedef enum WGPULogLevel {
     WGPULogLevel_Trace = 0x00000005,
     WGPULogLevel_Force32 = 0x7FFFFFFF
 } WGPULogLevel;
+
+typedef enum WGPUInstanceBackend {
+    WGPUInstanceBackend_Vulkan = 1 << 1,
+    WGPUInstanceBackend_GL = 1 << 5,
+    WGPUInstanceBackend_Metal = 1 << 2,
+    WGPUInstanceBackend_DX12 = 1 << 3,
+    WGPUInstanceBackend_DX11 = 1 << 4,
+    WGPUInstanceBackend_BrowserWebGPU = 1 << 6,
+    WGPUInstanceBackend_Primary = WGPUInstanceBackend_Vulkan | WGPUInstanceBackend_Metal |
+        WGPUInstanceBackend_DX12 |
+        WGPUInstanceBackend_BrowserWebGPU,
+    WGPUInstanceBackend_Secondary = WGPUInstanceBackend_GL | WGPUInstanceBackend_DX11,
+    WGPUInstanceBackend_None = 0x00000000,
+    WGPUInstanceBackend_Force32 = 0x7FFFFFFF
+} WGPUInstanceBackend;
+typedef WGPUFlags WGPUInstanceBackendFlags;
+
+typedef struct WGPUInstanceExtras {
+    WGPUChainedStruct chain;
+    WGPUInstanceBackendFlags backends;
+} WGPUInstanceExtras;
 
 typedef struct WGPUAdapterExtras {
     WGPUChainedStruct chain;

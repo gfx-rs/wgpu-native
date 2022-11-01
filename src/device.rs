@@ -3,18 +3,15 @@ use crate::conv::{
 };
 use crate::native::{Handle, IntoHandle, UnwrapId, IntoHandleWithContext, unwrap_swap_chain_handle};
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel};
-use lazy_static::lazy_static;
 use std::{
     borrow::Cow,
-    collections::HashMap,
     convert::TryInto,
     ffi::CString,
     num::{NonZeroU32, NonZeroU64, NonZeroU8},
     path::Path,
-    sync::Mutex,
 };
 use thiserror::Error;
-use wgc::{gfx_select, id};
+use wgc::{gfx_select};
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
@@ -125,10 +122,6 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             );
         }
     }
-}
-
-lazy_static! {
-    static ref ADAPTER_NAMES: Mutex<HashMap<id::AdapterId, CString>> = Mutex::new(HashMap::new());
 }
 
 #[no_mangle]
