@@ -147,10 +147,17 @@ pub mod native {
     }
 
     /// implements id.into_handle_with_context(&context)
-    /// as a shortcut to using:
     ///
+    /// For example, when creating a new WGPUDevice:
+    ///
+    /// ```ignore
+    /// device_id.into_handle_with_context(&context)
     /// ```
-    ///   Struct{
+    ///
+    /// is equivalent to:
+    ///
+    /// ```ignore
+    ///   native::WGPUDeviceImpl{
     ///       context: context.clone(),
     ///       id: id,
     ///   }.into_handle()

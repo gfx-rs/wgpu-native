@@ -28,6 +28,8 @@
 #endif
 #include <GLFW/glfw3native.h>
 
+WGPUInstance instance = NULL;
+
 static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
                                void *userdata) {
   UNUSED(userdata);
@@ -50,7 +52,7 @@ static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action,
 
   if (key == GLFW_KEY_R && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
     WGPUGlobalReport report;
-    wgpuGenerateReport(&report);
+    wgpuGenerateReport(instance, &report);
     printGlobalReport(report);
   }
 }
@@ -70,6 +72,8 @@ int main() {
     printf("Cannot create window");
     return 1;
   }
+
+  instance = wgpuCreateInstance(&(WGPUInstanceDescriptor) {.nextInChain = NULL});
 
   WGPUSurface surface;
 
@@ -122,7 +126,7 @@ int main() {
     struct wl_display *wayland_display = glfwGetWaylandDisplay();
     struct wl_surface *wayland_surface = glfwGetWaylandWindow(window);
     surface = wgpuInstanceCreateSurface(
-        NULL,
+        instance,
         &(WGPUSurfaceDescriptor){
             .label = NULL,
             .nextInChain =
@@ -144,7 +148,7 @@ int main() {
     HWND hwnd = glfwGetWin32Window(window);
     HINSTANCE hinstance = GetModuleHandle(NULL);
     surface = wgpuInstanceCreateSurface(
-        NULL,
+        instance,
         &(WGPUSurfaceDescriptor){
             .label = NULL,
             .nextInChain =
@@ -165,7 +169,7 @@ int main() {
 #endif
 
   WGPUAdapter adapter;
-  wgpuInstanceRequestAdapter(NULL,
+  wgpuInstanceRequestAdapter(instance,
                              &(WGPURequestAdapterOptions){
                                  .nextInChain = NULL,
                                  .compatibleSurface = surface,
