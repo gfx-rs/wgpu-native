@@ -1182,7 +1182,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     match wgc::command::RenderBundleEncoder::new(&desc, device, None) {
         Ok(encoder) => native::WGPURenderBundleEncoderImpl {
             context: context.clone(),
-            encoder: encoder,
+            encoder,
         }.into_handle(),
         Err(error) => {
             handle_device_error(device, &error);
