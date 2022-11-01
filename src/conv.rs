@@ -196,24 +196,24 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     }
 }
 
-pub fn map_instance_backend_flags(flags: i32) -> wgt::Backends {
+pub fn map_instance_backend_flags(flags: u32) -> wgt::Backends {
     let mut result: wgt::Backends = wgt::Backends::empty();
-    if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
+    if (flags & native::WGPUInstanceBackend_BrowserWebGPU as u32) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
     }
-    if (flags & native::WGPUInstanceBackend_Vulkan) != 0 {
+    if (flags & native::WGPUInstanceBackend_Vulkan as u32) != 0 {
         result |= wgt::Backends::VULKAN;
     }
-    if (flags & native::WGPUInstanceBackend_GL) != 0 {
+    if (flags & native::WGPUInstanceBackend_GL as u32) != 0 {
         result |= wgt::Backends::GL;
     }
-    if (flags & native::WGPUInstanceBackend_Metal) != 0 {
+    if (flags & native::WGPUInstanceBackend_Metal as u32) != 0 {
         result |= wgt::Backends::METAL;
     }
-    if (flags & native::WGPUInstanceBackend_DX12) != 0 {
+    if (flags & native::WGPUInstanceBackend_DX12 as u32) != 0 {
         result |= wgt::Backends::DX12;
     }
-    if (flags & native::WGPUInstanceBackend_DX11) != 0 {
+    if (flags & native::WGPUInstanceBackend_DX11 as u32) != 0 {
         result |= wgt::Backends::DX11;
     }
     result
@@ -224,7 +224,7 @@ pub fn map_instance_descriptor(
     extras: Option<&native::WGPUInstanceExtras>,
 ) -> wgt::Backends {
     if let Some(extras) = extras {
-        map_instance_backend_flags(extras.backends as i32)
+        map_instance_backend_flags(extras.backends)
     } else {
         wgt::Backends::PRIMARY
     }
