@@ -85,7 +85,7 @@ int main() {
     metal_layer = [CAMetalLayer layer];
     [ns_window.contentView setLayer:metal_layer];
     surface = wgpuInstanceCreateSurface(
-        NULL,
+        instance,
         &(WGPUSurfaceDescriptor){
             .label = NULL,
             .nextInChain =
@@ -105,7 +105,7 @@ int main() {
     Display *x11_display = glfwGetX11Display();
     Window x11_window = glfwGetX11Window(window);
     surface = wgpuInstanceCreateSurface(
-        NULL,
+        instance,
         &(WGPUSurfaceDescriptor){
             .label = NULL,
             .nextInChain =

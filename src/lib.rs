@@ -445,7 +445,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceDescriptorFromAndroidNativeWindow => native::WGPUSurfaceDescriptorFromAndroidNativeWindow)
     );
 
-    let context = &(*instance).context;
+    let context = &instance.as_ref().expect("invalid instance").context;
     let surface_id = match create_surface_params {
         CreateSurfaceParams::Raw((rdh, rwh)) => context.instance_create_surface(rdh, rwh, ()),
         #[cfg(any(target_os = "ios", target_os = "macos"))]
