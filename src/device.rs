@@ -663,8 +663,12 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
     let mut command_buffers = Vec::new();
     for command_buffer in make_slice(commands, command_count as usize) {
         let ptr = (*command_buffer) as native::WGPUCommandBuffer;
-        let (id, _) = ptr.unwrap_handle();
-        command_buffers.push(id)
+        // NOTE: Automaticaly drop the command buffer
+        if ptr.is_null() {
+            panic!("invalid command buffer");
+        }
+        let buffer_id = Box::from_raw(ptr).id;
+        command_buffers.push(buffer_id)
     }
 
     gfx_select!(queue => context.queue_submit(queue, &command_buffers))
@@ -1287,6 +1291,21 @@ pub unsafe extern "C" fn wgpuCommandEncoderDrop(command_encoder: native::WGPUCom
     };
     gfx_select!(id => context.command_encoder_drop(id));
     command_encoder.drop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrop(render_pass_encoder: native::WGPURenderPassEncoder) {
+    render_pass_encoder.drop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderDrop(compute_pass_encoder: native::WGPUComputePassEncoder) {
+    compute_pass_encoder.drop();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDrop(render_bundle_encoder: native::WGPURenderBundleEncoder) {
+    render_bundle_encoder.drop();
 }
 
 #[no_mangle]

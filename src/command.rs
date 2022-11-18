@@ -1,4 +1,4 @@
-use crate::native::{IntoHandleWithContext, UnwrapId, IntoHandle};
+use crate::native::{IntoHandle, IntoHandleWithContext, UnwrapId, Handle};
 use crate::{conv, handle_device_error, make_slice, native, Context, OwnedLabel};
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -42,10 +42,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
     command_encoder: native::WGPUCommandEncoder,
     descriptor: Option<&native::WGPUCommandBufferDescriptor>,
 ) -> native::WGPUCommandBuffer {
+    // NOTE: Automatically drop the encoder
     let (command_encoder, context) = {
-        command_encoder.as_ref().expect("invalid command encoder");
-        let b = Box::from_raw(command_encoder);
-        (b.id, b.context)
+        if command_encoder.is_null() {
+            panic!("invalid render command encoder");
+        }
+        let v = Box::from_raw(command_encoder);
+        (v.id, v.context)
     };
 
     let desc = match descriptor {
@@ -176,7 +179,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     native::WGPUComputePassEncoderImpl {
         context: context.clone(),
         encoder: pass,
-    }.into_handle()
+    }
+    .into_handle()
 }
 
 #[no_mangle]
@@ -236,7 +240,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     native::WGPURenderPassEncoderImpl {
         context: context.clone(),
         encoder: pass,
-    }.into_handle()
+    }
+    .into_handle()
 }
 
 #[no_mangle]
@@ -270,19 +275,25 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePassEncoder) {
-    let (pass, context) = unwrap_compute_pass_encoder(pass);
+pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass_handle: native::WGPUComputePassEncoder) {
+    let (pass, context) = unwrap_compute_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
     gfx_select!(encoder_id => context.command_encoder_run_compute_pass(encoder_id, &pass))
         .expect("Unable to end compute pass");
+
+    // NOTE: Automatically drops the encoder
+    pass_handle.drop();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEncoder) {
-    let (pass, context) = unwrap_render_pass_encoder(pass);
+pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass_handle: native::WGPURenderPassEncoder) {
+    let (pass, context) = unwrap_render_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
     gfx_select!(encoder_id => context.command_encoder_run_render_pass(encoder_id, &pass))
         .expect("Unable to end render pass");
+
+    // NOTE: Automatically drops the encoder
+    pass_handle.drop();
 }
 
 #[no_mangle]
@@ -749,10 +760,15 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
     render_bundle_encoder: native::WGPURenderBundleEncoder,
     descriptor: Option<&native::WGPURenderBundleDescriptor>,
 ) -> native::WGPURenderBundle {
+    // NOTE: Automatically drop the encoder
     let (render_bundle_encoder, context) = {
-        let b = Box::from_raw(render_bundle_encoder);
-        (b.encoder, b.context)
+        if render_bundle_encoder.is_null() {
+            panic!("invalid render bundle encoder");
+        }
+        let v = Box::from_raw(render_bundle_encoder);
+        (v.encoder, v.context)
     };
+
     let device = render_bundle_encoder.parent();
 
     let desc = match descriptor {
