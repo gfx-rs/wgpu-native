@@ -38,12 +38,12 @@ else
 endif
 
 ifeq ($(OS),Windows_NT)
-	LIB_NAME=wgpu_native
+	LIB_NAME=libwgpu
 	LIB_EXTENSION=dll
 	OS_NAME=windows
 else
 	UNAME_S:=$(shell uname -s)
-	LIB_NAME=libwgpu_native
+	LIB_NAME=libwgpu
 	ifeq ($(UNAME_S),Linux)
 		LIB_EXTENSION=so
 		OS_NAME=linux
