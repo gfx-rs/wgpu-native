@@ -40,7 +40,7 @@ jobs:
       IMAGE: manylinux_2_24_x86_64
     steps:
     # Common part (same for nearly each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -67,7 +67,7 @@ jobs:
           docker rm $CID
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
@@ -84,7 +84,7 @@ jobs:
       IMAGE: manylinux_2_24_i686
     steps:
     # Common part (same for nearly each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -111,7 +111,7 @@ jobs:
           docker rm $CID
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
@@ -126,7 +126,7 @@ jobs:
       ARCHIVE_NAME: wgpu-windows-x86_64
     steps:
     # Common part (same for each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -150,7 +150,7 @@ jobs:
       shell: bash
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
@@ -165,7 +165,7 @@ jobs:
       ARCHIVE_NAME: wgpu-windows-i686
     steps:
     # Common part (same for each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -189,7 +189,7 @@ jobs:
       shell: bash
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
@@ -205,7 +205,7 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: 10.13
     steps:
     # Common part (same for each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -228,7 +228,7 @@ jobs:
       run: make package
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
@@ -243,7 +243,7 @@ jobs:
       ARCHIVE_NAME: wgpu-macos-arm64
     steps:
     # Common part (same for each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -266,7 +266,7 @@ jobs:
       run: SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version) make package
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
@@ -280,13 +280,13 @@ jobs:
     runs-on: ubuntu-18.04
     if: success() && contains(github.ref, 'tags/v')
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: set version (which gets used as release name)
       run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
     - name: Download assets
-      uses: actions/download-artifact@v1.0.0
+      uses: actions/download-artifact@v3
       with:
         name: dist
     - name: Create commit-sha file
