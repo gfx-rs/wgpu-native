@@ -110,6 +110,9 @@ run-example-compute: example-compute
 example-triangle: lib-native examples/triangle/main.c
 	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
 
+run-example-triangle: example-triangle
+	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
+
 example-triangle-release: lib-native-release examples/triangle/main.c
 	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
 
