@@ -28,28 +28,29 @@ fn main() {
     println!("cargo:rerun-if-changed=ffi/wgpu.h");
 
     let types_to_rename = vec![
-        ("WGPUAdapter", "AdapterId"),
-        ("WGPUSurface", "SurfaceId"),
-        ("WGPUDevice", "DeviceId"),
-        ("WGPUQueue", "QueueId"),
-        ("WGPUBuffer", "BufferId"),
-        ("WGPUTextureView", "TextureViewId"),
-        ("WGPUTexture", "TextureId"),
-        ("WGPUSampler", "SamplerId"),
-        ("WGPUBindGroupLayout", "BindGroupLayoutId"),
-        ("WGPUPipelineLayout", "PipelineLayoutId"),
-        ("WGPUBindGroup", "BindGroupId"),
-        ("WGPUShaderModule", "ShaderModuleId"),
-        ("WGPURenderPipeline", "RenderPipelineId"),
-        ("WGPUComputePipeline", "ComputePipelineId"),
-        ("WGPUCommandEncoder", "CommandEncoderId"),
-        ("WGPUCommandBuffer", "CommandBufferId"),
-        ("WGPURenderPassEncoder", "RenderPassEncoderId"),
-        ("WGPUComputePassEncoder", "ComputePassEncoderId"),
-        ("WGPURenderBundleEncoder", "RenderBundleEncoderId"),
-        ("WGPURenderBundle", "RenderBundleId"),
-        ("WGPUQuerySet", "QuerySetId"),
-        ("WGPUSwapChain", "SurfaceId"),
+        ("WGPUInstance", "WGPUInstanceImpl"),
+        ("WGPUAdapter", "WGPUAdapterImpl"),
+        ("WGPUSurface", "WGPUSurfaceImpl"),
+        ("WGPUDevice", "WGPUDeviceImpl"),
+        ("WGPUQueue", "WGPUQueueImpl"),
+        ("WGPUBuffer", "WGPUBufferImpl"),
+        ("WGPUTextureView", "WGPUTextureViewImpl"),
+        ("WGPUTexture", "WGPUTextureImpl"),
+        ("WGPUSampler", "WGPUSamplerImpl"),
+        ("WGPUBindGroupLayout", "WGPUBindGroupLayoutImpl"),
+        ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
+        ("WGPUBindGroup", "WGPUBindGroupImpl"),
+        ("WGPUShaderModule", "WGPUShaderModuleImpl"),
+        ("WGPURenderPipeline", "WGPURenderPipelineImpl"),
+        ("WGPUComputePipeline", "WGPUComputePipelineImpl"),
+        ("WGPUCommandEncoder", "WGPUCommandEncoderImpl"),
+        ("WGPUCommandBuffer", "WGPUCommandBufferImpl"),
+        ("WGPURenderPassEncoder", "WGPURenderPassEncoderImpl"),
+        ("WGPUComputePassEncoder", "WGPUComputePassEncoderImpl"),
+        ("WGPURenderBundleEncoder", "WGPURenderBundleEncoderImpl"),
+        ("WGPURenderBundle", "WGPURenderBundleImpl"),
+        ("WGPUQuerySet", "WGPUQuerySetImpl"),
+        ("WGPUSwapChain", "WGPUSwapChainImpl"),
     ];
     let mut builder = bindgen::Builder::default()
         .header("ffi/webgpu-headers/webgpu.h")
@@ -63,15 +64,7 @@ fn main() {
         .layout_tests(true);
 
     for (old_name, new_name) in types_to_rename {
-        let line = match new_name {
-            // wrapping raw pointer types in Option isn't ffi safe
-            "ComputePassEncoderId" | "RenderPassEncoderId" | "RenderBundleEncoderId" => {
-                format!("pub type {} = wgc::id::{};", old_name, new_name)
-            }
-
-            _ => format!("pub type {} = Option<wgc::id::{}>;", old_name, new_name),
-        };
-
+        let line = format!("pub type {} = *mut {};", old_name, new_name);
         builder = builder
             .blocklist_type(old_name)
             .blocklist_type(format!("{}Impl", old_name))

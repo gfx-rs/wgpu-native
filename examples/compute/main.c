@@ -12,8 +12,11 @@ int main() {
   uint32_t numbersLength = numbersSize / sizeof(uint32_t);
 
   initializeLog();
+
+  WGPUInstance instance = wgpuCreateInstance(&(WGPUInstanceDescriptor) {.nextInChain = NULL});
+
   WGPUAdapter adapter;
-  wgpuInstanceRequestAdapter(NULL,
+  wgpuInstanceRequestAdapter(instance,
                              &(WGPURequestAdapterOptions){
                                  .nextInChain = NULL,
                                  .compatibleSurface = NULL,

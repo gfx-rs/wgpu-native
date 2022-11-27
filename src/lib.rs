@@ -1,3 +1,4 @@
+use native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use std::{borrow::Cow, collections::HashMap, ffi::CString, sync::Arc, sync::Mutex};
 use wgc::id;
 
@@ -6,19 +7,222 @@ pub mod conv;
 pub mod device;
 pub mod logging;
 
+pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
+
 pub mod native {
     #![allow(non_upper_case_globals)]
     #![allow(non_camel_case_types)]
     #![allow(non_snake_case)]
     #![allow(dead_code)]
 
+    use crate::Context;
+    use std::sync::Arc;
+    use wgc::{
+        command::{ComputePass, RenderBundleEncoder, RenderPass},
+        id::{
+            AdapterId, BindGroupId, BindGroupLayoutId, BufferId, CommandBufferId, CommandEncoderId,
+            ComputePipelineId, DeviceId, PipelineLayoutId, QuerySetId, QueueId, RenderBundleId,
+            RenderPipelineId, SamplerId, ShaderModuleId, StagingBufferId, SurfaceId, TextureId,
+            TextureViewId,
+        },
+    };
+
+    pub struct WGPUContextHandle<I: wgc::id::TypedId> {
+        pub context: Arc<Context>,
+        pub id: I,
+    }
+
+    type WGPUDeviceImpl = WGPUContextHandle<DeviceId>;
+    type WGPUQueueImpl = WGPUContextHandle<QueueId>;
+    type WGPUPipelineLayoutImpl = WGPUContextHandle<PipelineLayoutId>;
+    type WGPUShaderModuleImpl = WGPUContextHandle<ShaderModuleId>;
+    type WGPUBindGroupLayoutImpl = WGPUContextHandle<BindGroupLayoutId>;
+    type WGPUBindGroupImpl = WGPUContextHandle<BindGroupId>;
+    type WGPUCommandBufferImpl = WGPUContextHandle<CommandBufferId>;
+    type WGPUCommandEncoderImpl = WGPUContextHandle<CommandEncoderId>;
+    type WGPURenderBundleImpl = WGPUContextHandle<RenderBundleId>;
+    type WGPURenderPipelineImpl = WGPUContextHandle<RenderPipelineId>;
+    type WGPUComputePipelineImpl = WGPUContextHandle<ComputePipelineId>;
+    type WGPUQuerySetImpl = WGPUContextHandle<QuerySetId>;
+    type WGPUBufferImpl = WGPUContextHandle<BufferId>;
+    type WGPUStagingBufferImpl = WGPUContextHandle<StagingBufferId>;
+    type WGPUTextureImpl = WGPUContextHandle<TextureId>;
+    type WGPUTextureViewImpl = WGPUContextHandle<TextureViewId>;
+    type WGPUSamplerImpl = WGPUContextHandle<SamplerId>;
+    type WGPUSurfaceImpl = WGPUContextHandle<SurfaceId>;
+
+    pub struct WGPUInstanceImpl {
+        pub context: Arc<Context>,
+    }
+
+    pub struct WGPUAdapterImpl {
+        pub context: Arc<Context>,
+        pub id: AdapterId,
+        pub name: std::ffi::CString,
+    }
+
+    pub struct WGPUSwapChainImpl {
+        pub context: Arc<Context>,
+        pub surface_id: SurfaceId,
+        pub device_id: DeviceId,
+    }
+
+    pub struct WGPURenderPassEncoderImpl {
+        pub context: Arc<Context>,
+        pub encoder: RenderPass,
+    }
+
+    pub struct WGPUComputePassEncoderImpl {
+        pub context: Arc<Context>,
+        pub encoder: ComputePass,
+    }
+
+    pub struct WGPURenderBundleEncoderImpl {
+        pub context: Arc<Context>,
+        pub encoder: RenderBundleEncoder,
+    }
+
+    /// Convenience trait for converting handle structs into boxed pointer
+    ///
+    /// this is equivalent to calling `Box::into_raw(Box::new(Struct{...}))`
+    pub trait IntoHandle {
+        fn into_handle(self) -> *mut Self;
+    }
+
+    /// Convenience trait implementing drop for handles
+    ///
+    /// this is equivalent to calling `drop(Box::from_raw(ptr))`
+    pub trait Handle {
+        unsafe fn drop(self);
+    }
+
+    /// Convenience trait for converting handle pointers to Ids
+    pub trait UnwrapId<I: wgc::id::TypedId> {
+        unsafe fn unwrap_handle(&self) -> (I, &Arc<Context>);
+        fn as_option(&self) -> Option<I>;
+    }
+
+    /// Convenience trait for converting ids into handle pointers
+    pub trait IntoHandleWithContext<H> {
+        fn into_handle_with_context(self, context: &Arc<Context>) -> *mut H;
+    }
+
+    /// This macro implements the IntoHandle & Handle for the struct and it's *mut type
+    ///
+    /// * `Struct{}.into_handle()` will return a boxed pointer to the struct.
+    /// * the box can be dropped by calling `ptr.drop()`
+    macro_rules! implement_handle {
+        ($impl_type:ty) => {
+            impl $crate::native::IntoHandle for $impl_type {
+                fn into_handle(self) -> *mut Self {
+                    Box::into_raw(Box::new(self))
+                }
+            }
+            impl $crate::native::Handle for *mut $impl_type {
+                unsafe fn drop(self) {
+                    drop(Box::from_raw(self))
+                }
+            }
+        };
+    }
+
+    /// This macro implements the UnwrapId for the *mut type
+    ///
+    /// * `ptr.unwrap_handle()` will return an `(Id, &Arc<Context>)` or panic on invalid pointers.
+    /// * `ptr.as_option()` will return `Option<Id>` based on if the pointer is null or not
+    macro_rules! implement_unwrap_handle {
+        ($impl_type:ty, $id_type:ty) => {
+            impl $crate::native::UnwrapId<$id_type> for *mut $impl_type {
+                unsafe fn unwrap_handle(&self) -> ($id_type, &Arc<Context>) {
+                    unsafe {
+                        let v = self.as_ref().expect(stringify!(invalid $id_type));
+                        (v.id, &v.context)
+                    }
+                }
+                fn as_option(&self) -> Option<$id_type> {
+                    unsafe { self.as_ref().map(|v| v.id)}
+                }
+            }
+        };
+    }
+
+    /// implements id.into_handle_with_context(&context)
+    ///
+    /// For example, when creating a new WGPUDevice:
+    ///
+    /// ```ignore
+    /// device_id.into_handle_with_context(&context)
+    /// ```
+    ///
+    /// is equivalent to:
+    ///
+    /// ```ignore
+    ///   native::WGPUDeviceImpl{
+    ///       context: context.clone(),
+    ///       id: id,
+    ///   }.into_handle()
+    /// ```
+    macro_rules! implement_into_handle_with_context {
+        ($impl_type:path, $id_type:ty) => {
+            impl $crate::native::IntoHandleWithContext<$impl_type> for $id_type {
+                fn into_handle_with_context(
+                    self,
+                    context: &$crate::Arc<$crate::Context>,
+                ) -> *mut $impl_type {
+                    $impl_type {
+                        context: context.clone(),
+                        id: self,
+                    }
+                    .into_handle()
+                }
+            }
+        };
+    }
+
+    implement_handle!(WGPUInstanceImpl);
+    implement_handle!(WGPUAdapterImpl);
+    implement_unwrap_handle!(WGPUAdapterImpl, AdapterId);
+    implement_handle!(WGPURenderPassEncoderImpl);
+    implement_handle!(WGPUComputePassEncoderImpl);
+    implement_handle!(WGPURenderBundleEncoderImpl);
+    implement_handle!(WGPUSwapChainImpl);
+
+    pub unsafe fn unwrap_swap_chain_handle<'a>(
+        handle: *mut WGPUSwapChainImpl,
+    ) -> (SurfaceId, DeviceId, &'a Arc<Context>) {
+        unsafe {
+            let v = handle.as_ref().expect("invalid swap chain");
+            (v.surface_id, v.device_id, &v.context)
+        }
+    }
+
+    /// Shorthand for handles that are just Id & Context
+    macro_rules! implement_id_handle {
+        ($impl_type:ty, $id_type:ty) => {
+            implement_handle!($impl_type);
+            implement_unwrap_handle!($impl_type, $id_type);
+            implement_into_handle_with_context!($impl_type, $id_type);
+        };
+    }
+
+    implement_id_handle!(WGPUDeviceImpl, DeviceId);
+    implement_id_handle!(WGPUPipelineLayoutImpl, PipelineLayoutId);
+    implement_id_handle!(WGPUShaderModuleImpl, ShaderModuleId);
+    implement_id_handle!(WGPUBindGroupLayoutImpl, BindGroupLayoutId);
+    implement_id_handle!(WGPUBindGroupImpl, BindGroupId);
+    implement_id_handle!(WGPUCommandBufferImpl, CommandBufferId);
+    implement_id_handle!(WGPURenderBundleImpl, RenderBundleId);
+    implement_id_handle!(WGPURenderPipelineImpl, RenderPipelineId);
+    implement_id_handle!(WGPUComputePipelineImpl, ComputePipelineId);
+    implement_id_handle!(WGPUQuerySetImpl, QuerySetId);
+    implement_id_handle!(WGPUBufferImpl, BufferId);
+    implement_id_handle!(WGPUStagingBufferImpl, StagingBufferId);
+    implement_id_handle!(WGPUTextureImpl, TextureId);
+    implement_id_handle!(WGPUTextureViewImpl, TextureViewId);
+    implement_id_handle!(WGPUSamplerImpl, SamplerId);
+    implement_id_handle!(WGPUSurfaceImpl, SurfaceId);
+
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
-
-type Global = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
-
-lazy_static::lazy_static! {
-    static ref GLOBAL: Arc<Global> = Arc::new(Global::new("wgpu", wgc::hub::IdentityManagerFactory, wgt::Backends::PRIMARY));
 }
 
 pub type Label<'a> = Option<Cow<'a, str>>;
@@ -194,20 +398,44 @@ macro_rules! map_enum {
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCreateInstance(
-    _descriptor: *const native::WGPUInstanceDescriptor,
+pub unsafe extern "C" fn wgpuCreateInstance(
+    descriptor: *const native::WGPUInstanceDescriptor,
 ) -> native::WGPUInstance {
-    // Rationale: See https://github.com/gfx-rs/wgpu-native/issues/116
-    // Because WGPUInstance is an opaque type this library controls and does not define the contents of, this is safe.
-    8 as native::WGPUInstance
+    use conv::map_instance_descriptor;
+    let backends = follow_chain!(map_instance_descriptor(descriptor.as_ref().unwrap(),
+        WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+    ));
+
+    let context = Context::new("wgpu", wgc::hub::IdentityManagerFactory, backends);
+
+    native::WGPUInstanceImpl {
+        context: Arc::new(context),
+    }
+    .into_handle()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceDrop(instance: native::WGPUInstance) {
+    instance.drop();
+}
+
+enum CreateSurfaceParams {
+    Raw(
+        (
+            raw_window_handle::RawDisplayHandle,
+            raw_window_handle::RawWindowHandle,
+        ),
+    ),
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    Metal(*mut std::ffi::c_void),
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
-    _: native::WGPUInstance,
+    instance: native::WGPUInstance,
     descriptor: *const native::WGPUSurfaceDescriptor,
 ) -> native::WGPUSurface {
-    follow_chain!(
+    let create_surface_params = follow_chain!(
         map_surface(descriptor.as_ref().unwrap(),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
             WGPUSType_SurfaceDescriptorFromXcbWindow => native::WGPUSurfaceDescriptorFromXcbWindow,
@@ -215,14 +443,16 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceDescriptorFromWaylandSurface => native::WGPUSurfaceDescriptorFromWaylandSurface,
             WGPUSType_SurfaceDescriptorFromMetalLayer => native::WGPUSurfaceDescriptorFromMetalLayer,
             WGPUSType_SurfaceDescriptorFromAndroidNativeWindow => native::WGPUSurfaceDescriptorFromAndroidNativeWindow)
-    )
-}
+    );
 
-pub fn wgpu_create_surface(
-    rdh: raw_window_handle::RawDisplayHandle,
-    rwh: raw_window_handle::RawWindowHandle,
-) -> native::WGPUSurface {
-    Some(GLOBAL.instance_create_surface(rdh, rwh, ()))
+    let context = &instance.as_ref().expect("invalid instance").context;
+    let surface_id = match create_surface_params {
+        CreateSurfaceParams::Raw((rdh, rwh)) => context.instance_create_surface(rdh, rwh, ()),
+        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        CreateSurfaceParams::Metal(layer) => context.instance_create_surface_metal(layer, ()),
+    };
+
+    surface_id.into_handle_with_context(context)
 }
 
 unsafe fn map_surface(
@@ -233,7 +463,7 @@ unsafe fn map_surface(
     _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
-) -> native::WGPUSurface {
+) -> CreateSurfaceParams {
     #[cfg(windows)]
     if let Some(win) = _win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::empty();
@@ -241,10 +471,10 @@ unsafe fn map_surface(
         window_handle.hwnd = win.hwnd;
         window_handle.hinstance = win.hinstance;
 
-        return wgpu_create_surface(
+        return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Windows(display_handle),
             raw_window_handle::RawWindowHandle::Win32(window_handle),
-        );
+        ));
     }
 
     #[cfg(all(
@@ -260,10 +490,10 @@ unsafe fn map_surface(
             let mut window_handle = raw_window_handle::XcbWindowHandle::empty();
             window_handle.window = xcb.window;
 
-            return wgpu_create_surface(
+            return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Xcb(display_handle),
                 raw_window_handle::RawWindowHandle::Xcb(window_handle),
-            );
+            ));
         }
 
         if let Some(xlib) = _xlib {
@@ -272,10 +502,10 @@ unsafe fn map_surface(
             let mut window_handle = raw_window_handle::XlibWindowHandle::empty();
             window_handle.window = xlib.window as _;
 
-            return wgpu_create_surface(
+            return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Xlib(display_handle),
                 raw_window_handle::RawWindowHandle::Xlib(window_handle),
-            );
+            ));
         }
 
         if let Some(wl) = _wl {
@@ -284,16 +514,16 @@ unsafe fn map_surface(
             let mut window_handle = raw_window_handle::WaylandWindowHandle::empty();
             window_handle.surface = wl.surface;
 
-            return wgpu_create_surface(
+            return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Wayland(display_handle),
                 raw_window_handle::RawWindowHandle::Wayland(window_handle),
-            );
+            ));
         }
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
     if let Some(metal) = _metal {
-        return Some(GLOBAL.instance_create_surface_metal(metal.layer, ()));
+        return CreateSurfaceParams::Metal(metal.layer);
     }
 
     #[cfg(target_os = "android")]
@@ -302,10 +532,10 @@ unsafe fn map_surface(
         let mut window_handle = raw_window_handle::AndroidNdkWindowHandle::empty();
         window_handle.a_native_window = android.window;
 
-        return wgpu_create_surface(
+        return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Android(display_handle),
             raw_window_handle::RawWindowHandle::AndroidNdk(window_handle),
-        );
+        ));
     }
 
     panic!("Error: Unsupported Surface");
@@ -316,10 +546,13 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
 ) -> native::WGPUTextureFormat {
-    let surface = surface.expect("invalid surface");
-    let adapter = adapter.expect("invalid adapter");
+    let (adapter, context) = adapter.unwrap_handle();
+    let (surface, _) = unsafe {
+        let v = surface.as_ref().expect("invalid surface");
+        (v.id, &v.context)
+    };
 
-    let preferred_format = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
+    let preferred_format = match wgc::gfx_select!(adapter => context.surface_get_supported_formats(surface, adapter))
     {
         Ok(formats) => conv::to_native_texture_format(
             *formats
@@ -338,11 +571,15 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
     adapter: native::WGPUAdapter,
     count: Option<&mut usize>,
 ) -> *const native::WGPUTextureFormat {
-    let surface = surface.expect("invalid surface");
-    let adapter = adapter.expect("invalid adapter");
+    let (surface, context) = unsafe {
+        let v = surface.as_ref().expect("invalid surface");
+        (v.id, &v.context)
+    };
+
+    let (adapter, _) = adapter.unwrap_handle();
     assert!(count.is_some(), "count must be non-null");
 
-    let mut native_formats = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_formats(surface, adapter))
+    let mut native_formats = match wgc::gfx_select!(adapter => context.surface_get_supported_formats(surface, adapter))
     {
         Ok(formats) => formats
             .iter()
@@ -366,11 +603,11 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
     adapter: native::WGPUAdapter,
     count: Option<&mut usize>,
 ) -> *const native::WGPUPresentMode {
-    let surface = surface.expect("invalid surface");
-    let adapter = adapter.expect("invalid adapter");
+    let (surface, _) = surface.unwrap_handle();
+    let (adapter, context) = adapter.unwrap_handle();
     assert!(count.is_some(), "count must be non-null");
 
-    let mut modes = match wgc::gfx_select!(adapter => GLOBAL.surface_get_supported_present_modes(surface, adapter))
+    let mut modes = match wgc::gfx_select!(adapter => context.surface_get_supported_present_modes(surface, adapter))
     {
         Ok(modes) => modes
             .iter()
@@ -397,8 +634,12 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuGenerateReport(native_report: &mut native::WGPUGlobalReport) {
-    conv::write_global_report(native_report, GLOBAL.generate_report());
+pub unsafe extern "C" fn wgpuGenerateReport(
+    instance: native::WGPUInstance,
+    native_report: &mut native::WGPUGlobalReport,
+) {
+    let context = &instance.as_ref().expect("invalid instance").context;
+    conv::write_global_report(native_report, context.generate_report());
 }
 
 struct DeviceCallback<T> {
@@ -429,7 +670,7 @@ pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
     callback: native::WGPUErrorCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let device = device.expect("invalid device");
+    let (device, _) = device.unwrap_handle();
 
     CALLBACKS
         .lock()
@@ -444,7 +685,7 @@ pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
     callback: native::WGPUDeviceLostCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let device = device.expect("invalid device");
+    let (device, _) = device.unwrap_handle();
 
     CALLBACKS
         .lock()

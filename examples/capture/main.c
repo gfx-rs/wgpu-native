@@ -13,8 +13,10 @@ int main(int argc, char *argv[]) {
   int width = 100;
   int height = 200;
 
+  WGPUInstance instance = wgpuCreateInstance(&(WGPUInstanceDescriptor) {.nextInChain = NULL});
+
   WGPUAdapter adapter;
-  wgpuInstanceRequestAdapter(NULL,
+  wgpuInstanceRequestAdapter(instance,
                              &(WGPURequestAdapterOptions){
                                  .nextInChain = NULL,
                                  .compatibleSurface = NULL,
