@@ -1,4 +1,4 @@
-use crate::native::{IntoHandle, IntoHandleWithContext, UnwrapId, Handle};
+use crate::native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use crate::{conv, handle_device_error, make_slice, native, Context, OwnedLabel};
 use std::ffi::CStr;
 use std::os::raw::c_char;

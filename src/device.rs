@@ -1,7 +1,9 @@
 use crate::conv::{
     map_adapter_options, map_device_descriptor, map_pipeline_layout_descriptor, map_shader_module,
 };
-use crate::native::{Handle, IntoHandle, UnwrapId, IntoHandleWithContext, unwrap_swap_chain_handle};
+use crate::native::{
+    unwrap_swap_chain_handle, Handle, IntoHandle, IntoHandleWithContext, UnwrapId,
+};
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel};
 use std::{
     borrow::Cow,
@@ -11,7 +13,7 @@ use std::{
     path::Path,
 };
 use thiserror::Error;
-use wgc::{gfx_select};
+use wgc::gfx_select;
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
@@ -799,7 +801,7 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
 ) -> *mut u8 {
     let (buffer, context) = buffer.unwrap_handle();
 
-    gfx_select!(buffer => GLOBAL.buffer_get_mapped_range(
+    gfx_select!(buffer => context.buffer_get_mapped_range(
         buffer,
         offset as u64,
         match size {
@@ -1005,7 +1007,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
             context: context.clone(),
             surface_id: surface,
             device_id: device,
-        }.into_handle()
+        }
+        .into_handle()
     }
 }
 
@@ -1206,7 +1209,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
         Ok(encoder) => native::WGPURenderBundleEncoderImpl {
             context: context.clone(),
             encoder,
-        }.into_handle(),
+        }
+        .into_handle(),
         Err(error) => {
             handle_device_error(device, &error);
             std::ptr::null_mut()
@@ -1313,17 +1317,23 @@ pub unsafe extern "C" fn wgpuCommandEncoderDrop(command_encoder: native::WGPUCom
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderDrop(render_pass_encoder: native::WGPURenderPassEncoder) {
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrop(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+) {
     render_pass_encoder.drop();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderDrop(compute_pass_encoder: native::WGPUComputePassEncoder) {
+pub unsafe extern "C" fn wgpuComputePassEncoderDrop(
+    compute_pass_encoder: native::WGPUComputePassEncoder,
+) {
     compute_pass_encoder.drop();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderBundleEncoderDrop(render_bundle_encoder: native::WGPURenderBundleEncoder) {
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDrop(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+) {
     render_bundle_encoder.drop();
 }
 
