@@ -482,8 +482,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                 },
                 has_dynamic_offset: entry.buffer.hasDynamicOffset,
                 min_binding_size: match entry.buffer.minBindingSize {
+                    0 => panic!("invalid minBindingSize"),
                     conv::WGPU_WHOLE_SIZE => None,
-                    _ => NonZeroU64::new(entry.buffer.minBindingSize),
+                    _ => Some(NonZeroU64::new_unchecked(entry.buffer.minBindingSize)),
                 },
             }
         } else {
@@ -529,8 +530,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                         buffer_id: buffer,
                         offset: entry.offset,
                         size: match entry.size {
+                            0 => panic!("invalid size"),
                             conv::WGPU_WHOLE_SIZE => None,
-                            _ => NonZeroU64::new(entry.size),
+                            _ => Some(NonZeroU64::new_unchecked(entry.size)),
                         },
                     },
                 ),
@@ -1079,13 +1081,15 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
                 aspect: conv::map_texture_aspect(descriptor.aspect),
                 base_mip_level: descriptor.baseMipLevel,
                 mip_level_count: match descriptor.mipLevelCount {
+                    0 => panic!("invalid mipLevelCount"),
                     native::WGPU_MIP_LEVEL_COUNT_UNDEFINED => None,
-                    _ => NonZeroU32::new(descriptor.mipLevelCount),
+                    _ => Some(NonZeroU32::new_unchecked(descriptor.mipLevelCount)),
                 },
                 base_array_layer: descriptor.baseArrayLayer,
                 array_layer_count: match descriptor.arrayLayerCount {
+                    0 => panic!("invalid arrayLayerCount"),
                     native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED => None,
-                    _ => NonZeroU32::new(descriptor.arrayLayerCount),
+                    _ => Some(NonZeroU32::new_unchecked(descriptor.arrayLayerCount)),
                 },
             },
         },
