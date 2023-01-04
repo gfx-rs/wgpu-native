@@ -78,7 +78,7 @@ void logCallback(WGPULogLevel level, const char *msg, void *userdata) {
   printf("[%s] %s\n", level_str, msg);
 }
 
-void initializeLog() {
+void initializeLog(void) {
   wgpuSetLogCallback(logCallback, NULL);
   wgpuSetLogLevel(WGPULogLevel_Warn);
 }

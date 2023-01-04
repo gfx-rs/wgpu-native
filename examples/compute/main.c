@@ -2,11 +2,29 @@
 #include "wgpu.h"
 
 #include "framework.h"
+#include "unused.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-int main() {
+static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
+                               void *userdata) {
+  UNUSED(userdata);
+
+  printf("DEVICE LOST (%d): %s\n", reason, message);
+}
+
+static void handle_uncaptured_error(WGPUErrorType type, char const *message,
+                                    void *userdata) {
+  UNUSED(userdata);
+
+  printf("UNCAPTURED ERROR (%d): %s\n", type, message);
+}
+
+int main(int argc, char *argv[]) {
+  UNUSED(argc);
+  UNUSED(argv);
+
   uint32_t numbers[] = {1, 2, 3, 4};
   uint32_t numbersSize = sizeof(numbers);
   uint32_t numbersLength = numbersSize / sizeof(uint32_t);
@@ -31,10 +49,7 @@ int main() {
                                .requiredLimits =
                                    &(WGPURequiredLimits){
                                        .nextInChain = NULL,
-                                       .limits =
-                                           (WGPULimits){
-                                               .maxBindGroups = 1,
-                                           },
+                                       .limits = WGPULimits_DEFAULT,
                                    },
                                .defaultQueue =
                                    (WGPUQueueDescriptor){
@@ -43,6 +58,9 @@ int main() {
                                    },
                            },
                            request_device_callback, (void *)&device);
+
+  wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
+  wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
 
   WGPUShaderModuleDescriptor shaderSource = load_wgsl("shader.wgsl");
   WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderSource);

@@ -1,4 +1,4 @@
-use crate::native::{IntoHandle, IntoHandleWithContext, UnwrapId, Handle};
+use crate::native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use crate::{conv, handle_device_error, make_slice, native, Context, OwnedLabel};
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -84,7 +84,12 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
         command_encoder,
         buffer,
         offset,
-        NonZeroU64::new(size)))
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        }
+    ))
     .expect("Unable to clear buffer")
 }
 
@@ -562,7 +567,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
         buffer,
         conv::map_index_format(index_format).expect("Index format cannot be undefined"),
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }
 
@@ -582,7 +591,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
         slot,
         buffer,
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }
 
@@ -848,7 +861,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
         buffer,
         conv::map_index_format(format).unwrap(),
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }
 
@@ -879,6 +896,10 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
         slot,
         buffer,
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }

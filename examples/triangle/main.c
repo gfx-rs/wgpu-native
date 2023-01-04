@@ -57,7 +57,9 @@ static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action,
   }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+  UNUSED(argc);
+  UNUSED(argv);
   initializeLog();
 
   if (!glfwInit()) {
@@ -186,10 +188,7 @@ int main() {
                                .requiredLimits =
                                    &(WGPURequiredLimits){
                                        .nextInChain = NULL,
-                                       .limits =
-                                           (WGPULimits){
-                                               .maxBindGroups = 1,
-                                           },
+                                       .limits = WGPULimits_DEFAULT,
                                    },
                                .defaultQueue =
                                    (WGPUQueueDescriptor){
@@ -325,7 +324,7 @@ int main() {
                      .colorAttachments =
                          &(WGPURenderPassColorAttachment){
                              .view = nextTexture,
-                             .resolveTarget = 0,
+                             .resolveTarget = NULL,
                              .loadOp = WGPULoadOp_Clear,
                              .storeOp = WGPUStoreOp_Store,
                              .clearValue =
