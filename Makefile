@@ -69,12 +69,9 @@ package: lib-native lib-native-release
 		rm -f dist/$$ARCHIVE; \
 		sed 's/webgpu-headers\///' ffi/wgpu.h > wgpu.h ;\
 		if [ $(OS_NAME) = windows ]; then \
-			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).dll $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).dll; \
-			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).dll.lib $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).lib; \
-			7z a -tzip dist/$$ARCHIVE ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			7z a -tzip dist/$$ARCHIVE ./$(TARGET_DIR)/$$RELEASE/libwgpu_native.dll ./$(TARGET_DIR)/$$RELEASE/wgpu_native.dll ./$(TARGET_DIR)/$$RELEASE/libwgpu_native.lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		else \
-			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION) $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION); \
-			zip -j dist/$$ARCHIVE $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			zip -j dist/$$ARCHIVE $(TARGET_DIR)/$$RELEASE/libwgpu_native.$(LIB_EXTENSION) ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		fi; \
 		rm wgpu.h ;\
 	done

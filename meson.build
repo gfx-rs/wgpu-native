@@ -8,7 +8,7 @@ cargo = find_program('cargo')
 if ['linux','android','darwin','cygwin','freebsd','netbsd','openbsd'].contains(host_machine.system())
     lib_path='target/release/libwgpu_native.a'
 else
-    lib_path='target/release/wgpu_native.lib'
+    lib_path='target/release/libwgpu_native.lib'
 endif
 
 #build by cargo
