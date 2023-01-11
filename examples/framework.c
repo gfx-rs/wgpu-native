@@ -147,10 +147,6 @@ void printAdapterFeatures(WGPUAdapter adapter) {
       printf("\tDepthClipControl\n");
       break;
 
-    case WGPUFeatureName_Depth24UnormStencil8:
-      printf("\tDepth24UnormStencil8\n");
-      break;
-
     case WGPUFeatureName_Depth32FloatStencil8:
       printf("\tDepth32FloatStencil8\n");
       break;
