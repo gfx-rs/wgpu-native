@@ -301,6 +301,7 @@ fn write_limits_struct(
     limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
+    limits.maxBufferSize = wgt_limits.max_buffer_size as u64;
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
     limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
