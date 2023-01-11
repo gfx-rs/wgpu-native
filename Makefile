@@ -36,16 +36,13 @@ else
 endif
 
 ifeq ($(OS),Windows_NT)
-	LIB_EXTENSION=dll
 	OS_NAME=windows
 else
 	UNAME_S:=$(shell uname -s)
 	ifeq ($(UNAME_S),Linux)
-		LIB_EXTENSION=so
 		OS_NAME=linux
 	endif
 	ifeq ($(UNAME_S),Darwin)
-		LIB_EXTENSION=dylib
 		OS_NAME=macos
 	endif
 endif
@@ -62,12 +59,13 @@ package: lib-native lib-native-release
 	echo "$(GIT_TAG_FULL)" > dist/commit-sha
 	for RELEASE in debug release; do \
 		ARCHIVE=$(ARCHIVE_NAME)-$$RELEASE.zip; \
+		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
 		rm -f dist/$$ARCHIVE; \
 		sed 's/webgpu-headers\///' ffi/wgpu.h > wgpu.h ;\
 		if [ $(OS_NAME) = windows ]; then \
-			7z a -tzip dist/$$ARCHIVE ./$(TARGET_DIR)/$$RELEASE/wgpu_native.dll ./$(TARGET_DIR)/$$RELEASE/wgpu_native.lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/wgpu_native.lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		else \
-			zip -j dist/$$ARCHIVE $(TARGET_DIR)/$$RELEASE/libwgpu_native.$(LIB_EXTENSION) ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			zip -j dist/$$ARCHIVE ./$$LIBDIR/libwgpu_native.so ./$$LIBDIR/libwgpu_native.dylib ./$$LIBDIR/libwgpu_native.a ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		fi; \
 		rm wgpu.h ;\
 	done
