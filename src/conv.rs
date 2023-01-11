@@ -331,6 +331,9 @@ pub fn map_required_limits(
     if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
+    //if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
+    //    wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
+    //}  not yet supportted in wgt
     if limits.maxDynamicUniformBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout =
             limits.maxDynamicUniformBuffersPerPipelineLayout;
@@ -369,6 +372,9 @@ pub fn map_required_limits(
     if limits.maxVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
+    if limits.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+        wgt_limits.max_buffer_size = limits.maxBufferSize;
+    }
     if limits.maxVertexAttributes != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_attributes = limits.maxVertexAttributes;
     }
@@ -378,6 +384,12 @@ pub fn map_required_limits(
     if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
+    //if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
+    //    wgt_limits.max_inter_stage_shader_variables = limits.maxIntmaxInterStageShaderVariableserStageShaderComponents;
+    //}  not yet in wgt
+    //if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
+    //    wgt_limits.max_color_attachments = limits.maxColorAttachments;
+    //}  not yet in wgt
     if limits.maxComputeWorkgroupStorageSize != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
@@ -399,9 +411,6 @@ pub fn map_required_limits(
     if let Some(extras) = extras {
         if extras.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
-        }
-        if extras.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
-            wgt_limits.max_buffer_size = extras.maxBufferSize;
         }
     }
     wgt_limits
@@ -583,7 +592,6 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_Depth16Unorm => Some(wgt::TextureFormat::Depth16Unorm),
         native::WGPUTextureFormat_Depth24Plus => Some(wgt::TextureFormat::Depth24Plus),
         native::WGPUTextureFormat_Depth24PlusStencil8 => Some(wgt::TextureFormat::Depth24PlusStencil8),
-        native::WGPUTextureFormat_Depth24UnormStencil8 =>  None, // unimplmented in wgpu-core
         native::WGPUTextureFormat_Depth32Float => Some(wgt::TextureFormat::Depth32Float),
         native::WGPUTextureFormat_Depth32FloatStencil8 => Some(wgt::TextureFormat::Depth32FloatStencil8),
         native::WGPUTextureFormat_BC1RGBAUnorm => Some(wgt::TextureFormat::Bc1RgbaUnorm),

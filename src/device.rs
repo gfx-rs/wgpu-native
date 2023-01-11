@@ -323,7 +323,6 @@ fn write_limits_struct(
             (*extras).chain.sType = native::WGPUSType_SupportedLimitsExtras;
 
             (*extras).maxPushConstantSize = wgt_limits.max_push_constant_size;
-            (*extras).maxBufferSize = wgt_limits.max_buffer_size;
         }
     }
 }

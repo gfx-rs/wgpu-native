@@ -79,13 +79,11 @@ typedef struct WGPUDeviceExtras {
 typedef struct WGPURequiredLimitsExtras {
     WGPUChainedStruct chain;
     uint32_t maxPushConstantSize;
-    uint64_t maxBufferSize;
 } WGPURequiredLimitsExtras;
 
 typedef struct WGPUSupportedLimitsExtras {
     WGPUChainedStructOut chain;
     uint32_t maxPushConstantSize;
-    uint64_t maxBufferSize;
 } WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {
