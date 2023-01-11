@@ -19,6 +19,7 @@
     .minUniformBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED,               \
     .minStorageBufferOffsetAlignment = WGPU_LIMIT_U32_UNDEFINED,               \
     .maxVertexBuffers = WGPU_LIMIT_U32_UNDEFINED,                              \
+    .maxBufferSize = WGPU_LIMIT_U64_UNDEFINED,                                 \
     .maxVertexAttributes = WGPU_LIMIT_U32_UNDEFINED,                           \
     .maxVertexBufferArrayStride = WGPU_LIMIT_U32_UNDEFINED,                    \
     .maxInterStageShaderComponents = WGPU_LIMIT_U32_UNDEFINED,                 \
