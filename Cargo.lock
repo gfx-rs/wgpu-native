@@ -982,8 +982,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=261069d#261069d04fc1263d8e587c18936b9db90b077abb"
+version = "0.14.2"
+source = "git+https://github.com/gfx-rs/wgpu?rev=628a25e#628a25ef30f3584a3d3e58a203961c9e24850d66"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -1007,8 +1007,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=261069d#261069d04fc1263d8e587c18936b9db90b077abb"
+version = "0.14.1"
+source = "git+https://github.com/gfx-rs/wgpu?rev=628a25e#628a25ef30f3584a3d3e58a203961c9e24850d66"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1061,8 +1061,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.14.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=261069d#261069d04fc1263d8e587c18936b9db90b077abb"
+version = "0.14.1"
+source = "git+https://github.com/gfx-rs/wgpu?rev=628a25e#628a25ef30f3584a3d3e58a203961c9e24850d66"
 dependencies = [
  "bitflags",
  "bitflags_serde_shim",
