@@ -502,7 +502,7 @@ pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::I
         rows_per_image: match native.rowsPerImage {
             0 => panic!("invalid rowsPerImage"),
             native::WGPU_COPY_STRIDE_UNDEFINED => None,
-            _ => Some(unsafe { NonZeroU32::new_unchecked(native.bytesPerRow) }),
+            _ => Some(unsafe { NonZeroU32::new_unchecked(native.rowsPerImage) }),
         },
     }
 }
