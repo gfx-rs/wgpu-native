@@ -128,7 +128,7 @@ jobs:
       CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: /usr/bin/arm-linux-gnueabihf-gcc
     steps:
     # Common part (same for nearly each build)
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: true
     - name: Set WGPU_NATIVE_VERSION
@@ -148,7 +148,7 @@ jobs:
       run: make package
     # Upload (same for each build)
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: dist
         name: dist
