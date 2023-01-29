@@ -31,33 +31,16 @@ int main(int argc, char *argv[]) {
 
   initializeLog();
 
-  WGPUInstance instance = wgpuCreateInstance(&(WGPUInstanceDescriptor) {.nextInChain = NULL});
+  WGPUInstance instance =
+      wgpuCreateInstance(&(WGPUInstanceDescriptor){.nextInChain = NULL});
 
   WGPUAdapter adapter;
-  wgpuInstanceRequestAdapter(instance,
-                             &(WGPURequestAdapterOptions){
-                                 .nextInChain = NULL,
-                                 .compatibleSurface = NULL,
-                             },
-                             request_adapter_callback, (void *)&adapter);
+  wgpuInstanceRequestAdapter(instance, NULL, request_adapter_callback,
+                             (void *)&adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(adapter,
-                           &(WGPUDeviceDescriptor){
-                               .nextInChain = NULL,
-                               .label = "Device",
-                               .requiredLimits =
-                                   &(WGPURequiredLimits){
-                                       .nextInChain = NULL,
-                                       .limits = WGPULimits_DEFAULT,
-                                   },
-                               .defaultQueue =
-                                   (WGPUQueueDescriptor){
-                                       .nextInChain = NULL,
-                                       .label = NULL,
-                                   },
-                           },
-                           request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(adapter, NULL, request_device_callback,
+                           (void *)&device);
 
   wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
   wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
