@@ -1045,7 +1045,7 @@ dependencies = [
 
 [[package]]
 name = "wgpu-native"
-version = "0.6.0"
+version = "0.0.0"
 dependencies = [
  "bindgen",
  "cfg_aliases",
