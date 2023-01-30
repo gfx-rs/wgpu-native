@@ -18,42 +18,53 @@ use wgc::gfx_select;
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     instance: native::WGPUInstance,
-    options: &native::WGPURequestAdapterOptions,
+    options: Option<&native::WGPURequestAdapterOptions>,
     callback: native::WGPURequestAdapterCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
     let instance = instance.as_ref().expect("invalid instance");
     let context = &instance.context;
 
-    let (compatible_surface, given_backend) = follow_chain!(
-        map_adapter_options(options,
-        WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
-    );
-    let power_preference = match options.powerPreference {
-        native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
-        native::WGPUPowerPreference_HighPerformance => wgt::PowerPreference::HighPerformance,
-        _ => wgt::PowerPreference::default(),
-    };
-    let backend_bits = match given_backend {
-        native::WGPUBackendType_Null => wgt::Backends::all(),
-        native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
-        native::WGPUBackendType_Metal => wgt::Backends::METAL,
-        native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
-        native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
-        native::WGPUBackendType_OpenGL => wgt::Backends::GL,
-        _ => panic!("Invalid backend {}", given_backend),
+    let (desc, inputs) = match options {
+        Some(options) => {
+            let (compatible_surface, given_backend) = follow_chain!(
+                map_adapter_options(options,
+                WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
+            );
+
+            (
+                wgt::RequestAdapterOptions {
+                    power_preference: match options.powerPreference {
+                        native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
+                        native::WGPUPowerPreference_HighPerformance => {
+                            wgt::PowerPreference::HighPerformance
+                        }
+                        _ => wgt::PowerPreference::default(),
+                    },
+                    force_fallback_adapter: options.forceFallbackAdapter,
+                    compatible_surface: compatible_surface.as_ref().map(|surface| surface.id),
+                },
+                wgc::instance::AdapterInputs::Mask(
+                    match given_backend {
+                        native::WGPUBackendType_Null => wgt::Backends::all(),
+                        native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
+                        native::WGPUBackendType_Metal => wgt::Backends::METAL,
+                        native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
+                        native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
+                        native::WGPUBackendType_OpenGL => wgt::Backends::GL,
+                        _ => panic!("Invalid backend {}", given_backend),
+                    },
+                    |_| (),
+                ),
+            )
+        }
+        None => (
+            wgt::RequestAdapterOptions::default(),
+            wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
+        ),
     };
 
-    let compatible_surface = compatible_surface.as_ref().map(|surface| surface.id);
-
-    match context.request_adapter(
-        &wgt::RequestAdapterOptions {
-            power_preference,
-            compatible_surface,
-            force_fallback_adapter: options.forceFallbackAdapter,
-        },
-        wgc::instance::AdapterInputs::Mask(backend_bits, |_| ()),
-    ) {
+    match context.request_adapter(&desc, inputs) {
         Ok(adapter) => {
             (callback.unwrap())(
                 native::WGPURequestAdapterStatus_Success,
@@ -90,16 +101,20 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     adapter: native::WGPUAdapter,
-    descriptor: &native::WGPUDeviceDescriptor,
+    descriptor: Option<&native::WGPUDeviceDescriptor>,
     callback: native::WGPURequestDeviceCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
     let (adapter, context) = adapter.unwrap_handle();
 
-    let (desc, trace_str) = follow_chain!(
-        map_device_descriptor(descriptor,
-        WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
-    );
+    let (desc, trace_str) = match descriptor {
+        Some(descriptor) => follow_chain!(
+            map_device_descriptor(descriptor,
+            WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+        ),
+        None => (wgt::DeviceDescriptor::default(), None),
+    };
+
     let trace_path = trace_str.as_ref().map(Path::new);
 
     let (device, err) =
