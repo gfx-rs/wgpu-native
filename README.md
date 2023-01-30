@@ -20,8 +20,6 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 - [rajveermalviya/go-webgpu](https://github.com/rajveermalviya/go-webgpu) - Go wrapper
 - [WebGPU-C++](https://github.com/eliemichel/WebGPU-Cpp) - Auto-generated C++ wrapper (developped for the [Learn WebGPU native](https://eliemichel.github.io/LearnWebGPU) course)
 
-Note: the version numbers of `wgpu-native` are not aligned with versions of `wgpu` or other crates!
-
 ## Pre-built binaries
 
 Automated 32 and 64-bit builds for MacOS, Windows and Linux are available as Github [releases](https://github.com/gfx-rs/wgpu-native/releases). Details can be found in the  [Binary Releases](https://github.com/gfx-rs/wgpu-native/wiki/Binary-Releases) page in the wiki.
