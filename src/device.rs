@@ -144,9 +144,10 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetProperties(
     adapter: native::WGPUAdapter,
-    properties: &mut native::WGPUAdapterProperties,
+    properties: Option<&mut native::WGPUAdapterProperties>,
 ) {
     let adapter = adapter.as_mut().expect("invalid adapter");
+    let properties = properties.expect("invalid return pointer");
     let context = &adapter.context;
     let id = adapter.id;
 
@@ -179,9 +180,10 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
-    limits: &mut native::WGPUSupportedLimits,
+    limits: Option<&mut native::WGPUSupportedLimits>,
 ) -> bool {
     let (adapter, context) = adapter.unwrap_handle();
+    let limits = limits.expect("invalid return pointer");
 
     let result = gfx_select!(adapter => context.adapter_limits(adapter));
     match result {
@@ -279,9 +281,10 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: native::WGPUDevice,
-    limits: &mut native::WGPUSupportedLimits,
+    limits: Option<&mut native::WGPUSupportedLimits>,
 ) -> bool {
     let (device, context) = device.unwrap_handle();
+    let limits = limits.expect("invalid return pointer");
 
     let result = gfx_select!(device => context.device_limits(device));
     match result {
@@ -346,9 +349,10 @@ fn write_limits_struct(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUShaderModuleDescriptor,
+    descriptor: Option<&native::WGPUShaderModuleDescriptor>,
 ) -> native::WGPUShaderModule {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let label = OwnedLabel::new(descriptor.label);
     let source = follow_chain!(
@@ -375,22 +379,20 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUBufferDescriptor,
+    descriptor: Option<&native::WGPUBufferDescriptor>,
 ) -> native::WGPUBuffer {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
-    let usage = wgt::BufferUsages::from_bits(descriptor.usage).expect("Buffer Usage Invalid.");
     let label = OwnedLabel::new(descriptor.label);
-    let (id, error) = gfx_select!(device => context.device_create_buffer(
-        device,
-        &wgt::BufferDescriptor {
-            label: label.as_cow(),
-            size: descriptor.size,
-            usage,
-            mapped_at_creation: descriptor.mappedAtCreation,
-        },
-        ()
-    ));
+    let desc = wgt::BufferDescriptor {
+        label: label.as_cow(),
+        size: descriptor.size,
+        usage: wgt::BufferUsages::from_bits(descriptor.usage).expect("invalid buffer usage"),
+        mapped_at_creation: descriptor.mappedAtCreation,
+    };
+
+    let (id, error) = gfx_select!(device => context.device_create_buffer(device, &desc, ()));
     if let Some(error) = error {
         handle_device_error(device, &error);
         std::ptr::null_mut()
@@ -408,9 +410,10 @@ pub unsafe extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUBindGroupLayoutDescriptor,
+    descriptor: Option<&native::WGPUBindGroupLayoutDescriptor>,
 ) -> native::WGPUBindGroupLayout {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let mut entries = Vec::new();
 
@@ -509,7 +512,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         entries.push(wgt::BindGroupLayoutEntry {
             ty,
             binding: entry.binding,
-            visibility: wgt::ShaderStages::from_bits(entry.visibility).unwrap(),
+            visibility: wgt::ShaderStages::from_bits(entry.visibility)
+                .expect("invalid visibility for bind group layout entry"),
             count: None, // TODO - What is this?
         });
     }
@@ -531,9 +535,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUBindGroupDescriptor,
+    descriptor: Option<&native::WGPUBindGroupDescriptor>,
 ) -> native::WGPUBindGroup {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let mut entries = Vec::new();
     for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
@@ -589,9 +594,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUPipelineLayoutDescriptor,
+    descriptor: Option<&native::WGPUPipelineLayoutDescriptor>,
 ) -> native::WGPUPipelineLayout {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = follow_chain!(
         map_pipeline_layout_descriptor(
@@ -611,9 +617,10 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUComputePipelineDescriptor,
+    descriptor: Option<&native::WGPUComputePipelineDescriptor>,
 ) -> native::WGPUComputePipeline {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let stage = wgc::pipeline::ProgrammableStageDescriptor {
         module: descriptor
@@ -623,7 +630,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             .expect("invalid shader module for compute pipeline descriptor"),
         entry_point: OwnedLabel::new(descriptor.compute.entryPoint)
             .into_cow()
-            .expect("Entry point not provided"),
+            .expect("invalid entry point for compute pipeline descriptor"),
     };
     let desc = wgc::pipeline::ComputePipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
@@ -739,21 +746,21 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueWriteTexture(
     queue: native::WGPUQueue,
-    destination: &native::WGPUImageCopyTexture,
+    destination: Option<&native::WGPUImageCopyTexture>,
     data: *const u8, // TODO: Check - this might not follow the header
     data_size: usize,
-    data_layout: &native::WGPUTextureDataLayout,
-    write_size: &native::WGPUExtent3D,
+    data_layout: Option<&native::WGPUTextureDataLayout>,
+    write_size: Option<&native::WGPUExtent3D>,
 ) {
     let (queue, context) = queue.unwrap_handle();
 
     let slice = make_slice(data, data_size);
     gfx_select!(queue => context.queue_write_texture(
         queue,
-        &conv::map_image_copy_texture(destination),
+        &conv::map_image_copy_texture(destination.expect("invalid destination")),
         slice,
-        &conv::map_texture_data_layout(data_layout),
-        &conv::map_extent3d(write_size)
+        &conv::map_texture_data_layout(data_layout.expect("invalid data layout")),
+        &conv::map_extent3d(write_size.expect("invalid write size"))
     ))
     .expect("Unable to write texture")
 }
@@ -833,9 +840,10 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     device: native::WGPUDevice,
-    descriptor: &native::WGPURenderPipelineDescriptor,
+    descriptor: Option<&native::WGPURenderPipelineDescriptor>,
 ) -> native::WGPURenderPipeline {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
@@ -1000,10 +1008,11 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
 pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
     device: native::WGPUDevice,
     surface: native::WGPUSurface,
-    descriptor: &native::WGPUSwapChainDescriptor,
+    descriptor: Option<&native::WGPUSwapChainDescriptor>,
 ) -> native::WGPUSwapChain {
     let (device, _) = device.unwrap_handle();
     let (surface, context) = surface.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     // The swap chain API of wgpu-core (and WebGPU) has been merged into the surface API,
     // so this gets a bit weird until the webgpu.h changes accordingly.
@@ -1125,9 +1134,10 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     device: native::WGPUDevice,
-    descriptor: &native::WGPUTextureDescriptor,
+    descriptor: Option<&native::WGPUTextureDescriptor>,
 ) -> native::WGPUTexture {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgt::TextureDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),
@@ -1136,8 +1146,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
         sample_count: descriptor.sampleCount,
         dimension: conv::map_texture_dimension(descriptor.dimension),
         format: conv::map_texture_format(descriptor.format)
-            .expect("Texture format must be provided"),
-        usage: wgt::TextureUsages::from_bits(descriptor.usage).expect("Invalid texture usage"),
+            .expect("invalid texture format for texture descriptor"),
+        usage: wgt::TextureUsages::from_bits(descriptor.usage)
+            .expect("invalid texture usage for texture descriptor"),
     };
 
     let (id, error) = gfx_select!(device => context.device_create_texture(device, &desc, ()));
@@ -1198,9 +1209,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     device: native::WGPUDevice,
-    descriptor: &native::WGPURenderBundleEncoderDescriptor,
+    descriptor: Option<&native::WGPURenderBundleEncoderDescriptor>,
 ) -> native::WGPURenderBundleEncoder {
     let (device, context) = device.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::command::RenderBundleEncoderDescriptor {
         label: OwnedLabel::new(descriptor.label).into_cow(),

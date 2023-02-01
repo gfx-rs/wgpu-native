@@ -119,51 +119,51 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
     command_encoder: native::WGPUCommandEncoder,
-    source: &native::WGPUImageCopyTexture,
-    destination: &native::WGPUImageCopyTexture,
-    copy_size: &native::WGPUExtent3D,
+    source: Option<&native::WGPUImageCopyTexture>,
+    destination: Option<&native::WGPUImageCopyTexture>,
+    copy_size: Option<&native::WGPUExtent3D>,
 ) {
     let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_texture_to_texture(
         command_encoder,
-        &conv::map_image_copy_texture(source),
-        &conv::map_image_copy_texture(destination),
-        &conv::map_extent3d(copy_size)))
+        &conv::map_image_copy_texture(source.expect("invalid source")),
+        &conv::map_image_copy_texture(destination.expect("invalid destination")),
+        &conv::map_extent3d(copy_size.expect("invalid copy size"))))
     .expect("Unable to copy texture to texture")
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
     command_encoder: native::WGPUCommandEncoder,
-    source: &native::WGPUImageCopyTexture,
-    destination: &native::WGPUImageCopyBuffer,
-    copy_size: &native::WGPUExtent3D,
+    source: Option<&native::WGPUImageCopyTexture>,
+    destination: Option<&native::WGPUImageCopyBuffer>,
+    copy_size: Option<&native::WGPUExtent3D>,
 ) {
     let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_texture_to_buffer(
         command_encoder,
-        &conv::map_image_copy_texture(source),
-        &conv::map_image_copy_buffer(destination),
-        &conv::map_extent3d(copy_size)))
+        &conv::map_image_copy_texture(source.expect("invalid source")),
+        &conv::map_image_copy_buffer(destination.expect("invalid destination")),
+        &conv::map_extent3d(copy_size.expect("invalid copy size"))))
     .expect("Unable to copy texture to buffer")
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
     command_encoder: native::WGPUCommandEncoder,
-    source: &native::WGPUImageCopyBuffer,
-    destination: &native::WGPUImageCopyTexture,
-    copy_size: &native::WGPUExtent3D,
+    source: Option<&native::WGPUImageCopyBuffer>,
+    destination: Option<&native::WGPUImageCopyTexture>,
+    copy_size: Option<&native::WGPUExtent3D>,
 ) {
     let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_buffer_to_texture(
         command_encoder,
-        &conv::map_image_copy_buffer(source),
-        &conv::map_image_copy_texture(destination),
-        &conv::map_extent3d(copy_size)))
+        &conv::map_image_copy_buffer(source.expect("invalid source")),
+        &conv::map_image_copy_texture(destination.expect("invalid destination")),
+        &conv::map_extent3d(copy_size.expect("invalid copy size"))))
     .expect("Unable to copy buffer to texture")
 }
 
@@ -191,9 +191,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     encoder: native::WGPUCommandEncoder,
-    descriptor: &native::WGPURenderPassDescriptor,
+    descriptor: Option<&native::WGPURenderPassDescriptor>,
 ) -> native::WGPURenderPassEncoder {
     let (encoder, context) = encoder.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
@@ -620,10 +621,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
     pass: native::WGPURenderPassEncoder,
-    color: &native::WGPUColor,
+    color: Option<&native::WGPUColor>,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    render_ffi::wgpu_render_pass_set_blend_constant(pass, &conv::map_color(color));
+    render_ffi::wgpu_render_pass_set_blend_constant(
+        pass,
+        &conv::map_color(color.expect("invalid color")),
+    );
 }
 
 #[no_mangle]

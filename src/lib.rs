@@ -1,3 +1,4 @@
+use crate::conv::map_instance_descriptor;
 use native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use std::{borrow::Cow, collections::HashMap, ffi::CString, sync::Arc, sync::Mutex};
 use wgc::id;
@@ -399,10 +400,11 @@ macro_rules! map_enum {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCreateInstance(
-    descriptor: *const native::WGPUInstanceDescriptor,
+    descriptor: Option<&native::WGPUInstanceDescriptor>,
 ) -> native::WGPUInstance {
-    use conv::map_instance_descriptor;
-    let backends = follow_chain!(map_instance_descriptor(descriptor.as_ref().unwrap(),
+    let descriptor = descriptor.expect("invalid descriptor");
+
+    let backends = follow_chain!(map_instance_descriptor(descriptor,
         WGPUSType_InstanceExtras => native::WGPUInstanceExtras
     ));
 
@@ -433,10 +435,12 @@ enum CreateSurfaceParams {
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     instance: native::WGPUInstance,
-    descriptor: *const native::WGPUSurfaceDescriptor,
+    descriptor: Option<&native::WGPUSurfaceDescriptor>,
 ) -> native::WGPUSurface {
+    let descriptor = descriptor.expect("invalid descriptor");
+
     let create_surface_params = follow_chain!(
-        map_surface(descriptor.as_ref().unwrap(),
+        map_surface(descriptor,
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
             WGPUSType_SurfaceDescriptorFromXcbWindow => native::WGPUSurfaceDescriptorFromXcbWindow,
             WGPUSType_SurfaceDescriptorFromXlibWindow => native::WGPUSurfaceDescriptorFromXlibWindow,
@@ -636,10 +640,13 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuGenerateReport(
     instance: native::WGPUInstance,
-    native_report: &mut native::WGPUGlobalReport,
+    native_report: Option<&mut native::WGPUGlobalReport>,
 ) {
     let context = &instance.as_ref().expect("invalid instance").context;
-    conv::write_global_report(native_report, context.generate_report());
+    conv::write_global_report(
+        native_report.expect("invalid return pointer"),
+        context.generate_report(),
+    );
 }
 
 struct DeviceCallback<T> {
@@ -736,6 +743,6 @@ pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::Dev
 pub unsafe extern "C" fn wgpuFree(ptr: *mut u8, size: usize, align: usize) {
     std::alloc::dealloc(
         ptr,
-        core::alloc::Layout::from_size_align_unchecked(size, align),
+        core::alloc::Layout::from_size_align(size, align).unwrap(),
     );
 }
