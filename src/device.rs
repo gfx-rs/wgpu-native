@@ -1023,6 +1023,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
         height: descriptor.height,
         present_mode: conv::map_present_mode(descriptor.presentMode),
         alpha_mode: wgt::CompositeAlphaMode::Auto,
+        view_formats: Vec::new(),
     };
     let error = gfx_select!(device => context.surface_configure(surface, device, &config));
     if let Some(error) = error {
@@ -1149,6 +1150,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
             .expect("invalid texture format for texture descriptor"),
         usage: wgt::TextureUsages::from_bits(descriptor.usage)
             .expect("invalid texture usage for texture descriptor"),
+        view_formats: make_slice(descriptor.viewFormats, descriptor.viewFormatCount as usize)
+            .iter()
+            .map(|v| {
+                conv::map_texture_format(*v).expect("invalid view format for texture descriptor")
+            })
+            .collect(),
     };
 
     let (id, error) = gfx_select!(device => context.device_create_texture(device, &desc, ()));

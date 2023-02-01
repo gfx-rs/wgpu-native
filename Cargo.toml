@@ -18,30 +18,52 @@ license = "MIT OR Apache-2.0"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = []
+default = ["wgsl", "spirv", "glsl"]
+
 angle = ["wgc/angle"]
-vulkan-portability = ["wgc/vulkan-portability"]
+vulkan-portability = ["wgc/vulkan"]
+wgsl = ["wgc/wgsl"]
+spirv = ["naga/spv-in"]
+glsl = ["naga/glsl-in"]
 
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "628a25e"
-# path = "../wgpu/wgpu-core"
-version = "0.14.2"
-features = ["raw-window-handle", "trace"]
+rev = "659f697"
+version = "0.15.0"
+features = ["raw-window-handle", "gles", "trace"]
+
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
+package = "wgpu-core"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "659f697"
+version = "0.15.0"
+features = ["metal"]
+
+[target.'cfg(windows)'.dependencies.wgc]
+package = "wgpu-core"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "659f697"
+version = "0.15.0"
+features = ["dx11", "dx12"]
+
+[target.'cfg(any(windows, all(unix, not(target_arch = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
+package = "wgpu-core"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "659f697"
+version = "0.15.0"
+features = ["vulkan"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "628a25e"
-# path = "../wgpu/wgpu-types"
-version = "0.14"
+rev = "659f697"
+version = "0.15.0"
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "c52d9102"
-# version = "0.10"
-features = ["spv-in", "glsl-in"]
+rev = "f0edae8"
+version = "0.11"
 
 [dependencies]
 lazy_static = "1.4"
@@ -51,8 +73,7 @@ log = "0.4"
 thiserror = "1"
 
 [build-dependencies]
-bindgen = "0.60.1"
-cfg_aliases = "0.1"
+bindgen = "0.63"
 
 [workspace]
 resolver = "2"
