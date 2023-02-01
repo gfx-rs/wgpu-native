@@ -459,7 +459,7 @@ pub fn map_shader_module<'a>(
         let module = parser.parse().unwrap();
         return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
     }
- 
+
     #[cfg(feature = "glsl")]
     if let Some(glsl) = glsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
