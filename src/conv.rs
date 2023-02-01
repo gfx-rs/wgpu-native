@@ -204,7 +204,7 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     }
 }
 
-pub fn map_instance_backend_flags(flags: u32) -> wgt::Backends {
+pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Backends {
     let mut result: wgt::Backends = wgt::Backends::empty();
     if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
@@ -246,7 +246,7 @@ pub fn map_instance_descriptor(
         };
 
         wgt::InstanceDescriptor {
-            backends: map_instance_backend_flags(extras.backends),
+            backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
         }
     } else {

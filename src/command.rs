@@ -603,7 +603,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     pass: native::WGPURenderPassEncoder,
-    stages: native::WGPUShaderStage,
+    stages: native::WGPUShaderStageFlags,
     offset: u32,
     size_bytes: u32,
     size: *const u8,
