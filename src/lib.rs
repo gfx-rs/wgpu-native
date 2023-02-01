@@ -567,7 +567,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
                 .expect("Could not get preferred swap chain format"),
         )
         .expect("Could not get preferred swap chain format"),
-        Err(err) => panic!("Could not get preferred swap chain format: {}", err),
+        Err(err) => panic!("Could not get preferred swap chain format: {err:?}"),
     };
 
     preferred_format
@@ -597,7 +597,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
             // so, filter them out.
             .filter_map(|f| conv::to_native_texture_format(*f))
             .collect::<Vec<native::WGPUTextureFormat>>(),
-        Err(err) => panic!("Could not get supported swap chain formats: {}", err),
+        Err(err) => panic!("Could not get supported swap chain formats: {err:?}"),
     };
     native_formats.shrink_to_fit();
 
@@ -634,7 +634,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
                 | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
             })
             .collect::<Vec<native::WGPUPresentMode>>(),
-        Err(err) => panic!("Could not get supported present modes: {}", err),
+        Err(err) => panic!("Could not get supported present modes: {err:?}"),
     };
     modes.shrink_to_fit();
 
@@ -719,10 +719,10 @@ pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType,
                 let cbs = CALLBACKS.lock().unwrap();
                 let cb = cbs.device_lost.get(&device);
                 if let Some(cb) = cb {
-                    (*cb).callback.unwrap()(
+                    cb.callback.unwrap()(
                         native::WGPUDeviceLostReason_Destroyed,
                         msg_c.as_ptr(),
-                        (*cb).userdata,
+                        cb.userdata,
                     );
                 }
             }
@@ -730,7 +730,7 @@ pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType,
                 let cbs = CALLBACKS.lock().unwrap();
                 let cb = cbs.uncaptured_errors.get(&device);
                 if let Some(cb) = cb {
-                    (*cb).callback.unwrap()(typ, msg_c.as_ptr(), (*cb).userdata);
+                    cb.callback.unwrap()(typ, msg_c.as_ptr(), cb.userdata);
                 }
             }
         }
@@ -745,7 +745,7 @@ pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::Dev
         _ => native::WGPUErrorType_Unknown,
     };
 
-    handle_device_error_raw(device, typ, &format!("{:?}", error));
+    handle_device_error_raw(device, typ, &format!("{error:?}"));
 }
 
 #[no_mangle]

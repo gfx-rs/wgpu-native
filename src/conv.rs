@@ -205,22 +205,22 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
 
 pub fn map_instance_backend_flags(flags: u32) -> wgt::Backends {
     let mut result: wgt::Backends = wgt::Backends::empty();
-    if (flags & native::WGPUInstanceBackend_BrowserWebGPU as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
     }
-    if (flags & native::WGPUInstanceBackend_Vulkan as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_Vulkan) != 0 {
         result |= wgt::Backends::VULKAN;
     }
-    if (flags & native::WGPUInstanceBackend_GL as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_GL) != 0 {
         result |= wgt::Backends::GL;
     }
-    if (flags & native::WGPUInstanceBackend_Metal as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_Metal) != 0 {
         result |= wgt::Backends::METAL;
     }
-    if (flags & native::WGPUInstanceBackend_DX12 as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_DX12) != 0 {
         result |= wgt::Backends::DX12;
     }
-    if (flags & native::WGPUInstanceBackend_DX11 as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_DX11) != 0 {
         result |= wgt::Backends::DX11;
     }
     result
@@ -236,10 +236,10 @@ pub fn map_instance_descriptor(
             native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
                 dxil_path: unsafe { extras.dxilPath.as_ref() }
                     .and_then(|v| OwnedLabel::new(v).0)
-                    .and_then(|v| Some(Path::new(&v).to_path_buf())),
+                    .map(|v| Path::new(&v).to_path_buf()),
                 dxc_path: unsafe { extras.dxcPath.as_ref() }
                     .and_then(|v| OwnedLabel::new(v).0)
-                    .and_then(|v| Some(Path::new(&v).to_path_buf())),
+                    .map(|v| Path::new(&v).to_path_buf()),
             },
             _ => wgt::Dx12Compiler::default(),
         };
@@ -567,7 +567,7 @@ pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::Textur
         native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
         native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
         native::WGPUTextureDimension_3D => wgt::TextureDimension::D3,
-        x => panic!("Unknown texture dimension: {}", x),
+        x => panic!("Unknown texture dimension: {x}"),
     }
 }
 

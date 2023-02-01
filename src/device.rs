@@ -52,7 +52,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                         native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
                         native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
                         native::WGPUBackendType_OpenGL => wgt::Backends::GL,
-                        _ => panic!("Invalid backend {}", given_backend),
+                        _ => panic!("Invalid backend {given_backend}"),
                     },
                     |_| (),
                 ),
@@ -79,7 +79,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
             );
         }
         Err(err) => {
-            let message = CString::new(format!("{:?}", err)).unwrap();
+            let message = CString::new(format!("{err:?}")).unwrap();
 
             (callback.unwrap())(
                 match err {
@@ -129,7 +129,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             );
         }
         Some(err) => {
-            let message = CString::new(format!("{:?}", err)).unwrap();
+            let message = CString::new(format!("{err:?}")).unwrap();
 
             (callback.unwrap())(
                 native::WGPURequestDeviceStatus_Error,
@@ -319,7 +319,7 @@ fn write_limits_struct(
     limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
-    limits.maxBufferSize = wgt_limits.max_buffer_size as u64;
+    limits.maxBufferSize = wgt_limits.max_buffer_size;
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
     limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
@@ -436,7 +436,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
                     native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
                     native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
-                    x => panic!("Unknown texture SampleType: {}", x),
+                    x => panic!("Unknown texture SampleType: {x}"),
                 },
                 view_dimension: match entry.texture.viewDimension {
                     native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
@@ -447,7 +447,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         wgt::TextureViewDimension::CubeArray
                     }
                     native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                    x => panic!("Unknown texture ViewDimension: {}", x),
+                    x => panic!("Unknown texture ViewDimension: {x}"),
                 },
                 multisampled: entry.texture.multisampled,
             }
@@ -462,7 +462,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                 native::WGPUSamplerBindingType_Comparison => {
                     wgt::BindingType::Sampler(wgt::SamplerBindingType::Comparison)
                 }
-                x => panic!("Unknown Sampler Type: {}", x),
+                x => panic!("Unknown Sampler Type: {x}"),
             }
         } else if is_storage_texture {
             wgt::BindingType::StorageTexture {
@@ -470,7 +470,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     native::WGPUStorageTextureAccess_WriteOnly => {
                         wgt::StorageTextureAccess::WriteOnly
                     }
-                    x => panic!("Unknown StorageTextureAccess: {}", x),
+                    x => panic!("Unknown StorageTextureAccess: {x}"),
                 },
                 format: conv::map_texture_format(entry.storageTexture.format)
                     .expect("StorageTexture format missing"),
@@ -483,7 +483,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         wgt::TextureViewDimension::CubeArray
                     }
                     native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                    x => panic!("Unknown texture ViewDimension: {}", x),
+                    x => panic!("Unknown texture ViewDimension: {x}"),
                 },
             }
         } else if is_buffer {
@@ -496,7 +496,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     native::WGPUBufferBindingType_ReadOnlyStorage => {
                         wgt::BufferBindingType::Storage { read_only: true }
                     }
-                    x => panic!("Unknown Buffer Type: {}", x),
+                    x => panic!("Unknown Buffer Type: {x}"),
                 },
                 has_dynamic_offset: entry.buffer.hasDynamicOffset,
                 min_binding_size: match entry.buffer.minBindingSize {
@@ -781,7 +781,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             native::WGPUMapMode_Write => wgc::device::HostMap::Write,
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
             native::WGPUMapMode_None => panic!("Buffer map mode None is not supported."),
-            x => panic!("Unknown map mode: {}", x),
+            x => panic!("Unknown map mode: {x}"),
         },
         callback: wgc::resource::BufferMapCallback::from_c(wgc::resource::BufferMapCallbackC {
             callback: std::mem::transmute(callback.expect("Callback cannot be null")),
@@ -870,7 +870,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     step_mode: match buffer.stepMode {
                         native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
                         native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
-                        x => panic!("Unknown step mode {}", x),
+                        x => panic!("Unknown step mode {x}"),
                     },
                     attributes: Cow::Owned(
                         make_slice(buffer.attributes, buffer.attributeCount as usize)

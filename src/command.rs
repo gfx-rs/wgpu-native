@@ -284,7 +284,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass_handle: native::WGPUComputePassEncoder) {
     let (pass, context) = unwrap_compute_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => context.command_encoder_run_compute_pass(encoder_id, &pass))
+    gfx_select!(encoder_id => context.command_encoder_run_compute_pass(encoder_id, pass))
         .expect("Unable to end compute pass");
 
     // NOTE: Automatically drops the encoder
@@ -295,7 +295,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass_handle: native::WGPUComp
 pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass_handle: native::WGPURenderPassEncoder) {
     let (pass, context) = unwrap_render_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => context.command_encoder_run_render_pass(encoder_id, &pass))
+    gfx_select!(encoder_id => context.command_encoder_run_render_pass(encoder_id, pass))
         .expect("Unable to end render pass");
 
     // NOTE: Automatically drops the encoder
@@ -611,7 +611,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     let (pass, _) = unwrap_render_pass_encoder(pass);
     render_ffi::wgpu_render_pass_set_push_constants(
         pass,
-        wgt::ShaderStages::from_bits(stages as u32).expect("Invalid shader stage"),
+        wgt::ShaderStages::from_bits(stages).expect("Invalid shader stage"),
         offset,
         size_bytes,
         size,
