@@ -18,20 +18,21 @@ license = "MIT OR Apache-2.0"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [features]
-default = ["wgsl", "spirv", "glsl"]
+default = ["wgsl", "spirv", "glsl", "trace"]
 
 angle = ["wgc/angle"]
 vulkan-portability = ["wgc/vulkan"]
 wgsl = ["wgc/wgsl"]
 spirv = ["naga/spv-in"]
 glsl = ["naga/glsl-in"]
+trace = ["wgc/trace"]
 
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
 rev = "659f697"
 version = "0.15.0"
-features = ["raw-window-handle", "gles", "trace"]
+features = ["raw-window-handle", "gles"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"

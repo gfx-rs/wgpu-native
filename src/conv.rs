@@ -172,6 +172,7 @@ map_enum!(
     Sint32x4
 );
 
+#[cfg(feature = "glsl")]
 map_enum!(
     map_shader_stage,
     WGPUShaderStage,
