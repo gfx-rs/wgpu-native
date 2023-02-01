@@ -61,9 +61,19 @@ typedef enum WGPUInstanceBackend {
 } WGPUInstanceBackend;
 typedef WGPUFlags WGPUInstanceBackendFlags;
 
+typedef enum WGPUDx12Compiler {
+    WGPUDx12Compiler_Undefined = 0x00000000,
+    WGPUDx12Compiler_Fxc = 0x00000001,
+    WGPUDx12Compiler_Dxc = 0x00000002,
+    WGPUDx12Compiler_Force32 = 0x7FFFFFFF
+} WGPUDx12Compiler;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackendFlags backends;
+    WGPUDx12Compiler dx12ShaderCompiler;
+    const char* dxilPath;
+    const char* dxcPath;
 } WGPUInstanceExtras;
 
 typedef struct WGPUAdapterExtras {
