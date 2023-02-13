@@ -1,5 +1,6 @@
 use crate::conv::{
     map_adapter_options, map_device_descriptor, map_pipeline_layout_descriptor, map_shader_module,
+    map_swapchain_descriptor,
 };
 use crate::native::{
     unwrap_swap_chain_handle, Handle, IntoHandle, IntoHandleWithContext, UnwrapId,
@@ -1012,19 +1013,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
 ) -> native::WGPUSwapChain {
     let (device, _) = device.unwrap_handle();
     let (surface, context) = surface.unwrap_handle();
-    let descriptor = descriptor.expect("invalid descriptor");
+    let config = follow_chain!(
+        map_swapchain_descriptor(
+            descriptor.expect("invalid descriptor"),
+            WGPUSType_SwapChainDescriptorExtras => native::WGPUSwapChainDescriptorExtras)
+    );
 
-    // The swap chain API of wgpu-core (and WebGPU) has been merged into the surface API,
-    // so this gets a bit weird until the webgpu.h changes accordingly.
-    let config = wgt::SurfaceConfiguration {
-        usage: wgt::TextureUsages::from_bits(descriptor.usage).unwrap(),
-        format: conv::map_texture_format(descriptor.format).expect("Texture format not defined"),
-        width: descriptor.width,
-        height: descriptor.height,
-        present_mode: conv::map_present_mode(descriptor.presentMode),
-        alpha_mode: wgt::CompositeAlphaMode::Auto,
-        view_formats: Vec::new(),
-    };
     let error = gfx_select!(device => context.surface_configure(surface, device, &config));
     if let Some(error) = error {
         handle_device_error(device, &error);

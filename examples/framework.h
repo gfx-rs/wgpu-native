@@ -16,3 +16,4 @@ void initializeLog(void);
 
 void printGlobalReport(WGPUGlobalReport report);
 void printAdapterFeatures(WGPUAdapter adapter);
+void printSurfaceCapabilities(WGPUSurface surface, WGPUAdapter adapter);
