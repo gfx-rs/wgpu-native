@@ -182,6 +182,17 @@ map_enum!(
     Compute
 );
 
+map_enum!(
+    map_composite_alpha_mode,
+    WGPUCompositeAlphaMode,
+    wgt::CompositeAlphaMode,
+    Auto,
+    Opaque,
+    PreMultiplied,
+    PostMultiplied,
+    Inherit
+);
+
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
 pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
     native::WGPU_LIMIT_U64_UNDEFINED as _;
@@ -955,5 +966,68 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE => Some(Features::VERTEX_WRITABLE_STORAGE),
 
         _ => None,
+    }
+}
+
+pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPresentMode> {
+    match mode {
+        wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
+        wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
+        wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
+
+        wgt::PresentMode::AutoVsync
+        | wgt::PresentMode::AutoNoVsync
+        | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
+    }
+}
+
+pub fn to_native_composite_alpha_mode(
+    mode: wgt::CompositeAlphaMode,
+) -> native::WGPUCompositeAlphaMode {
+    match mode {
+        wgt::CompositeAlphaMode::Auto => native::WGPUCompositeAlphaMode_Auto,
+        wgt::CompositeAlphaMode::Opaque => native::WGPUCompositeAlphaMode_Opaque,
+        wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_PreMultiplied,
+        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_PostMultiplied,
+        wgt::CompositeAlphaMode::Inherit => native::WGPUCompositeAlphaMode_Inherit,
+    }
+}
+
+pub fn map_swapchain_descriptor(
+    desc: &native::WGPUSwapChainDescriptor,
+    extras: Option<&native::WGPUSwapChainDescriptorExtras>,
+) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
+    let (alpha_mode, view_formats) = match extras {
+        Some(extras) => (
+            match extras.alphaMode {
+                native::WGPUCompositeAlphaMode_Auto => wgt::CompositeAlphaMode::Auto,
+                native::WGPUCompositeAlphaMode_Opaque => wgt::CompositeAlphaMode::Opaque,
+                native::WGPUCompositeAlphaMode_PreMultiplied => {
+                    wgt::CompositeAlphaMode::PreMultiplied
+                }
+                native::WGPUCompositeAlphaMode_PostMultiplied => {
+                    wgt::CompositeAlphaMode::PostMultiplied
+                }
+                native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,
+                _ => panic!("invalid alpha mode for swapchain descriptor"),
+            },
+            unsafe { make_slice(extras.viewFormats, extras.viewFormatCount as usize) }
+                .iter()
+                .map(|f| {
+                    map_texture_format(*f).expect("invalid view format for swapchain descriptor")
+                })
+                .collect(),
+        ),
+        None => (wgt::CompositeAlphaMode::default(), Vec::new()),
+    };
+
+    wgt::SurfaceConfiguration {
+        usage: wgt::TextureUsages::from_bits(desc.usage).unwrap(),
+        format: map_texture_format(desc.format).expect("Texture format not defined"),
+        width: desc.width,
+        height: desc.height,
+        present_mode: map_present_mode(desc.presentMode),
+        alpha_mode,
+        view_formats,
     }
 }

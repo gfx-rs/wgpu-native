@@ -574,76 +574,63 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceGetSupportedFormats(
+pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
-    count: Option<&mut usize>,
-) -> *const native::WGPUTextureFormat {
-    let (surface, context) = unsafe {
-        let v = surface.as_ref().expect("invalid surface");
-        (v.id, &v.context)
-    };
-
-    let (adapter, _) = adapter.unwrap_handle();
-    assert!(count.is_some(), "count must be non-null");
-
-    let mut native_formats = match wgc::gfx_select!(adapter => context.surface_get_capabilities(surface, adapter))
-    {
-        Ok(caps) => caps
-            .formats
-            .iter()
-            // some texture formats are not in webgpu.h and
-            // conv::to_native_texture_format return None for them.
-            // so, filter them out.
-            .filter_map(|f| conv::to_native_texture_format(*f))
-            .collect::<Vec<native::WGPUTextureFormat>>(),
-        Err(err) => panic!("Could not get supported swap chain formats: {err:?}"),
-    };
-    native_formats.shrink_to_fit();
-
-    if let Some(count) = count {
-        *count = native_formats.len();
-    }
-    let ptr = native_formats.as_ptr();
-    std::mem::forget(native_formats);
-    ptr
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceGetSupportedPresentModes(
-    surface: native::WGPUSurface,
-    adapter: native::WGPUAdapter,
-    count: Option<&mut usize>,
-) -> *const native::WGPUPresentMode {
-    let (surface, _) = surface.unwrap_handle();
+    capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
+) {
     let (adapter, context) = adapter.unwrap_handle();
-    assert!(count.is_some(), "count must be non-null");
-
-    let mut modes = match wgc::gfx_select!(adapter => context.surface_get_capabilities(surface, adapter))
-    {
-        Ok(caps) => caps
-            .present_modes
-            .iter()
-            .filter_map(|f| match *f {
-                wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
-                wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
-                wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
-
-                wgt::PresentMode::AutoVsync
-                | wgt::PresentMode::AutoNoVsync
-                | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
-            })
-            .collect::<Vec<native::WGPUPresentMode>>(),
-        Err(err) => panic!("Could not get supported present modes: {err:?}"),
+    let surface = {
+        let v = surface.as_ref().expect("invalid surface");
+        v.id
     };
-    modes.shrink_to_fit();
+    let capabilities = capabilities.expect("invalid return pointer");
 
-    if let Some(count) = count {
-        *count = modes.len();
+    let caps = wgc::gfx_select!(adapter => context.surface_get_capabilities(surface, adapter))
+        .expect("failed to get surface capabilities");
+
+    let formats = caps
+        .formats
+        .iter()
+        // some texture formats are not in webgpu.h and
+        // conv::to_native_texture_format returns None for them.
+        // so, filter them out.
+        .filter_map(|f| conv::to_native_texture_format(*f))
+        .collect::<Vec<native::WGPUTextureFormat>>();
+
+    capabilities.formatCount = formats.len();
+
+    if !capabilities.formats.is_null() {
+        let out_slice = std::slice::from_raw_parts_mut(capabilities.formats, formats.len());
+        out_slice.copy_from_slice(&formats);
     }
-    let ptr = modes.as_ptr();
-    std::mem::forget(modes);
-    ptr
+
+    let present_modes = caps
+        .present_modes
+        .iter()
+        .filter_map(|f| conv::to_native_present_mode(*f))
+        .collect::<Vec<native::WGPUPresentMode>>();
+
+    capabilities.presentModeCount = present_modes.len();
+
+    if !capabilities.presentModes.is_null() {
+        let out_slice =
+            std::slice::from_raw_parts_mut(capabilities.presentModes, present_modes.len());
+        out_slice.copy_from_slice(&present_modes);
+    }
+
+    let alpha_modes = caps
+        .alpha_modes
+        .iter()
+        .map(|f| conv::to_native_composite_alpha_mode(*f))
+        .collect::<Vec<native::WGPUCompositeAlphaMode>>();
+
+    capabilities.alphaModeCount = alpha_modes.len();
+
+    if !capabilities.alphaModes.is_null() {
+        let out_slice = std::slice::from_raw_parts_mut(capabilities.alphaModes, alpha_modes.len());
+        out_slice.copy_from_slice(&alpha_modes);
+    }
 }
 
 #[no_mangle]
@@ -746,12 +733,4 @@ pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::Dev
     };
 
     handle_device_error_raw(device, typ, &format!("{error:?}"));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuFree(ptr: *mut u8, size: usize, align: usize) {
-    std::alloc::dealloc(
-        ptr,
-        core::alloc::Layout::from_size_align(size, align).unwrap(),
-    );
 }

@@ -138,69 +138,50 @@ void printAdapterFeatures(WGPUAdapter adapter) {
       (WGPUFeatureName *)malloc(count * sizeof(WGPUFeatureName));
   wgpuAdapterEnumerateFeatures(adapter, features);
 
-  printf("[]WGPUFeatureName {\n");
-
+  printf("adapterFeatures = [ ");
   for (size_t i = 0; i < count; i++) {
-    uint32_t feature = features[i];
-    switch (feature) {
-    case WGPUFeatureName_DepthClipControl:
-      printf("\tDepthClipControl\n");
-      break;
-
-    case WGPUFeatureName_Depth32FloatStencil8:
-      printf("\tDepth32FloatStencil8\n");
-      break;
-
-    case WGPUFeatureName_TimestampQuery:
-      printf("\tTimestampQuery\n");
-      break;
-
-    case WGPUFeatureName_PipelineStatisticsQuery:
-      printf("\tPipelineStatisticsQuery\n");
-      break;
-
-    case WGPUFeatureName_TextureCompressionBC:
-      printf("\tTextureCompressionBC\n");
-      break;
-
-    case WGPUFeatureName_TextureCompressionETC2:
-      printf("\tTextureCompressionETC2\n");
-      break;
-
-    case WGPUFeatureName_TextureCompressionASTC:
-      printf("\tTextureCompressionASTC\n");
-      break;
-
-    case WGPUFeatureName_IndirectFirstInstance:
-      printf("\tIndirectFirstInstance\n");
-      break;
-
-    case WGPUNativeFeature_PUSH_CONSTANTS:
-      printf("\tWGPUNativeFeature_PUSH_CONSTANTS\n");
-      break;
-
-    case WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES:
-      printf("\tWGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES\n");
-      break;
-
-    case WGPUNativeFeature_MULTI_DRAW_INDIRECT:
-      printf("\tWGPUNativeFeature_MULTI_DRAW_INDIRECT\n");
-      break;
-
-    case WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT:
-      printf("\tWGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT\n");
-      break;
-
-    case WGPUNativeFeature_VERTEX_WRITABLE_STORAGE:
-      printf("\tWGPUNativeFeature_VERTEX_WRITABLE_STORAGE\n");
-      break;
-
-    default:
-      printf("\tUnknown=%d\n", feature);
-    }
+    printf("%#.8x ", features[i]);
   }
+  printf("]\n");
+
+  free(features);
+}
+
+void printSurfaceCapabilities(WGPUSurface surface, WGPUAdapter adapter) {
+  WGPUSurfaceCapabilities caps = {0};
+
+  wgpuSurfaceGetCapabilities(surface, adapter, &caps);
+
+  caps.formats = malloc(caps.formatCount * sizeof(WGPUTextureFormat));
+  caps.presentModes = malloc(caps.presentModeCount * sizeof(WGPUPresentMode));
+  caps.alphaModes =
+      malloc(caps.alphaModeCount * sizeof(WGPUCompositeAlphaMode));
+
+  wgpuSurfaceGetCapabilities(surface, adapter, &caps);
+
+  printf("WGPUSurfaceCapabilities {\n");
+
+  printf("\t.formats = [ ");
+  for (size_t i = 0; i < caps.formatCount; i++) {
+    printf("%#.8X ", caps.formats[i]);
+  }
+  printf("]\n");
+
+  printf("\t.presentModes = [ ");
+  for (size_t i = 0; i < caps.presentModeCount; i++) {
+    printf("%#.8X ", caps.presentModes[i]);
+  }
+  printf("]\n");
+
+  printf("\t.alphaModes = [ ");
+  for (size_t i = 0; i < caps.alphaModeCount; i++) {
+    printf("%#.8X ", caps.alphaModes[i]);
+  }
+  printf("]\n");
 
   printf("}\n");
 
-  free(features);
+  free(caps.formats);
+  free(caps.presentModes);
+  free(caps.alphaModes);
 }
