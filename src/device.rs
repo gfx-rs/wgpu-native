@@ -695,11 +695,11 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
 
     let mut command_buffers = Vec::new();
     for command_buffer in make_slice(commands, command_count as usize) {
-        let ptr = (*command_buffer) as native::WGPUCommandBuffer;
-        // NOTE: Automaticaly drop the command buffer
+        let ptr = *command_buffer;
         if ptr.is_null() {
             panic!("invalid command buffer");
         }
+        // NOTE: Automaticaly drop the command buffer
         let buffer_id = Box::from_raw(ptr).id;
         command_buffers.push(buffer_id)
     }
@@ -718,9 +718,13 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
 
     let mut command_buffers = Vec::new();
     for command_buffer in make_slice(commands, command_count as usize) {
-        let ptr = (*command_buffer) as native::WGPUCommandBuffer;
-        let (id, _) = ptr.unwrap_handle();
-        command_buffers.push(id)
+        let ptr = *command_buffer;
+        if ptr.is_null() {
+            panic!("invalid command buffer");
+        }
+        // NOTE: Automaticaly drop the command buffer
+        let buffer_id = Box::from_raw(ptr).id;
+        command_buffers.push(buffer_id)
     }
 
     let submission_index = gfx_select!(queue => context.queue_submit(queue, &command_buffers))
