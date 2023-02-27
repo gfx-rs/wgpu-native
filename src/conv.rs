@@ -1011,7 +1011,7 @@ pub fn map_swapchain_descriptor(
                 native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,
                 _ => panic!("invalid alpha mode for swapchain descriptor"),
             },
-            unsafe { make_slice(extras.viewFormats, extras.viewFormatCount as usize) }
+            unsafe { make_slice(extras.viewFormats, extras.viewFormatCount) }
                 .iter()
                 .map(|f| {
                     map_texture_format(*f).expect("invalid view format for swapchain descriptor")
