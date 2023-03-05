@@ -25,15 +25,6 @@ pub extern "C" fn wgpuBindGroupLayoutSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferGetConstMappedRange(
-    _buffer: native::WGPUBuffer,
-    _offset: usize,
-    _size: usize,
-) -> *const ::std::os::raw::c_void {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuBufferGetSize(_buffer: native::WGPUBuffer) -> u64 {
     unimplemented!();
 }
@@ -60,46 +51,9 @@ pub extern "C" fn wgpuCommandBufferSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuCommandEncoderResolveQuerySet(
-    _command_encoder: native::WGPUCommandEncoder,
-    _query_set: native::WGPUQuerySet,
-    _first_query: u32,
-    _query_count: u32,
-    _destination: native::WGPUBuffer,
-    _destination_offset: u64,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuCommandEncoderSetLabel(
     _command_encoder: native::WGPUCommandEncoder,
     _label: *const ::std::os::raw::c_char,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuCommandEncoderWriteTimestamp(
-    _command_encoder: native::WGPUCommandEncoder,
-    _query_set: native::WGPUQuerySet,
-    _query_index: u32,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
-    _compute_pass_encoder: native::WGPUComputePassEncoder,
-    _query_set: native::WGPUQuerySet,
-    _query_index: u32,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
-    _compute_pass_encoder: native::WGPUComputePassEncoder,
 ) {
     unimplemented!();
 }
@@ -127,14 +81,6 @@ pub extern "C" fn wgpuDeviceCreateComputePipelineAsync(
     _callback: native::WGPUCreateComputePipelineAsyncCallback,
     _userdata: *mut ::std::os::raw::c_void,
 ) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuDeviceCreateQuerySet(
-    _device: native::WGPUDevice,
-    _descriptor: *const native::WGPUQuerySetDescriptor,
-) -> native::WGPUQuerySet {
     unimplemented!();
 }
 
@@ -243,23 +189,7 @@ pub extern "C" fn wgpuRenderPassEncoderBeginOcclusionQuery(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
-    _render_pass_encoder: native::WGPURenderPassEncoder,
-    _query_set: native::WGPUQuerySet,
-    _query_index: u32,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuRenderPassEncoderEndOcclusionQuery(
-    _render_pass_encoder: native::WGPURenderPassEncoder,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
     _render_pass_encoder: native::WGPURenderPassEncoder,
 ) {
     unimplemented!();

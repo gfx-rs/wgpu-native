@@ -1031,3 +1031,45 @@ pub fn map_swapchain_descriptor(
         view_formats,
     }
 }
+
+pub fn map_query_set_descriptor<'a>(
+    desc: &native::WGPUQuerySetDescriptor,
+) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
+    wgt::QuerySetDescriptor {
+        label: OwnedLabel::new(desc.label).into_cow(),
+        count: desc.count,
+        ty: match desc.type_ {
+            native::WGPUQueryType_Occlusion => wgt::QueryType::Occlusion,
+            native::WGPUQueryType_Timestamp => wgt::QueryType::Timestamp,
+            native::WGPUQueryType_PipelineStatistics => {
+                let mut types = wgt::PipelineStatisticsTypes::empty();
+
+                unsafe { make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount as _) }
+                    .iter()
+                    .for_each(|f| {
+                        types.insert(match *f {
+                            native::WGPUPipelineStatisticName_VertexShaderInvocations => {
+                                wgt::PipelineStatisticsTypes::VERTEX_SHADER_INVOCATIONS
+                            }
+                            native::WGPUPipelineStatisticName_ClipperInvocations => {
+                                wgt::PipelineStatisticsTypes::CLIPPER_INVOCATIONS
+                            }
+                            native::WGPUPipelineStatisticName_ClipperPrimitivesOut => {
+                                wgt::PipelineStatisticsTypes::CLIPPER_PRIMITIVES_OUT
+                            }
+                            native::WGPUPipelineStatisticName_FragmentShaderInvocations => {
+                                wgt::PipelineStatisticsTypes::FRAGMENT_SHADER_INVOCATIONS
+                            }
+                            native::WGPUPipelineStatisticName_ComputeShaderInvocations => {
+                                wgt::PipelineStatisticsTypes::COMPUTE_SHADER_INVOCATIONS
+                            }
+                            _ => panic!("invalid pipeline statistics name"),
+                        });
+                    });
+
+                wgt::QueryType::PipelineStatistics(types)
+            }
+            _ => panic!("invalid query type"),
+        },
+    }
+}

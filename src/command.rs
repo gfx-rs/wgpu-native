@@ -281,6 +281,45 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderResolveQuerySet(
+    encoder: native::WGPUCommandEncoder,
+    query_set: native::WGPUQuerySet,
+    first_query: u32,
+    query_count: u32,
+    destination: native::WGPUBuffer,
+    destination_offset: u64,
+) {
+    let (encoder, context) = encoder.unwrap_handle();
+    let (query_set, _) = query_set.unwrap_handle();
+    let (destination, _) = destination.unwrap_handle();
+
+    gfx_select!(encoder => context.command_encoder_resolve_query_set(
+        encoder,
+        query_set,
+        first_query,
+        query_count,
+        destination,
+        destination_offset))
+    .expect("Unable to resolve query set");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderWriteTimestamp(
+    encoder: native::WGPUCommandEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let (encoder, context) = encoder.unwrap_handle();
+    let (query_set, _) = query_set.unwrap_handle();
+
+    gfx_select!(encoder => context.command_encoder_write_timestamp(
+        encoder,
+        query_set,
+        query_index))
+    .expect("Unable to write timestamp");
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass_handle: native::WGPUComputePassEncoder) {
     let (pass, context) = unwrap_compute_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
@@ -417,6 +456,25 @@ pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroup(
 ) {
     let (pass, _) = unwrap_compute_pass_encoder(pass);
     compute_ffi::wgpu_compute_pass_push_debug_group(pass, group_label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
+    pass: native::WGPUComputePassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let (pass, _) = unwrap_compute_pass_encoder(pass);
+    let (query_set, _) = query_set.unwrap_handle();
+    compute_ffi::wgpu_compute_pass_begin_pipeline_statistics_query(pass, query_set, query_index);
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
+    pass: native::WGPUComputePassEncoder,
+) {
+    let (pass, _) = unwrap_compute_pass_encoder(pass);
+    compute_ffi::wgpu_compute_pass_end_pipeline_statistics_query(pass);
 }
 
 #[no_mangle]
@@ -702,6 +760,30 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
         bundles,
         bundles_count as usize,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let (render_pass_encoder, _) = unwrap_render_pass_encoder(render_pass_encoder);
+    let (query_set, _) = query_set.unwrap_handle();
+
+    render_ffi::wgpu_render_pass_begin_pipeline_statistics_query(
+        render_pass_encoder,
+        query_set,
+        query_index,
+    );
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+) {
+    let (render_pass_encoder, _) = unwrap_render_pass_encoder(render_pass_encoder);
+    render_ffi::wgpu_render_pass_end_pipeline_statistics_query(render_pass_encoder);
 }
 
 #[no_mangle]
