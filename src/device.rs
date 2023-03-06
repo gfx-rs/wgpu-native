@@ -827,10 +827,10 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
     buffer: native::WGPUBuffer,
     offset: usize,
     size: usize,
-) -> *mut u8 {
+) -> *mut ::std::os::raw::c_void {
     let (buffer, context) = buffer.unwrap_handle();
 
-    gfx_select!(buffer => context.buffer_get_mapped_range(
+    let (buf, _) = gfx_select!(buffer => context.buffer_get_mapped_range(
         buffer,
         offset as u64,
         match size {
@@ -838,8 +838,30 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
             _ => Some(size as u64),
         }
     ))
-    .expect("Unable to get mapped range")
-    .0
+    .expect("Unable to get mapped range");
+
+    buf as *mut ::std::os::raw::c_void
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferGetConstMappedRange(
+    buffer: native::WGPUBuffer,
+    offset: usize,
+    size: usize,
+) -> *const ::std::os::raw::c_void {
+    let (buffer, context) = buffer.unwrap_handle();
+
+    let (buf, _) = gfx_select!(buffer => context.buffer_get_mapped_range(
+        buffer,
+        offset as u64,
+        match size {
+            conv::WGPU_WHOLE_MAP_SIZE => None,
+            _ => Some(size as u64),
+        }
+    ))
+    .expect("Unable to get mapped range");
+
+    buf as *const ::std::os::raw::c_void
 }
 
 #[no_mangle]
@@ -1274,6 +1296,24 @@ pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
             "Failed to get compute pipeline bind group layout: {:?}",
             error
         );
+        std::ptr::null_mut()
+    } else {
+        id.into_handle_with_context(context)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUQuerySetDescriptor>,
+) -> native::WGPUQuerySet {
+    let (device, context) = device.unwrap_handle();
+
+    let desc = conv::map_query_set_descriptor(descriptor.expect("invalid query set descriptor"));
+
+    let (id, error) = gfx_select!(device => context.device_create_query_set(device, &desc, ()));
+    if let Some(error) = error {
+        handle_device_error(device, &error);
         std::ptr::null_mut()
     } else {
         id.into_handle_with_context(context)

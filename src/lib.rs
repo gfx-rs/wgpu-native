@@ -7,6 +7,7 @@ pub mod command;
 pub mod conv;
 pub mod device;
 pub mod logging;
+pub mod unimplemented;
 
 pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
 
