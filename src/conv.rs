@@ -924,7 +924,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
         temp.push(native::WGPUFeatureName_IndirectFirstInstance);
     }
 
-    // native only features
+    // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
         temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
     }
@@ -957,14 +957,18 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_TextureCompressionETC2 => Some(Features::TEXTURE_COMPRESSION_ETC2),
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC_LDR),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
+        native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_FLOAT16),
 
-        // native only features
+        // wgpu-rs only features
         native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
         native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
         native::WGPUNativeFeature_MULTI_DRAW_INDIRECT => Some(Features::MULTI_DRAW_INDIRECT),
         native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
         native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE => Some(Features::VERTEX_WRITABLE_STORAGE),
 
+        // not available in wgpu-core
+        native::WGPUFeatureName_RG11B10UfloatRenderable => None,
+        native::WGPUFeatureName_BGRA8UnormStorage => None,
         _ => None,
     }
 }
