@@ -750,7 +750,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     render_pass_encoder: native::WGPURenderPassEncoder,
-    bundles_count: u32,
+    bundle_count: u32,
     bundles: *const wgc::id::RenderBundleId,
 ) {
     let (render_pass_encoder, _) = unwrap_render_pass_encoder(render_pass_encoder);
@@ -758,7 +758,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     render_ffi::wgpu_render_pass_execute_bundles(
         render_pass_encoder,
         bundles,
-        bundles_count as usize,
+        bundle_count as usize,
     );
 }
 

@@ -25,6 +25,11 @@ pub extern "C" fn wgpuBindGroupLayoutSetLabel(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuBufferGetMapState(_buffer: native::WGPUBuffer) -> native::WGPUBufferMapState {
+    unimplemented!();
+}
+
+#[no_mangle]
 pub extern "C" fn wgpuBufferGetSize(_buffer: native::WGPUBuffer) -> u64 {
     unimplemented!();
 }
