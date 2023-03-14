@@ -500,10 +500,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                     x => panic!("Unknown Buffer Type: {x}"),
                 },
                 has_dynamic_offset: entry.buffer.hasDynamicOffset,
-                min_binding_size: match entry.buffer.minBindingSize {
-                    0 => panic!("invalid minBindingSize"),
-                    conv::WGPU_WHOLE_SIZE => None,
-                    _ => Some(NonZeroU64::new_unchecked(entry.buffer.minBindingSize)),
+                min_binding_size: {
+                    assert_ne!(
+                        entry.buffer.minBindingSize,
+                        conv::WGPU_WHOLE_SIZE,
+                        "invalid minBindingSize, use 0 instead"
+                    );
+
+                    NonZeroU64::new(entry.buffer.minBindingSize)
                 },
             }
         } else {
