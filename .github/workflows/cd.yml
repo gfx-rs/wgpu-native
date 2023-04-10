@@ -271,12 +271,80 @@ jobs:
         path: dist
         name: dist
 
+  distribution-release:
+    name: Create easy-to-integrate distributions (release)
+    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download assets
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+    - name: Create commit-sha file
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo $GITHUB_SHA > dist/commit-sha
+    - name: Prepare distribution
+      run: |
+        cp dist/commit-sha distribution
+        cp ffi/webgpu-headers/webgpu.h distribution/include/webgpu
+        cp ffi/wgpu.h distribution/include/webgpu
+        for zipfile in wgpu-*-release.zip
+          arch=$(echo $zipfile | cut -d- -f2-3)
+          mkdir -p distribution/bin/$arch
+          unzip dist/wgpu-*-release.zip distribution/bin/
+          unzip -d distribution/bin $zipfile *.so *.dylib *.dll
+        done
+        mv distribution webgpu
+        zip -r wgpu-distribution.zip webgpu
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        path: wgpu-distribution.zip
+        name: dist-cmake
+
+  distribution-debug:
+    name: Create easy-to-integrate distributions (debug)
+    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download assets
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+    - name: Create commit-sha file
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo $GITHUB_SHA > dist/commit-sha
+    - name: Prepare distribution
+      run: |
+        cp dist/commit-sha distribution
+        cp ffi/webgpu-headers/webgpu.h distribution/include/webgpu
+        cp ffi/wgpu.h distribution/include/webgpu
+        for zipfile in wgpu-*-debug.zip
+          arch=$(echo $zipfile | cut -d- -f2-3)
+          mkdir -p distribution/bin/$arch
+          unzip dist/wgpu-*-debug.zip distribution/bin/
+          unzip -d distribution/bin $zipfile *.so *.dylib *.dll
+        done
+        mv distribution webgpu
+        zip -r wgpu-distribution.zip webgpu
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        path: wgpu-distribution.zip
+        name: dist-cmake
+
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux32, Linux64),
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
-    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64, distribution-release, distribution-debug]
     runs-on: ubuntu-18.04
     if: success() && contains(github.ref, 'tags/v')
     steps:
@@ -291,6 +359,10 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: dist
+    - name: Download distributions
+      uses: actions/download-artifact@v3
+      with:
+        name: dist-cmake
     - name: Create commit-sha file
       env:
         GITHUB_SHA: ${{ github.sha }}
@@ -314,25 +386,5 @@ jobs:
       uses: AButler/upload-release-assets@v2.0
       with:
         release-tag: ${{ env.WGPU_NATIVE_VERSION }}
-        files: 'dist/*.zip;dist/commit-sha'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Prepare distribution
-      run: |
-        cp dist/commit-sha distribution
-        cp ffi/webgpu-headers/webgpu.h distribution/include/webgpu
-        cp ffi/wgpu.h distribution/include/webgpu
-        for zipfile in wgpu-*-release.zip
-          arch=$(echo $zipfile | cut -d- -f2-3)
-          mkdir -p distribution/bin/$arch
-          unzip dist/wgpu-*-release.zip distribution/bin/
-          unzip -d distribution/bin $zipfile *.so *.dylib *.dll
-        done
-        mv distribution webgpu
-        zip -r wgpu-distribution.zip webgpu
-    - name: Upload Release Distribution
-      # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
-      uses: AButler/upload-release-assets@v2.0
-      with:
-        release-tag: ${{ env.WGPU_NATIVE_VERSION }}
-        files: 'wgpu-distribution.zip'
+        files: 'dist/*.zip;dist-cmake/*.zip;dist/commit-sha'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
