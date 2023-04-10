@@ -281,6 +281,8 @@ jobs:
     if: success() && contains(github.ref, 'tags/v')
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
     - name: set version (which gets used as release name)
       run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
@@ -313,4 +315,24 @@ jobs:
       with:
         release-tag: ${{ env.WGPU_NATIVE_VERSION }}
         files: 'dist/*.zip;dist/commit-sha'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Prepare distribution
+      run: |
+        cp dist/commit-sha distribution
+        cp ffi/webgpu-headers/webgpu.h distribution/include/webgpu
+        cp ffi/wgpu.h distribution/include/webgpu
+        for zipfile in wgpu-*-release.zip
+          arch=$(echo $zipfile | cut -d- -f2-3)
+          mkdir -p distribution/bin/$arch
+          unzip dist/wgpu-*-release.zip distribution/bin/
+          unzip -d distribution/bin $zipfile *.so *.dylib *.dll
+        done
+        mv distribution webgpu
+        zip -r wgpu-distribution.zip webgpu
+    - name: Upload Release Distribution
+      # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
+      uses: AButler/upload-release-assets@v2.0
+      with:
+        release-tag: ${{ env.WGPU_NATIVE_VERSION }}
+        files: 'wgpu-distribution.zip'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
