@@ -3,6 +3,21 @@
 #include "unused.h"
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
+#include <stdio.h>
+
+static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
+                               void *userdata) {
+  UNUSED(userdata);
+
+  printf("DEVICE LOST (%d): %s\n", reason, message);
+}
+
+static void handle_uncaptured_error(WGPUErrorType type, char const *message,
+                                    void *userdata) {
+  UNUSED(userdata);
+
+  printf("UNCAPTURED ERROR (%d): %s\n", type, message);
+}
 
 int main(int argc, char *argv[]) {
   UNUSED(argc);
@@ -13,36 +28,19 @@ int main(int argc, char *argv[]) {
   int width = 100;
   int height = 200;
 
-  WGPUInstance instance = wgpuCreateInstance(&(WGPUInstanceDescriptor) {.nextInChain = NULL});
+  WGPUInstance instance =
+      wgpuCreateInstance(&(WGPUInstanceDescriptor){.nextInChain = NULL});
 
   WGPUAdapter adapter;
-  wgpuInstanceRequestAdapter(instance,
-                             &(WGPURequestAdapterOptions){
-                                 .nextInChain = NULL,
-                                 .compatibleSurface = NULL,
-                             },
-                             request_adapter_callback, (void *)&adapter);
+  wgpuInstanceRequestAdapter(instance, NULL, request_adapter_callback,
+                             (void *)&adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(adapter,
-                           &(WGPUDeviceDescriptor){
-                               .nextInChain = NULL,
-                               .label = "Device",
-                               .requiredLimits =
-                                   &(WGPURequiredLimits){
-                                       .nextInChain = NULL,
-                                       .limits =
-                                           (WGPULimits){
-                                               .maxBindGroups = 1,
-                                           },
-                                   },
-                               .defaultQueue =
-                                   (WGPUQueueDescriptor){
-                                       .nextInChain = NULL,
-                                       .label = NULL,
-                                   },
-                           },
-                           request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(adapter, NULL, request_device_callback,
+                           (void *)&device);
+
+  wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
+  wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
 
   BufferDimensions bufferDimensions = buffer_dimensions_new(width, height);
   uint64_t bufferSize =
@@ -77,25 +75,14 @@ int main(int argc, char *argv[]) {
   WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(
       device, &(WGPUCommandEncoderDescriptor){.label = NULL});
 
-  WGPUTextureView outputAttachment = wgpuTextureCreateView(
-      texture, &(WGPUTextureViewDescriptor){
-                   .nextInChain = NULL,
-                   .label = NULL,
-                   .format = WGPUTextureFormat_Undefined,
-                   .dimension = WGPUTextureViewDimension_Undefined,
-                   .aspect = WGPUTextureAspect_All,
-                   .arrayLayerCount = 0,
-                   .baseArrayLayer = 0,
-                   .baseMipLevel = 0,
-                   .mipLevelCount = 0,
-               });
+  WGPUTextureView outputAttachment = wgpuTextureCreateView(texture, NULL);
 
   WGPURenderPassEncoder renderPass = wgpuCommandEncoderBeginRenderPass(
       encoder, &(WGPURenderPassDescriptor){
                    .colorAttachments =
                        &(WGPURenderPassColorAttachment){
                            .view = outputAttachment,
-                           .resolveTarget = 0,
+                           .resolveTarget = NULL,
                            .loadOp = WGPULoadOp_Clear,
                            .storeOp = WGPUStoreOp_Store,
                            .clearValue =
@@ -129,7 +116,7 @@ int main(int argc, char *argv[]) {
               (WGPUTextureDataLayout){
                   .offset = 0,
                   .bytesPerRow = bufferDimensions.padded_bytes_per_row,
-                  .rowsPerImage = 0,
+                  .rowsPerImage = WGPU_COPY_STRIDE_UNDEFINED,
               }},
       &textureExtent);
 

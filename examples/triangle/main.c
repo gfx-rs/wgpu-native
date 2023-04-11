@@ -57,7 +57,9 @@ static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action,
   }
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+  UNUSED(argc);
+  UNUSED(argv);
   initializeLog();
 
   if (!glfwInit()) {
@@ -73,7 +75,7 @@ int main() {
     return 1;
   }
 
-  instance = wgpuCreateInstance(&(WGPUInstanceDescriptor) {.nextInChain = NULL});
+  instance = wgpuCreateInstance(&(WGPUInstanceDescriptor){.nextInChain = NULL});
 
   WGPUSurface surface;
 
@@ -169,35 +171,15 @@ int main() {
 #endif
 
   WGPUAdapter adapter;
-  wgpuInstanceRequestAdapter(instance,
-                             &(WGPURequestAdapterOptions){
-                                 .nextInChain = NULL,
-                                 .compatibleSurface = surface,
-                             },
-                             request_adapter_callback, (void *)&adapter);
+  wgpuInstanceRequestAdapter(instance, NULL, request_adapter_callback,
+                             (void *)&adapter);
 
   printAdapterFeatures(adapter);
+  printSurfaceCapabilities(surface, adapter);
 
   WGPUDevice device;
-  wgpuAdapterRequestDevice(adapter,
-                           &(WGPUDeviceDescriptor){
-                               .nextInChain = NULL,
-                               .label = "Device",
-                               .requiredLimits =
-                                   &(WGPURequiredLimits){
-                                       .nextInChain = NULL,
-                                       .limits =
-                                           (WGPULimits){
-                                               .maxBindGroups = 1,
-                                           },
-                                   },
-                               .defaultQueue =
-                                   (WGPUQueueDescriptor){
-                                       .nextInChain = NULL,
-                                       .label = NULL,
-                                   },
-                           },
-                           request_device_callback, (void *)&device);
+  wgpuAdapterRequestDevice(adapter, NULL, request_device_callback,
+                           (void *)&device);
 
   wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
   wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
@@ -253,24 +235,34 @@ int main() {
                                           .dstFactor = WGPUBlendFactor_Zero,
                                           .operation = WGPUBlendOperation_Add,
                                       }},
-                          .writeMask = WGPUColorWriteMask_All},
+                          .writeMask = WGPUColorWriteMask_All,
+                      },
               },
           .depthStencil = NULL,
       });
 
-  int prevWidth = 0;
-  int prevHeight = 0;
-  glfwGetWindowSize(window, &prevWidth, &prevHeight);
+  WGPUSwapChainDescriptor config = (WGPUSwapChainDescriptor){
+      .nextInChain =
+          (const WGPUChainedStruct *)&(WGPUSwapChainDescriptorExtras){
+              .chain =
+                  (WGPUChainedStruct){
+                      .next = NULL,
+                      .sType = (WGPUSType)WGPUSType_SwapChainDescriptorExtras,
+                  },
+              .alphaMode = WGPUCompositeAlphaMode_Auto,
+              .viewFormatCount = 0,
+              .viewFormats = NULL,
+          },
+      .usage = WGPUTextureUsage_RenderAttachment,
+      .format = swapChainFormat,
+      .width = 0,
+      .height = 0,
+      .presentMode = WGPUPresentMode_Fifo,
+  };
 
-  WGPUSwapChain swapChain =
-      wgpuDeviceCreateSwapChain(device, surface,
-                                &(WGPUSwapChainDescriptor){
-                                    .usage = WGPUTextureUsage_RenderAttachment,
-                                    .format = swapChainFormat,
-                                    .width = prevWidth,
-                                    .height = prevHeight,
-                                    .presentMode = WGPUPresentMode_Fifo,
-                                });
+  glfwGetWindowSize(window, (int *)&config.width, (int *)&config.height);
+
+  WGPUSwapChain swapChain = wgpuDeviceCreateSwapChain(device, surface, &config);
 
   glfwSetKeyCallback(window, handleGlfwKey);
 
@@ -279,33 +271,20 @@ int main() {
     WGPUTextureView nextTexture = NULL;
 
     for (int attempt = 0; attempt < 2; attempt++) {
+      uint32_t prevWidth = config.width;
+      uint32_t prevHeight = config.height;
+      glfwGetWindowSize(window, (int *)&config.width, (int *)&config.height);
 
-      int width = 0;
-      int height = 0;
-      glfwGetWindowSize(window, &width, &height);
-
-      if (width != prevWidth || height != prevHeight) {
-        prevWidth = width;
-        prevHeight = height;
-
-        swapChain = wgpuDeviceCreateSwapChain(
-            device, surface,
-            &(WGPUSwapChainDescriptor){
-                .usage = WGPUTextureUsage_RenderAttachment,
-                .format = swapChainFormat,
-                .width = prevWidth,
-                .height = prevHeight,
-                .presentMode = WGPUPresentMode_Fifo,
-            });
+      if (prevWidth != config.width || prevHeight != config.height) {
+        swapChain = wgpuDeviceCreateSwapChain(device, surface, &config);
       }
 
       nextTexture = wgpuSwapChainGetCurrentTextureView(swapChain);
-
       if (attempt == 0 && !nextTexture) {
         printf("wgpuSwapChainGetCurrentTextureView() failed; trying to create "
                "a new swap chain...\n");
-        prevWidth = 0;
-        prevHeight = 0;
+        config.width = 0;
+        config.height = 0;
         continue;
       }
 
@@ -325,7 +304,7 @@ int main() {
                      .colorAttachments =
                          &(WGPURenderPassColorAttachment){
                              .view = nextTexture,
-                             .resolveTarget = 0,
+                             .resolveTarget = NULL,
                              .loadOp = WGPULoadOp_Clear,
                              .storeOp = WGPUStoreOp_Store,
                              .clearValue =

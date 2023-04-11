@@ -3,27 +3,6 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    // Setup cfg aliases
-    cfg_aliases::cfg_aliases! {
-        // Vendors/systems
-        wasm: { target_arch = "wasm32" },
-        apple: { any(target_os = "ios", target_os = "macos") },
-        unix_wo_apple: {all(unix, not(apple))},
-
-        // Backends
-        vulkan: { all(not(wasm), any(windows, unix_wo_apple, feature = "vulkan-portability")) },
-        metal: { all(not(wasm), apple) },
-        dx12: { all(not(wasm), windows) },
-        dx11: { all(not(wasm), windows) },
-        gl: {
-            any(
-                unix_wo_apple,
-                feature = "angle",
-                wasm
-            )
-        },
-    }
-
     println!("cargo:rerun-if-changed=ffi/webgpu-headers/webgpu.h");
     println!("cargo:rerun-if-changed=ffi/wgpu.h");
 
@@ -56,7 +35,6 @@ fn main() {
         .header("ffi/webgpu-headers/webgpu.h")
         .header("ffi/wgpu.h")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .blocklist_type("(^WGPUProc).*")
         .blocklist_function("wgpuGetProcAddress")
         .prepend_enum_name(false)
         .size_t_is_usize(true)
@@ -64,23 +42,23 @@ fn main() {
         .layout_tests(true);
 
     for (old_name, new_name) in types_to_rename {
-        let line = format!("pub type {} = *mut {};", old_name, new_name);
+        let line = format!("pub type {old_name} = *mut {new_name};");
         builder = builder
             .blocklist_type(old_name)
-            .blocklist_type(format!("{}Impl", old_name))
+            .blocklist_type(format!("{old_name}Impl"))
             .raw_line(line);
     }
 
     // See https://github.com/rust-lang/rust-bindgen/issues/1780
     if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
         let output = Command::new("xcrun")
-            .args(&["--sdk", "iphoneos", "--show-sdk-path"])
+            .args(["--sdk", "iphoneos", "--show-sdk-path"])
             .output()
             .expect("xcrun failed")
             .stdout;
         let sdk = std::str::from_utf8(&output).expect("invalid output from `xcrun`");
         builder = builder
-            .clang_arg(format!("-isysroot {}", sdk))
+            .clang_arg(format!("-isysroot {sdk}"))
             .clang_arg("--target=arm64-apple-ios");
     }
 

@@ -359,10 +359,12 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: dist
+        path: dist
     - name: Download distributions
       uses: actions/download-artifact@v3
       with:
         name: dist-cmake
+        path: dist-cmake
     - name: Create commit-sha file
       env:
         GITHUB_SHA: ${{ github.sha }}

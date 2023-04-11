@@ -1,4 +1,4 @@
-use crate::native::{IntoHandle, IntoHandleWithContext, UnwrapId, Handle};
+use crate::native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use crate::{conv, handle_device_error, make_slice, native, Context, OwnedLabel};
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -84,7 +84,12 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
         command_encoder,
         buffer,
         offset,
-        NonZeroU64::new(size)))
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        }
+    ))
     .expect("Unable to clear buffer")
 }
 
@@ -114,51 +119,51 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
     command_encoder: native::WGPUCommandEncoder,
-    source: &native::WGPUImageCopyTexture,
-    destination: &native::WGPUImageCopyTexture,
-    copy_size: &native::WGPUExtent3D,
+    source: Option<&native::WGPUImageCopyTexture>,
+    destination: Option<&native::WGPUImageCopyTexture>,
+    copy_size: Option<&native::WGPUExtent3D>,
 ) {
     let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_texture_to_texture(
         command_encoder,
-        &conv::map_image_copy_texture(source),
-        &conv::map_image_copy_texture(destination),
-        &conv::map_extent3d(copy_size)))
+        &conv::map_image_copy_texture(source.expect("invalid source")),
+        &conv::map_image_copy_texture(destination.expect("invalid destination")),
+        &conv::map_extent3d(copy_size.expect("invalid copy size"))))
     .expect("Unable to copy texture to texture")
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
     command_encoder: native::WGPUCommandEncoder,
-    source: &native::WGPUImageCopyTexture,
-    destination: &native::WGPUImageCopyBuffer,
-    copy_size: &native::WGPUExtent3D,
+    source: Option<&native::WGPUImageCopyTexture>,
+    destination: Option<&native::WGPUImageCopyBuffer>,
+    copy_size: Option<&native::WGPUExtent3D>,
 ) {
     let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_texture_to_buffer(
         command_encoder,
-        &conv::map_image_copy_texture(source),
-        &conv::map_image_copy_buffer(destination),
-        &conv::map_extent3d(copy_size)))
+        &conv::map_image_copy_texture(source.expect("invalid source")),
+        &conv::map_image_copy_buffer(destination.expect("invalid destination")),
+        &conv::map_extent3d(copy_size.expect("invalid copy size"))))
     .expect("Unable to copy texture to buffer")
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
     command_encoder: native::WGPUCommandEncoder,
-    source: &native::WGPUImageCopyBuffer,
-    destination: &native::WGPUImageCopyTexture,
-    copy_size: &native::WGPUExtent3D,
+    source: Option<&native::WGPUImageCopyBuffer>,
+    destination: Option<&native::WGPUImageCopyTexture>,
+    copy_size: Option<&native::WGPUExtent3D>,
 ) {
     let (command_encoder, context) = command_encoder.unwrap_handle();
 
     gfx_select!(command_encoder => context.command_encoder_copy_buffer_to_texture(
         command_encoder,
-        &conv::map_image_copy_buffer(source),
-        &conv::map_image_copy_texture(destination),
-        &conv::map_extent3d(copy_size)))
+        &conv::map_image_copy_buffer(source.expect("invalid source")),
+        &conv::map_image_copy_texture(destination.expect("invalid destination")),
+        &conv::map_extent3d(copy_size.expect("invalid copy size"))))
     .expect("Unable to copy buffer to texture")
 }
 
@@ -186,9 +191,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     encoder: native::WGPUCommandEncoder,
-    descriptor: &native::WGPURenderPassDescriptor,
+    descriptor: Option<&native::WGPURenderPassDescriptor>,
 ) -> native::WGPURenderPassEncoder {
     let (encoder, context) = encoder.unwrap_handle();
+    let descriptor = descriptor.expect("invalid descriptor");
 
     let depth_stencil_attachment = descriptor.depthStencilAttachment.as_ref().map(|desc| {
         wgc::command::RenderPassDepthStencilAttachment {
@@ -275,10 +281,49 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderResolveQuerySet(
+    encoder: native::WGPUCommandEncoder,
+    query_set: native::WGPUQuerySet,
+    first_query: u32,
+    query_count: u32,
+    destination: native::WGPUBuffer,
+    destination_offset: u64,
+) {
+    let (encoder, context) = encoder.unwrap_handle();
+    let (query_set, _) = query_set.unwrap_handle();
+    let (destination, _) = destination.unwrap_handle();
+
+    gfx_select!(encoder => context.command_encoder_resolve_query_set(
+        encoder,
+        query_set,
+        first_query,
+        query_count,
+        destination,
+        destination_offset))
+    .expect("Unable to resolve query set");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderWriteTimestamp(
+    encoder: native::WGPUCommandEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let (encoder, context) = encoder.unwrap_handle();
+    let (query_set, _) = query_set.unwrap_handle();
+
+    gfx_select!(encoder => context.command_encoder_write_timestamp(
+        encoder,
+        query_set,
+        query_index))
+    .expect("Unable to write timestamp");
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass_handle: native::WGPUComputePassEncoder) {
     let (pass, context) = unwrap_compute_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => context.command_encoder_run_compute_pass(encoder_id, &pass))
+    gfx_select!(encoder_id => context.command_encoder_run_compute_pass(encoder_id, pass))
         .expect("Unable to end compute pass");
 
     // NOTE: Automatically drops the encoder
@@ -289,7 +334,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass_handle: native::WGPUComp
 pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass_handle: native::WGPURenderPassEncoder) {
     let (pass, context) = unwrap_render_pass_encoder(pass_handle);
     let encoder_id = pass.parent_id();
-    gfx_select!(encoder_id => context.command_encoder_run_render_pass(encoder_id, &pass))
+    gfx_select!(encoder_id => context.command_encoder_run_render_pass(encoder_id, pass))
         .expect("Unable to end render pass");
 
     // NOTE: Automatically drops the encoder
@@ -411,6 +456,25 @@ pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroup(
 ) {
     let (pass, _) = unwrap_compute_pass_encoder(pass);
     compute_ffi::wgpu_compute_pass_push_debug_group(pass, group_label, 0);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
+    pass: native::WGPUComputePassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let (pass, _) = unwrap_compute_pass_encoder(pass);
+    let (query_set, _) = query_set.unwrap_handle();
+    compute_ffi::wgpu_compute_pass_begin_pipeline_statistics_query(pass, query_set, query_index);
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
+    pass: native::WGPUComputePassEncoder,
+) {
+    let (pass, _) = unwrap_compute_pass_encoder(pass);
+    compute_ffi::wgpu_compute_pass_end_pipeline_statistics_query(pass);
 }
 
 #[no_mangle]
@@ -562,7 +626,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
         buffer,
         conv::map_index_format(index_format).expect("Index format cannot be undefined"),
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }
 
@@ -582,14 +650,18 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
         slot,
         buffer,
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     pass: native::WGPURenderPassEncoder,
-    stages: native::WGPUShaderStage,
+    stages: native::WGPUShaderStageFlags,
     offset: u32,
     size_bytes: u32,
     size: *const u8,
@@ -597,7 +669,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     let (pass, _) = unwrap_render_pass_encoder(pass);
     render_ffi::wgpu_render_pass_set_push_constants(
         pass,
-        wgt::ShaderStages::from_bits(stages as u32).expect("Invalid shader stage"),
+        wgt::ShaderStages::from_bits(stages).expect("Invalid shader stage"),
         offset,
         size_bytes,
         size,
@@ -607,10 +679,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
     pass: native::WGPURenderPassEncoder,
-    color: &native::WGPUColor,
+    color: Option<&native::WGPUColor>,
 ) {
     let (pass, _) = unwrap_render_pass_encoder(pass);
-    render_ffi::wgpu_render_pass_set_blend_constant(pass, &conv::map_color(color));
+    render_ffi::wgpu_render_pass_set_blend_constant(
+        pass,
+        &conv::map_color(color.expect("invalid color")),
+    );
 }
 
 #[no_mangle]
@@ -675,7 +750,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     render_pass_encoder: native::WGPURenderPassEncoder,
-    bundles_count: u32,
+    bundle_count: u32,
     bundles: *const wgc::id::RenderBundleId,
 ) {
     let (render_pass_encoder, _) = unwrap_render_pass_encoder(render_pass_encoder);
@@ -683,8 +758,32 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     render_ffi::wgpu_render_pass_execute_bundles(
         render_pass_encoder,
         bundles,
-        bundles_count as usize,
+        bundle_count as usize,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let (render_pass_encoder, _) = unwrap_render_pass_encoder(render_pass_encoder);
+    let (query_set, _) = query_set.unwrap_handle();
+
+    render_ffi::wgpu_render_pass_begin_pipeline_statistics_query(
+        render_pass_encoder,
+        query_set,
+        query_index,
+    );
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+) {
+    let (render_pass_encoder, _) = unwrap_render_pass_encoder(render_pass_encoder);
+    render_ffi::wgpu_render_pass_end_pipeline_statistics_query(render_pass_encoder);
 }
 
 #[no_mangle]
@@ -848,7 +947,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
         buffer,
         conv::map_index_format(format).unwrap(),
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }
 
@@ -879,6 +982,10 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
         slot,
         buffer,
         offset,
-        NonZeroU64::new(size),
+        match size {
+            0 => panic!("invalid size"),
+            conv::WGPU_WHOLE_SIZE => None,
+            _ => Some(NonZeroU64::new_unchecked(size)),
+        },
     );
 }

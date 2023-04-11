@@ -1,5 +1,6 @@
 use crate::native::{self, UnwrapId};
 use crate::{follow_chain, make_slice, map_enum, Label, OwnedLabel};
+use std::path::Path;
 use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
 
 map_enum!(
@@ -171,6 +172,7 @@ map_enum!(
     Sint32x4
 );
 
+#[cfg(feature = "glsl")]
 map_enum!(
     map_shader_stage,
     WGPUShaderStage,
@@ -179,6 +181,23 @@ map_enum!(
     Fragment,
     Compute
 );
+
+map_enum!(
+    map_composite_alpha_mode,
+    WGPUCompositeAlphaMode,
+    wgt::CompositeAlphaMode,
+    Auto,
+    Opaque,
+    PreMultiplied,
+    PostMultiplied,
+    Inherit
+);
+
+pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
+pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
+    native::WGPU_LIMIT_U64_UNDEFINED as _;
+// it's SIZE_MAX in headers but it's not available in some compilers
+pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
 
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
@@ -196,24 +215,24 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     }
 }
 
-pub fn map_instance_backend_flags(flags: u32) -> wgt::Backends {
+pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Backends {
     let mut result: wgt::Backends = wgt::Backends::empty();
-    if (flags & native::WGPUInstanceBackend_BrowserWebGPU as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
     }
-    if (flags & native::WGPUInstanceBackend_Vulkan as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_Vulkan) != 0 {
         result |= wgt::Backends::VULKAN;
     }
-    if (flags & native::WGPUInstanceBackend_GL as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_GL) != 0 {
         result |= wgt::Backends::GL;
     }
-    if (flags & native::WGPUInstanceBackend_Metal as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_Metal) != 0 {
         result |= wgt::Backends::METAL;
     }
-    if (flags & native::WGPUInstanceBackend_DX12 as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_DX12) != 0 {
         result |= wgt::Backends::DX12;
     }
-    if (flags & native::WGPUInstanceBackend_DX11 as u32) != 0 {
+    if (flags & native::WGPUInstanceBackend_DX11) != 0 {
         result |= wgt::Backends::DX11;
     }
     result
@@ -222,11 +241,27 @@ pub fn map_instance_backend_flags(flags: u32) -> wgt::Backends {
 pub fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
-) -> wgt::Backends {
+) -> wgt::InstanceDescriptor {
     if let Some(extras) = extras {
-        map_instance_backend_flags(extras.backends)
+        let dx12_shader_compiler = match extras.dx12ShaderCompiler {
+            native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
+            native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
+                dxil_path: unsafe { extras.dxilPath.as_ref() }
+                    .and_then(|v| OwnedLabel::new(v).0)
+                    .map(|v| Path::new(&v).to_path_buf()),
+                dxc_path: unsafe { extras.dxcPath.as_ref() }
+                    .and_then(|v| OwnedLabel::new(v).0)
+                    .map(|v| Path::new(&v).to_path_buf()),
+            },
+            _ => wgt::Dx12Compiler::default(),
+        };
+
+        wgt::InstanceDescriptor {
+            backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
+            dx12_shader_compiler,
+        }
     } else {
-        wgt::Backends::PRIMARY
+        wgt::InstanceDescriptor::default()
     }
 }
 
@@ -246,7 +281,7 @@ pub fn map_device_descriptor<'a>(
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
-        wgt::Limits::downlevel_defaults(),
+        wgt::Limits::default(),
         |required_limits| unsafe {
             follow_chain!(
                 map_required_limits(required_limits,
@@ -310,92 +345,101 @@ pub fn map_required_limits(
 ) -> wgt::Limits {
     let limits = required_limits.limits;
     let mut wgt_limits = wgt::Limits::default();
-    if limits.maxTextureDimension1D != 0 {
+    if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
     }
-    if limits.maxTextureDimension2D != 0 {
+    if limits.maxTextureDimension2D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_2d = limits.maxTextureDimension2D;
     }
-    if limits.maxTextureDimension3D != 0 {
+    if limits.maxTextureDimension3D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_3d = limits.maxTextureDimension3D;
     }
-    if limits.maxTextureArrayLayers != 0 {
+    if limits.maxTextureArrayLayers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_array_layers = limits.maxTextureArrayLayers;
     }
-    if limits.maxBindGroups != 0 {
+    if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
-    if limits.maxDynamicUniformBuffersPerPipelineLayout != 0 {
+    //if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
+    //    wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
+    //}  not yet supportted in wgt
+    if limits.maxDynamicUniformBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout =
             limits.maxDynamicUniformBuffersPerPipelineLayout;
     }
-    if limits.maxDynamicStorageBuffersPerPipelineLayout != 0 {
+    if limits.maxDynamicStorageBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_storage_buffers_per_pipeline_layout =
             limits.maxDynamicStorageBuffersPerPipelineLayout;
     }
-    if limits.maxSampledTexturesPerShaderStage != 0 {
+    if limits.maxSampledTexturesPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_sampled_textures_per_shader_stage = limits.maxSampledTexturesPerShaderStage;
     }
-    if limits.maxSamplersPerShaderStage != 0 {
+    if limits.maxSamplersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_samplers_per_shader_stage = limits.maxSamplersPerShaderStage;
     }
-    if limits.maxStorageBuffersPerShaderStage != 0 {
+    if limits.maxStorageBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_storage_buffers_per_shader_stage = limits.maxStorageBuffersPerShaderStage;
     }
-    if limits.maxStorageTexturesPerShaderStage != 0 {
+    if limits.maxStorageTexturesPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_storage_textures_per_shader_stage = limits.maxStorageTexturesPerShaderStage;
     }
-    if limits.maxUniformBuffersPerShaderStage != 0 {
+    if limits.maxUniformBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_uniform_buffers_per_shader_stage = limits.maxUniformBuffersPerShaderStage;
     }
-    if limits.maxUniformBufferBindingSize != 0 {
+    if limits.maxUniformBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
         wgt_limits.max_uniform_buffer_binding_size = limits.maxUniformBufferBindingSize as u32;
     }
-    if limits.maxStorageBufferBindingSize != 0 {
+    if limits.maxStorageBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
-    if limits.minUniformBufferOffsetAlignment != 0 {
+    if limits.minUniformBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.min_uniform_buffer_offset_alignment = limits.minUniformBufferOffsetAlignment;
     }
-    if limits.minStorageBufferOffsetAlignment != 0 {
+    if limits.minStorageBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.min_storage_buffer_offset_alignment = limits.minStorageBufferOffsetAlignment;
     }
-    if limits.maxVertexBuffers != 0 {
+    if limits.maxVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
-    if limits.maxVertexAttributes != 0 {
+    if limits.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+        wgt_limits.max_buffer_size = limits.maxBufferSize;
+    }
+    if limits.maxVertexAttributes != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_attributes = limits.maxVertexAttributes;
     }
-    if limits.maxVertexBufferArrayStride != 0 {
+    if limits.maxVertexBufferArrayStride != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffer_array_stride = limits.maxVertexBufferArrayStride;
     }
-    if limits.maxInterStageShaderComponents != 0 {
+    if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
-    if limits.maxComputeWorkgroupStorageSize != 0 {
+    //if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
+    //    wgt_limits.max_inter_stage_shader_variables = limits.maxIntmaxInterStageShaderVariableserStageShaderComponents;
+    //}  not yet in wgt
+    //if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
+    //    wgt_limits.max_color_attachments = limits.maxColorAttachments;
+    //}  not yet in wgt
+    if limits.maxComputeWorkgroupStorageSize != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
-    if limits.maxComputeInvocationsPerWorkgroup != 0 {
+    if limits.maxComputeInvocationsPerWorkgroup != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_invocations_per_workgroup = limits.maxComputeInvocationsPerWorkgroup;
     }
-    if limits.maxComputeWorkgroupSizeX != 0 {
+    if limits.maxComputeWorkgroupSizeX != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_size_x = limits.maxComputeWorkgroupSizeX;
     }
-    if limits.maxComputeWorkgroupSizeY != 0 {
+    if limits.maxComputeWorkgroupSizeY != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_size_y = limits.maxComputeWorkgroupSizeY;
     }
-    if limits.maxComputeWorkgroupSizeZ != 0 {
+    if limits.maxComputeWorkgroupSizeZ != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_size_z = limits.maxComputeWorkgroupSizeZ;
     }
-    if limits.maxComputeWorkgroupsPerDimension != 0 {
+    if limits.maxComputeWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
     if let Some(extras) = extras {
-        if extras.maxPushConstantSize != 0 {
+        if extras.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
-        }
-        if extras.maxBufferSize != 0 {
-            wgt_limits.max_buffer_size = extras.maxBufferSize;
         }
     }
     wgt_limits
@@ -407,11 +451,15 @@ pub fn map_shader_module<'a>(
     wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
     glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>,
 ) -> wgc::pipeline::ShaderModuleSource<'a> {
+    #[cfg(feature = "wgsl")]
     if let Some(wgsl) = wgsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
-        wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice))
-    } else if let Some(spirv) = spirv {
+        return wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice));
+    }
+
+    #[cfg(feature = "spirv")]
+    if let Some(spirv) = spirv {
         let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
         // Parse the given shader code and store its representation.
         let options = naga::front::spv::Options {
@@ -421,8 +469,11 @@ pub fn map_shader_module<'a>(
         };
         let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
         let module = parser.parse().unwrap();
-        wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module))
-    } else if let Some(glsl) = glsl {
+        return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
+    }
+
+    #[cfg(feature = "glsl")]
+    if let Some(glsl) = glsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
         let mut options = naga::front::glsl::Options::from(
@@ -444,10 +495,10 @@ pub fn map_shader_module<'a>(
 
         let mut parser = naga::front::glsl::Parser::default();
         let module = parser.parse(&options, str_slice).unwrap();
-        wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module))
-    } else {
-        panic!("Shader not provided.");
+        return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
     }
+
+    panic!("Shader not provided.");
 }
 
 pub fn map_image_copy_texture(
@@ -479,8 +530,16 @@ pub fn map_image_copy_buffer(
 pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::ImageDataLayout {
     wgt::ImageDataLayout {
         offset: native.offset,
-        bytes_per_row: NonZeroU32::new(native.bytesPerRow),
-        rows_per_image: NonZeroU32::new(native.rowsPerImage),
+        bytes_per_row: match native.bytesPerRow {
+            0 => panic!("invalid bytesPerRow"),
+            native::WGPU_COPY_STRIDE_UNDEFINED => None,
+            _ => Some(unsafe { NonZeroU32::new_unchecked(native.bytesPerRow) }),
+        },
+        rows_per_image: match native.rowsPerImage {
+            0 => panic!("invalid rowsPerImage"),
+            native::WGPU_COPY_STRIDE_UNDEFINED => None,
+            _ => Some(unsafe { NonZeroU32::new_unchecked(native.rowsPerImage) }),
+        },
     }
 }
 
@@ -520,7 +579,7 @@ pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::Textur
         native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
         native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
         native::WGPUTextureDimension_3D => wgt::TextureDimension::D3,
-        x => panic!("Unknown texture dimension: {}", x),
+        x => panic!("Unknown texture dimension: {x}"),
     }
 }
 
@@ -554,7 +613,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_BGRA8Unorm => Some(wgt::TextureFormat::Bgra8Unorm),
         native::WGPUTextureFormat_BGRA8UnormSrgb => Some(wgt::TextureFormat::Bgra8UnormSrgb),
         native::WGPUTextureFormat_RGB10A2Unorm => Some(wgt::TextureFormat::Rgb10a2Unorm),
-        native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Float), // close enough?
+        native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Float),
         native::WGPUTextureFormat_RGB9E5Ufloat => Some(wgt::TextureFormat::Rgb9e5Ufloat),
         native::WGPUTextureFormat_RG32Float => Some(wgt::TextureFormat::Rg32Float),
         native::WGPUTextureFormat_RG32Uint => Some(wgt::TextureFormat::Rg32Uint),
@@ -565,11 +624,10 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_RGBA32Float => Some(wgt::TextureFormat::Rgba32Float),
         native::WGPUTextureFormat_RGBA32Uint => Some(wgt::TextureFormat::Rgba32Uint),
         native::WGPUTextureFormat_RGBA32Sint => Some(wgt::TextureFormat::Rgba32Sint),
-        native::WGPUTextureFormat_Stencil8 => None, // unimplmented in wgpu-core
+        native::WGPUTextureFormat_Stencil8 => Some(wgt::TextureFormat::Stencil8),
         native::WGPUTextureFormat_Depth16Unorm => Some(wgt::TextureFormat::Depth16Unorm),
         native::WGPUTextureFormat_Depth24Plus => Some(wgt::TextureFormat::Depth24Plus),
         native::WGPUTextureFormat_Depth24PlusStencil8 => Some(wgt::TextureFormat::Depth24PlusStencil8),
-        native::WGPUTextureFormat_Depth24UnormStencil8 =>  None, // unimplmented in wgpu-core
         native::WGPUTextureFormat_Depth32Float => Some(wgt::TextureFormat::Depth32Float),
         native::WGPUTextureFormat_Depth32FloatStencil8 => Some(wgt::TextureFormat::Depth32FloatStencil8),
         native::WGPUTextureFormat_BC1RGBAUnorm => Some(wgt::TextureFormat::Bc1RgbaUnorm),
@@ -629,7 +687,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
 }
 
 #[rustfmt::skip]
-pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUTextureFormat {
+pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::WGPUTextureFormat> {
     use wgt::{AstcBlock, AstcChannel};
 
     // TODO: unimplemented in wgpu-core
@@ -638,107 +696,108 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> native::WGPUText
 
     match rs_type {
         // unimplemented in webgpu.h
-        wgt::TextureFormat::R16Unorm => todo!(),
-        wgt::TextureFormat::R16Snorm => todo!(),
-        wgt::TextureFormat::Rg16Unorm => todo!(),
-        wgt::TextureFormat::Rg16Snorm => todo!(),
-        wgt::TextureFormat::Rgba16Unorm => todo!(),
-        wgt::TextureFormat::Rgba16Snorm => todo!(),
-        wgt::TextureFormat::Astc { block: _, channel: AstcChannel::Hdr } => todo!(),
+        wgt::TextureFormat::R16Unorm => None,
+        wgt::TextureFormat::R16Snorm => None,
+        wgt::TextureFormat::Rg16Unorm => None,
+        wgt::TextureFormat::Rg16Snorm => None,
+        wgt::TextureFormat::Rgba16Unorm => None,
+        wgt::TextureFormat::Rgba16Snorm => None,
+        wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
-        wgt::TextureFormat::R8Unorm => native::WGPUTextureFormat_R8Unorm,
-        wgt::TextureFormat::R8Snorm => native::WGPUTextureFormat_R8Snorm,
-        wgt::TextureFormat::R8Uint => native::WGPUTextureFormat_R8Uint,
-        wgt::TextureFormat::R8Sint => native::WGPUTextureFormat_R8Sint,
-        wgt::TextureFormat::R16Uint => native::WGPUTextureFormat_R16Uint,
-        wgt::TextureFormat::R16Sint => native::WGPUTextureFormat_R16Sint,
-        wgt::TextureFormat::R16Float => native::WGPUTextureFormat_R16Float,
-        wgt::TextureFormat::Rg8Unorm => native::WGPUTextureFormat_RG8Unorm,
-        wgt::TextureFormat::Rg8Snorm => native::WGPUTextureFormat_RG8Snorm,
-        wgt::TextureFormat::Rg8Uint => native::WGPUTextureFormat_RG8Uint,
-        wgt::TextureFormat::Rg8Sint => native::WGPUTextureFormat_RG8Sint,
-        wgt::TextureFormat::R32Float => native::WGPUTextureFormat_R32Float,
-        wgt::TextureFormat::R32Uint => native::WGPUTextureFormat_R32Uint,
-        wgt::TextureFormat::R32Sint => native::WGPUTextureFormat_R32Sint,
-        wgt::TextureFormat::Rg16Uint => native::WGPUTextureFormat_RG16Uint,
-        wgt::TextureFormat::Rg16Sint => native::WGPUTextureFormat_RG16Sint,
-        wgt::TextureFormat::Rg16Float => native::WGPUTextureFormat_RG16Float,
-        wgt::TextureFormat::Rgba8Unorm => native::WGPUTextureFormat_RGBA8Unorm,
-        wgt::TextureFormat::Rgba8UnormSrgb => native::WGPUTextureFormat_RGBA8UnormSrgb,
-        wgt::TextureFormat::Rgba8Snorm => native::WGPUTextureFormat_RGBA8Snorm,
-        wgt::TextureFormat::Rgba8Uint => native::WGPUTextureFormat_RGBA8Uint,
-        wgt::TextureFormat::Rgba8Sint => native::WGPUTextureFormat_RGBA8Sint,
-        wgt::TextureFormat::Bgra8Unorm => native::WGPUTextureFormat_BGRA8Unorm,
-        wgt::TextureFormat::Bgra8UnormSrgb => native::WGPUTextureFormat_BGRA8UnormSrgb,
-        wgt::TextureFormat::Rgb10a2Unorm => native::WGPUTextureFormat_RGB10A2Unorm,
-        wgt::TextureFormat::Rg11b10Float => native::WGPUTextureFormat_RG11B10Ufloat, // close enough?
-        wgt::TextureFormat::Rgb9e5Ufloat => native::WGPUTextureFormat_RGB9E5Ufloat,
-        wgt::TextureFormat::Rg32Float => native::WGPUTextureFormat_RG32Float,
-        wgt::TextureFormat::Rg32Uint => native::WGPUTextureFormat_RG32Uint,
-        wgt::TextureFormat::Rg32Sint => native::WGPUTextureFormat_RG32Sint,
-        wgt::TextureFormat::Rgba16Uint => native::WGPUTextureFormat_RGBA16Uint,
-        wgt::TextureFormat::Rgba16Sint => native::WGPUTextureFormat_RGBA16Sint,
-        wgt::TextureFormat::Rgba16Float => native::WGPUTextureFormat_RGBA16Float,
-        wgt::TextureFormat::Rgba32Float => native::WGPUTextureFormat_RGBA32Float,
-        wgt::TextureFormat::Rgba32Uint => native::WGPUTextureFormat_RGBA32Uint,
-        wgt::TextureFormat::Rgba32Sint => native::WGPUTextureFormat_RGBA32Sint,
-        wgt::TextureFormat::Depth16Unorm => native::WGPUTextureFormat_Depth16Unorm,
-        wgt::TextureFormat::Depth24Plus => native::WGPUTextureFormat_Depth24Plus,
-        wgt::TextureFormat::Depth24PlusStencil8 => native::WGPUTextureFormat_Depth24PlusStencil8,
-        wgt::TextureFormat::Depth32Float => native::WGPUTextureFormat_Depth32Float,
-        wgt::TextureFormat::Depth32FloatStencil8 => native::WGPUTextureFormat_Depth32FloatStencil8,
-        wgt::TextureFormat::Bc1RgbaUnorm => native::WGPUTextureFormat_BC1RGBAUnorm,
-        wgt::TextureFormat::Bc1RgbaUnormSrgb => native::WGPUTextureFormat_BC1RGBAUnormSrgb,
-        wgt::TextureFormat::Bc2RgbaUnorm => native::WGPUTextureFormat_BC2RGBAUnorm,
-        wgt::TextureFormat::Bc2RgbaUnormSrgb => native::WGPUTextureFormat_BC2RGBAUnormSrgb,
-        wgt::TextureFormat::Bc3RgbaUnorm => native::WGPUTextureFormat_BC3RGBAUnorm,
-        wgt::TextureFormat::Bc3RgbaUnormSrgb => native::WGPUTextureFormat_BC3RGBAUnormSrgb,
-        wgt::TextureFormat::Bc4RUnorm => native::WGPUTextureFormat_BC4RUnorm,
-        wgt::TextureFormat::Bc4RSnorm => native::WGPUTextureFormat_BC4RSnorm,
-        wgt::TextureFormat::Bc5RgUnorm => native::WGPUTextureFormat_BC5RGUnorm,
-        wgt::TextureFormat::Bc5RgSnorm => native::WGPUTextureFormat_BC5RGSnorm,
-        wgt::TextureFormat::Bc6hRgbUfloat => native::WGPUTextureFormat_BC6HRGBUfloat,
-        wgt::TextureFormat::Bc6hRgbSfloat => native::WGPUTextureFormat_BC6HRGBFloat,
-        wgt::TextureFormat::Bc7RgbaUnorm => native::WGPUTextureFormat_BC7RGBAUnorm,
-        wgt::TextureFormat::Bc7RgbaUnormSrgb => native::WGPUTextureFormat_BC7RGBAUnormSrgb,
-        wgt::TextureFormat::Etc2Rgb8Unorm => native::WGPUTextureFormat_ETC2RGB8Unorm,
-        wgt::TextureFormat::Etc2Rgb8UnormSrgb => native::WGPUTextureFormat_ETC2RGB8UnormSrgb,
-        wgt::TextureFormat::Etc2Rgb8A1Unorm => native::WGPUTextureFormat_ETC2RGB8A1Unorm,
-        wgt::TextureFormat::Etc2Rgb8A1UnormSrgb => native::WGPUTextureFormat_ETC2RGB8A1UnormSrgb,
-        wgt::TextureFormat::Etc2Rgba8Unorm => native::WGPUTextureFormat_ETC2RGBA8Unorm,
-        wgt::TextureFormat::Etc2Rgba8UnormSrgb => native::WGPUTextureFormat_ETC2RGBA8UnormSrgb,
-        wgt::TextureFormat::EacR11Unorm => native::WGPUTextureFormat_EACR11Unorm,
-        wgt::TextureFormat::EacR11Snorm => native::WGPUTextureFormat_EACR11Snorm,
-        wgt::TextureFormat::EacRg11Unorm => native::WGPUTextureFormat_EACRG11Unorm,
-        wgt::TextureFormat::EacRg11Snorm => native::WGPUTextureFormat_EACRG11Snorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B4x4, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC4x4Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B4x4, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC4x4UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B5x4, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC5x4Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B5x4, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC5x4UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B5x5, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC5x5Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B5x5, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC5x5UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B6x5, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC6x5Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B6x5, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC6x5UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B6x6, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC6x6Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B6x6, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC6x6UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B8x5, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC8x5Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B8x5, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC8x5UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B8x6, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC8x6Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B8x6, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC8x6UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B8x8, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC8x8Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B8x8, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC8x8UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC10x5Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC10x5UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC10x6Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC10x6UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC10x8Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC10x8UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC10x10Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC10x10UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC12x10Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC12x10UnormSrgb,
-        wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm } => native::WGPUTextureFormat_ASTC12x12Unorm,
-        wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb } => native::WGPUTextureFormat_ASTC12x12UnormSrgb,
+        wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
+        wgt::TextureFormat::R8Snorm => Some(native::WGPUTextureFormat_R8Snorm),
+        wgt::TextureFormat::R8Uint => Some(native::WGPUTextureFormat_R8Uint),
+        wgt::TextureFormat::R8Sint => Some(native::WGPUTextureFormat_R8Sint),
+        wgt::TextureFormat::R16Uint => Some(native::WGPUTextureFormat_R16Uint),
+        wgt::TextureFormat::R16Sint => Some(native::WGPUTextureFormat_R16Sint),
+        wgt::TextureFormat::R16Float => Some(native::WGPUTextureFormat_R16Float),
+        wgt::TextureFormat::Rg8Unorm => Some(native::WGPUTextureFormat_RG8Unorm),
+        wgt::TextureFormat::Rg8Snorm => Some(native::WGPUTextureFormat_RG8Snorm),
+        wgt::TextureFormat::Rg8Uint => Some(native::WGPUTextureFormat_RG8Uint),
+        wgt::TextureFormat::Rg8Sint => Some(native::WGPUTextureFormat_RG8Sint),
+        wgt::TextureFormat::R32Float => Some(native::WGPUTextureFormat_R32Float),
+        wgt::TextureFormat::R32Uint => Some(native::WGPUTextureFormat_R32Uint),
+        wgt::TextureFormat::R32Sint => Some(native::WGPUTextureFormat_R32Sint),
+        wgt::TextureFormat::Rg16Uint => Some(native::WGPUTextureFormat_RG16Uint),
+        wgt::TextureFormat::Rg16Sint => Some(native::WGPUTextureFormat_RG16Sint),
+        wgt::TextureFormat::Rg16Float => Some(native::WGPUTextureFormat_RG16Float),
+        wgt::TextureFormat::Rgba8Unorm => Some(native::WGPUTextureFormat_RGBA8Unorm),
+        wgt::TextureFormat::Rgba8UnormSrgb => Some(native::WGPUTextureFormat_RGBA8UnormSrgb),
+        wgt::TextureFormat::Rgba8Snorm => Some(native::WGPUTextureFormat_RGBA8Snorm),
+        wgt::TextureFormat::Rgba8Uint => Some(native::WGPUTextureFormat_RGBA8Uint),
+        wgt::TextureFormat::Rgba8Sint => Some(native::WGPUTextureFormat_RGBA8Sint),
+        wgt::TextureFormat::Bgra8Unorm => Some(native::WGPUTextureFormat_BGRA8Unorm),
+        wgt::TextureFormat::Bgra8UnormSrgb => Some(native::WGPUTextureFormat_BGRA8UnormSrgb),
+        wgt::TextureFormat::Rgb10a2Unorm => Some(native::WGPUTextureFormat_RGB10A2Unorm),
+        wgt::TextureFormat::Rg11b10Float => Some(native::WGPUTextureFormat_RG11B10Ufloat),
+        wgt::TextureFormat::Rgb9e5Ufloat => Some(native::WGPUTextureFormat_RGB9E5Ufloat),
+        wgt::TextureFormat::Rg32Float => Some(native::WGPUTextureFormat_RG32Float),
+        wgt::TextureFormat::Rg32Uint => Some(native::WGPUTextureFormat_RG32Uint),
+        wgt::TextureFormat::Rg32Sint => Some(native::WGPUTextureFormat_RG32Sint),
+        wgt::TextureFormat::Rgba16Uint => Some(native::WGPUTextureFormat_RGBA16Uint),
+        wgt::TextureFormat::Rgba16Sint => Some(native::WGPUTextureFormat_RGBA16Sint),
+        wgt::TextureFormat::Rgba16Float => Some(native::WGPUTextureFormat_RGBA16Float),
+        wgt::TextureFormat::Rgba32Float => Some(native::WGPUTextureFormat_RGBA32Float),
+        wgt::TextureFormat::Rgba32Uint => Some(native::WGPUTextureFormat_RGBA32Uint),
+        wgt::TextureFormat::Rgba32Sint => Some(native::WGPUTextureFormat_RGBA32Sint),
+        wgt::TextureFormat::Stencil8 => Some(native::WGPUTextureFormat_Stencil8),
+        wgt::TextureFormat::Depth16Unorm => Some(native::WGPUTextureFormat_Depth16Unorm),
+        wgt::TextureFormat::Depth24Plus => Some(native::WGPUTextureFormat_Depth24Plus),
+        wgt::TextureFormat::Depth24PlusStencil8 => Some(native::WGPUTextureFormat_Depth24PlusStencil8),
+        wgt::TextureFormat::Depth32Float => Some(native::WGPUTextureFormat_Depth32Float),
+        wgt::TextureFormat::Depth32FloatStencil8 => Some(native::WGPUTextureFormat_Depth32FloatStencil8),
+        wgt::TextureFormat::Bc1RgbaUnorm => Some(native::WGPUTextureFormat_BC1RGBAUnorm),
+        wgt::TextureFormat::Bc1RgbaUnormSrgb => Some(native::WGPUTextureFormat_BC1RGBAUnormSrgb),
+        wgt::TextureFormat::Bc2RgbaUnorm => Some(native::WGPUTextureFormat_BC2RGBAUnorm),
+        wgt::TextureFormat::Bc2RgbaUnormSrgb => Some(native::WGPUTextureFormat_BC2RGBAUnormSrgb),
+        wgt::TextureFormat::Bc3RgbaUnorm => Some(native::WGPUTextureFormat_BC3RGBAUnorm),
+        wgt::TextureFormat::Bc3RgbaUnormSrgb => Some(native::WGPUTextureFormat_BC3RGBAUnormSrgb),
+        wgt::TextureFormat::Bc4RUnorm => Some(native::WGPUTextureFormat_BC4RUnorm),
+        wgt::TextureFormat::Bc4RSnorm => Some(native::WGPUTextureFormat_BC4RSnorm),
+        wgt::TextureFormat::Bc5RgUnorm => Some(native::WGPUTextureFormat_BC5RGUnorm),
+        wgt::TextureFormat::Bc5RgSnorm => Some(native::WGPUTextureFormat_BC5RGSnorm),
+        wgt::TextureFormat::Bc6hRgbUfloat => Some(native::WGPUTextureFormat_BC6HRGBUfloat),
+        wgt::TextureFormat::Bc6hRgbSfloat => Some(native::WGPUTextureFormat_BC6HRGBFloat),
+        wgt::TextureFormat::Bc7RgbaUnorm => Some(native::WGPUTextureFormat_BC7RGBAUnorm),
+        wgt::TextureFormat::Bc7RgbaUnormSrgb => Some(native::WGPUTextureFormat_BC7RGBAUnormSrgb),
+        wgt::TextureFormat::Etc2Rgb8Unorm => Some(native::WGPUTextureFormat_ETC2RGB8Unorm),
+        wgt::TextureFormat::Etc2Rgb8UnormSrgb => Some(native::WGPUTextureFormat_ETC2RGB8UnormSrgb),
+        wgt::TextureFormat::Etc2Rgb8A1Unorm => Some(native::WGPUTextureFormat_ETC2RGB8A1Unorm),
+        wgt::TextureFormat::Etc2Rgb8A1UnormSrgb => Some(native::WGPUTextureFormat_ETC2RGB8A1UnormSrgb),
+        wgt::TextureFormat::Etc2Rgba8Unorm => Some(native::WGPUTextureFormat_ETC2RGBA8Unorm),
+        wgt::TextureFormat::Etc2Rgba8UnormSrgb => Some(native::WGPUTextureFormat_ETC2RGBA8UnormSrgb),
+        wgt::TextureFormat::EacR11Unorm => Some(native::WGPUTextureFormat_EACR11Unorm),
+        wgt::TextureFormat::EacR11Snorm => Some(native::WGPUTextureFormat_EACR11Snorm),
+        wgt::TextureFormat::EacRg11Unorm => Some(native::WGPUTextureFormat_EACRG11Unorm),
+        wgt::TextureFormat::EacRg11Snorm => Some(native::WGPUTextureFormat_EACRG11Snorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B4x4, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC4x4Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B4x4, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC4x4UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x4, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC5x4Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x4, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC5x4UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x5, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC5x5Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x5, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC5x5UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x5, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC6x5Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x5, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC6x5UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x6, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC6x6Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x6, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC6x6UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x5, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC8x5Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x5, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC8x5UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x6, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC8x6Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x6, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC8x6UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x8, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC8x8Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x8, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC8x8UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC10x5Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC10x5UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC10x6Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC10x6UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC10x8Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC10x8UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC10x10Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC10x10UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC12x10Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x10UnormSrgb),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC12x12Unorm),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x12UnormSrgb),
     }
 }
 
@@ -787,31 +846,38 @@ pub fn write_global_report(
 ) {
     native_report.surfaces = map_storage_report(report.surfaces);
 
-    #[cfg(vulkan)]
+    #[cfg(any(
+        windows,
+        all(
+            unix,
+            not(target_arch = "emscripten"),
+            not(target_os = "ios"),
+            not(target_os = "macos")
+        )
+    ))]
     if let Some(vulkan) = report.vulkan {
         native_report.vulkan = map_hub_report(vulkan);
         native_report.backendType = native::WGPUBackendType_Vulkan;
     }
 
-    #[cfg(metal)]
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
     if let Some(metal) = report.metal {
         native_report.metal = map_hub_report(metal);
         native_report.backendType = native::WGPUBackendType_Metal;
     }
 
-    #[cfg(dx12)]
-    if let Some(dx12) = report.dx12 {
-        native_report.dx12 = map_hub_report(dx12);
-        native_report.backendType = native::WGPUBackendType_D3D12;
+    #[cfg(windows)]
+    {
+        if let Some(dx12) = report.dx12 {
+            native_report.dx12 = map_hub_report(dx12);
+            native_report.backendType = native::WGPUBackendType_D3D12;
+        }
+        if let Some(dx11) = report.dx11 {
+            native_report.dx11 = map_hub_report(dx11);
+            native_report.backendType = native::WGPUBackendType_D3D11;
+        }
     }
 
-    #[cfg(dx11)]
-    if let Some(dx11) = report.dx11 {
-        native_report.dx11 = map_hub_report(dx11);
-        native_report.backendType = native::WGPUBackendType_D3D11;
-    }
-
-    #[cfg(gl)]
     if let Some(gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;
@@ -858,7 +924,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
         temp.push(native::WGPUFeatureName_IndirectFirstInstance);
     }
 
-    // native only features
+    // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
         temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
     }
@@ -891,14 +957,123 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_TextureCompressionETC2 => Some(Features::TEXTURE_COMPRESSION_ETC2),
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC_LDR),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
+        native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_FLOAT16),
 
-        // native only features
+        // wgpu-rs only features
         native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
         native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
         native::WGPUNativeFeature_MULTI_DRAW_INDIRECT => Some(Features::MULTI_DRAW_INDIRECT),
         native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
         native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE => Some(Features::VERTEX_WRITABLE_STORAGE),
 
+        // not available in wgpu-core
+        native::WGPUFeatureName_RG11B10UfloatRenderable => None,
+        native::WGPUFeatureName_BGRA8UnormStorage => None,
         _ => None,
+    }
+}
+
+pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPresentMode> {
+    match mode {
+        wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
+        wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
+        wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
+
+        wgt::PresentMode::AutoVsync
+        | wgt::PresentMode::AutoNoVsync
+        | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
+    }
+}
+
+pub fn to_native_composite_alpha_mode(
+    mode: wgt::CompositeAlphaMode,
+) -> native::WGPUCompositeAlphaMode {
+    match mode {
+        wgt::CompositeAlphaMode::Auto => native::WGPUCompositeAlphaMode_Auto,
+        wgt::CompositeAlphaMode::Opaque => native::WGPUCompositeAlphaMode_Opaque,
+        wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_PreMultiplied,
+        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_PostMultiplied,
+        wgt::CompositeAlphaMode::Inherit => native::WGPUCompositeAlphaMode_Inherit,
+    }
+}
+
+pub fn map_swapchain_descriptor(
+    desc: &native::WGPUSwapChainDescriptor,
+    extras: Option<&native::WGPUSwapChainDescriptorExtras>,
+) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
+    let (alpha_mode, view_formats) = match extras {
+        Some(extras) => (
+            match extras.alphaMode {
+                native::WGPUCompositeAlphaMode_Auto => wgt::CompositeAlphaMode::Auto,
+                native::WGPUCompositeAlphaMode_Opaque => wgt::CompositeAlphaMode::Opaque,
+                native::WGPUCompositeAlphaMode_PreMultiplied => {
+                    wgt::CompositeAlphaMode::PreMultiplied
+                }
+                native::WGPUCompositeAlphaMode_PostMultiplied => {
+                    wgt::CompositeAlphaMode::PostMultiplied
+                }
+                native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,
+                _ => panic!("invalid alpha mode for swapchain descriptor"),
+            },
+            unsafe { make_slice(extras.viewFormats, extras.viewFormatCount) }
+                .iter()
+                .map(|f| {
+                    map_texture_format(*f).expect("invalid view format for swapchain descriptor")
+                })
+                .collect(),
+        ),
+        None => (wgt::CompositeAlphaMode::default(), Vec::new()),
+    };
+
+    wgt::SurfaceConfiguration {
+        usage: wgt::TextureUsages::from_bits(desc.usage).unwrap(),
+        format: map_texture_format(desc.format).expect("Texture format not defined"),
+        width: desc.width,
+        height: desc.height,
+        present_mode: map_present_mode(desc.presentMode),
+        alpha_mode,
+        view_formats,
+    }
+}
+
+pub fn map_query_set_descriptor<'a>(
+    desc: &native::WGPUQuerySetDescriptor,
+) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
+    wgt::QuerySetDescriptor {
+        label: OwnedLabel::new(desc.label).into_cow(),
+        count: desc.count,
+        ty: match desc.type_ {
+            native::WGPUQueryType_Occlusion => wgt::QueryType::Occlusion,
+            native::WGPUQueryType_Timestamp => wgt::QueryType::Timestamp,
+            native::WGPUQueryType_PipelineStatistics => {
+                let mut types = wgt::PipelineStatisticsTypes::empty();
+
+                unsafe { make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount as _) }
+                    .iter()
+                    .for_each(|f| {
+                        types.insert(match *f {
+                            native::WGPUPipelineStatisticName_VertexShaderInvocations => {
+                                wgt::PipelineStatisticsTypes::VERTEX_SHADER_INVOCATIONS
+                            }
+                            native::WGPUPipelineStatisticName_ClipperInvocations => {
+                                wgt::PipelineStatisticsTypes::CLIPPER_INVOCATIONS
+                            }
+                            native::WGPUPipelineStatisticName_ClipperPrimitivesOut => {
+                                wgt::PipelineStatisticsTypes::CLIPPER_PRIMITIVES_OUT
+                            }
+                            native::WGPUPipelineStatisticName_FragmentShaderInvocations => {
+                                wgt::PipelineStatisticsTypes::FRAGMENT_SHADER_INVOCATIONS
+                            }
+                            native::WGPUPipelineStatisticName_ComputeShaderInvocations => {
+                                wgt::PipelineStatisticsTypes::COMPUTE_SHADER_INVOCATIONS
+                            }
+                            _ => panic!("invalid pipeline statistics name"),
+                        });
+                    });
+
+                wgt::QueryType::PipelineStatistics(types)
+            }
+            _ => panic!("invalid query type"),
+        },
     }
 }

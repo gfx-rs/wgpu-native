@@ -7,8 +7,6 @@ FFI_DIR:=ffi
 BUILD_DIR:=build
 CREATE_BUILD_DIR:=
 OUTPUT_DIR:=
-FINAL_LIB_NAME:=libwgpu
-
 
 WILDCARD_SOURCE:=$(wildcard src/*.rs)
 
@@ -38,18 +36,13 @@ else
 endif
 
 ifeq ($(OS),Windows_NT)
-	LIB_NAME=libwgpu
-	LIB_EXTENSION=dll
 	OS_NAME=windows
 else
 	UNAME_S:=$(shell uname -s)
-	LIB_NAME=libwgpu
 	ifeq ($(UNAME_S),Linux)
-		LIB_EXTENSION=so
 		OS_NAME=linux
 	endif
 	ifeq ($(UNAME_S),Darwin)
-		LIB_EXTENSION=dylib
 		OS_NAME=macos
 	endif
 endif
@@ -66,15 +59,13 @@ package: lib-native lib-native-release
 	echo "$(GIT_TAG_FULL)" > dist/commit-sha
 	for RELEASE in debug release; do \
 		ARCHIVE=$(ARCHIVE_NAME)-$$RELEASE.zip; \
+		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
 		rm -f dist/$$ARCHIVE; \
 		sed 's/webgpu-headers\///' ffi/wgpu.h > wgpu.h ;\
 		if [ $(OS_NAME) = windows ]; then \
-			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).dll $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).dll; \
-			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).dll.lib $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).lib; \
-			7z a -tzip dist/$$ARCHIVE ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./$(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/wgpu_native.dll.lib ./$$LIBDIR/wgpu_native.pdb ./$$LIBDIR/wgpu_native.lib ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		else \
-			mv $(TARGET_DIR)/$$RELEASE/$(LIB_NAME).$(LIB_EXTENSION) $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION); \
-			zip -j dist/$$ARCHIVE $(TARGET_DIR)/$$RELEASE/$(FINAL_LIB_NAME).$(LIB_EXTENSION) ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
+			zip -j dist/$$ARCHIVE ./$$LIBDIR/libwgpu_native.so ./$$LIBDIR/libwgpu_native.dylib ./$$LIBDIR/libwgpu_native.a ./ffi/webgpu-headers/*.h ./wgpu.h ./dist/commit-sha; \
 		fi; \
 		rm wgpu.h ;\
 	done
@@ -102,22 +93,28 @@ lib-native-release: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build --release $(EXTRA_BUILD_ARGS)
 
 example-compute: lib-native examples/compute/main.c
-	cd examples/compute && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
+	cd examples/compute && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-compute: example-compute
 	cd examples/compute && "$(OUTPUT_DIR)/compute" 1 2 3 4
 
 example-triangle: lib-native examples/triangle/main.c
-	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
+	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-triangle: example-triangle
+	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
+
+example-triangle-release: lib-native-release examples/triangle/main.c
+	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
+
+run-example-triangle-release: example-triangle-release
 	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
 
 build-helper:
 	cargo build -p helper
 
 example-capture: lib-native build-helper examples/capture/main.c
-	cd examples/capture && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug .. $(GENERATOR_PLATFORM) && cmake --build .
+	cd examples/capture && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
 
 run-example-capture: example-capture
 	cd examples/capture && "$(OUTPUT_DIR)/capture"
