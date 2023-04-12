@@ -1,7 +1,7 @@
 WebGPU distribution
 ===================
 
-This is pre-compiled distribution of [WebGPU native](https://github.com/webgpu-native/webgpu-headers) based on [`wgpu-native`](https://github.com/gfx-rs/wgpu-native) and ready to be used in a [CMake](https://cmake.org/) project.
+This is a pre-compiled distribution of [WebGPU native](https://github.com/webgpu-native/webgpu-headers) based on [`wgpu-native`](https://github.com/gfx-rs/wgpu-native) and ready to be used in a [CMake](https://cmake.org/) project.
 
 Suggested usage
 ---------------
