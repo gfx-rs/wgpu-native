@@ -298,12 +298,12 @@ jobs:
           unzip -d distribution/bin $zipfile *.so *.dylib *.dll
         done
         mv distribution webgpu
-        zip -r wgpu-distribution.zip webgpu
+        zip -r wgpu-distribution-release.zip webgpu
     - name: Upload
       uses: actions/upload-artifact@v3
       with:
         path: wgpu-distribution.zip
-        name: dist-cmake
+        name: dist
 
   distribution-debug:
     name: Create easy-to-integrate distributions (debug)
@@ -332,12 +332,12 @@ jobs:
           unzip -d distribution/bin $zipfile *.so *.dylib *.dll
         done
         mv distribution webgpu
-        zip -r wgpu-distribution.zip webgpu
+        zip -r wgpu-distribution-debug.zip webgpu
     - name: Upload
       uses: actions/upload-artifact@v3
       with:
         path: wgpu-distribution.zip
-        name: dist-cmake
+        name: dist
 
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux32, Linux64),
@@ -360,11 +360,6 @@ jobs:
       with:
         name: dist
         path: dist
-    - name: Download distributions
-      uses: actions/download-artifact@v3
-      with:
-        name: dist-cmake
-        path: dist-cmake
     - name: Create commit-sha file
       env:
         GITHUB_SHA: ${{ github.sha }}
@@ -388,5 +383,5 @@ jobs:
       uses: AButler/upload-release-assets@v2.0
       with:
         release-tag: ${{ env.WGPU_NATIVE_VERSION }}
-        files: 'dist/*.zip;dist-cmake/*.zip;dist/commit-sha'
+        files: 'dist/*.zip;dist/commit-sha'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
