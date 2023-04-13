@@ -336,7 +336,7 @@ jobs:
     - name: Upload
       uses: actions/upload-artifact@v3
       with:
-        path: wgpu-distribution.zip
+        path: wgpu-distribution-debug.zip
         name: dist
 
   # Create a Github release and upload the binary libs that we just built.
