@@ -1,38 +1,27 @@
-cmake_minimum_required(VERSION 3.11b)
+cmake_minimum_required(VERSION 3.20)
+project(triangle LANGUAGES C)
 
-project(triangle)
+add_executable(triangle main.c)
 
-set(TARGET_NAME triangle)
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-add_executable(triangle main.c ../framework.c)
+include_directories(${CMAKE_SOURCE_DIR}/../ffi)
+include_directories(${CMAKE_SOURCE_DIR}/framework)
+include_directories(${DEP_GLFW_DIR}/include)
 
-if(MSVC)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_WINDOWS)
-    target_compile_options(${TARGET_NAME} PRIVATE /W4)
-    set(OS_LIBRARIES "userenv" "ws2_32" "Dwmapi" "dbghelp" "d3dcompiler" "D3D12" "D3D11" "DXGI" "setupapi" "Bcrypt" "ntdll")
+if (WIN32)
+    add_definitions(-DWGPU_TARGET_WINDOWS)
+    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt)
+elseif(UNIX AND NOT APPLE)
+    add_definitions(-DWGPU_TARGET_LINUX_X11)
+    set(OS_LIBRARIES "-lm -ldl")
 elseif(APPLE)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_MACOS)
-    set(OS_LIBRARIES "-framework Cocoa" "-framework CoreVideo" "-framework IOKit" "-framework QuartzCore")
-    target_compile_options(${TARGET_NAME} PRIVATE -x objective-c)
-else(MSVC)
-if(USE_WAYLAND)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_LINUX_WAYLAND)
-else(USE_WAYLAND)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_LINUX_X11)
-endif(USE_WAYLAND)
-    target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic)
-endif(MSVC)
+    add_definitions(-DWGPU_TARGET_MACOS)
+    set(OS_LIBRARIES "-framework CoreFoundation -framework QuartzCore -framework Metal")
+endif()
 
-find_package(glfw3 3.3 REQUIRED
-    HINTS "$ENV{GLFW3_INSTALL_DIR}"
-)
-
-find_library(WGPU_LIBRARY wgpu_native
-    HINTS "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug"
-)
-
-target_include_directories(${TARGET_NAME} PUBLIC $ENV{GLFW3_INCLUDE_DIR})
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../ffi)
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)
-
-target_link_libraries(${TARGET_NAME} glfw ${WGPU_LIBRARY} ${OS_LIBRARIES})
+target_link_libraries(triangle framework glfw ${WGPU_LIBRARY} ${OS_LIBRARIES})

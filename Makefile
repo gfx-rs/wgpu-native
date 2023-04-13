@@ -1,13 +1,3 @@
-RUST_BACKTRACE:=1
-EXCLUDES:=
-
-GENERATOR_PLATFORM:=
-
-FFI_DIR:=ffi
-BUILD_DIR:=build
-CREATE_BUILD_DIR:=
-OUTPUT_DIR:=
-
 WILDCARD_SOURCE:=$(wildcard src/*.rs)
 
 GIT_TAG=$(shell git describe --abbrev=0 --tags)
@@ -26,16 +16,6 @@ ifndef ARCHIVE_NAME
 endif
 
 ifeq ($(OS),Windows_NT)
-	# '-Force' ignores error if folder already exists
-	CREATE_BUILD_DIR=powershell -Command md $(BUILD_DIR) -Force
-	GENERATOR_PLATFORM=-DCMAKE_GENERATOR_PLATFORM=x64
-	OUTPUT_DIR=build/Debug
-else
-	CREATE_BUILD_DIR=mkdir -p $(BUILD_DIR)
-	OUTPUT_DIR=build
-endif
-
-ifeq ($(OS),Windows_NT)
 	OS_NAME=windows
 else
 	UNAME_S:=$(shell uname -s)
@@ -47,12 +27,21 @@ else
 	endif
 endif
 
-.PHONY: all check test doc clear \
-	example-compute example-triangle \
-	run-example-compute run-example-triangle  \
-	lib-native lib-native-release
+MKDIR_CMD:=mkdir -p
 
-all: example-compute example-triangle example-capture
+ifeq ($(origin MSYSTEM),undefined) # MSYSTEM env var is defined on msys2
+	ifeq ($(OS),Windows_NT)
+		SHELL:=cmd
+		MKDIR_CMD=powershell -Command md -Force
+	endif
+endif
+
+.PHONY: check test doc clear \
+	lib-native lib-native-release \
+	example-capture example-compute example-triangle \
+	example-capture-release example-compute-release example-triangle-release \
+	run-example-capture run-example-compute run-example-triangle \
+	run-example-capture-release run-example-compute-release run-example-triangle-release
 
 package: lib-native lib-native-release
 	mkdir -p dist
@@ -72,7 +61,7 @@ package: lib-native lib-native-release
 
 clean:
 	cargo clean
-	rm -Rf examples/compute/build examples/triangle/build
+	rm -Rf examples/build
 
 check:
 	cargo check --all
@@ -92,29 +81,44 @@ lib-native: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 lib-native-release: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build --release $(EXTRA_BUILD_ARGS)
 
-example-compute: lib-native examples/compute/main.c
-	cd examples/compute && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
+examples-debug: lib-native
+	cd examples && $(MKDIR_CMD) "build/Debug" && cd build/Debug && cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../..
 
-run-example-compute: example-compute
-	cd examples/compute && "$(OUTPUT_DIR)/compute" 1 2 3 4
+examples-release: lib-native-release
+	cd examples && $(MKDIR_CMD) "build/RelWithDebInfo" && cd build/RelWithDebInfo && cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../..
 
-example-triangle: lib-native examples/triangle/main.c
-	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
-
-run-example-triangle: example-triangle
-	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
-
-example-triangle-release: lib-native-release examples/triangle/main.c
-	cd examples/triangle && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
-
-run-example-triangle-release: example-triangle-release
-	cd examples/triangle && "$(OUTPUT_DIR)/triangle"
-
-build-helper:
-	cargo build -p helper
-
-example-capture: lib-native build-helper examples/capture/main.c
-	cd examples/capture && $(CREATE_BUILD_DIR) && cd build && cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .. $(GENERATOR_PLATFORM) && cmake --build .
+example-capture: examples-debug
+	cd examples/build/Debug && cmake --build . --target capture
 
 run-example-capture: example-capture
-	cd examples/capture && "$(OUTPUT_DIR)/capture"
+	cd examples/capture && "../build/Debug/capture/capture"
+
+example-capture-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target capture
+
+run-example-capture-release: example-capture-release
+	cd examples/capture && "../build/RelWithDebInfo/capture/capture"
+
+example-compute: examples-debug
+	cd examples/build/Debug && cmake --build . --target compute
+
+run-example-compute: example-compute
+	cd examples/compute && "../build/Debug/compute/compute"
+
+example-compute-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target compute
+
+run-example-compute-release: example-compute-release
+	cd examples/compute && "../build/RelWithDebInfo/compute/compute"
+
+example-triangle: examples-debug
+	cd examples/build/Debug && cmake --build . --target triangle
+
+run-example-triangle: example-triangle
+	cd examples/triangle && "../build/Debug/triangle/triangle"
+
+example-triangle-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target triangle
+
+run-example-triangle-release: example-triangle-release
+	cd examples/triangle && "../build/RelWithDebInfo/triangle/triangle"
