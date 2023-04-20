@@ -1,7 +1,7 @@
 use crate::native::{self, UnwrapId};
 use crate::{follow_chain, make_slice, map_enum, Label, OwnedLabel};
 use std::path::Path;
-use std::{borrow::Cow, ffi::CStr, num::NonZeroU32, slice};
+use std::{borrow::Cow, ffi::CStr, slice};
 
 map_enum!(
     map_load_op,
@@ -467,8 +467,8 @@ pub fn map_shader_module<'a>(
             strict_capabilities: true,
             block_ctx_dump_prefix: None,
         };
-        let parser = naga::front::spv::Parser::new(slice.iter().cloned(), &options);
-        let module = parser.parse().unwrap();
+        let frontend = naga::front::spv::Frontend::new(slice.iter().cloned(), &options);
+        let module = frontend.parse().unwrap();
         return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
     }
 
@@ -493,8 +493,8 @@ pub fn map_shader_module<'a>(
                 .insert(String::from(name_str_slice), String::from(value_str_slice));
         }
 
-        let mut parser = naga::front::glsl::Parser::default();
-        let module = parser.parse(&options, str_slice).unwrap();
+        let mut frontend = naga::front::glsl::Frontend::default();
+        let module = frontend.parse(&options, str_slice).unwrap();
         return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
     }
 
@@ -533,12 +533,12 @@ pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::I
         bytes_per_row: match native.bytesPerRow {
             0 => panic!("invalid bytesPerRow"),
             native::WGPU_COPY_STRIDE_UNDEFINED => None,
-            _ => Some(unsafe { NonZeroU32::new_unchecked(native.bytesPerRow) }),
+            _ => Some(native.bytesPerRow),
         },
         rows_per_image: match native.rowsPerImage {
             0 => panic!("invalid rowsPerImage"),
             native::WGPU_COPY_STRIDE_UNDEFINED => None,
-            _ => Some(unsafe { NonZeroU32::new_unchecked(native.rowsPerImage) }),
+            _ => Some(native.rowsPerImage),
         },
     }
 }
@@ -641,7 +641,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_BC5RGUnorm => Some(wgt::TextureFormat::Bc5RgUnorm),
         native::WGPUTextureFormat_BC5RGSnorm => Some(wgt::TextureFormat::Bc5RgSnorm),
         native::WGPUTextureFormat_BC6HRGBUfloat => Some(wgt::TextureFormat::Bc6hRgbUfloat),
-        native::WGPUTextureFormat_BC6HRGBFloat => Some(wgt::TextureFormat::Bc6hRgbSfloat),
+        native::WGPUTextureFormat_BC6HRGBFloat => Some(wgt::TextureFormat::Bc6hRgbFloat),
         native::WGPUTextureFormat_BC7RGBAUnorm => Some(wgt::TextureFormat::Bc7RgbaUnorm),
         native::WGPUTextureFormat_BC7RGBAUnormSrgb => Some(wgt::TextureFormat::Bc7RgbaUnormSrgb),
         native::WGPUTextureFormat_ETC2RGB8Unorm => Some(wgt::TextureFormat::Etc2Rgb8Unorm),
@@ -757,7 +757,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Bc5RgUnorm => Some(native::WGPUTextureFormat_BC5RGUnorm),
         wgt::TextureFormat::Bc5RgSnorm => Some(native::WGPUTextureFormat_BC5RGSnorm),
         wgt::TextureFormat::Bc6hRgbUfloat => Some(native::WGPUTextureFormat_BC6HRGBUfloat),
-        wgt::TextureFormat::Bc6hRgbSfloat => Some(native::WGPUTextureFormat_BC6HRGBFloat),
+        wgt::TextureFormat::Bc6hRgbFloat => Some(native::WGPUTextureFormat_BC6HRGBFloat),
         wgt::TextureFormat::Bc7RgbaUnorm => Some(native::WGPUTextureFormat_BC7RGBAUnorm),
         wgt::TextureFormat::Bc7RgbaUnormSrgb => Some(native::WGPUTextureFormat_BC7RGBAUnormSrgb),
         wgt::TextureFormat::Etc2Rgb8Unorm => Some(native::WGPUTextureFormat_ETC2RGB8Unorm),
@@ -917,11 +917,14 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_COMPRESSION_ETC2) {
         temp.push(native::WGPUFeatureName_TextureCompressionETC2);
     }
-    if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC_LDR) {
+    if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC) {
         temp.push(native::WGPUFeatureName_TextureCompressionASTC);
     }
     if features.contains(wgt::Features::INDIRECT_FIRST_INSTANCE) {
         temp.push(native::WGPUFeatureName_IndirectFirstInstance);
+    }
+    if features.contains(wgt::Features::SHADER_F16) {
+        temp.push(native::WGPUFeatureName_ShaderF16);
     }
 
     // wgpu-rs only features
@@ -955,9 +958,9 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_PipelineStatisticsQuery => Some(Features::PIPELINE_STATISTICS_QUERY),
         native::WGPUFeatureName_TextureCompressionBC => Some(Features::TEXTURE_COMPRESSION_BC),
         native::WGPUFeatureName_TextureCompressionETC2 => Some(Features::TEXTURE_COMPRESSION_ETC2),
-        native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC_LDR),
+        native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
-        native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_FLOAT16),
+        native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
