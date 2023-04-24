@@ -37,7 +37,7 @@ jobs:
       TARGET: x86_64-unknown-linux-gnu
       ARCHIVE_NAME: wgpu-linux-x86_64
       TOOLCHAIN: stable-x86_64-unknown-linux-gnu
-      IMAGE: manylinux_2_24_x86_64
+      IMAGE: manylinux_2_28_x86_64
     steps:
     # Common part (same for nearly each build)
     - uses: actions/checkout@v3
@@ -57,53 +57,7 @@ jobs:
             curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
             rustup toolchain install --no-self-update $TOOLCHAIN && \
             rustup default $TOOLCHAIN && \
-            echo 'deb http://deb.debian.org/debian stretch-backports main' | tee -a /etc/apt/sources.list && \
-            apt update && \
-            apt install -y clang-5.0 zip && \
-            make package")
-          docker start -ai $CID
-          mkdir -p dist
-          docker cp $CID:/tmp/wgpu-native/dist/. dist/.
-          docker rm $CID
-    # Upload (same for each build)
-    - name: Upload
-      uses: actions/upload-artifact@v3
-      with:
-        path: dist
-        name: dist
-
-  # -----
-  linux-i686:
-    # Config
-    name: release - linux-i686
-    runs-on: ubuntu-latest
-    env:
-      TARGET: i686-unknown-linux-gnu
-      ARCHIVE_NAME: wgpu-linux-i686
-      TOOLCHAIN: stable-i686-unknown-linux-gnu
-      IMAGE: manylinux_2_24_i686
-    steps:
-    # Common part (same for nearly each build)
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Set WGPU_NATIVE_VERSION
-      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    # Build
-    - name: Build
-      run: |
-          CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME -e WGPU_NATIVE_VERSION quay.io/pypa/$IMAGE bash -c "\
-            cp -r /tmp/src/. . && \
-            rm -rf ./dist && \
-            export PATH=/root/.cargo/bin:\$PATH && \
-            export USER=root && \
-            curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
-            rustup toolchain install --no-self-update $TOOLCHAIN && \
-            rustup default $TOOLCHAIN && \
-            echo 'deb http://deb.debian.org/debian stretch-backports main' | tee -a /etc/apt/sources.list && \
-            apt update && \
-            apt install -y clang-5.0 zip && \
+            dnf install clang-devel zip -y && \
             make package")
           docker start -ai $CID
           mkdir -p dist
@@ -133,16 +87,15 @@ jobs:
       run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable-msvc
-        target: ${{ env.TARGET }}
-        profile: minimal
-        override: true
+        targets: ${{ env.TARGET }}
     # Build
     - name: Install llvm
       run: |
-        choco install -y --force llvm | exit 0
+        set -x
+        choco install -y llvm
         echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
       shell: bash
     - name: Build
@@ -172,16 +125,15 @@ jobs:
       run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable-i686-pc-windows-msvc
-        target: ${{ env.TARGET }}
-        profile: minimal
-        override: true
+        targets: ${{ env.TARGET }}
     # Build
     - name: Install llvm
       run: |
-        choco install -y --force --x86 llvm | exit 0
+        set -x
+        choco install -y --x86 --force llvm
         echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
       shell: bash
     - name: Build
@@ -212,12 +164,9 @@ jobs:
       run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: ${{ env.TARGET }}
-        profile: minimal
-        override: true
+        targets: ${{ env.TARGET }}
     # Build
     - name: Select XCode version
       run:
@@ -250,12 +199,9 @@ jobs:
       run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
       shell: bash
     - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: ${{ env.TARGET }}
-        profile: minimal
-        override: true
+        targets: ${{ env.TARGET }}
     # Build
     - name: Select XCode version
       run:
@@ -272,12 +218,12 @@ jobs:
         name: dist
 
   # Create a Github release and upload the binary libs that we just built.
-  # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux32, Linux64),
+  # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux64),
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
-    needs: [linux-x86_64, linux-i686, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
-    runs-on: ubuntu-18.04
+    needs: [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
     - uses: actions/checkout@v3
@@ -295,23 +241,17 @@ jobs:
         GITHUB_SHA: ${{ github.sha }}
       run: |
         echo $GITHUB_SHA > dist/commit-sha
-    - name: Create release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ env.WGPU_NATIVE_VERSION }}
-        release_name: ${{ env.WGPU_NATIVE_VERSION }}
+        name: ${{ env.WGPU_NATIVE_VERSION }}
+        files: |
+          dist/*.zip
+          dist/commit-sha
         body: |
             Autogenerated binary modules.
-            The Linux builds are built on CentOS 7 (glibc 2.24, see [manylinux_2_24](https://www.python.org/dev/peps/pep-0600/)).
+            The Linux builds are built on AlmaLinux 8 [manylinux_2_28](https://github.com/pypa/manylinux#manylinux).
             The MacOS builds target MacOS 10.13 High Sierra and up.
         draft: false
         prerelease: false
-    - name: Upload Release Assets
-      # Move back to official action after fix https://github.com/actions/upload-release-asset/issues/4
-      uses: AButler/upload-release-assets@v2.0
-      with:
-        release-tag: ${{ env.WGPU_NATIVE_VERSION }}
-        files: 'dist/*.zip;dist/commit-sha'
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
