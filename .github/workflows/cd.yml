@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
   push:
     tags: [ 'v*' ]
-    branches: [ master, cd ]
+    branches: [ trunk, cd ]
 
 jobs:
 
