@@ -1,0 +1,3 @@
+# See https://github.com/github/linguist/blob/master/docs/overrides.md#vendored-code
+
+stb_image_write.h linguist-vendored

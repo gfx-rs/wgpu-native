@@ -78,6 +78,4 @@ bindgen = "0.63"
 
 [workspace]
 resolver = "2"
-members = [
-	"examples/helper"
-]
+
