@@ -154,7 +154,7 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     if let Ok(props) = maybe_props {
         adapter.name = CString::new((&props.name) as &str).unwrap();
         let driver_desc = format!("{} {}", props.driver, props.driver_info);
-        adapter.driver_desc = CString::new(driver_desc).unwrap();
+        adapter.driver_desc = CString::new(driver_desc.trim()).unwrap();
 
         properties.vendorID = props.vendor as u32;
         properties.vendorName = adapter.vendor_name.as_ptr();
