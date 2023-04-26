@@ -67,6 +67,9 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     context: context.clone(),
                     id: adapter,
                     name: CString::default(),
+                    vendor_name: CString::default(),
+                    architecture_name: CString::default(),
+                    driver_desc: CString::default(),
                 }
                 .into_handle(),
                 std::ptr::null(),
@@ -150,10 +153,15 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     let maybe_props = gfx_select!(id => context.adapter_get_info(id));
     if let Ok(props) = maybe_props {
         adapter.name = CString::new((&props.name) as &str).unwrap();
+        let driver_desc = format!("{} {}", props.driver, props.driver_info);
+        adapter.driver_desc = CString::new(driver_desc).unwrap();
 
-        properties.name = adapter.name.as_ptr();
         properties.vendorID = props.vendor as u32;
+        properties.vendorName = adapter.vendor_name.as_ptr();
+        properties.architecture = adapter.architecture_name.as_ptr();
         properties.deviceID = props.device as u32;
+        properties.name = adapter.name.as_ptr();
+        properties.driverDescription = adapter.driver_desc.as_ptr();
         properties.adapterType = match props.device_type {
             wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
             wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
