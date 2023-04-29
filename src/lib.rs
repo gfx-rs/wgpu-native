@@ -61,6 +61,9 @@ pub mod native {
         pub context: Arc<Context>,
         pub id: AdapterId,
         pub name: std::ffi::CString,
+        pub vendor_name: std::ffi::CString,
+        pub architecture_name: std::ffi::CString,
+        pub driver_desc: std::ffi::CString,
     }
 
     pub struct WGPUSwapChainImpl {
