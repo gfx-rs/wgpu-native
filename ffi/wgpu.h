@@ -22,7 +22,7 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_MULTI_DRAW_INDIRECT = 0x60000003,
     WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT = 0x60000004,
     WGPUNativeFeature_VERTEX_WRITABLE_STORAGE = 0x60000005,
-    WGPUNativeSType_Force32 = 0x7FFFFFFF
+    WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
 typedef enum WGPULogLevel {
