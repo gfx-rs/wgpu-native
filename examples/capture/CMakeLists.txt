@@ -1,33 +1,25 @@
-cmake_minimum_required(VERSION 3.11b)
+cmake_minimum_required(VERSION 3.20)
+project(capture LANGUAGES C)
 
-project(capture)
+add_executable(capture main.c)
 
-set(TARGET_NAME capture)
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-add_executable(${TARGET_NAME} main.c ../framework.c)
+add_definitions(-DSTB_IMAGE_WRITE_IMPLEMENTATION)
 
-if(MSVC)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_WINDOWS)
-    target_compile_options(${TARGET_NAME} PRIVATE /W4)
-    set(OS_LIBRARIES "userenv" "ws2_32" "Dwmapi" "dbghelp" "d3dcompiler" "D3D12" "D3D11" "DXGI" "setupapi" "Bcrypt" "ntdll")
+include_directories(${CMAKE_SOURCE_DIR}/../ffi)
+include_directories(${CMAKE_SOURCE_DIR}/framework)
+
+if (WIN32)
+    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt)
+elseif(UNIX AND NOT APPLE)
+    set(OS_LIBRARIES "-lm -ldl")
 elseif(APPLE)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_MACOS)
-    set(OS_LIBRARIES "-framework Cocoa" "-framework CoreVideo" "-framework IOKit" "-framework QuartzCore")
-    target_compile_options(${TARGET_NAME} PRIVATE -x objective-c)
-else(MSVC)
-    add_definitions(-DWGPU_TARGET=WGPU_TARGET_LINUX)
-    target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wextra -pedantic)
-endif(MSVC)
+    set(OS_LIBRARIES "-framework CoreFoundation -framework QuartzCore -framework Metal")
+endif()
 
-find_library(WGPU_LIBRARY wgpu_native
-    HINTS "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug"
-)
-
-find_library(HELPER_LIBRARY helper
-    HINTS "${CMAKE_CURRENT_SOURCE_DIR}/../../target/debug"
-)
-
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../../ffi)
-target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../)
-
-target_link_libraries(${TARGET_NAME} ${WGPU_LIBRARY} ${HELPER_LIBRARY} ${OS_LIBRARIES})
+target_link_libraries(capture framework ${WGPU_LIBRARY} ${OS_LIBRARIES})

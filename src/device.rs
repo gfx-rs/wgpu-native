@@ -6,13 +6,7 @@ use crate::native::{
     unwrap_swap_chain_handle, Handle, IntoHandle, IntoHandleWithContext, UnwrapId,
 };
 use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel};
-use std::{
-    borrow::Cow,
-    convert::TryInto,
-    ffi::CString,
-    num::{NonZeroU32, NonZeroU64, NonZeroU8},
-    path::Path,
-};
+use std::{borrow::Cow, ffi::CString, num::NonZeroU64, path::Path};
 use thiserror::Error;
 use wgc::gfx_select;
 
@@ -73,6 +67,9 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     context: context.clone(),
                     id: adapter,
                     name: CString::default(),
+                    vendor_name: CString::default(),
+                    architecture_name: CString::default(),
+                    driver_desc: CString::default(),
                 }
                 .into_handle(),
                 std::ptr::null(),
@@ -90,6 +87,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     wgc::instance::RequestAdapterError::InvalidSurface(_) => {
                         native::WGPURequestAdapterStatus_Error
                     }
+                    _ => native::WGPURequestAdapterStatus_Unknown,
                 },
                 std::ptr::null_mut(),
                 message.as_ptr(),
@@ -155,10 +153,15 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     let maybe_props = gfx_select!(id => context.adapter_get_info(id));
     if let Ok(props) = maybe_props {
         adapter.name = CString::new((&props.name) as &str).unwrap();
+        let driver_desc = format!("{} {}", props.driver, props.driver_info);
+        adapter.driver_desc = CString::new(driver_desc.trim()).unwrap();
 
-        properties.name = adapter.name.as_ptr();
         properties.vendorID = props.vendor as u32;
+        properties.vendorName = adapter.vendor_name.as_ptr();
+        properties.architecture = adapter.architecture_name.as_ptr();
         properties.deviceID = props.device as u32;
+        properties.name = adapter.name.as_ptr();
+        properties.driverDescription = adapter.driver_desc.as_ptr();
         properties.adapterType = match props.device_type {
             wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
             wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
@@ -1132,13 +1135,13 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
                 mip_level_count: match descriptor.mipLevelCount {
                     0 => panic!("invalid mipLevelCount"),
                     native::WGPU_MIP_LEVEL_COUNT_UNDEFINED => None,
-                    _ => Some(NonZeroU32::new_unchecked(descriptor.mipLevelCount)),
+                    _ => Some(descriptor.mipLevelCount),
                 },
                 base_array_layer: descriptor.baseArrayLayer,
                 array_layer_count: match descriptor.arrayLayerCount {
                     0 => panic!("invalid arrayLayerCount"),
                     native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED => None,
-                    _ => Some(NonZeroU32::new_unchecked(descriptor.arrayLayerCount)),
+                    _ => Some(descriptor.arrayLayerCount),
                 },
             },
         },
@@ -1218,14 +1221,28 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
             lod_min_clamp: descriptor.lodMinClamp,
             lod_max_clamp: descriptor.lodMaxClamp,
             compare: conv::map_compare_function(descriptor.compare).ok(),
-            anisotropy_clamp: descriptor
-                .maxAnisotropy
-                .try_into()
-                .ok()
-                .and_then(NonZeroU8::new),
+            anisotropy_clamp: descriptor.maxAnisotropy,
             border_color: None,
         },
-        None => wgc::resource::SamplerDescriptor::default(),
+        // wgpu-core doesn't have Default implementation for SamplerDescriptor,
+        // use defaults from spec.
+        // ref: https://gpuweb.github.io/gpuweb/#GPUSamplerDescriptor
+        None => wgc::resource::SamplerDescriptor {
+            label: None,
+            address_modes: [
+                wgt::AddressMode::ClampToEdge,
+                wgt::AddressMode::ClampToEdge,
+                wgt::AddressMode::ClampToEdge,
+            ],
+            mag_filter: wgt::FilterMode::Nearest,
+            min_filter: wgt::FilterMode::Nearest,
+            mipmap_filter: wgt::FilterMode::Nearest,
+            lod_min_clamp: 0f32,
+            lod_max_clamp: 32f32,
+            compare: None,
+            anisotropy_clamp: 1,
+            border_color: None,
+        },
     };
 
     let (id, error) = gfx_select!(device => context.device_create_sampler(device, &desc, ()));
