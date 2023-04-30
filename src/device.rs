@@ -1201,6 +1201,12 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetWidth(texture: native::WGPUTexture) -> u32 {
+    let (id, context) = texture.unwrap_handle();
+    gfx_select!(id => context.texture_get_width(id)).expect("Invalid texture");
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUSamplerDescriptor>,

@@ -279,11 +279,6 @@ pub extern "C" fn wgpuTextureGetUsage(_texture: native::WGPUTexture) -> native::
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuTextureGetWidth(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuTextureSetLabel(
     _texture: native::WGPUTexture,
     _label: *const ::std::os::raw::c_char,

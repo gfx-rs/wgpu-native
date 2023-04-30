@@ -79,3 +79,6 @@ bindgen = "0.65"
 [workspace]
 resolver = "2"
 
+[patch."https://github.com/gfx-rs/wgpu"]
+wgpu-core = { path = "../wgpu/wgpu-core" }
+wgpu-types = { path = "../wgpu/wgpu-types" }
