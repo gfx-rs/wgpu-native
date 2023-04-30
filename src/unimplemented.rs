@@ -242,43 +242,6 @@ pub extern "C" fn wgpuShaderModuleSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuTextureGetDepthOrArrayLayers(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetDimension(
-    _texture: native::WGPUTexture,
-) -> native::WGPUTextureDimension {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetFormat(_texture: native::WGPUTexture) -> native::WGPUTextureFormat {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetHeight(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetMipLevelCount(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetSampleCount(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetUsage(_texture: native::WGPUTexture) -> native::WGPUTextureUsage {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuTextureSetLabel(
     _texture: native::WGPUTexture,
     _label: *const ::std::os::raw::c_char,

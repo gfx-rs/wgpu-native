@@ -1201,9 +1201,56 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetDepthOrArrayLayers(texture: native::WGPUTexture) -> u32 {
+    let (id, context) = texture.unwrap_handle();
+    gfx_select!(id => context.texture_get_depth_or_array_layers(id)).expect("Invalid texture")
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetDimension(texture: native::WGPUTexture) -> native::WGPUTextureDimension {
+    let (id, context) = texture.unwrap_handle();
+    conv::to_native_texture_dimension(
+        gfx_select!(id => context.texture_get_dimension(id)).expect("Invalid texture")
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetFormat(texture: native::WGPUTexture) -> native::WGPUTextureFormat {
+    let (id, context) = texture.unwrap_handle();
+    conv::to_native_texture_format(
+        gfx_select!(id => context.texture_get_format(id)).expect("Invalid texture")
+    ).expect("Invalid texture format")
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetWidth(texture: native::WGPUTexture) -> u32 {
     let (id, context) = texture.unwrap_handle();
-    gfx_select!(id => context.texture_get_width(id)).expect("Invalid texture");
+    gfx_select!(id => context.texture_get_width(id)).expect("Invalid texture")
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetHeight(texture: native::WGPUTexture) -> u32 {
+    let (id, context) = texture.unwrap_handle();
+    gfx_select!(id => context.texture_get_height(id)).expect("Invalid texture")
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetMipLevelCount(texture: native::WGPUTexture) -> u32 {
+    let (id, context) = texture.unwrap_handle();
+    gfx_select!(id => context.texture_get_mip_level_count(id)).expect("Invalid texture")
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetSampleCount(texture: native::WGPUTexture) -> u32 {
+    let (id, context) = texture.unwrap_handle();
+    gfx_select!(id => context.texture_get_sample_count(id)).expect("Invalid texture")
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetUsage(texture: native::WGPUTexture) -> native::WGPUTextureUsage {
+    let (id, context) = texture.unwrap_handle();
+    gfx_select!(id => context.texture_get_usage(id)).expect("Invalid texture")
+        .bits().try_into().expect("Invalid texture usage")
 }
 
 #[no_mangle]
