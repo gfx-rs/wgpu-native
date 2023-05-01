@@ -17,11 +17,11 @@ typedef enum WGPUNativeSType {
 } WGPUNativeSType;
 
 typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_PUSH_CONSTANTS = 0x60000001,
-    WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES = 0x60000002,
-    WGPUNativeFeature_MULTI_DRAW_INDIRECT = 0x60000003,
-    WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT = 0x60000004,
-    WGPUNativeFeature_VERTEX_WRITABLE_STORAGE = 0x60000005,
+    WGPUNativeFeature_PushConstants = 0x60000001,
+    WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x60000002,
+    WGPUNativeFeature_MultiDrawIndirect = 0x60000003,
+    WGPUNativeFeature_MultiDrawIndirectCount = 0x60000004,
+    WGPUNativeFeature_VertexWritableStorage = 0x60000005,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 

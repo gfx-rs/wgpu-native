@@ -929,19 +929,19 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
 
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
-        temp.push(native::WGPUNativeFeature_PUSH_CONSTANTS);
+        temp.push(native::WGPUNativeFeature_PushConstants);
     }
     if features.contains(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
-        temp.push(native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES);
+        temp.push(native::WGPUNativeFeature_TextureAdapterSpecificFormatFeatures);
     }
     if features.contains(wgt::Features::MULTI_DRAW_INDIRECT) {
-        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT);
+        temp.push(native::WGPUNativeFeature_MultiDrawIndirect);
     }
     if features.contains(wgt::Features::MULTI_DRAW_INDIRECT_COUNT) {
-        temp.push(native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT);
+        temp.push(native::WGPUNativeFeature_MultiDrawIndirectCount);
     }
     if features.contains(wgt::Features::VERTEX_WRITABLE_STORAGE) {
-        temp.push(native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE);
+        temp.push(native::WGPUNativeFeature_VertexWritableStorage);
     }
 
     temp
@@ -963,11 +963,11 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
 
         // wgpu-rs only features
-        native::WGPUNativeFeature_PUSH_CONSTANTS => Some(Features::PUSH_CONSTANTS),
-        native::WGPUNativeFeature_TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
-        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT => Some(Features::MULTI_DRAW_INDIRECT),
-        native::WGPUNativeFeature_MULTI_DRAW_INDIRECT_COUNT => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
-        native::WGPUNativeFeature_VERTEX_WRITABLE_STORAGE => Some(Features::VERTEX_WRITABLE_STORAGE),
+        native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
+        native::WGPUNativeFeature_TextureAdapterSpecificFormatFeatures => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
+        native::WGPUNativeFeature_MultiDrawIndirect => Some(Features::MULTI_DRAW_INDIRECT),
+        native::WGPUNativeFeature_MultiDrawIndirectCount => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
+        native::WGPUNativeFeature_VertexWritableStorage => Some(Features::VERTEX_WRITABLE_STORAGE),
 
         // not available in wgpu-core
         native::WGPUFeatureName_RG11B10UfloatRenderable => None,
