@@ -1,5 +1,4 @@
 use crate::conv::map_instance_descriptor;
-use native::{Handle, IntoHandle, IntoHandleWithContext, UnwrapId};
 use std::{borrow::Cow, collections::HashMap, ffi::CString, sync::Arc, sync::Mutex};
 use wgc::id;
 
@@ -34,24 +33,24 @@ pub mod native {
         pub id: I,
     }
 
-    type WGPUDeviceImpl = WGPUContextHandle<DeviceId>;
-    type WGPUQueueImpl = WGPUContextHandle<QueueId>;
-    type WGPUPipelineLayoutImpl = WGPUContextHandle<PipelineLayoutId>;
-    type WGPUShaderModuleImpl = WGPUContextHandle<ShaderModuleId>;
-    type WGPUBindGroupLayoutImpl = WGPUContextHandle<BindGroupLayoutId>;
-    type WGPUBindGroupImpl = WGPUContextHandle<BindGroupId>;
-    type WGPUCommandBufferImpl = WGPUContextHandle<CommandBufferId>;
-    type WGPUCommandEncoderImpl = WGPUContextHandle<CommandEncoderId>;
-    type WGPURenderBundleImpl = WGPUContextHandle<RenderBundleId>;
-    type WGPURenderPipelineImpl = WGPUContextHandle<RenderPipelineId>;
-    type WGPUComputePipelineImpl = WGPUContextHandle<ComputePipelineId>;
-    type WGPUQuerySetImpl = WGPUContextHandle<QuerySetId>;
-    type WGPUBufferImpl = WGPUContextHandle<BufferId>;
-    type WGPUStagingBufferImpl = WGPUContextHandle<StagingBufferId>;
-    type WGPUTextureImpl = WGPUContextHandle<TextureId>;
-    type WGPUTextureViewImpl = WGPUContextHandle<TextureViewId>;
-    type WGPUSamplerImpl = WGPUContextHandle<SamplerId>;
-    type WGPUSurfaceImpl = WGPUContextHandle<SurfaceId>;
+    pub type WGPUDeviceImpl = WGPUContextHandle<DeviceId>;
+    pub type WGPUQueueImpl = WGPUContextHandle<QueueId>;
+    pub type WGPUPipelineLayoutImpl = WGPUContextHandle<PipelineLayoutId>;
+    pub type WGPUShaderModuleImpl = WGPUContextHandle<ShaderModuleId>;
+    pub type WGPUBindGroupLayoutImpl = WGPUContextHandle<BindGroupLayoutId>;
+    pub type WGPUBindGroupImpl = WGPUContextHandle<BindGroupId>;
+    pub type WGPUCommandBufferImpl = WGPUContextHandle<CommandBufferId>;
+    pub type WGPUCommandEncoderImpl = WGPUContextHandle<CommandEncoderId>;
+    pub type WGPURenderBundleImpl = WGPUContextHandle<RenderBundleId>;
+    pub type WGPURenderPipelineImpl = WGPUContextHandle<RenderPipelineId>;
+    pub type WGPUComputePipelineImpl = WGPUContextHandle<ComputePipelineId>;
+    pub type WGPUQuerySetImpl = WGPUContextHandle<QuerySetId>;
+    pub type WGPUBufferImpl = WGPUContextHandle<BufferId>;
+    pub type WGPUStagingBufferImpl = WGPUContextHandle<StagingBufferId>;
+    pub type WGPUTextureImpl = WGPUContextHandle<TextureId>;
+    pub type WGPUTextureViewImpl = WGPUContextHandle<TextureViewId>;
+    pub type WGPUSamplerImpl = WGPUContextHandle<SamplerId>;
+    pub type WGPUSurfaceImpl = WGPUContextHandle<SurfaceId>;
 
     pub struct WGPUInstanceImpl {
         pub context: Arc<Context>,
@@ -86,146 +85,6 @@ pub mod native {
         pub context: Arc<Context>,
         pub encoder: RenderBundleEncoder,
     }
-
-    /// Convenience trait for converting handle structs into boxed pointer
-    ///
-    /// this is equivalent to calling `Box::into_raw(Box::new(Struct{...}))`
-    pub trait IntoHandle {
-        fn into_handle(self) -> *mut Self;
-    }
-
-    /// Convenience trait implementing drop for handles
-    ///
-    /// this is equivalent to calling `drop(Box::from_raw(ptr))`
-    pub trait Handle {
-        unsafe fn drop(self);
-    }
-
-    /// Convenience trait for converting handle pointers to Ids
-    pub trait UnwrapId<I: wgc::id::TypedId> {
-        unsafe fn unwrap_handle(&self) -> (I, &Arc<Context>);
-        fn as_option(&self) -> Option<I>;
-    }
-
-    /// Convenience trait for converting ids into handle pointers
-    pub trait IntoHandleWithContext<H> {
-        fn into_handle_with_context(self, context: &Arc<Context>) -> *mut H;
-    }
-
-    /// This macro implements the IntoHandle & Handle for the struct and it's *mut type
-    ///
-    /// * `Struct{}.into_handle()` will return a boxed pointer to the struct.
-    /// * the box can be dropped by calling `ptr.drop()`
-    macro_rules! implement_handle {
-        ($impl_type:ty) => {
-            impl $crate::native::IntoHandle for $impl_type {
-                fn into_handle(self) -> *mut Self {
-                    Box::into_raw(Box::new(self))
-                }
-            }
-            impl $crate::native::Handle for *mut $impl_type {
-                unsafe fn drop(self) {
-                    drop(Box::from_raw(self))
-                }
-            }
-        };
-    }
-
-    /// This macro implements the UnwrapId for the *mut type
-    ///
-    /// * `ptr.unwrap_handle()` will return an `(Id, &Arc<Context>)` or panic on invalid pointers.
-    /// * `ptr.as_option()` will return `Option<Id>` based on if the pointer is null or not
-    macro_rules! implement_unwrap_handle {
-        ($impl_type:ty, $id_type:ty) => {
-            impl $crate::native::UnwrapId<$id_type> for *mut $impl_type {
-                unsafe fn unwrap_handle(&self) -> ($id_type, &Arc<Context>) {
-                    unsafe {
-                        let v = self.as_ref().expect(stringify!(invalid $id_type));
-                        (v.id, &v.context)
-                    }
-                }
-                fn as_option(&self) -> Option<$id_type> {
-                    unsafe { self.as_ref().map(|v| v.id)}
-                }
-            }
-        };
-    }
-
-    /// implements id.into_handle_with_context(&context)
-    ///
-    /// For example, when creating a new WGPUDevice:
-    ///
-    /// ```ignore
-    /// device_id.into_handle_with_context(&context)
-    /// ```
-    ///
-    /// is equivalent to:
-    ///
-    /// ```ignore
-    ///   native::WGPUDeviceImpl{
-    ///       context: context.clone(),
-    ///       id: id,
-    ///   }.into_handle()
-    /// ```
-    macro_rules! implement_into_handle_with_context {
-        ($impl_type:path, $id_type:ty) => {
-            impl $crate::native::IntoHandleWithContext<$impl_type> for $id_type {
-                fn into_handle_with_context(
-                    self,
-                    context: &$crate::Arc<$crate::Context>,
-                ) -> *mut $impl_type {
-                    $impl_type {
-                        context: context.clone(),
-                        id: self,
-                    }
-                    .into_handle()
-                }
-            }
-        };
-    }
-
-    implement_handle!(WGPUInstanceImpl);
-    implement_handle!(WGPUAdapterImpl);
-    implement_unwrap_handle!(WGPUAdapterImpl, AdapterId);
-    implement_handle!(WGPURenderPassEncoderImpl);
-    implement_handle!(WGPUComputePassEncoderImpl);
-    implement_handle!(WGPURenderBundleEncoderImpl);
-    implement_handle!(WGPUSwapChainImpl);
-
-    pub unsafe fn unwrap_swap_chain_handle<'a>(
-        handle: *mut WGPUSwapChainImpl,
-    ) -> (SurfaceId, DeviceId, &'a Arc<Context>) {
-        unsafe {
-            let v = handle.as_ref().expect("invalid swap chain");
-            (v.surface_id, v.device_id, &v.context)
-        }
-    }
-
-    /// Shorthand for handles that are just Id & Context
-    macro_rules! implement_id_handle {
-        ($impl_type:ty, $id_type:ty) => {
-            implement_handle!($impl_type);
-            implement_unwrap_handle!($impl_type, $id_type);
-            implement_into_handle_with_context!($impl_type, $id_type);
-        };
-    }
-
-    implement_id_handle!(WGPUDeviceImpl, DeviceId);
-    implement_id_handle!(WGPUPipelineLayoutImpl, PipelineLayoutId);
-    implement_id_handle!(WGPUShaderModuleImpl, ShaderModuleId);
-    implement_id_handle!(WGPUBindGroupLayoutImpl, BindGroupLayoutId);
-    implement_id_handle!(WGPUBindGroupImpl, BindGroupId);
-    implement_id_handle!(WGPUCommandBufferImpl, CommandBufferId);
-    implement_id_handle!(WGPURenderBundleImpl, RenderBundleId);
-    implement_id_handle!(WGPURenderPipelineImpl, RenderPipelineId);
-    implement_id_handle!(WGPUComputePipelineImpl, ComputePipelineId);
-    implement_id_handle!(WGPUQuerySetImpl, QuerySetId);
-    implement_id_handle!(WGPUBufferImpl, BufferId);
-    implement_id_handle!(WGPUStagingBufferImpl, StagingBufferId);
-    implement_id_handle!(WGPUTextureImpl, TextureId);
-    implement_id_handle!(WGPUTextureViewImpl, TextureViewId);
-    implement_id_handle!(WGPUSamplerImpl, SamplerId);
-    implement_id_handle!(WGPUSurfaceImpl, SurfaceId);
 
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
@@ -371,6 +230,7 @@ macro_rules! follow_chain {
 #[macro_export]
 macro_rules! map_enum {
     ($name:ident, $c_name:ident, $rs_type:ty, $($variant:ident),+) => {
+        #[inline]
         pub fn $name(value: native::$c_name) -> Result<$rs_type, native::$c_name> {
             match value {
                 $(paste::paste!(native::[<$c_name _ $variant>]) => Ok(<$rs_type>::$variant)),+,
@@ -379,6 +239,7 @@ macro_rules! map_enum {
         }
     };
     ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($variant:ident),+) => {
+        #[inline]
         pub fn $name(value: native::$c_name) -> $rs_type {
             map_enum!(map_fn, $c_name, $rs_type, $($variant),+);
 
@@ -386,6 +247,7 @@ macro_rules! map_enum {
         }
     };
     ($name:ident, $c_name:ident, $rs_type:ty, $($native_variant:ident:$variant2:ident),+) => {
+        #[inline]
         pub fn $name(value: native::$c_name) -> Result<$rs_type, native::$c_name> {
             match value {
                 $(paste::paste!(native::[<$c_name _ $native_variant>]) => Ok(<$rs_type>::$variant2)),+,
@@ -394,6 +256,7 @@ macro_rules! map_enum {
         }
     };
     ($name:ident, $c_name:ident, $rs_type:ty, $err_msg:literal, $($native_variant:ident:$variant2:ident),+) => {
+        #[inline]
         pub fn $name(value: native::$c_name) -> $rs_type {
             map_enum!(map_fn, $c_name, $rs_type, $($native_variant:$variant2),+);
 
@@ -412,19 +275,19 @@ pub unsafe extern "C" fn wgpuCreateInstance(
         WGPUSType_InstanceExtras => native::WGPUInstanceExtras
     ));
 
-    native::WGPUInstanceImpl {
+    Box::into_raw(Box::new(native::WGPUInstanceImpl {
         context: Arc::new(Context::new(
             "wgpu",
             wgc::hub::IdentityManagerFactory,
             instance_desc,
         )),
-    }
-    .into_handle()
+    }))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuInstanceDrop(instance: native::WGPUInstance) {
-    instance.drop();
+    assert!(!instance.is_null(), "invalid instance");
+    drop(Box::from_raw(instance));
 }
 
 enum CreateSurfaceParams {
@@ -443,6 +306,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     instance: native::WGPUInstance,
     descriptor: Option<&native::WGPUSurfaceDescriptor>,
 ) -> native::WGPUSurface {
+    let context = &instance.as_ref().expect("invalid instance").context;
     let descriptor = descriptor.expect("invalid descriptor");
 
     let create_surface_params = follow_chain!(
@@ -455,14 +319,16 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceDescriptorFromAndroidNativeWindow => native::WGPUSurfaceDescriptorFromAndroidNativeWindow)
     );
 
-    let context = &instance.as_ref().expect("invalid instance").context;
     let surface_id = match create_surface_params {
         CreateSurfaceParams::Raw((rdh, rwh)) => context.instance_create_surface(rdh, rwh, ()),
         #[cfg(any(target_os = "ios", target_os = "macos"))]
         CreateSurfaceParams::Metal(layer) => context.instance_create_surface_metal(layer, ()),
     };
 
-    surface_id.into_handle_with_context(context)
+    Box::into_raw(Box::new(native::WGPUSurfaceImpl {
+        context: context.clone(),
+        id: surface_id,
+    }))
 }
 
 unsafe fn map_surface(
@@ -556,13 +422,13 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
 ) -> native::WGPUTextureFormat {
-    let (adapter, context) = adapter.unwrap_handle();
-    let (surface, _) = unsafe {
-        let v = surface.as_ref().expect("invalid surface");
-        (v.id, &v.context)
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, &adapter.context)
     };
+    let surface_id = surface.as_ref().expect("invalid surface").id;
 
-    let preferred_format = match wgc::gfx_select!(adapter => context.surface_get_capabilities(surface, adapter))
+    let preferred_format = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
     {
         Ok(caps) => conv::to_native_texture_format(
             *caps
@@ -583,15 +449,16 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     adapter: native::WGPUAdapter,
     capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
 ) {
-    let (adapter, context) = adapter.unwrap_handle();
-    let surface = {
-        let v = surface.as_ref().expect("invalid surface");
-        v.id
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, &adapter.context)
     };
-    let capabilities = capabilities.expect("invalid return pointer");
+    let surface_id = surface.as_ref().expect("invalid surface").id;
+    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
 
-    let caps = wgc::gfx_select!(adapter => context.surface_get_capabilities(surface, adapter))
-        .expect("failed to get surface capabilities");
+    let caps =
+        wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
+            .expect("failed to get surface capabilities");
 
     let formats = caps
         .formats
@@ -605,8 +472,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     capabilities.formatCount = formats.len();
 
     if !capabilities.formats.is_null() {
-        let out_slice = std::slice::from_raw_parts_mut(capabilities.formats, formats.len());
-        out_slice.copy_from_slice(&formats);
+        std::ptr::copy_nonoverlapping(formats.as_ptr(), capabilities.formats, formats.len());
     }
 
     let present_modes = caps
@@ -618,9 +484,11 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     capabilities.presentModeCount = present_modes.len();
 
     if !capabilities.presentModes.is_null() {
-        let out_slice =
-            std::slice::from_raw_parts_mut(capabilities.presentModes, present_modes.len());
-        out_slice.copy_from_slice(&present_modes);
+        std::ptr::copy_nonoverlapping(
+            present_modes.as_ptr(),
+            capabilities.presentModes,
+            present_modes.len(),
+        );
     }
 
     let alpha_modes = caps
@@ -632,8 +500,11 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     capabilities.alphaModeCount = alpha_modes.len();
 
     if !capabilities.alphaModes.is_null() {
-        let out_slice = std::slice::from_raw_parts_mut(capabilities.alphaModes, alpha_modes.len());
-        out_slice.copy_from_slice(&alpha_modes);
+        std::ptr::copy_nonoverlapping(
+            alpha_modes.as_ptr(),
+            capabilities.alphaModes,
+            alpha_modes.len(),
+        );
     }
 }
 
@@ -643,33 +514,28 @@ pub unsafe extern "C" fn wgpuGenerateReport(
     native_report: Option<&mut native::WGPUGlobalReport>,
 ) {
     let context = &instance.as_ref().expect("invalid instance").context;
-    conv::write_global_report(
-        native_report.expect("invalid return pointer"),
-        context.generate_report(),
-    );
+    let native_report = native_report.expect("invalid return pointer \"native_report\"");
+    conv::write_global_report(native_report, context.generate_report());
 }
 
 struct DeviceCallback<T> {
     callback: T,
     userdata: *mut std::os::raw::c_void,
 }
+unsafe impl<T> Send for DeviceCallback<T> {}
 
 type UncapturedErrorCallback = DeviceCallback<native::WGPUErrorCallback>;
 type DeviceLostCallback = DeviceCallback<native::WGPUDeviceLostCallback>;
 
-unsafe impl<T> Send for DeviceCallback<T> {}
-
 struct Callbacks {
-    uncaptured_errors: HashMap<id::DeviceId, UncapturedErrorCallback>,
-    device_lost: HashMap<id::DeviceId, DeviceLostCallback>,
+    uncaptured_error_cbs: Option<HashMap<id::DeviceId, UncapturedErrorCallback>>,
+    device_lost_cbs: Option<HashMap<id::DeviceId, DeviceLostCallback>>,
 }
 
-lazy_static::lazy_static! {
-    static ref CALLBACKS: Mutex<Callbacks> = Mutex::new(Callbacks{
-        uncaptured_errors: HashMap::new(),
-        device_lost: HashMap::new(),
-    });
-}
+static CALLBACKS: Mutex<Callbacks> = Mutex::new(Callbacks {
+    uncaptured_error_cbs: None,
+    device_lost_cbs: None,
+});
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
@@ -677,13 +543,17 @@ pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
     callback: native::WGPUErrorCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let (device, _) = device.unwrap_handle();
+    let device_id = device.as_ref().expect("invalid device").id;
 
-    CALLBACKS
-        .lock()
-        .unwrap()
-        .uncaptured_errors
-        .insert(device, UncapturedErrorCallback { callback, userdata });
+    let mut callbacks = CALLBACKS.lock().unwrap();
+    if callbacks.uncaptured_error_cbs.is_none() {
+        callbacks.uncaptured_error_cbs = Some(HashMap::new());
+    }
+
+    callbacks
+        .uncaptured_error_cbs
+        .as_mut()
+        .and_then(|v| v.insert(device_id, UncapturedErrorCallback { callback, userdata }));
 }
 
 #[no_mangle]
@@ -692,49 +562,62 @@ pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
     callback: native::WGPUDeviceLostCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let (device, _) = device.unwrap_handle();
+    let device_id = device.as_ref().expect("invalid device").id;
 
-    CALLBACKS
-        .lock()
-        .unwrap()
-        .device_lost
-        .insert(device, DeviceLostCallback { callback, userdata });
+    let mut callbacks = CALLBACKS.lock().unwrap();
+    if callbacks.device_lost_cbs.is_none() {
+        callbacks.device_lost_cbs = Some(HashMap::new());
+    }
+
+    callbacks
+        .device_lost_cbs
+        .as_mut()
+        .and_then(|v| v.insert(device_id, DeviceLostCallback { callback, userdata }));
 }
 
-pub fn handle_device_error_raw(device: id::DeviceId, typ: native::WGPUErrorType, msg: &str) {
-    log::debug!("Device error ({}): {}", typ, msg);
-    let msg_c = CString::new(msg).unwrap();
-    unsafe {
-        match typ {
-            native::WGPUErrorType_DeviceLost => {
-                let cbs = CALLBACKS.lock().unwrap();
-                let cb = cbs.device_lost.get(&device);
-                if let Some(cb) = cb {
-                    cb.callback.unwrap()(
-                        native::WGPUDeviceLostReason_Destroyed,
-                        msg_c.as_ptr(),
-                        cb.userdata,
-                    );
-                }
-            }
-            _ => {
-                let cbs = CALLBACKS.lock().unwrap();
-                let cb = cbs.uncaptured_errors.get(&device);
-                if let Some(cb) = cb {
-                    cb.callback.unwrap()(typ, msg_c.as_ptr(), cb.userdata);
+#[inline]
+pub fn handle_device_error<E: std::any::Any + std::error::Error>(
+    device_id: id::DeviceId,
+    error: &E,
+) {
+    let error_any = error as &dyn std::any::Any;
+
+    match error_any.downcast_ref::<wgc::device::DeviceError>() {
+        Some(wgc::device::DeviceError::Lost) => {
+            let callbacks = CALLBACKS.lock().unwrap();
+
+            if let Some(device_lost_cbs) = &callbacks.device_lost_cbs {
+                if let Some(device_lost_cb) = device_lost_cbs.get(&device_id) {
+                    if let Some(callback) = device_lost_cb.callback {
+                        let msg_c = CString::new(error.to_string()).unwrap();
+                        unsafe {
+                            callback(
+                                native::WGPUDeviceLostReason_Destroyed,
+                                msg_c.as_ptr(),
+                                device_lost_cb.userdata,
+                            );
+                        }
+                    }
                 }
             }
         }
-    }
-}
+        _ => {
+            let callbacks = CALLBACKS.lock().unwrap();
 
-pub fn handle_device_error<E: std::any::Any + std::error::Error>(device: id::DeviceId, error: &E) {
-    let error_any = error as &dyn std::any::Any;
-
-    let typ = match error_any.downcast_ref::<wgc::device::DeviceError>() {
-        Some(wgc::device::DeviceError::Lost) => native::WGPUErrorType_DeviceLost,
-        _ => native::WGPUErrorType_Unknown,
+            if let Some(uncaptured_error_cbs) = &callbacks.uncaptured_error_cbs {
+                if let Some(uncaptured_error_cb) = uncaptured_error_cbs.get(&device_id) {
+                    if let Some(callback) = uncaptured_error_cb.callback {
+                        let msg_c = CString::new(error.to_string()).unwrap();
+                        unsafe {
+                            callback(
+                                native::WGPUErrorType_Unknown,
+                                msg_c.as_ptr(),
+                                uncaptured_error_cb.userdata,
+                            );
+                        }
+                    }
+                }
+            }
+        }
     };
-
-    handle_device_error_raw(device, typ, &format!("{error:?}"));
 }

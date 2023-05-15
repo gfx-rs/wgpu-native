@@ -909,7 +909,6 @@ name = "wgpu-native"
 version = "0.0.0"
 dependencies = [
  "bindgen",
- "lazy_static",
  "log",
  "naga",
  "paste",
