@@ -1,5 +1,4 @@
 use crate::{map_enum, native};
-use lazy_static::lazy_static;
 use log::{Level, LevelFilter, Metadata, Record};
 use std::{ffi::CString, sync::Mutex};
 
@@ -71,13 +70,11 @@ struct LoggerInfo {
 }
 unsafe impl Send for LoggerInfo {}
 
-lazy_static! {
-    static ref LOGGER_INFO: Mutex<LoggerInfo> = Mutex::new(LoggerInfo {
-        initialized: false,
-        callback: None,
-        userdata: std::ptr::null_mut(),
-    });
-}
+static LOGGER_INFO: Mutex<LoggerInfo> = Mutex::new(LoggerInfo {
+    initialized: false,
+    callback: None,
+    userdata: std::ptr::null_mut(),
+});
 
 #[no_mangle]
 pub extern "C" fn wgpuSetLogCallback(

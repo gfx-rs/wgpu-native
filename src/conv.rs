@@ -1,7 +1,7 @@
-use crate::native::{self, UnwrapId};
+use crate::native;
 use crate::{follow_chain, make_slice, map_enum, Label, OwnedLabel};
 use std::path::Path;
-use std::{borrow::Cow, ffi::CStr, slice};
+use std::{borrow::Cow, ffi::CStr};
 
 map_enum!(
     map_load_op,
@@ -199,6 +199,7 @@ pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
 // it's SIZE_MAX in headers but it's not available in some compilers
 pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
 
+#[inline]
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     wgt::Extent3d {
         width: native.width,
@@ -207,6 +208,7 @@ pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
     }
 }
 
+#[inline]
 pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     wgt::Origin3d {
         x: native.x,
@@ -215,6 +217,7 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
     }
 }
 
+#[inline]
 pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Backends {
     let mut result: wgt::Backends = wgt::Backends::empty();
     if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
@@ -238,6 +241,7 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
     result
 }
 
+#[inline]
 pub fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
@@ -265,6 +269,7 @@ pub fn map_instance_descriptor(
     }
 }
 
+#[inline]
 pub fn map_adapter_options(
     options: &native::WGPURequestAdapterOptions,
     extras: Option<&native::WGPUAdapterExtras>,
@@ -276,6 +281,7 @@ pub fn map_adapter_options(
     }
 }
 
+#[inline]
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
@@ -302,6 +308,7 @@ pub fn map_device_descriptor<'a>(
     )
 }
 
+#[inline]
 pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
@@ -311,8 +318,9 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
             .iter()
             .map(|layout| {
                 layout
-                    .as_option()
+                    .as_ref()
                     .expect("invalid bind group layout for pipeline layout descriptor")
+                    .id
             })
             .collect::<Vec<wgc::id::BindGroupLayoutId>>();
 
@@ -339,6 +347,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     };
 }
 
+#[inline]
 pub fn map_required_limits(
     required_limits: &native::WGPURequiredLimits,
     extras: Option<&native::WGPURequiredLimitsExtras>,
@@ -445,6 +454,7 @@ pub fn map_required_limits(
     wgt_limits
 }
 
+#[inline]
 pub fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
     spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
@@ -480,7 +490,7 @@ pub fn map_shader_module<'a>(
             map_shader_stage(glsl.stage).expect("Unknown shader stage"),
         );
 
-        let raw_defines = unsafe { slice::from_raw_parts(glsl.defines, glsl.defineCount as usize) };
+        let raw_defines = unsafe { make_slice(glsl.defines, glsl.defineCount as usize) };
         for define in raw_defines {
             let name_c_str: &CStr = unsafe { CStr::from_ptr(define.name) };
             let name_str_slice: &str = name_c_str.to_str().expect("not a valid utf-8 string");
@@ -501,32 +511,37 @@ pub fn map_shader_module<'a>(
     panic!("Shader not provided.");
 }
 
-pub fn map_image_copy_texture(
+#[inline]
+pub unsafe fn map_image_copy_texture(
     native: &native::WGPUImageCopyTexture,
 ) -> wgc::command::ImageCopyTexture {
     wgt::ImageCopyTexture {
         texture: native
             .texture
-            .as_option()
-            .expect("invalid texture for image copy texture"),
+            .as_ref()
+            .expect("invalid texture for image copy texture")
+            .id,
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
         aspect: map_texture_aspect(native.aspect),
     }
 }
 
-pub fn map_image_copy_buffer(
+#[inline]
+pub unsafe fn map_image_copy_buffer(
     native: &native::WGPUImageCopyBuffer,
 ) -> wgc::command::ImageCopyBuffer {
     wgt::ImageCopyBuffer {
         buffer: native
             .buffer
-            .as_option()
-            .expect("invalid buffer for image copy buffer"),
+            .as_ref()
+            .expect("invalid buffer for image copy buffer")
+            .id,
         layout: map_texture_data_layout(&native.layout),
     }
 }
 
+#[inline]
 pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::ImageDataLayout {
     wgt::ImageDataLayout {
         offset: native.offset,
@@ -543,6 +558,7 @@ pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::I
     }
 }
 
+#[inline]
 pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
     wgt::Color {
         r: native.r,
@@ -552,6 +568,7 @@ pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
     }
 }
 
+#[inline]
 pub fn map_blend_component(native: native::WGPUBlendComponent) -> wgt::BlendComponent {
     wgt::BlendComponent {
         src_factor: map_blend_factor(native.srcFactor),
@@ -560,6 +577,7 @@ pub fn map_blend_component(native: native::WGPUBlendComponent) -> wgt::BlendComp
     }
 }
 
+#[inline]
 pub fn map_texture_view_dimension(
     value: native::WGPUTextureViewDimension,
 ) -> Option<wgt::TextureViewDimension> {
@@ -574,6 +592,7 @@ pub fn map_texture_view_dimension(
     }
 }
 
+#[inline]
 pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::TextureDimension {
     match value {
         native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
@@ -584,6 +603,7 @@ pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::Textur
 }
 
 #[rustfmt::skip]
+#[inline]
 pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::TextureFormat> {
     use wgt::{AstcBlock, AstcChannel};
 
@@ -687,6 +707,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
 }
 
 #[rustfmt::skip]
+#[inline]
 pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::WGPUTextureFormat> {
     use wgt::{AstcBlock, AstcChannel};
 
@@ -801,15 +822,24 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
     }
 }
 
-pub fn map_stencil_face_state(value: native::WGPUStencilFaceState) -> wgt::StencilFaceState {
+#[inline]
+pub fn map_stencil_face_state(
+    value: native::WGPUStencilFaceState,
+    mode: &str,
+) -> wgt::StencilFaceState {
     wgt::StencilFaceState {
-        compare: map_compare_function(value.compare).unwrap(),
-        fail_op: map_stencil_operation(value.failOp).unwrap(),
-        depth_fail_op: map_stencil_operation(value.depthFailOp).unwrap(),
-        pass_op: map_stencil_operation(value.passOp).unwrap(),
+        compare: map_compare_function(value.compare)
+            .unwrap_or_else(|_| panic!("invalid compare function for {mode} stencil face state")),
+        fail_op: map_stencil_operation(value.failOp)
+            .unwrap_or_else(|_| panic!("invalid fail op for {mode} stencil face state")),
+        depth_fail_op: map_stencil_operation(value.depthFailOp)
+            .unwrap_or_else(|_| panic!("invalid depth fail op for {mode} stencil face state")),
+        pass_op: map_stencil_operation(value.passOp)
+            .unwrap_or_else(|_| panic!("invalid pass op for {mode} stencil face state")),
     }
 }
 
+#[inline]
 pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorageReport {
     native::WGPUStorageReport {
         numOccupied: report.num_occupied,
@@ -819,6 +849,7 @@ pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorag
     }
 }
 
+#[inline]
 pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
     native::WGPUHubReport {
         adapters: map_storage_report(report.adapters),
@@ -884,6 +915,7 @@ pub fn write_global_report(
     }
 }
 
+#[inline]
 pub fn map_features(features: &[native::WGPUFeatureName]) -> wgt::Features {
     let mut temp = wgt::Features::empty();
 
@@ -896,6 +928,7 @@ pub fn map_features(features: &[native::WGPUFeatureName]) -> wgt::Features {
     temp
 }
 
+#[inline]
 pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureName> {
     let mut temp = Vec::new();
 
@@ -947,6 +980,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     temp
 }
 
+#[inline]
 #[rustfmt::skip]
 pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
     use wgt::Features;
@@ -976,6 +1010,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
     }
 }
 
+#[inline]
 pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPresentMode> {
     match mode {
         wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
@@ -988,6 +1023,7 @@ pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPres
     }
 }
 
+#[inline]
 pub fn to_native_composite_alpha_mode(
     mode: wgt::CompositeAlphaMode,
 ) -> native::WGPUCompositeAlphaMode {
@@ -1000,6 +1036,7 @@ pub fn to_native_composite_alpha_mode(
     }
 }
 
+#[inline]
 pub fn map_swapchain_descriptor(
     desc: &native::WGPUSwapChainDescriptor,
     extras: Option<&native::WGPUSwapChainDescriptorExtras>,
@@ -1039,6 +1076,7 @@ pub fn map_swapchain_descriptor(
     }
 }
 
+#[inline]
 pub fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
