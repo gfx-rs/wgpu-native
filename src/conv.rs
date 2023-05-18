@@ -349,6 +349,58 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
 }
 
 #[inline]
+pub fn write_limits_struct(
+    wgt_limits: wgt::Limits,
+    supported_limits: &mut native::WGPUSupportedLimits,
+) {
+    let mut limits = supported_limits.limits; // This makes a copy - we copy back at the end
+    limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
+    limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
+    limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
+    limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
+    limits.maxBindGroups = wgt_limits.max_bind_groups;
+    limits.maxDynamicUniformBuffersPerPipelineLayout =
+        wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout;
+    limits.maxDynamicStorageBuffersPerPipelineLayout =
+        wgt_limits.max_dynamic_storage_buffers_per_pipeline_layout;
+    limits.maxSampledTexturesPerShaderStage = wgt_limits.max_sampled_textures_per_shader_stage;
+    limits.maxSamplersPerShaderStage = wgt_limits.max_samplers_per_shader_stage;
+    limits.maxStorageBuffersPerShaderStage = wgt_limits.max_storage_buffers_per_shader_stage;
+    limits.maxStorageTexturesPerShaderStage = wgt_limits.max_storage_textures_per_shader_stage;
+    limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
+    limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as u64;
+    limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as u64;
+    limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
+    limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
+    limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
+    limits.maxBufferSize = wgt_limits.max_buffer_size;
+    limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
+    limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
+    limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
+    limits.maxComputeWorkgroupStorageSize = wgt_limits.max_compute_workgroup_storage_size;
+    limits.maxComputeInvocationsPerWorkgroup = wgt_limits.max_compute_invocations_per_workgroup;
+    limits.maxComputeWorkgroupSizeX = wgt_limits.max_compute_workgroup_size_x;
+    limits.maxComputeWorkgroupSizeY = wgt_limits.max_compute_workgroup_size_y;
+    limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
+    limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
+    supported_limits.limits = limits;
+
+    if !supported_limits.nextInChain.is_null() {
+        unsafe {
+            let mut extras = std::mem::transmute::<
+                *mut native::WGPUChainedStructOut,
+                *mut native::WGPUSupportedLimitsExtras,
+            >(supported_limits.nextInChain);
+
+            (*extras).chain.next = std::ptr::null_mut();
+            (*extras).chain.sType = native::WGPUSType_SupportedLimitsExtras;
+
+            (*extras).maxPushConstantSize = wgt_limits.max_push_constant_size;
+        }
+    }
+}
+
+#[inline]
 pub fn map_required_limits(
     required_limits: &native::WGPURequiredLimits,
     extras: Option<&native::WGPURequiredLimitsExtras>,
@@ -1118,4 +1170,101 @@ pub fn map_query_set_descriptor<'a>(
             _ => panic!("invalid query type"),
         },
     }
+}
+
+pub enum CreateSurfaceParams {
+    Raw(
+        (
+            raw_window_handle::RawDisplayHandle,
+            raw_window_handle::RawWindowHandle,
+        ),
+    ),
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    Metal(*mut std::ffi::c_void),
+}
+
+pub unsafe fn map_surface(
+    _: &native::WGPUSurfaceDescriptor,
+    _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
+    _xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
+    _xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
+    _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
+    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
+) -> CreateSurfaceParams {
+    #[cfg(windows)]
+    if let Some(win) = _win {
+        let display_handle = raw_window_handle::WindowsDisplayHandle::empty();
+        let mut window_handle = raw_window_handle::Win32WindowHandle::empty();
+        window_handle.hwnd = win.hwnd;
+        window_handle.hinstance = win.hinstance;
+
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Windows(display_handle),
+            raw_window_handle::RawWindowHandle::Win32(window_handle),
+        ));
+    }
+
+    #[cfg(all(
+        unix,
+        not(target_os = "android"),
+        not(target_os = "ios"),
+        not(target_os = "macos")
+    ))]
+    {
+        if let Some(xcb) = _xcb {
+            let mut display_handle = raw_window_handle::XcbDisplayHandle::empty();
+            display_handle.connection = xcb.connection;
+            let mut window_handle = raw_window_handle::XcbWindowHandle::empty();
+            window_handle.window = xcb.window;
+
+            return CreateSurfaceParams::Raw((
+                raw_window_handle::RawDisplayHandle::Xcb(display_handle),
+                raw_window_handle::RawWindowHandle::Xcb(window_handle),
+            ));
+        }
+
+        if let Some(xlib) = _xlib {
+            let mut display_handle = raw_window_handle::XlibDisplayHandle::empty();
+            display_handle.display = xlib.display;
+            let mut window_handle = raw_window_handle::XlibWindowHandle::empty();
+            window_handle.window = xlib.window as _;
+
+            return CreateSurfaceParams::Raw((
+                raw_window_handle::RawDisplayHandle::Xlib(display_handle),
+                raw_window_handle::RawWindowHandle::Xlib(window_handle),
+            ));
+        }
+
+        if let Some(wl) = _wl {
+            let mut display_handle = raw_window_handle::WaylandDisplayHandle::empty();
+            display_handle.display = wl.display;
+            let mut window_handle = raw_window_handle::WaylandWindowHandle::empty();
+            window_handle.surface = wl.surface;
+
+            return CreateSurfaceParams::Raw((
+                raw_window_handle::RawDisplayHandle::Wayland(display_handle),
+                raw_window_handle::RawWindowHandle::Wayland(window_handle),
+            ));
+        }
+    }
+
+    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    if let Some(metal) = _metal {
+        return CreateSurfaceParams::Metal(metal.layer);
+    }
+
+    #[cfg(target_os = "android")]
+    if let Some(android) = _android {
+        let display_handle = raw_window_handle::AndroidDisplayHandle::empty();
+        let mut window_handle = raw_window_handle::AndroidNdkWindowHandle::empty();
+        window_handle.a_native_window = android.window;
+
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Android(display_handle),
+            raw_window_handle::RawWindowHandle::AndroidNdk(window_handle),
+        ));
+    }
+
+    panic!("Error: Unsupported Surface");
 }
