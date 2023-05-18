@@ -1,5 +1,6 @@
 use crate::native;
-use crate::{follow_chain, make_slice, map_enum, Label, OwnedLabel};
+use crate::utils::{make_slice, Label, OwnedLabel};
+use crate::{follow_chain, map_enum};
 use std::path::Path;
 use std::{borrow::Cow, ffi::CStr};
 

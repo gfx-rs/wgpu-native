@@ -1,4 +1,5 @@
-use crate::{conv, handle_device_error, make_slice, native, OwnedLabel};
+use crate::utils::{make_slice, OwnedLabel};
+use crate::{conv, handle_device_error, native};
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::{borrow::Cow, num::NonZeroU64};

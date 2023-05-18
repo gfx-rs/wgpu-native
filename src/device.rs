@@ -2,7 +2,8 @@ use crate::conv::{
     map_adapter_options, map_device_descriptor, map_pipeline_layout_descriptor, map_shader_module,
     map_swapchain_descriptor,
 };
-use crate::{conv, follow_chain, handle_device_error, make_slice, native, OwnedLabel};
+use crate::utils::{make_slice, OwnedLabel};
+use crate::{conv, follow_chain, handle_device_error, native};
 use std::{borrow::Cow, ffi::CString, num::NonZeroU64, path::Path};
 use thiserror::Error;
 use wgc::gfx_select;
