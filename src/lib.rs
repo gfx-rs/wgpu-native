@@ -15,7 +15,7 @@ use std::{
 use thiserror::Error;
 use utils::{make_slice, OwnedLabel};
 use wgc::{
-    command::{bundle_ffi, compute_ffi, render_ffi},
+    command::{self, bundle_ffi, compute_ffi, render_ffi},
     gfx_select, id,
 };
 
@@ -24,85 +24,72 @@ pub mod logging;
 pub mod unimplemented;
 pub mod utils;
 
-pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
-
 pub mod native {
     #![allow(non_upper_case_globals)]
     #![allow(non_camel_case_types)]
     #![allow(non_snake_case)]
     #![allow(dead_code)]
-
-    use crate::Context;
-    use std::sync::Arc;
-    use wgc::{
-        command::{ComputePass, RenderBundleEncoder, RenderPass},
-        id::{
-            AdapterId, BindGroupId, BindGroupLayoutId, BufferId, CommandBufferId, CommandEncoderId,
-            ComputePipelineId, DeviceId, PipelineLayoutId, QuerySetId, QueueId, RenderBundleId,
-            RenderPipelineId, SamplerId, ShaderModuleId, StagingBufferId, SurfaceId, TextureId,
-            TextureViewId,
-        },
-    };
-
-    pub struct WGPUContextHandle<I: wgc::id::TypedId> {
-        pub context: Arc<Context>,
-        pub id: I,
-    }
-
-    pub type WGPUDeviceImpl = WGPUContextHandle<DeviceId>;
-    pub type WGPUQueueImpl = WGPUContextHandle<QueueId>;
-    pub type WGPUPipelineLayoutImpl = WGPUContextHandle<PipelineLayoutId>;
-    pub type WGPUShaderModuleImpl = WGPUContextHandle<ShaderModuleId>;
-    pub type WGPUBindGroupLayoutImpl = WGPUContextHandle<BindGroupLayoutId>;
-    pub type WGPUBindGroupImpl = WGPUContextHandle<BindGroupId>;
-    pub type WGPUCommandBufferImpl = WGPUContextHandle<CommandBufferId>;
-    pub type WGPUCommandEncoderImpl = WGPUContextHandle<CommandEncoderId>;
-    pub type WGPURenderBundleImpl = WGPUContextHandle<RenderBundleId>;
-    pub type WGPURenderPipelineImpl = WGPUContextHandle<RenderPipelineId>;
-    pub type WGPUComputePipelineImpl = WGPUContextHandle<ComputePipelineId>;
-    pub type WGPUQuerySetImpl = WGPUContextHandle<QuerySetId>;
-    pub type WGPUBufferImpl = WGPUContextHandle<BufferId>;
-    pub type WGPUStagingBufferImpl = WGPUContextHandle<StagingBufferId>;
-    pub type WGPUTextureImpl = WGPUContextHandle<TextureId>;
-    pub type WGPUTextureViewImpl = WGPUContextHandle<TextureViewId>;
-    pub type WGPUSamplerImpl = WGPUContextHandle<SamplerId>;
-    pub type WGPUSurfaceImpl = WGPUContextHandle<SurfaceId>;
-
-    pub struct WGPUInstanceImpl {
-        pub context: Arc<Context>,
-    }
-
-    pub struct WGPUAdapterImpl {
-        pub context: Arc<Context>,
-        pub id: AdapterId,
-        pub name: std::ffi::CString,
-        pub vendor_name: std::ffi::CString,
-        pub architecture_name: std::ffi::CString,
-        pub driver_desc: std::ffi::CString,
-    }
-
-    pub struct WGPUSwapChainImpl {
-        pub context: Arc<Context>,
-        pub surface_id: SurfaceId,
-        pub device_id: DeviceId,
-    }
-
-    pub struct WGPURenderPassEncoderImpl {
-        pub context: Arc<Context>,
-        pub encoder: RenderPass,
-    }
-
-    pub struct WGPUComputePassEncoderImpl {
-        pub context: Arc<Context>,
-        pub encoder: ComputePass,
-    }
-
-    pub struct WGPURenderBundleEncoderImpl {
-        pub context: Arc<Context>,
-        pub encoder: RenderBundleEncoder,
-    }
-
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+
+pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
+
+pub struct WGPUContextHandle<I: id::TypedId> {
+    pub context: Arc<Context>,
+    pub id: I,
+}
+
+pub type WGPUDeviceImpl = WGPUContextHandle<id::DeviceId>;
+pub type WGPUQueueImpl = WGPUContextHandle<id::QueueId>;
+pub type WGPUPipelineLayoutImpl = WGPUContextHandle<id::PipelineLayoutId>;
+pub type WGPUShaderModuleImpl = WGPUContextHandle<id::ShaderModuleId>;
+pub type WGPUBindGroupLayoutImpl = WGPUContextHandle<id::BindGroupLayoutId>;
+pub type WGPUBindGroupImpl = WGPUContextHandle<id::BindGroupId>;
+pub type WGPUCommandBufferImpl = WGPUContextHandle<id::CommandBufferId>;
+pub type WGPUCommandEncoderImpl = WGPUContextHandle<id::CommandEncoderId>;
+pub type WGPURenderBundleImpl = WGPUContextHandle<id::RenderBundleId>;
+pub type WGPURenderPipelineImpl = WGPUContextHandle<id::RenderPipelineId>;
+pub type WGPUComputePipelineImpl = WGPUContextHandle<id::ComputePipelineId>;
+pub type WGPUQuerySetImpl = WGPUContextHandle<id::QuerySetId>;
+pub type WGPUBufferImpl = WGPUContextHandle<id::BufferId>;
+pub type WGPUStagingBufferImpl = WGPUContextHandle<id::StagingBufferId>;
+pub type WGPUTextureImpl = WGPUContextHandle<id::TextureId>;
+pub type WGPUTextureViewImpl = WGPUContextHandle<id::TextureViewId>;
+pub type WGPUSamplerImpl = WGPUContextHandle<id::SamplerId>;
+pub type WGPUSurfaceImpl = WGPUContextHandle<id::SurfaceId>;
+
+pub struct WGPUInstanceImpl {
+    pub context: Arc<Context>,
+}
+
+pub struct WGPUAdapterImpl {
+    pub context: Arc<Context>,
+    pub id: id::AdapterId,
+    pub name: std::ffi::CString,
+    pub vendor_name: std::ffi::CString,
+    pub architecture_name: std::ffi::CString,
+    pub driver_desc: std::ffi::CString,
+}
+
+pub struct WGPUSwapChainImpl {
+    pub context: Arc<Context>,
+    pub surface_id: id::SurfaceId,
+    pub device_id: id::DeviceId,
+}
+
+pub struct WGPURenderPassEncoderImpl {
+    pub context: Arc<Context>,
+    pub encoder: command::RenderPass,
+}
+
+pub struct WGPUComputePassEncoderImpl {
+    pub context: Arc<Context>,
+    pub encoder: command::ComputePass,
+}
+
+pub struct WGPURenderBundleEncoderImpl {
+    pub context: Arc<Context>,
+    pub encoder: command::RenderBundleEncoder,
 }
 
 #[derive(Debug, Error)]
@@ -193,7 +180,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
         WGPUSType_InstanceExtras => native::WGPUInstanceExtras
     ));
 
-    Box::into_raw(Box::new(native::WGPUInstanceImpl {
+    Box::into_raw(Box::new(WGPUInstanceImpl {
         context: Arc::new(Context::new(
             "wgpu",
             wgc::hub::IdentityManagerFactory,
@@ -338,7 +325,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         None => {
             callback(
                 native::WGPURequestDeviceStatus_Success,
-                Box::into_raw(Box::new(native::WGPUDeviceImpl {
+                Box::into_raw(Box::new(WGPUDeviceImpl {
                     context: context.clone(),
                     id: device_id,
                 })),
@@ -477,7 +464,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
         None => wgc::command::ComputePassDescriptor::default(),
     };
 
-    Box::into_raw(Box::new(native::WGPUComputePassEncoderImpl {
+    Box::into_raw(Box::new(WGPUComputePassEncoderImpl {
         context: context.clone(),
         encoder: wgc::command::ComputePass::new(command_encoder_id, &desc),
     }))
@@ -543,7 +530,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
     };
 
-    Box::into_raw(Box::new(native::WGPURenderPassEncoderImpl {
+    Box::into_raw(Box::new(WGPURenderPassEncoderImpl {
         context: context.clone(),
         encoder: wgc::command::RenderPass::new(command_encoder_id, &desc),
     }))
@@ -687,7 +674,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
         log::error!("command_encoder_finish() failed: {:?}", error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUCommandBufferImpl {
+        Box::into_raw(Box::new(WGPUCommandBufferImpl {
             context: context.clone(),
             id: command_buffer_id,
         }))
@@ -931,7 +918,7 @@ pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
         );
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUBindGroupLayoutImpl {
+        Box::into_raw(Box::new(WGPUBindGroupLayoutImpl {
             context: context.clone(),
             id: bind_group_layout_id,
         }))
@@ -1001,7 +988,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUBindGroupImpl {
+        Box::into_raw(Box::new(WGPUBindGroupImpl {
             context: context.clone(),
             id: bind_group_id,
         }))
@@ -1136,7 +1123,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUBindGroupLayoutImpl {
+        Box::into_raw(Box::new(WGPUBindGroupLayoutImpl {
             context: context.clone(),
             id: bind_group_layout_id,
         }))
@@ -1168,7 +1155,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUBufferImpl {
+        Box::into_raw(Box::new(WGPUBufferImpl {
             context: context.clone(),
             id: buffer_id,
         }))
@@ -1196,7 +1183,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUCommandBufferImpl {
+        Box::into_raw(Box::new(WGPUCommandBufferImpl {
             context: context.clone(),
             id: commnad_buffer_id,
         }))
@@ -1244,7 +1231,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUComputePipelineImpl {
+        Box::into_raw(Box::new(WGPUComputePipelineImpl {
             context: context.clone(),
             id: compute_pipeline_id,
         }))
@@ -1273,7 +1260,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUPipelineLayoutImpl {
+        Box::into_raw(Box::new(WGPUPipelineLayoutImpl {
             context: context.clone(),
             id: pipeline_layout_id,
         }))
@@ -1298,7 +1285,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUQuerySetImpl {
+        Box::into_raw(Box::new(WGPUQuerySetImpl {
             context: context.clone(),
             id: query_set_id,
         }))
@@ -1339,7 +1326,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     };
 
     match wgc::command::RenderBundleEncoder::new(&desc, device_id, None) {
-        Ok(encoder) => Box::into_raw(Box::new(native::WGPURenderBundleEncoderImpl {
+        Ok(encoder) => Box::into_raw(Box::new(WGPURenderBundleEncoderImpl {
             context: context.clone(),
             encoder,
         })),
@@ -1498,7 +1485,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPURenderPipelineImpl {
+        Box::into_raw(Box::new(WGPURenderPipelineImpl {
             context: context.clone(),
             id: render_pipeline_id,
         }))
@@ -1559,7 +1546,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUSamplerImpl {
+        Box::into_raw(Box::new(WGPUSamplerImpl {
             context: context.clone(),
             id: sampler_id,
         }))
@@ -1595,7 +1582,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUShaderModuleImpl {
+        Box::into_raw(Box::new(WGPUShaderModuleImpl {
             context: context.clone(),
             id: shader_module_id,
         }))
@@ -1625,7 +1612,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUSwapChainImpl {
+        Box::into_raw(Box::new(WGPUSwapChainImpl {
             context: context.clone(),
             surface_id,
             device_id,
@@ -1668,7 +1655,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUTextureImpl {
+        Box::into_raw(Box::new(WGPUTextureImpl {
             context: context.clone(),
             id: texture_id,
         }))
@@ -1815,7 +1802,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
         CreateSurfaceParams::Metal(layer) => context.instance_create_surface_metal(layer, ()),
     };
 
-    Box::into_raw(Box::new(native::WGPUSurfaceImpl {
+    Box::into_raw(Box::new(WGPUSurfaceImpl {
         context: context.clone(),
         id: surface_id,
     }))
@@ -1875,7 +1862,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         Ok(adapter_id) => {
             callback(
                 native::WGPURequestAdapterStatus_Success,
-                Box::into_raw(Box::new(native::WGPUAdapterImpl {
+                Box::into_raw(Box::new(WGPUAdapterImpl {
                     context: context.clone(),
                     id: adapter_id,
                     name: CString::default(),
@@ -2081,7 +2068,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
         handle_device_error(device_id, &error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPURenderBundleImpl {
+        Box::into_raw(Box::new(WGPURenderBundleImpl {
             context: context.clone(),
             id: render_bundle_id,
         }))
@@ -2486,7 +2473,7 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
         );
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUBindGroupLayoutImpl {
+        Box::into_raw(Box::new(WGPUBindGroupLayoutImpl {
             context: context.clone(),
             id: bind_group_layout_id,
         }))
@@ -2546,7 +2533,7 @@ pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
                 let (texture_view_id, _) =
                     gfx_select!(texture => context.texture_create_view(texture, &desc, ()));
 
-                Box::into_raw(Box::new(native::WGPUTextureViewImpl {
+                Box::into_raw(Box::new(WGPUTextureViewImpl {
                     context: context.clone(),
                     id: texture_view_id,
                 }))
@@ -2625,7 +2612,7 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
         log::error!("Failed to create texture view for texture: {:?}", error);
         std::ptr::null_mut()
     } else {
-        Box::into_raw(Box::new(native::WGPUTextureViewImpl {
+        Box::into_raw(Box::new(WGPUTextureViewImpl {
             context: context.clone(),
             id: texture_view_id,
         }))

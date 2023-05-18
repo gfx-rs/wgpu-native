@@ -42,7 +42,7 @@ fn main() {
         .layout_tests(true);
 
     for (old_name, new_name) in types_to_rename {
-        let line = format!("pub type {old_name} = *mut {new_name};");
+        let line = format!("pub type {old_name} = *mut crate::{new_name};");
         builder = builder
             .blocklist_type(old_name)
             .blocklist_type(format!("{old_name}Impl"))
