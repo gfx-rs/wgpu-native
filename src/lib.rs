@@ -1712,8 +1712,14 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> native::WGPUQueue {
-    device.as_ref().expect("invalid device");
-    device
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context)
+    };
+    Box::into_raw(Box::new(WGPUQueueImpl {
+        context: context.clone(),
+        id: device_id,
+    }))
 }
 
 #[no_mangle]
@@ -2961,6 +2967,12 @@ pub unsafe extern "C" fn wgpuQuerySetDrop(query_set: native::WGPUQuerySet) {
     let context = &query_set.context;
 
     gfx_select!(query_set.id => context.query_set_drop(query_set.id));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueDrop(queue: native::WGPUQueue) {
+    assert!(!queue.is_null(), "invalid queue");
+    drop(Box::from_raw(queue));
 }
 
 #[no_mangle]

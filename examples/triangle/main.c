@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
   UNUSED(argv)
   struct demo demo = {0};
   GLFWwindow *window = NULL;
+  WGPUQueue queue = NULL;
   WGPUShaderModule shader_module = NULL;
   WGPUPipelineLayout pipeline_layout = NULL;
   WGPURenderPipeline render_pipeline = NULL;
@@ -240,7 +241,7 @@ int main(int argc, char *argv[]) {
   wgpuAdapterRequestDevice(demo.adapter, NULL, handle_request_device, &demo);
   ASSERT_CHECK(demo.device);
 
-  WGPUQueue queue = wgpuDeviceGetQueue(demo.device);
+  queue = wgpuDeviceGetQueue(demo.device);
   ASSERT_CHECK(queue);
 
   wgpuDeviceSetUncapturedErrorCallback(demo.device, handle_uncaptured_error,
@@ -386,6 +387,8 @@ cleanup_and_exit:
     wgpuShaderModuleDrop(shader_module);
   if (demo.swapchain)
     wgpuSwapChainDrop(demo.swapchain);
+  if (queue)
+    wgpuQueueDrop(queue);
   if (demo.device)
     wgpuDeviceDrop(demo.device);
   if (demo.adapter)

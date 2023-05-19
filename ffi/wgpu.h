@@ -219,6 +219,7 @@ void wgpuDeviceDrop(WGPUDevice device);
 void wgpuInstanceDrop(WGPUInstance instance);
 void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
 void wgpuQuerySetDrop(WGPUQuerySet querySet);
+void wgpuQueueDrop(WGPUQueue queue);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
 void wgpuRenderBundleEncoderDrop(WGPURenderBundleEncoder renderBundleEncoder);
 void wgpuRenderPassEncoderDrop(WGPURenderPassEncoder renderPassEncoder);

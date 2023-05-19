@@ -39,6 +39,7 @@ int main(int argc, char *argv[]) {
   WGPUInstance instance = NULL;
   WGPUAdapter adapter = NULL;
   WGPUDevice device = NULL;
+  WGPUQueue queue = NULL;
   WGPUShaderModule shader_module = NULL;
   WGPUBuffer staging_buffer = NULL;
   WGPUBuffer storage_buffer = NULL;
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
                            (void *)&device);
   ASSERT_CHECK(device);
 
-  WGPUQueue queue = wgpuDeviceGetQueue(device);
+  queue = wgpuDeviceGetQueue(device);
   ASSERT_CHECK(queue);
 
   wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
@@ -197,6 +198,8 @@ cleanup_and_exit:
     wgpuBufferDrop(staging_buffer);
   if (shader_module)
     wgpuShaderModuleDrop(shader_module);
+  if (queue)
+    wgpuQueueDrop(queue);
   if (device)
     wgpuDeviceDrop(device);
   if (adapter)
