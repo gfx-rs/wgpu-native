@@ -2857,12 +2857,6 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuInstanceDrop(instance: native::WGPUInstance) {
-    assert!(!instance.is_null(), "invalid instance");
-    drop(Box::from_raw(instance));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterDrop(adapter: native::WGPUAdapter) {
     assert!(!adapter.is_null(), "invalid adapter");
     let adapter = Box::from_raw(adapter);
@@ -2917,17 +2911,6 @@ pub unsafe extern "C" fn wgpuCommandEncoderDrop(command_encoder: native::WGPUCom
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderDrop(
-    render_pass_encoder: native::WGPURenderPassEncoder,
-) {
-    assert!(
-        !render_pass_encoder.is_null(),
-        "invalid render pass encoder"
-    );
-    drop(Box::from_raw(render_pass_encoder));
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderDrop(
     compute_pass_encoder: native::WGPUComputePassEncoder,
 ) {
@@ -2936,17 +2919,6 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDrop(
         "invalid compute pass encoder"
     );
     drop(Box::from_raw(compute_pass_encoder));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuRenderBundleEncoderDrop(
-    render_bundle_encoder: native::WGPURenderBundleEncoder,
-) {
-    assert!(
-        !render_bundle_encoder.is_null(),
-        "invalid render bundle encoder"
-    );
-    drop(Box::from_raw(render_bundle_encoder));
 }
 
 #[no_mangle]
@@ -2965,6 +2937,12 @@ pub unsafe extern "C" fn wgpuDeviceDrop(device: native::WGPUDevice) {
     let context = &device.context;
 
     gfx_select!(device.id => context.device_drop(device.id));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceDrop(instance: native::WGPUInstance) {
+    assert!(!instance.is_null(), "invalid instance");
+    drop(Box::from_raw(instance));
 }
 
 #[no_mangle]
@@ -2992,6 +2970,28 @@ pub unsafe extern "C" fn wgpuRenderBundleDrop(render_bundle: native::WGPURenderB
     let context = &render_bundle.context;
 
     gfx_select!(render_bundle.id => context.render_bundle_drop(render_bundle.id));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderDrop(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+) {
+    assert!(
+        !render_bundle_encoder.is_null(),
+        "invalid render bundle encoder"
+    );
+    drop(Box::from_raw(render_bundle_encoder));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrop(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+) {
+    assert!(
+        !render_pass_encoder.is_null(),
+        "invalid render pass encoder"
+    );
+    drop(Box::from_raw(render_pass_encoder));
 }
 
 #[no_mangle]
