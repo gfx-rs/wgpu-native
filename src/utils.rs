@@ -1,6 +1,19 @@
 use std::borrow::Cow;
 
-pub type Label<'a> = Option<Cow<'a, str>>;
+pub struct Userdata(*mut std::ffi::c_void);
+
+impl Userdata {
+    pub const fn new(userdata: *mut std::ffi::c_void) -> Userdata {
+        Userdata(userdata)
+    }
+
+    pub fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+}
+
+unsafe impl Send for Userdata {}
+unsafe impl Sync for Userdata {}
 
 pub struct OwnedLabel(pub Option<String>);
 impl OwnedLabel {

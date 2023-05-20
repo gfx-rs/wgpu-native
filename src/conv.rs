@@ -1,5 +1,7 @@
+use wgc::Label;
+
 use crate::native;
-use crate::utils::{make_slice, Label, OwnedLabel};
+use crate::utils::{make_slice, OwnedLabel};
 use crate::{follow_chain, map_enum};
 use std::path::Path;
 use std::{borrow::Cow, ffi::CStr};
@@ -323,7 +325,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
                     .expect("invalid bind group layout for pipeline layout descriptor")
                     .id
             })
-            .collect::<Vec<wgc::id::BindGroupLayoutId>>();
+            .collect::<Vec<_>>();
 
     let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
         unsafe {
