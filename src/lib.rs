@@ -1296,38 +1296,39 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         .expect("invalid bind group layout for bind group descriptor")
         .id;
 
-    let mut entries = Vec::new();
-    for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        let wgc_entry = if let Some(buffer) = entry.buffer.as_ref() {
-            wgc::binding_model::BindGroupEntry {
-                binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::Buffer(
-                    wgc::binding_model::BufferBinding {
-                        buffer_id: buffer.id,
-                        offset: entry.offset,
-                        size: match entry.size {
-                            0 => panic!("invalid size"),
-                            conv::WGPU_WHOLE_SIZE => None,
-                            _ => Some(NonZeroU64::new_unchecked(entry.size)),
+    let entries = make_slice(descriptor.entries, descriptor.entryCount as usize)
+        .iter()
+        .map(|entry| {
+            if let Some(buffer) = entry.buffer.as_ref() {
+                wgc::binding_model::BindGroupEntry {
+                    binding: entry.binding,
+                    resource: wgc::binding_model::BindingResource::Buffer(
+                        wgc::binding_model::BufferBinding {
+                            buffer_id: buffer.id,
+                            offset: entry.offset,
+                            size: match entry.size {
+                                0 => panic!("invalid size"),
+                                conv::WGPU_WHOLE_SIZE => None,
+                                _ => Some(NonZeroU64::new_unchecked(entry.size)),
+                            },
                         },
-                    },
-                ),
+                    ),
+                }
+            } else if let Some(sampler) = entry.sampler.as_ref() {
+                wgc::binding_model::BindGroupEntry {
+                    binding: entry.binding,
+                    resource: wgc::binding_model::BindingResource::Sampler(sampler.id),
+                }
+            } else if let Some(texture_view) = entry.textureView.as_ref() {
+                wgc::binding_model::BindGroupEntry {
+                    binding: entry.binding,
+                    resource: wgc::binding_model::BindingResource::TextureView(texture_view.id),
+                }
+            } else {
+                panic!("invalid bind group entry for bind group descriptor");
             }
-        } else if let Some(sampler) = entry.sampler.as_ref() {
-            wgc::binding_model::BindGroupEntry {
-                binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::Sampler(sampler.id),
-            }
-        } else if let Some(texture_view) = entry.textureView.as_ref() {
-            wgc::binding_model::BindGroupEntry {
-                binding: entry.binding,
-                resource: wgc::binding_model::BindingResource::TextureView(texture_view.id),
-            }
-        } else {
-            panic!("invalid bind group entry for bind group descriptor");
-        };
-        entries.push(wgc_entry);
-    }
+        })
+        .collect::<Vec<_>>();
 
     let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupDescriptor {
@@ -1365,116 +1366,126 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let mut entries = Vec::new();
+    let entries = make_slice(descriptor.entries, descriptor.entryCount as usize)
+        .iter()
+        .map(|entry| {
+            let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
+            let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
+            let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
+            let is_storage_texture =
+                entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
-    for entry in make_slice(descriptor.entries, descriptor.entryCount as usize) {
-        let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
-        let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
-        let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
-        let is_storage_texture =
-            entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
-
-        let ty = if is_texture {
-            wgt::BindingType::Texture {
-                sample_type: match entry.texture.sampleType {
-                    native::WGPUTextureSampleType_Float => {
-                        wgt::TextureSampleType::Float { filterable: true }
-                    }
-                    native::WGPUTextureSampleType_UnfilterableFloat => {
-                        wgt::TextureSampleType::Float { filterable: false }
-                    }
-                    native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
-                    native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
-                    native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
-                    _ => panic!("invalid sample type for texture binding layout"),
-                },
-                view_dimension: match entry.texture.viewDimension {
-                    native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
-                    native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
-                    native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
-                    native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
-                    native::WGPUTextureViewDimension_CubeArray => {
-                        wgt::TextureViewDimension::CubeArray
-                    }
-                    native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                    _ => panic!("invalid texture view dimension for texture binding layout"),
-                },
-                multisampled: entry.texture.multisampled,
-            }
-        } else if is_sampler {
-            match entry.sampler.type_ {
-                native::WGPUSamplerBindingType_Filtering => {
-                    wgt::BindingType::Sampler(wgt::SamplerBindingType::Filtering)
+            let ty = if is_texture {
+                wgt::BindingType::Texture {
+                    sample_type: match entry.texture.sampleType {
+                        native::WGPUTextureSampleType_Float => {
+                            wgt::TextureSampleType::Float { filterable: true }
+                        }
+                        native::WGPUTextureSampleType_UnfilterableFloat => {
+                            wgt::TextureSampleType::Float { filterable: false }
+                        }
+                        native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
+                        native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
+                        native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
+                        _ => panic!("invalid sample type for texture binding layout"),
+                    },
+                    view_dimension: match entry.texture.viewDimension {
+                        native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
+                        native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
+                        native::WGPUTextureViewDimension_2DArray => {
+                            wgt::TextureViewDimension::D2Array
+                        }
+                        native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
+                        native::WGPUTextureViewDimension_CubeArray => {
+                            wgt::TextureViewDimension::CubeArray
+                        }
+                        native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
+                        _ => panic!("invalid texture view dimension for texture binding layout"),
+                    },
+                    multisampled: entry.texture.multisampled,
                 }
-                native::WGPUSamplerBindingType_NonFiltering => {
-                    wgt::BindingType::Sampler(wgt::SamplerBindingType::NonFiltering)
+            } else if is_sampler {
+                match entry.sampler.type_ {
+                    native::WGPUSamplerBindingType_Filtering => {
+                        wgt::BindingType::Sampler(wgt::SamplerBindingType::Filtering)
+                    }
+                    native::WGPUSamplerBindingType_NonFiltering => {
+                        wgt::BindingType::Sampler(wgt::SamplerBindingType::NonFiltering)
+                    }
+                    native::WGPUSamplerBindingType_Comparison => {
+                        wgt::BindingType::Sampler(wgt::SamplerBindingType::Comparison)
+                    }
+                    _ => panic!("invalid sampler binding type for sampler binding layout"),
                 }
-                native::WGPUSamplerBindingType_Comparison => {
-                    wgt::BindingType::Sampler(wgt::SamplerBindingType::Comparison)
+            } else if is_storage_texture {
+                wgt::BindingType::StorageTexture {
+                    access: match entry.storageTexture.access {
+                        native::WGPUStorageTextureAccess_WriteOnly => {
+                            wgt::StorageTextureAccess::WriteOnly
+                        }
+                        _ => {
+                            panic!(
+                                "invalid storage texture access for storage texture binding layout"
+                            )
+                        }
+                    },
+                    format: conv::map_texture_format(entry.storageTexture.format)
+                        .expect("invalid texture format for storage texture binding layout"),
+                    view_dimension: match entry.storageTexture.viewDimension {
+                        native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
+                        native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
+                        native::WGPUTextureViewDimension_2DArray => {
+                            wgt::TextureViewDimension::D2Array
+                        }
+                        native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
+                        native::WGPUTextureViewDimension_CubeArray => {
+                            wgt::TextureViewDimension::CubeArray
+                        }
+                        native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
+                        _ => {
+                            panic!(
+                                "invalid texture view dimension for storage texture binding layout"
+                            )
+                        }
+                    },
                 }
-                _ => panic!("invalid sampler binding type for sampler binding layout"),
-            }
-        } else if is_storage_texture {
-            wgt::BindingType::StorageTexture {
-                access: match entry.storageTexture.access {
-                    native::WGPUStorageTextureAccess_WriteOnly => {
-                        wgt::StorageTextureAccess::WriteOnly
-                    }
-                    _ => {
-                        panic!("invalid storage texture access for storage texture binding layout")
-                    }
-                },
-                format: conv::map_texture_format(entry.storageTexture.format)
-                    .expect("invalid texture format for storage texture binding layout"),
-                view_dimension: match entry.storageTexture.viewDimension {
-                    native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
-                    native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
-                    native::WGPUTextureViewDimension_2DArray => wgt::TextureViewDimension::D2Array,
-                    native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
-                    native::WGPUTextureViewDimension_CubeArray => {
-                        wgt::TextureViewDimension::CubeArray
-                    }
-                    native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                    _ => {
-                        panic!("invalid texture view dimension for storage texture binding layout")
-                    }
-                },
-            }
-        } else if is_buffer {
-            wgt::BindingType::Buffer {
-                ty: match entry.buffer.type_ {
-                    native::WGPUBufferBindingType_Uniform => wgt::BufferBindingType::Uniform,
-                    native::WGPUBufferBindingType_Storage => {
-                        wgt::BufferBindingType::Storage { read_only: false }
-                    }
-                    native::WGPUBufferBindingType_ReadOnlyStorage => {
-                        wgt::BufferBindingType::Storage { read_only: true }
-                    }
-                    _ => panic!("invalid buffer binding type for buffer binding layout"),
-                },
-                has_dynamic_offset: entry.buffer.hasDynamicOffset,
-                min_binding_size: {
-                    assert_ne!(
-                        entry.buffer.minBindingSize,
-                        conv::WGPU_WHOLE_SIZE,
-                        "invalid min binding size for buffer binding layout, use 0 instead"
-                    );
+            } else if is_buffer {
+                wgt::BindingType::Buffer {
+                    ty: match entry.buffer.type_ {
+                        native::WGPUBufferBindingType_Uniform => wgt::BufferBindingType::Uniform,
+                        native::WGPUBufferBindingType_Storage => {
+                            wgt::BufferBindingType::Storage { read_only: false }
+                        }
+                        native::WGPUBufferBindingType_ReadOnlyStorage => {
+                            wgt::BufferBindingType::Storage { read_only: true }
+                        }
+                        _ => panic!("invalid buffer binding type for buffer binding layout"),
+                    },
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    min_binding_size: {
+                        assert_ne!(
+                            entry.buffer.minBindingSize,
+                            conv::WGPU_WHOLE_SIZE,
+                            "invalid min binding size for buffer binding layout, use 0 instead"
+                        );
 
-                    NonZeroU64::new(entry.buffer.minBindingSize)
-                },
-            }
-        } else {
-            panic!("invalid bind group layout entry for bind group layout descriptor");
-        };
+                        NonZeroU64::new(entry.buffer.minBindingSize)
+                    },
+                }
+            } else {
+                panic!("invalid bind group layout entry for bind group layout descriptor");
+            };
 
-        entries.push(wgt::BindGroupLayoutEntry {
-            ty,
-            binding: entry.binding,
-            visibility: wgt::ShaderStages::from_bits(entry.visibility)
-                .expect("invalid visibility for bind group layout entry"),
-            count: None, // TODO - What is this?
-        });
-    }
+            wgt::BindGroupLayoutEntry {
+                ty,
+                binding: entry.binding,
+                visibility: wgt::ShaderStages::from_bits(entry.visibility)
+                    .expect("invalid visibility for bind group layout entry"),
+                count: None, // TODO - What is this?
+            }
+        })
+        .collect::<Vec<_>>();
+
     let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupLayoutDescriptor {
         label: label.as_cow(),
@@ -2379,15 +2390,16 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
         (queue.id, &queue.context)
     };
 
-    let mut command_buffers = Vec::new();
-    for command_buffer in make_slice(commands, command_count as usize) {
-        let ptr = *command_buffer;
-        assert!(!ptr.is_null(), "invalid command buffer");
+    let command_buffers = make_slice(commands, command_count as usize)
+        .iter()
+        .map(|command_buffer| {
+            let command_buffer = *command_buffer;
+            assert!(!command_buffer.is_null(), "invalid command buffer");
 
-        // NOTE: Automaticaly drop the command buffer
-        let buffer_id = Box::from_raw(ptr).id;
-        command_buffers.push(buffer_id)
-    }
+            // NOTE: Automaticaly drop the command buffer
+            Box::from_raw(command_buffer).id
+        })
+        .collect::<Vec<_>>();
 
     if let Err(cause) = gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         handle_error_fatal(context, cause, "wgpuQueueSubmit");
@@ -3181,15 +3193,16 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
         (queue.id, &queue.context)
     };
 
-    let mut command_buffers = Vec::new();
-    for command_buffer in make_slice(commands, command_count as usize) {
-        let ptr = *command_buffer;
-        assert!(!ptr.is_null(), "invalid command buffer");
+    let command_buffers = make_slice(commands, command_count as usize)
+    .iter()
+    .map(|command_buffer| {
+        let command_buffer = *command_buffer;
+        assert!(!command_buffer.is_null(), "invalid command buffer");
 
         // NOTE: Automaticaly drop the command buffer
-        let buffer_id = Box::from_raw(ptr).id;
-        command_buffers.push(buffer_id)
-    }
+        Box::from_raw(command_buffer).id
+    })
+    .collect::<Vec<_>>();
 
     match gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         Ok(submission_index) => submission_index.index,
