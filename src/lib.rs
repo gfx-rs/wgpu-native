@@ -226,6 +226,7 @@ impl ErrorSinkRaw {
     fn handle_error(&mut self, err: crate::Error) {
         let (typ, filter) = match err {
             crate::Error::DeviceLost { .. } => {
+                // handle device lost error early
                 if let Some(callback) = self.device_lost_handler.callback {
                     let userdata = self.device_lost_handler.userdata;
                     let msg = CString::new(err.to_string()).unwrap();
@@ -2176,6 +2177,52 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
     };
 
     device_features.contains(feature)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDevicePopErrorScope(
+    device: native::WGPUDevice,
+    callback: native::WGPUErrorCallback,
+    userdata: *mut ::std::os::raw::c_void,
+) -> bool {
+    let device = device.as_ref().expect("invalid device");
+    let callback = callback.expect("invalid callback");
+    let mut error_sink = device.error_sink.lock().unwrap();
+    let scope = error_sink.scopes.pop().unwrap();
+
+    if let Some(error) = scope.error {
+        let typ = match error {
+            crate::Error::OutOfMemory { .. } => native::WGPUErrorType_OutOfMemory,
+            crate::Error::Validation { .. } => native::WGPUErrorType_Validation,
+            // We handle device lost error early in ErrorSinkRaw::handle_error
+            // so we should never get device lost error here.
+            crate::Error::DeviceLost { .. } => unreachable!(),
+        };
+
+        let msg = CString::new(error.to_string()).unwrap();
+        unsafe {
+            callback(typ, msg.as_ptr(), userdata);
+        }
+    }
+
+    false
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDevicePushErrorScope(
+    device: native::WGPUDevice,
+    filter: native::WGPUErrorFilter,
+) {
+    let device = device.as_ref().expect("invalid device");
+    let mut error_sink = device.error_sink.lock().unwrap();
+    error_sink.scopes.push(ErrorScope {
+        error: None,
+        filter: match filter {
+            native::WGPUErrorFilter_Validation => ErrorFilter::Validation,
+            native::WGPUErrorFilter_OutOfMemory => ErrorFilter::OutOfMemory,
+            _ => panic!("invalid error filter"),
+        },
+    });
 }
 
 #[no_mangle]

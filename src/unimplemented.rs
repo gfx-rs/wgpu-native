@@ -100,23 +100,6 @@ pub extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDevicePopErrorScope(
-    _device: native::WGPUDevice,
-    _callback: native::WGPUErrorCallback,
-    _userdata: *mut ::std::os::raw::c_void,
-) -> bool {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuDevicePushErrorScope(
-    _device: native::WGPUDevice,
-    _filter: native::WGPUErrorFilter,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuDeviceSetLabel(
     _device: native::WGPUDevice,
     _label: *const ::std::os::raw::c_char,
