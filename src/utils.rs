@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 pub struct Userdata(*mut std::ffi::c_void);
-
 impl Userdata {
     pub const fn new(userdata: *mut std::ffi::c_void) -> Userdata {
         Userdata(userdata)
@@ -15,9 +14,9 @@ impl Userdata {
 unsafe impl Send for Userdata {}
 unsafe impl Sync for Userdata {}
 
-pub struct OwnedLabel(pub Option<String>);
+pub struct OwnedLabel(Option<String>);
 impl OwnedLabel {
-    pub fn new(ptr: *const std::os::raw::c_char) -> Self {
+    pub unsafe fn new(ptr: *const std::os::raw::c_char) -> Self {
         Self(if ptr.is_null() {
             None
         } else {

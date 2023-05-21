@@ -3005,8 +3005,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     match caps
         .formats
         .first()
-        .map(|f| conv::to_native_texture_format(*f))
-        .flatten()
+        .and_then(|f| conv::to_native_texture_format(*f))
     {
         Some(format) => format,
         None => panic!(
@@ -3194,15 +3193,15 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
     };
 
     let command_buffers = make_slice(commands, command_count as usize)
-    .iter()
-    .map(|command_buffer| {
-        let command_buffer = *command_buffer;
-        assert!(!command_buffer.is_null(), "invalid command buffer");
+        .iter()
+        .map(|command_buffer| {
+            let command_buffer = *command_buffer;
+            assert!(!command_buffer.is_null(), "invalid command buffer");
 
-        // NOTE: Automaticaly drop the command buffer
-        Box::from_raw(command_buffer).id
-    })
-    .collect::<Vec<_>>();
+            // NOTE: Automaticaly drop the command buffer
+            Box::from_raw(command_buffer).id
+        })
+        .collect::<Vec<_>>();
 
     match gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         Ok(submission_index) => submission_index.index,

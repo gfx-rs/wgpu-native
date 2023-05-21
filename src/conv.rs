@@ -254,10 +254,10 @@ pub fn map_instance_descriptor(
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
                 dxil_path: unsafe { extras.dxilPath.as_ref() }
-                    .and_then(|v| OwnedLabel::new(v).0)
+                    .and_then(|v| unsafe { OwnedLabel::new(v) }.into_inner())
                     .map(|v| Path::new(&v).to_path_buf()),
                 dxc_path: unsafe { extras.dxcPath.as_ref() }
-                    .and_then(|v| OwnedLabel::new(v).0)
+                    .and_then(|v| unsafe { OwnedLabel::new(v) }.into_inner())
                     .map(|v| Path::new(&v).to_path_buf()),
             },
             _ => wgt::Dx12Compiler::default(),
@@ -301,13 +301,13 @@ pub fn map_device_descriptor<'a>(
 
     (
         wgt::DeviceDescriptor {
-            label: OwnedLabel::new(des.label).into_cow(),
+            label: unsafe { OwnedLabel::new(des.label) }.into_cow(),
             features: map_features(unsafe {
                 make_slice(des.requiredFeatures, des.requiredFeaturesCount as usize)
             }),
             limits,
         },
-        extras.and_then(|extras| OwnedLabel::new(extras.tracePath).into_inner()),
+        extras.and_then(|extras| unsafe { OwnedLabel::new(extras.tracePath) }.into_inner()),
     )
 }
 
@@ -1136,7 +1136,7 @@ pub fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
     wgt::QuerySetDescriptor {
-        label: OwnedLabel::new(desc.label).into_cow(),
+        label: unsafe { OwnedLabel::new(desc.label) }.into_cow(),
         count: desc.count,
         ty: match desc.type_ {
             native::WGPUQueryType_Occlusion => wgt::QueryType::Occlusion,
