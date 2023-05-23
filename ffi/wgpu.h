@@ -207,21 +207,22 @@ void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder
 void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 
-void wgpuInstanceDrop(WGPUInstance instance);
 void wgpuAdapterDrop(WGPUAdapter adapter);
 void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
 void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
 void wgpuBufferDrop(WGPUBuffer buffer);
 void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
 void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
-void wgpuRenderPassEncoderDrop(WGPURenderPassEncoder renderPassEncoder);
 void wgpuComputePassEncoderDrop(WGPUComputePassEncoder computePassEncoder);
-void wgpuRenderBundleEncoderDrop(WGPURenderBundleEncoder renderBundleEncoder);
 void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
 void wgpuDeviceDrop(WGPUDevice device);
+void wgpuInstanceDrop(WGPUInstance instance);
 void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
 void wgpuQuerySetDrop(WGPUQuerySet querySet);
+void wgpuQueueDrop(WGPUQueue queue);
 void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
+void wgpuRenderBundleEncoderDrop(WGPURenderBundleEncoder renderBundleEncoder);
+void wgpuRenderPassEncoderDrop(WGPURenderPassEncoder renderPassEncoder);
 void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
 void wgpuSamplerDrop(WGPUSampler sampler);
 void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
