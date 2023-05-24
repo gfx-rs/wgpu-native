@@ -415,14 +415,13 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     let adapter = adapter.as_mut().expect("invalid adapter");
     let properties = properties.expect("invalid return pointer \"properties\"");
     let context = &adapter.context;
-    let id = adapter.id;
+    let adapter_id = adapter.id;
 
-    let maybe_props = gfx_select!(id => context.adapter_get_info(id));
-    match maybe_props {
+    match gfx_select!(adapter_id => context.adapter_get_info(adapter_id)) {
         Ok(props) => {
-            adapter.name = CString::new((&props.name) as &str).unwrap();
-            let driver_desc = format!("{} {}", props.driver, props.driver_info);
-            adapter.driver_desc = CString::new(driver_desc.trim()).unwrap();
+            adapter.name = CString::new(props.name).unwrap();
+            adapter.vendor_name = CString::new(props.driver).unwrap();
+            adapter.driver_desc = CString::new(props.driver_info).unwrap();
 
             properties.vendorID = props.vendor as u32;
             properties.vendorName = adapter.vendor_name.as_ptr();
@@ -444,7 +443,7 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
                 wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
                 wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
                 wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
-                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
+                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
             };
         }
         Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetProperties"),
