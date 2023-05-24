@@ -121,11 +121,6 @@ pub extern "C" fn wgpuPipelineLayoutSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuQuerySetGetCount(_query_set: native::WGPUQuerySet) -> u32 {
     unimplemented!();
 }
@@ -139,15 +134,6 @@ pub extern "C" fn wgpuQuerySetGetType(_query_set: native::WGPUQuerySet) -> nativ
 pub extern "C" fn wgpuQuerySetSetLabel(
     _query_set: native::WGPUQuerySet,
     _label: *const ::std::os::raw::c_char,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuQueueOnSubmittedWorkDone(
-    _queue: native::WGPUQueue,
-    _callback: native::WGPUQueueWorkDoneCallback,
-    _userdata: *mut ::std::os::raw::c_void,
 ) {
     unimplemented!();
 }

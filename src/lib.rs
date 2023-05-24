@@ -2108,7 +2108,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
-    // Empty implementation, maybe call drop?
+    //TODO: empty implementation, wait till wgpu-core implements a way.
 }
 
 #[no_mangle]
@@ -2376,7 +2376,38 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     };
 }
 
+// QuerySet methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
+    //TODO: empty implementation, wait till wgpu-core implements a way.
+}
+
 // Queue methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
+    queue: native::WGPUQueue,
+    callback: native::WGPUQueueWorkDoneCallback,
+    userdata: *mut ::std::os::raw::c_void,
+) {
+    let (queue_id, context) = {
+        let queue = queue.as_ref().expect("invalid queue");
+        (queue.id, &queue.context)
+    };
+    let callback = callback.expect("invalid callback");
+    let userdata = utils::Userdata::new(userdata);
+
+    let closure = wgc::device::queue::SubmittedWorkDoneClosure::from_rust(Box::new(move || {
+        callback(native::WGPUQueueWorkDoneStatus_Success, userdata.as_ptr());
+    }));
+
+    if let Err(cause) =
+        gfx_select!(queue_id => context.queue_on_submitted_work_done(queue_id, closure))
+    {
+        handle_error_fatal(context, cause, "wgpuQueueOnSubmittedWorkDone");
+    };
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueSubmit(
