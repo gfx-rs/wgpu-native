@@ -30,16 +30,6 @@ pub extern "C" fn wgpuBufferGetMapState(_buffer: native::WGPUBuffer) -> native::
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuBufferGetSize(_buffer: native::WGPUBuffer) -> u64 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuBufferGetUsage(_buffer: native::WGPUBuffer) -> native::WGPUBufferUsage {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuBufferSetLabel(
     _buffer: native::WGPUBuffer,
     _label: *const ::std::os::raw::c_char,
@@ -207,48 +197,6 @@ pub extern "C" fn wgpuShaderModuleSetLabel(
     _shader_module: native::WGPUShaderModule,
     _label: *const ::std::os::raw::c_char,
 ) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetDepthOrArrayLayers(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetDimension(
-    _texture: native::WGPUTexture,
-) -> native::WGPUTextureDimension {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetFormat(_texture: native::WGPUTexture) -> native::WGPUTextureFormat {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetHeight(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetMipLevelCount(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetSampleCount(_texture: native::WGPUTexture) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuTextureGetUsage(_texture: native::WGPUTexture) -> native::WGPUTextureUsage {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuTextureGetWidth(_texture: native::WGPUTexture) -> u32 {
     unimplemented!();
 }
 
