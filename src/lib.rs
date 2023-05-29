@@ -84,6 +84,7 @@ pub struct WGPUBufferImpl {
     context: Arc<Context>,
     id: id::BufferId,
     error_sink: ErrorSink,
+    descriptor: native::WGPUBufferDescriptor,
 }
 
 pub struct WGPUCommandEncoderImpl {
@@ -103,6 +104,7 @@ pub struct WGPUTextureImpl {
     context: Arc<Context>,
     id: id::TextureId,
     error_sink: ErrorSink,
+    descriptor: native::WGPUTextureDescriptor,
 }
 
 pub struct WGPURenderPassEncoderImpl {
@@ -415,14 +417,13 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     let adapter = adapter.as_mut().expect("invalid adapter");
     let properties = properties.expect("invalid return pointer \"properties\"");
     let context = &adapter.context;
-    let id = adapter.id;
+    let adapter_id = adapter.id;
 
-    let maybe_props = gfx_select!(id => context.adapter_get_info(id));
-    match maybe_props {
+    match gfx_select!(adapter_id => context.adapter_get_info(adapter_id)) {
         Ok(props) => {
-            adapter.name = CString::new((&props.name) as &str).unwrap();
-            let driver_desc = format!("{} {}", props.driver, props.driver_info);
-            adapter.driver_desc = CString::new(driver_desc.trim()).unwrap();
+            adapter.name = CString::new(props.name).unwrap();
+            adapter.vendor_name = CString::new(props.driver).unwrap();
+            adapter.driver_desc = CString::new(props.driver_info).unwrap();
 
             properties.vendorID = props.vendor as u32;
             properties.vendorName = adapter.vendor_name.as_ptr();
@@ -444,7 +445,7 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
                 wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
                 wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
                 wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
-                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_OpenGLES, // close enough?
+                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
             };
         }
         Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetProperties"),
@@ -585,6 +586,18 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
     };
 
     buf as *mut ::std::os::raw::c_void
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferGetSize(buffer: native::WGPUBuffer) -> u64 {
+    let descriptor = buffer.as_ref().expect("invalid buffer").descriptor;
+    descriptor.size
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferGetUsage(buffer: native::WGPUBuffer) -> native::WGPUBufferUsage {
+    let descriptor = buffer.as_ref().expect("invalid buffer").descriptor;
+    descriptor.usage as _
 }
 
 #[no_mangle]
@@ -1545,6 +1558,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         context: context.clone(),
         id: buffer_id,
         error_sink: error_sink.clone(),
+        descriptor: *descriptor,
     }))
 }
 
@@ -2104,12 +2118,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
         context: context.clone(),
         id: texture_id,
         error_sink: error_sink.clone(),
+        descriptor: *descriptor,
     }))
 }
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
-    // Empty implementation, maybe call drop?
+    //TODO: empty implementation, wait till wgpu-core implements a way.
 }
 
 #[no_mangle]
@@ -2377,7 +2392,38 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     };
 }
 
+// QuerySet methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
+    //TODO: empty implementation, wait till wgpu-core implements a way.
+}
+
 // Queue methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
+    queue: native::WGPUQueue,
+    callback: native::WGPUQueueWorkDoneCallback,
+    userdata: *mut ::std::os::raw::c_void,
+) {
+    let (queue_id, context) = {
+        let queue = queue.as_ref().expect("invalid queue");
+        (queue.id, &queue.context)
+    };
+    let callback = callback.expect("invalid callback");
+    let userdata = utils::Userdata::new(userdata);
+
+    let closure = wgc::device::queue::SubmittedWorkDoneClosure::from_rust(Box::new(move || {
+        callback(native::WGPUQueueWorkDoneStatus_Success, userdata.as_ptr());
+    }));
+
+    if let Err(cause) =
+        gfx_select!(queue_id => context.queue_on_submitted_work_done(queue_id, closure))
+    {
+        handle_error_fatal(context, cause, "wgpuQueueOnSubmittedWorkDone");
+    };
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueSubmit(
@@ -3167,6 +3213,60 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
 
     // Per spec, no error to report. Even calling destroy multiple times is valid.
     let _ = gfx_select!(texture_id => context.texture_destroy(texture_id));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetDepthOrArrayLayers(texture: native::WGPUTexture) -> u32 {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.size.depthOrArrayLayers
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetDimension(
+    texture: native::WGPUTexture,
+) -> native::WGPUTextureDimension {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.dimension
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetFormat(
+    texture: native::WGPUTexture,
+) -> native::WGPUTextureFormat {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.format
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetHeight(texture: native::WGPUTexture) -> u32 {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.size.height
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetMipLevelCount(texture: native::WGPUTexture) -> u32 {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.mipLevelCount
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetSampleCount(texture: native::WGPUTexture) -> u32 {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.sampleCount
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetUsage(
+    texture: native::WGPUTexture,
+) -> native::WGPUTextureUsage {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.usage as _
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetWidth(texture: native::WGPUTexture) -> u32 {
+    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
+    descriptor.size.width
 }
 
 // wgpu.h functions
