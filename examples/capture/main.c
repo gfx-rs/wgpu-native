@@ -24,16 +24,6 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   UNUSED(message)
   *(WGPUDevice *)userdata = device;
 }
-static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
-                               void *userdata) {
-  UNUSED(userdata)
-  printf(LOG_PREFIX " device_lost reason=%#.8x message=%s\n", reason, message);
-}
-static void handle_uncaptured_error(WGPUErrorType type, char const *message,
-                                    void *userdata) {
-  UNUSED(userdata)
-  printf(LOG_PREFIX " uncaptured_error type=%#.8x message=%s\n", type, message);
-}
 static void handle_buffer_map(WGPUBufferMapAsyncStatus status, void *userdata) {
   UNUSED(userdata)
   printf(LOG_PREFIX " buffer_map status=%#.8x\n", status);
@@ -104,9 +94,6 @@ int main(int argc, char *argv[]) {
   ASSERT_CHECK(device);
   queue = wgpuDeviceGetQueue(device);
   ASSERT_CHECK(queue);
-
-  wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
-  wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
 
   BufferDimensions buffer_dimensions = {0};
   buffer_dimensions_init(&buffer_dimensions, width, height);

@@ -217,11 +217,11 @@ struct ErrorSinkRaw {
 }
 
 impl ErrorSinkRaw {
-    fn new() -> ErrorSinkRaw {
+    fn new(device_lost_handler: DeviceLostCallback) -> ErrorSinkRaw {
         ErrorSinkRaw {
             scopes: Vec::new(),
             uncaptured_handler: DEFAULT_UNCAPTURED_ERROR_HANDLER,
-            device_lost_handler: DEFAULT_DEVICE_LOST_HANDLER,
+            device_lost_handler,
         }
     }
 
@@ -487,12 +487,23 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
     let callback = callback.expect("invalid callback");
 
-    let (desc, trace_str) = match descriptor {
-        Some(descriptor) => follow_chain!(
-            map_device_descriptor(descriptor,
-            WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+    let (desc, trace_str, device_lost_handler) = match descriptor {
+        Some(descriptor) => {
+            let (desc, trace_str) = follow_chain!(
+                map_device_descriptor(descriptor,
+                WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+            );
+            let device_lost_handler = DeviceLostCallback {
+                callback: descriptor.deviceLostCallback,
+                userdata: descriptor.deviceLostUserdata,
+            };
+            (desc, trace_str, device_lost_handler)
+        }
+        None => (
+            wgt::DeviceDescriptor::default(),
+            None,
+            DEFAULT_DEVICE_LOST_HANDLER,
         ),
-        None => (wgt::DeviceDescriptor::default(), None),
     };
 
     let trace_path = trace_str.as_ref().map(Path::new);
@@ -505,7 +516,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 Box::into_raw(Box::new(WGPUDeviceImpl {
                     context: context.clone(),
                     id: device_id,
-                    error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new())),
+                    error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new(device_lost_handler))),
                 })),
                 std::ptr::null(),
                 userdata,
@@ -629,11 +640,16 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
                     Err(resource::BufferAccessError::Device(_)) => {
                         native::WGPUBufferMapAsyncStatus_DeviceLost
                     }
+                    Err(resource::BufferAccessError::MapAlreadyPending) => {
+                        native::WGPUBufferMapAsyncStatus_MappingAlreadyPending
+                    }
                     Err(resource::BufferAccessError::Invalid)
                     | Err(resource::BufferAccessError::Destroyed) => {
                         native::WGPUBufferMapAsyncStatus_DestroyedBeforeCallback
                     }
-                    Err(_) => native::WGPUBufferMapAsyncStatus_Error,
+                    Err(_) => native::WGPUBufferMapAsyncStatus_ValidationError,
+                    // TODO: WGPUBufferMapAsyncStatus_OffsetOutOfRange
+                    // TODO: WGPUBufferMapAsyncStatus_SizeOutOfRange
                 };
 
                 callback(status, userdata.as_ptr());
@@ -2215,7 +2231,7 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
     device: native::WGPUDevice,
     callback: native::WGPUErrorCallback,
     userdata: *mut ::std::os::raw::c_void,
-) -> bool {
+) {
     let device = device.as_ref().expect("invalid device");
     let callback = callback.expect("invalid callback");
     let mut error_sink = device.error_sink.lock().unwrap();
@@ -2235,8 +2251,6 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
             callback(typ, msg.as_ptr(), userdata);
         }
     }
-
-    false
 }
 
 #[no_mangle]
@@ -2254,17 +2268,6 @@ pub unsafe extern "C" fn wgpuDevicePushErrorScope(
             _ => panic!("invalid error filter"),
         },
     });
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
-    device: native::WGPUDevice,
-    callback: native::WGPUDeviceLostCallback,
-    userdata: *mut std::os::raw::c_void,
-) {
-    let device = device.as_ref().expect("invalid device");
-    let mut error_sink = device.error_sink.lock().unwrap();
-    error_sink.device_lost_handler = DeviceLostCallback { callback, userdata };
 }
 
 #[no_mangle]
@@ -2753,6 +2756,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     size: u64,
 ) {
     let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    // TODO: as per webgpu.h buffer is nullable
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
 
     bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
@@ -3022,6 +3026,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     size: u64,
 ) {
     let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    // TODO: as per webgpu.h buffer is nullable
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
 
     render_ffi::wgpu_render_pass_set_vertex_buffer(
