@@ -9,15 +9,16 @@ use std::{
     ffi::{CStr, CString},
     fmt::Display,
     num::NonZeroU64,
+    num::NonZeroU32,
     path::Path,
     sync::Arc,
-    sync::Mutex,
+    sync::Mutex, slice,
 };
 use thiserror::Error;
 use utils::{make_slice, OwnedLabel};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
-    gfx_select, id, resource, Label,
+    gfx_select, id::{self, TextureViewId, SamplerId}, resource, Label,
 };
 
 pub mod conv;
@@ -1332,10 +1333,32 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                     binding: entry.binding,
                     resource: wgc::binding_model::BindingResource::Sampler(sampler.id),
                 }
+            } else if entry.samplerArray.as_ref().is_some() {
+                let mut samplers: Vec<SamplerId> = Vec::new();
+                for i in 0..entry.samplerArrayLength {
+                    let sampler = (entry.samplerArray.as_ref().unwrap().offset(i as isize)).as_ref().unwrap();
+                
+                    samplers.push(sampler.id);
+                }
+
+                wgc::binding_model::BindGroupEntry {
+                    binding: entry.binding,
+                    resource: wgc::binding_model::BindingResource::SamplerArray(Cow::from(samplers)),
+                }
             } else if let Some(texture_view) = entry.textureView.as_ref() {
                 wgc::binding_model::BindGroupEntry {
                     binding: entry.binding,
                     resource: wgc::binding_model::BindingResource::TextureView(texture_view.id),
+                }
+            } else if entry.textureViewArray.as_ref().is_some() {//let Some(texture_views) = entry.textureViewArray.as_ref() {
+                let texture_views = slice::from_raw_parts(entry.textureViewArray, usize::try_from(entry.textureViewArrayLength).unwrap())
+                    .iter()
+                    .map(|view_ptr| view_ptr.as_ref().unwrap().id)
+                    .collect();//Vec::new();
+
+                wgc::binding_model::BindGroupEntry {
+                    binding: entry.binding,
+                    resource: wgc::binding_model::BindingResource::TextureViewArray(texture_views),
                 }
             } else {
                 panic!("invalid bind group entry for bind group descriptor");
@@ -1385,6 +1408,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
             let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
             let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
+            
             let is_storage_texture =
                 entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
@@ -1416,6 +1440,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         _ => panic!("invalid texture view dimension for texture binding layout"),
                     },
                     multisampled: entry.texture.multisampled,
+                    
                 }
             } else if is_sampler {
                 match entry.sampler.type_ {
@@ -1489,12 +1514,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                 panic!("invalid bind group layout entry for bind group layout descriptor");
             };
 
+            let array_length = NonZeroU32::new(entry.count);
+
             wgt::BindGroupLayoutEntry {
                 ty,
                 binding: entry.binding,
                 visibility: wgt::ShaderStages::from_bits(entry.visibility)
                     .expect("invalid visibility for bind group layout entry"),
-                count: None, // TODO - What is this?
+                count: array_length,
             }
         })
         .collect::<Vec<_>>();
