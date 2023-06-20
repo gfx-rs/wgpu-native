@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define WGPU_TARGET_WINDOWS 1
-
 #if defined(WGPU_TARGET_MACOS)
 #include <Foundation/Foundation.h>
 #include <QuartzCore/CAMetalLayer.h>
