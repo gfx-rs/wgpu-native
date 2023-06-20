@@ -23,6 +23,7 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_MultiDrawIndirectCount = 0x60000004,
     WGPUNativeFeature_VertexWritableStorage = 0x60000005,
     WGPUNativeFeature_TextureBindingArray = 0x60000006,
+    WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x60000007,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 

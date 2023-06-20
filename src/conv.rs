@@ -1033,7 +1033,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     if features.contains(wgt::Features::TEXTURE_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_TextureBindingArray);
-        //temp.push(native::);
+    }
+    if features.contains(wgt::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING) {
+        temp.push(native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing);
     }
 
     temp
@@ -1062,7 +1064,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_MultiDrawIndirectCount => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
         native::WGPUNativeFeature_VertexWritableStorage => Some(Features::VERTEX_WRITABLE_STORAGE),
         native::WGPUNativeFeature_TextureBindingArray => Some(Features::TEXTURE_BINDING_ARRAY),
-        
+        native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing => Some(Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING),
         // not available in wgpu-core
         native::WGPUFeatureName_RG11B10UfloatRenderable => None,
         native::WGPUFeatureName_BGRA8UnormStorage => None,
