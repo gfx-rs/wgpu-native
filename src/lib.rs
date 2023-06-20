@@ -1334,16 +1334,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                     resource: wgc::binding_model::BindingResource::Sampler(sampler.id),
                 }
             } else if entry.samplerArray.as_ref().is_some() {
-                let mut samplers: Vec<SamplerId> = Vec::new();
-                for i in 0..entry.samplerArrayLength {
-                    let sampler = (entry.samplerArray.as_ref().unwrap().offset(i as isize)).as_ref().unwrap();
-                
-                    samplers.push(sampler.id);
-                }
+                let samplers = slice::from_raw_parts(entry.samplerArray, usize::try_from(entry.samplerArrayLength).unwrap())
+                    .iter()
+                    .map(|sampler_ptr| sampler_ptr.as_ref().unwrap().id)
+                    .collect();//Vec::new();
 
                 wgc::binding_model::BindGroupEntry {
                     binding: entry.binding,
-                    resource: wgc::binding_model::BindingResource::SamplerArray(Cow::from(samplers)),
+                    resource: wgc::binding_model::BindingResource::SamplerArray(samplers),
                 }
             } else if let Some(texture_view) = entry.textureView.as_ref() {
                 wgc::binding_model::BindGroupEntry {
