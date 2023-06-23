@@ -4,7 +4,7 @@ use crate::native;
 use crate::utils::{make_slice, OwnedLabel};
 use crate::{follow_chain, map_enum};
 use std::path::Path;
-use std::{borrow::Cow, ffi::CStr};
+use std::{borrow::Cow, ffi::CStr, slice};
 
 map_enum!(
     map_load_op,
@@ -1095,6 +1095,52 @@ pub fn to_native_composite_alpha_mode(
         wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_PreMultiplied,
         wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_PostMultiplied,
         wgt::CompositeAlphaMode::Inherit => native::WGPUCompositeAlphaMode_Inherit,
+    }
+}
+
+#[inline]
+pub fn map_bind_group_entry<'a>(
+    entry: &'a native::WGPUBindGroupEntry,
+    extras: Option<&native::WGPUBindGroupEntryExtras>
+) -> Option<wgc::binding_model::BindGroupEntry<'a>> {
+    let entry_extras = extras?;
+    unsafe {
+        if entry_extras.textureViews.as_ref().is_some() {
+            let texture_views = slice::from_raw_parts(entry_extras.textureViews, usize::try_from(entry_extras.textureViewCount).unwrap())
+            .iter()
+            .map(|view_ptr| view_ptr.as_ref().unwrap().id)
+            .collect();//Vec::new();
+
+            Some(wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::TextureViewArray(texture_views),
+            })
+        }
+        else if entry_extras.samplers.as_ref().is_some() {
+            let samplers = slice::from_raw_parts(entry_extras.samplers, usize::try_from(entry_extras.samplerCount).unwrap())
+            .iter()
+            .map(|sampler_ptr| sampler_ptr.as_ref().unwrap().id)
+            .collect();//Vec::new();
+
+            Some(wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::SamplerArray(samplers),
+            })
+        }
+        else if entry_extras.buffers.as_ref().is_some() {
+            let buffers = slice::from_raw_parts(entry_extras.buffers, usize::try_from(entry_extras.bufferCount).unwrap())
+                .iter()
+                .map(|buffer_ptr| wgc::binding_model::BufferBinding { buffer_id: buffer_ptr.as_ref().unwrap().id, offset: entry.offset, size: std::num::NonZeroU64::new(entry.size)})
+                .collect();
+
+            Some(wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::BufferArray(buffers),
+            })
+        }
+        else {
+            None
+        }
     }
 }
 

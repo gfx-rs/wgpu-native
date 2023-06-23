@@ -1,7 +1,7 @@
 use conv::{
     map_adapter_options, map_device_descriptor, map_instance_descriptor,
     map_pipeline_layout_descriptor, map_shader_module, map_surface, map_swapchain_descriptor,
-    write_limits_struct, CreateSurfaceParams,
+    write_limits_struct, CreateSurfaceParams, map_bind_group_entry
 };
 use std::{
     borrow::Cow,
@@ -12,7 +12,7 @@ use std::{
     num::NonZeroU32,
     path::Path,
     sync::Arc,
-    sync::Mutex, slice,
+    sync::Mutex
 };
 use thiserror::Error;
 use utils::{make_slice, OwnedLabel};
@@ -1333,33 +1333,20 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                     binding: entry.binding,
                     resource: wgc::binding_model::BindingResource::Sampler(sampler.id),
                 }
-            } else if entry.samplerArray.as_ref().is_some() {
-                let samplers = slice::from_raw_parts(entry.samplerArray, usize::try_from(entry.samplerArrayLength).unwrap())
-                    .iter()
-                    .map(|sampler_ptr| sampler_ptr.as_ref().unwrap().id)
-                    .collect();//Vec::new();
-
-                wgc::binding_model::BindGroupEntry {
-                    binding: entry.binding,
-                    resource: wgc::binding_model::BindingResource::SamplerArray(samplers),
-                }
             } else if let Some(texture_view) = entry.textureView.as_ref() {
                 wgc::binding_model::BindGroupEntry {
                     binding: entry.binding,
                     resource: wgc::binding_model::BindingResource::TextureView(texture_view.id),
                 }
-            } else if entry.textureViewArray.as_ref().is_some() {//let Some(texture_views) = entry.textureViewArray.as_ref() {
-                let texture_views = slice::from_raw_parts(entry.textureViewArray, usize::try_from(entry.textureViewArrayLength).unwrap())
-                    .iter()
-                    .map(|view_ptr| view_ptr.as_ref().unwrap().id)
-                    .collect();//Vec::new();
-
-                wgc::binding_model::BindGroupEntry {
-                    binding: entry.binding,
-                    resource: wgc::binding_model::BindingResource::TextureViewArray(texture_views),
-                }
             } else {
-                panic!("invalid bind group entry for bind group descriptor");
+                let bind_group_entry = follow_chain!(map_bind_group_entry(entry, WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras));
+                
+                if bind_group_entry.is_some() {
+                    bind_group_entry.unwrap()
+                }
+                else {
+                    panic!("invalid bind group entry for bind group descriptor");
+                }
             }
         })
         .collect::<Vec<_>>();

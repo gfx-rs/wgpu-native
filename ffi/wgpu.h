@@ -13,6 +13,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_SupportedLimitsExtras = 0x60000003,
     WGPUSType_InstanceExtras = 0x60000006,
     WGPUSType_SwapChainDescriptorExtras = 0x60000007,
+    WGPUSType_BindGroupEntryExtras = 0x60000008,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -179,6 +180,16 @@ typedef struct WGPUSwapChainDescriptorExtras {
     size_t viewFormatCount;
     WGPUTextureFormat const * viewFormats;
 } WGPUSwapChainDescriptorExtras;
+
+typedef struct WGPUBindGroupEntryExtras {
+    WGPUChainedStruct const * nextInChain;
+    WGPUBuffer const * buffers;
+    size_t bufferCount;
+    WGPUSampler const * samplers;
+    size_t samplerCount;
+    WGPUTextureView const * textureViews;
+    size_t textureViewCount;
+} WGPUBindGroupEntryExtras;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 
