@@ -15,7 +15,7 @@ include_directories(${CMAKE_SOURCE_DIR}/../ffi)
 include_directories(${CMAKE_SOURCE_DIR}/framework)
 
 if (WIN32)
-    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt)
+    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt ntdll)
 elseif(UNIX AND NOT APPLE)
     set(OS_LIBRARIES "-lm -ldl")
 elseif(APPLE)

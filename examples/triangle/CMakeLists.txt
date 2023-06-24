@@ -15,7 +15,7 @@ include_directories(${DEP_GLFW_DIR}/include)
 
 if (WIN32)
     add_definitions(-DWGPU_TARGET_WINDOWS)
-    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt)
+    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt ntdll)
 elseif(UNIX AND NOT APPLE)
     add_definitions(-DWGPU_TARGET_LINUX_X11)
     set(OS_LIBRARIES "-lm -ldl")

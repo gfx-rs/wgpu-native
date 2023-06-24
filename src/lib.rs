@@ -2403,7 +2403,7 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
 
     let inputs = match options {
         Some(options) => {
-            wgc::instance::AdapterInputs::Mask(map_instance_backend_flags(options.backends), |_| ())
+            wgc::instance::AdapterInputs::Mask(map_instance_backend_flags(options.backends as native::WGPUInstanceBackend), |_| ())
         }
         None => wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
     };
