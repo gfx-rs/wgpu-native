@@ -178,6 +178,11 @@ typedef struct WGPUSwapChainDescriptorExtras {
     WGPUTextureFormat const * viewFormats;
 } WGPUSwapChainDescriptorExtras;
 
+typedef struct WGPUInstanceEnumerateAdapterOptions {
+    WGPUChainedStruct chain;
+    WGPUInstanceBackendFlags backends;
+} WGPUInstanceEnumerateAdapterOptions;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 
 #ifdef __cplusplus
@@ -185,7 +190,7 @@ extern "C" {
 #endif
 
 void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
-size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUAdapter * adapters);
+size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
 
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
 
