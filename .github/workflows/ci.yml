@@ -192,18 +192,23 @@ jobs:
           make example-capture
           make example-compute
           make example-triangle
+          make example-enumerate_adapters
       - if: ${{ matrix.run_examples }}
         name: Run examples debug
         run: |
           make run-example-capture
           make run-example-compute
+          make run-example-enumerate_adapters
       - name: Build examples release
         run: |
           make example-capture-release
           make example-compute-release
           make example-triangle-release
+          make example-enumerate_adapters-release
       - if: ${{ matrix.run_examples }}
         name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
+          make run-example-enumerate_adapters-release
+
