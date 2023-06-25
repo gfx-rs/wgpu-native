@@ -1,7 +1,7 @@
 use conv::{
-    map_adapter_options, map_device_descriptor, map_instance_descriptor,
-    map_pipeline_layout_descriptor, map_shader_module, map_surface, map_swapchain_descriptor,
-    write_limits_struct, CreateSurfaceParams,
+    map_adapter_options, map_device_descriptor, map_instance_backend_flags,
+    map_instance_descriptor, map_pipeline_layout_descriptor, map_shader_module, map_surface,
+    map_swapchain_descriptor, write_limits_struct, CreateSurfaceParams,
 };
 use std::{
     borrow::Cow,
@@ -2390,6 +2390,52 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
             );
         }
     };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
+    instance: native::WGPUInstance,
+    options: Option<&native::WGPUInstanceEnumerateAdapterOptions>,
+    adapters: *mut native::WGPUAdapter,
+) -> usize {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+
+    let inputs = match options {
+        Some(options) => {
+            wgc::instance::AdapterInputs::Mask(map_instance_backend_flags(options.backends as native::WGPUInstanceBackend), |_| ())
+        }
+        None => wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
+    };
+
+    let result = context.enumerate_adapters(inputs);
+    let count = result.len();
+
+    if !adapters.is_null() {
+        let temp = std::slice::from_raw_parts_mut(adapters, count);
+
+        result.iter().enumerate().for_each(|(i, id)| {
+            // It's users responsibility to drop the adapters they
+            // don't need.
+
+            temp[i] = Box::into_raw(Box::new(WGPUAdapterImpl {
+                context: context.clone(),
+                id: *id,
+                name: CString::default(),
+                vendor_name: CString::default(),
+                architecture_name: CString::default(),
+                driver_desc: CString::default(),
+            }));
+        });
+    } else {
+        // Drop all the adapters when only counting length.
+
+        result
+            .iter()
+            .for_each(|id| gfx_select!(id => context.adapter_drop(*id)));
+    }
+
+    count
 }
 
 // QuerySet methods
