@@ -895,7 +895,7 @@ pub fn map_stencil_face_state(
 }
 
 #[inline]
-pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorageReport {
+pub fn map_storage_report(report: wgc::storage::StorageReport) -> native::WGPUStorageReport {
     native::WGPUStorageReport {
         numOccupied: report.num_occupied,
         numVacant: report.num_error,
@@ -928,7 +928,7 @@ pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
 #[inline]
 pub fn write_global_report(
     native_report: &mut native::WGPUGlobalReport,
-    report: wgc::hub::GlobalReport,
+    report: wgc::global::GlobalReport,
 ) {
     native_report.surfaces = map_storage_report(report.surfaces);
 

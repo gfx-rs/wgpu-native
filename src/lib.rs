@@ -35,7 +35,7 @@ pub mod native {
 
 const LABEL: &str = "label";
 
-pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
+pub type Context = wgc::global::Global<wgc::identity::IdentityManagerFactory>;
 
 pub struct WGPUContextHandle<I: id::TypedId> {
     pub context: Arc<Context>,
@@ -358,7 +358,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
     Box::into_raw(Box::new(WGPUInstanceImpl {
         context: Arc::new(Context::new(
             "wgpu",
-            wgc::hub::IdentityManagerFactory,
+            wgc::identity::IdentityManagerFactory,
             instance_desc,
         )),
     }))
