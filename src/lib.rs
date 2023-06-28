@@ -1,7 +1,7 @@
 use conv::{
     map_adapter_options, map_device_descriptor, map_instance_backend_flags,
     map_instance_descriptor, map_pipeline_layout_descriptor, map_shader_module, map_surface,
-    map_swapchain_descriptor, write_limits_struct, CreateSurfaceParams,
+    map_swapchain_descriptor, map_primitive_state, write_limits_struct, CreateSurfaceParams,
 };
 use std::{
     borrow::Cow,
@@ -1839,7 +1839,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 native::WGPUCullMode_Back => Some(wgt::Face::Back),
                 _ => panic!("invalid cull mode for primitive state"),
             },
-            unclipped_depth: false, // todo: fill this via extras
+            unclipped_depth: follow_chain!(
+                map_primitive_state(
+                    &descriptor.primitive,
+                    WGPUSType_PrimitiveDepthClipControl => native::WGPUPrimitiveDepthClipControl
+                )
+            ),
             polygon_mode: wgt::PolygonMode::Fill,
             conservative: false,
         },

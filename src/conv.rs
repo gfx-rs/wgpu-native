@@ -895,6 +895,18 @@ pub fn map_stencil_face_state(
 }
 
 #[inline]
+pub fn map_primitive_state(
+    _ : &native::WGPUPrimitiveState,
+    depth_clip_control : Option<&native::WGPUPrimitiveDepthClipControl>
+) -> bool {
+    if let Some(depth_clip_control) = depth_clip_control {
+        return depth_clip_control.unclippedDepth;
+    }
+
+    false
+}
+
+#[inline]
 pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorageReport {
     native::WGPUStorageReport {
         numOccupied: report.num_occupied,
