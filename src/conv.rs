@@ -1014,6 +1014,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_F16) {
         temp.push(native::WGPUFeatureName_ShaderF16);
     }
+    if features.contains(wgt::Features::RG11B10UFLOAT_RENDERABLE) {
+        temp.push(native::WGPUFeatureName_RG11B10UfloatRenderable);
+    }
 
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
@@ -1050,6 +1053,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
+        native::WGPUFeatureName_RG11B10UfloatRenderable => Some(Features::RG11B10UFLOAT_RENDERABLE),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
@@ -1059,7 +1063,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_VertexWritableStorage => Some(Features::VERTEX_WRITABLE_STORAGE),
 
         // not available in wgpu-core
-        native::WGPUFeatureName_RG11B10UfloatRenderable => None,
         native::WGPUFeatureName_BGRA8UnormStorage => None,
         _ => None,
     }
