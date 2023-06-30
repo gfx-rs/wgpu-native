@@ -2772,7 +2772,7 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
             // It's users responsibility to drop the adapters they
             // don't need.
 
-            temp[i] = Box::into_raw(Box::new(WGPUAdapterImpl {
+            temp[i] = Arc::into_raw(Arc::new(WGPUAdapterImpl {
                 context: context.clone(),
                 id: *id,
                 properties: OnceCell::default(),
