@@ -83,7 +83,7 @@ static void handle_glfw_framebuffer_size(GLFWwindow *window, int width,
   demo->config.height = height;
 
   if (demo->swapchain)
-    wgpuSwapChainDrop(demo->swapchain);
+    wgpuSwapChainRelease(demo->swapchain);
   demo->swapchain =
       wgpuDeviceCreateSwapChain(demo->device, demo->surface, &demo->config);
   assert(demo->swapchain);
@@ -98,10 +98,8 @@ int main(int argc, char *argv[]) {
   WGPUShaderModule shader_module = NULL;
   WGPUPipelineLayout pipeline_layout = NULL;
   WGPURenderPipeline render_pipeline = NULL;
-  WGPUTextureView next_texture = NULL;
-  WGPUCommandEncoder command_encoder = NULL;
-  WGPURenderPassEncoder render_pass_encoder = NULL;
-  WGPUCommandBuffer command_buffer = NULL;
+  WGPURenderBundleEncoder render_bundle_encoder = NULL;
+  WGPURenderBundle render_bundle = NULL;
   int ret = EXIT_SUCCESS;
 
 #define ASSERT_CHECK(expr)                                                     \
@@ -298,93 +296,109 @@ int main(int argc, char *argv[]) {
       wgpuDeviceCreateSwapChain(demo.device, demo.surface, &demo.config);
   ASSERT_CHECK(demo.swapchain);
 
+  render_bundle_encoder = wgpuDeviceCreateRenderBundleEncoder(
+      demo.device, &(const WGPURenderBundleEncoderDescriptor){
+                       .label = "render_bundle_encoder",
+                       .colorFormats =
+                           (const WGPUTextureFormat[]){
+                               surface_preferred_format,
+                           },
+                       .colorFormatsCount = 1,
+                       .sampleCount = 1,
+                   });
+  ASSERT_CHECK(render_bundle_encoder);
+  wgpuRenderBundleEncoderSetPipeline(render_bundle_encoder, render_pipeline);
+  wgpuRenderBundleEncoderDraw(render_bundle_encoder, 3, 1, 0, 0);
+  render_bundle = wgpuRenderBundleEncoderFinish(
+      render_bundle_encoder, &(const WGPURenderBundleDescriptor){
+                                 .label = "render_bundle",
+                             });
+  ASSERT_CHECK(render_bundle);
+
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
-    next_texture = wgpuSwapChainGetCurrentTextureView(demo.swapchain);
-    ASSERT_CHECK(next_texture);
+    WGPUTextureView next_texture =
+        wgpuSwapChainGetCurrentTextureView(demo.swapchain);
+    assert(next_texture);
 
-    command_encoder = wgpuDeviceCreateCommandEncoder(
+    WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
         demo.device, &(const WGPUCommandEncoderDescriptor){
                          .label = "command_encoder",
                      });
-    ASSERT_CHECK(command_encoder);
+    assert(command_encoder);
 
-    render_pass_encoder = wgpuCommandEncoderBeginRenderPass(
-        command_encoder, &(const WGPURenderPassDescriptor){
-                             .label = "render_pass_encoder",
-                             .colorAttachmentCount = 1,
-                             .colorAttachments =
-                                 (const WGPURenderPassColorAttachment[]){
-                                     (const WGPURenderPassColorAttachment){
-                                         .view = next_texture,
-                                         .loadOp = WGPULoadOp_Clear,
-                                         .storeOp = WGPUStoreOp_Store,
-                                         .clearValue =
-                                             (const WGPUColor){
-                                                 .r = 0.0,
-                                                 .g = 1.0,
-                                                 .b = 0.0,
-                                                 .a = 1.0,
-                                             },
+    WGPURenderPassEncoder render_pass_encoder =
+        wgpuCommandEncoderBeginRenderPass(
+            command_encoder, &(const WGPURenderPassDescriptor){
+                                 .label = "render_pass_encoder",
+                                 .colorAttachmentCount = 1,
+                                 .colorAttachments =
+                                     (const WGPURenderPassColorAttachment[]){
+                                         (const WGPURenderPassColorAttachment){
+                                             .view = next_texture,
+                                             .loadOp = WGPULoadOp_Clear,
+                                             .storeOp = WGPUStoreOp_Store,
+                                             .clearValue =
+                                                 (const WGPUColor){
+                                                     .r = 0.0,
+                                                     .g = 1.0,
+                                                     .b = 0.0,
+                                                     .a = 1.0,
+                                                 },
+                                         },
                                      },
-                                 },
-                         });
-    ASSERT_CHECK(render_pass_encoder);
+                             });
+    assert(render_pass_encoder);
 
-    wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
-    wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
+    // wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
+    // wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
+    wgpuRenderPassEncoderExecuteBundles(render_pass_encoder, 1,
+                                        (const WGPURenderBundle[]){
+                                            render_bundle,
+                                        });
     wgpuRenderPassEncoderEnd(render_pass_encoder);
-    // wgpuRenderPassEncoderEnd() drops render_pass_encoder
-    render_pass_encoder = NULL;
 
-    wgpuTextureViewDrop(next_texture);
-    next_texture = NULL;
-
-    command_buffer = wgpuCommandEncoderFinish(
+    WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
         command_encoder, &(const WGPUCommandBufferDescriptor){
                              .label = "command_buffer",
                          });
-    ASSERT_CHECK(command_buffer);
-    // wgpuCommandEncoderFinish() drops command_encoder
-    command_encoder = NULL;
+    assert(command_buffer);
 
     wgpuQueueSubmit(queue, 1, (const WGPUCommandBuffer[]){command_buffer});
-    // wgpuQueueSubmit() drops command_buffer
-    command_buffer = NULL;
-
     wgpuSwapChainPresent(demo.swapchain);
+
+    wgpuCommandBufferRelease(command_buffer);
+    wgpuRenderPassEncoderRelease(render_pass_encoder);
+    wgpuCommandEncoderRelease(command_encoder);
+    wgpuTextureViewRelease(next_texture);
   }
 
 cleanup_and_exit:
-  if (command_buffer)
-    wgpuCommandBufferDrop(command_buffer);
-  if (render_pass_encoder)
-    wgpuRenderPassEncoderDrop(render_pass_encoder);
-  if (command_encoder)
-    wgpuCommandEncoderDrop(command_encoder);
-  if (next_texture)
-    wgpuTextureViewDrop(next_texture);
+  if (render_bundle)
+    wgpuRenderBundleRelease(render_bundle);
+  if (render_bundle_encoder)
+    wgpuRenderBundleEncoderRelease(render_bundle_encoder);
   if (render_pipeline)
-    wgpuRenderPipelineDrop(render_pipeline);
+    wgpuRenderPipelineRelease(render_pipeline);
   if (pipeline_layout)
-    wgpuPipelineLayoutDrop(pipeline_layout);
+    wgpuPipelineLayoutRelease(pipeline_layout);
   if (shader_module)
-    wgpuShaderModuleDrop(shader_module);
+    wgpuShaderModuleRelease(shader_module);
   if (demo.swapchain)
-    wgpuSwapChainDrop(demo.swapchain);
+    wgpuSwapChainRelease(demo.swapchain);
   if (queue)
-    wgpuQueueDrop(queue);
+    wgpuQueueRelease(queue);
   if (demo.device)
-    wgpuDeviceDrop(demo.device);
+    wgpuDeviceRelease(demo.device);
   if (demo.adapter)
-    wgpuAdapterDrop(demo.adapter);
+    wgpuAdapterRelease(demo.adapter);
   if (demo.surface)
-    wgpuSurfaceDrop(demo.surface);
+    wgpuSurfaceRelease(demo.surface);
   if (window)
     glfwDestroyWindow(window);
   if (demo.instance)
-    wgpuInstanceDrop(demo.instance);
+    wgpuInstanceRelease(demo.instance);
 
   glfwTerminate();
   return 0;

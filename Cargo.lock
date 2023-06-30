@@ -911,6 +911,7 @@ dependencies = [
  "bindgen",
  "log",
  "naga",
+ "parking_lot",
  "paste",
  "raw-window-handle",
  "thiserror",
