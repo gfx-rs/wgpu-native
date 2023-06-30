@@ -98,8 +98,6 @@ int main(int argc, char *argv[]) {
   WGPUShaderModule shader_module = NULL;
   WGPUPipelineLayout pipeline_layout = NULL;
   WGPURenderPipeline render_pipeline = NULL;
-  WGPURenderBundleEncoder render_bundle_encoder = NULL;
-  WGPURenderBundle render_bundle = NULL;
   int ret = EXIT_SUCCESS;
 
 #define ASSERT_CHECK(expr)                                                     \
@@ -296,25 +294,6 @@ int main(int argc, char *argv[]) {
       wgpuDeviceCreateSwapChain(demo.device, demo.surface, &demo.config);
   ASSERT_CHECK(demo.swapchain);
 
-  render_bundle_encoder = wgpuDeviceCreateRenderBundleEncoder(
-      demo.device, &(const WGPURenderBundleEncoderDescriptor){
-                       .label = "render_bundle_encoder",
-                       .colorFormats =
-                           (const WGPUTextureFormat[]){
-                               surface_preferred_format,
-                           },
-                       .colorFormatsCount = 1,
-                       .sampleCount = 1,
-                   });
-  ASSERT_CHECK(render_bundle_encoder);
-  wgpuRenderBundleEncoderSetPipeline(render_bundle_encoder, render_pipeline);
-  wgpuRenderBundleEncoderDraw(render_bundle_encoder, 3, 1, 0, 0);
-  render_bundle = wgpuRenderBundleEncoderFinish(
-      render_bundle_encoder, &(const WGPURenderBundleDescriptor){
-                                 .label = "render_bundle",
-                             });
-  ASSERT_CHECK(render_bundle);
-
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
@@ -351,12 +330,8 @@ int main(int argc, char *argv[]) {
                              });
     assert(render_pass_encoder);
 
-    // wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
-    // wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
-    wgpuRenderPassEncoderExecuteBundles(render_pass_encoder, 1,
-                                        (const WGPURenderBundle[]){
-                                            render_bundle,
-                                        });
+    wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
+    wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
     wgpuRenderPassEncoderEnd(render_pass_encoder);
 
     WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
@@ -375,10 +350,6 @@ int main(int argc, char *argv[]) {
   }
 
 cleanup_and_exit:
-  if (render_bundle)
-    wgpuRenderBundleRelease(render_bundle);
-  if (render_bundle_encoder)
-    wgpuRenderBundleEncoderRelease(render_bundle_encoder);
   if (render_pipeline)
     wgpuRenderPipelineRelease(render_pipeline);
   if (pipeline_layout)
