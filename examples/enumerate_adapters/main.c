@@ -40,9 +40,9 @@ int main(int argc, char *argv[]) {
            props.name, props.driverDescription, props.adapterType,
            props.backendType);
 
-    wgpuAdapterDrop(adapter);
+    wgpuAdapterRelease(adapter);
   }
 
   free(adapters);
-  wgpuInstanceDrop(instance);
+  wgpuInstanceRelease(instance);
 }

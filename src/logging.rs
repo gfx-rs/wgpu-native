@@ -1,6 +1,7 @@
 use crate::{map_enum, native};
 use log::{Level, LevelFilter, Metadata, Record};
-use std::{ffi::CString, sync::RwLock};
+use parking_lot::RwLock;
+use std::ffi::CString;
 
 #[no_mangle]
 pub extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
@@ -35,7 +36,7 @@ impl log::Log for Logger {
     }
 
     fn log(&self, record: &Record) {
-        let logger = LOGGER_INFO.read().unwrap();
+        let logger = LOGGER_INFO.read();
 
         if let Some(callback) = logger.callback {
             let msg = record.args().to_string();
@@ -79,7 +80,7 @@ pub extern "C" fn wgpuSetLogCallback(
     callback: native::WGPULogCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
-    let mut logger = LOGGER_INFO.write().unwrap();
+    let mut logger = LOGGER_INFO.write();
     logger.callback = callback;
     logger.userdata = userdata;
     if !logger.initialized {

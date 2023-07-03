@@ -71,6 +71,7 @@ raw-window-handle = "0.5"
 paste = "1.0"
 log = "0.4"
 thiserror = "1"
+parking_lot = "0.12"
 
 [build-dependencies]
 bindgen = "0.65"
