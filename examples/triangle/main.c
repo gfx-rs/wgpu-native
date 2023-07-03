@@ -55,16 +55,6 @@ static void handle_request_device(WGPURequestDeviceStatus status,
            message);
   }
 }
-static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
-                               void *userdata) {
-  UNUSED(userdata)
-  printf(LOG_PREFIX " device_lost reason=%#.8x message=%s\n", reason, message);
-}
-static void handle_uncaptured_error(WGPUErrorType type, char const *message,
-                                    void *userdata) {
-  UNUSED(userdata)
-  printf(LOG_PREFIX " uncaptured_error type=%#.8x message=%s\n", type, message);
-}
 static void handle_glfw_key(GLFWwindow *window, int key, int scancode,
                             int action, int mods) {
   UNUSED(scancode)
@@ -243,10 +233,6 @@ int main(int argc, char *argv[]) {
 
   queue = wgpuDeviceGetQueue(demo.device);
   ASSERT_CHECK(queue);
-
-  wgpuDeviceSetUncapturedErrorCallback(demo.device, handle_uncaptured_error,
-                                       NULL);
-  wgpuDeviceSetDeviceLostCallback(demo.device, handle_device_lost, NULL);
 
   shader_module = frmwrk_load_shader_module(demo.device, "shader.wgsl");
   ASSERT_CHECK(shader_module);
