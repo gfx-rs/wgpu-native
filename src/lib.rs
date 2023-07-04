@@ -3696,6 +3696,9 @@ pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
                 }))
             }
             _ => {
+                if let Some(texture_id) = result.texture_id {
+                    gfx_select!(texture_id => context.texture_drop(texture_id, false));
+                }
                 handle_error(
                     context,
                     error_sink,
