@@ -179,7 +179,7 @@ typedef struct WGPUSwapChainDescriptorExtras {
 } WGPUSwapChainDescriptorExtras;
 
 typedef struct WGPUInstanceEnumerateAdapterOptions {
-    WGPUChainedStruct chain;
+    WGPUChainedStruct const * nextInChain;
     WGPUInstanceBackendFlags backends;
 } WGPUInstanceEnumerateAdapterOptions;
 
