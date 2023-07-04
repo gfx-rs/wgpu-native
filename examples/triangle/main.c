@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #if defined(WGPU_TARGET_MACOS)
 #include <Foundation/Foundation.h>
@@ -31,6 +32,7 @@ struct demo {
   WGPUDevice device;
   WGPUSwapChainDescriptor config;
   WGPUSwapChain swapchain;
+  bool skip_curr_frame;
 };
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
@@ -87,6 +89,27 @@ static void handle_glfw_framebuffer_size(GLFWwindow *window, int width,
   demo->swapchain =
       wgpuDeviceCreateSwapChain(demo->device, demo->surface, &demo->config);
   assert(demo->swapchain);
+}
+static void handle_curr_texture_error(WGPUErrorType type, char const *message,
+                                      void *userdata) {
+  if (type == WGPUErrorType_NoError)
+    return;
+
+  printf(LOG_PREFIX " curr_texture_error type=%#.8x message=%s\n", type,
+         message);
+
+  struct demo *demo = userdata;
+
+  if (strstr(message, "Surface timed out") != NULL) {
+    demo->skip_curr_frame = true;
+    return;
+  } else if (strstr(message, "Surface is outdated") != NULL) {
+    demo->skip_curr_frame = true;
+    return;
+  } else if (strstr(message, "Surface was lost") != NULL) {
+    demo->skip_curr_frame = true;
+    return;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -295,10 +318,18 @@ int main(int argc, char *argv[]) {
   ASSERT_CHECK(demo.swapchain);
 
   while (!glfwWindowShouldClose(window)) {
+    demo.skip_curr_frame = false;
     glfwPollEvents();
 
+    wgpuDevicePushErrorScope(demo.device, WGPUErrorFilter_Validation);
     WGPUTextureView next_texture =
         wgpuSwapChainGetCurrentTextureView(demo.swapchain);
+    wgpuDevicePopErrorScope(demo.device, handle_curr_texture_error, &demo);
+    if (demo.skip_curr_frame) {
+      if (next_texture)
+        wgpuTextureViewRelease(next_texture);
+      continue;
+    }
     assert(next_texture);
 
     WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
