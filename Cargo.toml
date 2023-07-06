@@ -30,35 +30,35 @@ trace = ["wgc/trace"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "011a4e26d04f388ef40e3baee3f19a255b9b5148"
+rev = "2dba493d1e96ca11c7affc23a1c202ef670b689a"
 version = "0.16"
 features = ["raw-window-handle", "gles"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "011a4e26d04f388ef40e3baee3f19a255b9b5148"
+rev = "2dba493d1e96ca11c7affc23a1c202ef670b689a"
 version = "0.16"
 features = ["metal"]
 
 [target.'cfg(windows)'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "011a4e26d04f388ef40e3baee3f19a255b9b5148"
+rev = "2dba493d1e96ca11c7affc23a1c202ef670b689a"
 version = "0.16"
 features = ["dx11", "dx12"]
 
 [target.'cfg(any(windows, all(unix, not(target_arch = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "011a4e26d04f388ef40e3baee3f19a255b9b5148"
+rev = "2dba493d1e96ca11c7affc23a1c202ef670b689a"
 version = "0.16"
 features = ["vulkan"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "011a4e26d04f388ef40e3baee3f19a255b9b5148"
+rev = "2dba493d1e96ca11c7affc23a1c202ef670b689a"
 version = "0.16"
 
 [dependencies.naga]
