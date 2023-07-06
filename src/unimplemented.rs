@@ -137,6 +137,14 @@ pub extern "C" fn wgpuQueueSetLabel(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuRenderBundleSetLabel(
+    _render_bundle: native::WGPURenderBundle,
+    _label: *const ::std::os::raw::c_char,
+) {
+    unimplemented!();
+}
+
+#[no_mangle]
 pub extern "C" fn wgpuRenderBundleEncoderSetLabel(
     _render_bundle_encoder: native::WGPURenderBundleEncoder,
     _label: *const ::std::os::raw::c_char,

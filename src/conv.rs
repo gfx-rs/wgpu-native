@@ -273,18 +273,6 @@ pub fn map_instance_descriptor(
 }
 
 #[inline]
-pub fn map_adapter_options(
-    options: &native::WGPURequestAdapterOptions,
-    extras: Option<&native::WGPUAdapterExtras>,
-) -> (native::WGPUSurface, native::WGPUBackendType) {
-    if let Some(extras) = extras {
-        (options.compatibleSurface, extras.backend)
-    } else {
-        (options.compatibleSurface, native::WGPUBackendType_Null)
-    }
-}
-
-#[inline]
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
@@ -303,7 +291,7 @@ pub fn map_device_descriptor<'a>(
         wgt::DeviceDescriptor {
             label: unsafe { OwnedLabel::new(des.label) }.into_cow(),
             features: map_features(unsafe {
-                make_slice(des.requiredFeatures, des.requiredFeaturesCount as usize)
+                make_slice(des.requiredFeatures, des.requiredFeaturesCount)
             }),
             limits,
         },
@@ -316,16 +304,15 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
-    let bind_group_layouts =
-        unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) }
-            .iter()
-            .map(|layout| {
-                layout
-                    .as_ref()
-                    .expect("invalid bind group layout for pipeline layout descriptor")
-                    .id
-            })
-            .collect::<Vec<_>>();
+    let bind_group_layouts = unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount) }
+        .iter()
+        .map(|layout| {
+            layout
+                .as_ref()
+                .expect("invalid bind group layout for pipeline layout descriptor")
+                .id
+        })
+        .collect::<Vec<_>>();
 
     let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
         unsafe {
@@ -896,8 +883,8 @@ pub fn map_stencil_face_state(
 
 #[inline]
 pub fn map_primitive_state(
-    _ : &native::WGPUPrimitiveState,
-    depth_clip_control : Option<&native::WGPUPrimitiveDepthClipControl>
+    _: &native::WGPUPrimitiveState,
+    depth_clip_control: Option<&native::WGPUPrimitiveDepthClipControl>,
 ) -> bool {
     if let Some(depth_clip_control) = depth_clip_control {
         return depth_clip_control.unclippedDepth;
@@ -1159,7 +1146,7 @@ pub fn map_query_set_descriptor<'a>(
             native::WGPUQueryType_PipelineStatistics => {
                 let mut types = wgt::PipelineStatisticsTypes::empty();
 
-                unsafe { make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount as _) }
+                unsafe { make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount) }
                     .iter()
                     .for_each(|f| {
                         types.insert(match *f {

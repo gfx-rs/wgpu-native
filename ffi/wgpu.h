@@ -75,11 +75,6 @@ typedef struct WGPUInstanceExtras {
     const char * dxcPath;
 } WGPUInstanceExtras;
 
-typedef struct WGPUAdapterExtras {
-    WGPUChainedStruct chain;
-    WGPUBackendType backend;
-} WGPUAdapterExtras;
-
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
     const char * tracePath;
@@ -192,7 +187,7 @@ extern "C" {
 void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
 size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
 
-WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
+WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
 bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
