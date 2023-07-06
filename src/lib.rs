@@ -2574,20 +2574,27 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
     let mut error_sink = device.error_sink.lock();
     let scope = error_sink.scopes.pop().unwrap();
 
-    if let Some(error) = scope.error {
-        let typ = match error {
-            crate::Error::OutOfMemory { .. } => native::WGPUErrorType_OutOfMemory,
-            crate::Error::Validation { .. } => native::WGPUErrorType_Validation,
-            // We handle device lost error early in ErrorSinkRaw::handle_error
-            // so we should never get device lost error here.
-            crate::Error::DeviceLost { .. } => unreachable!(),
-        };
+    match scope.error {
+        Some(error) => {
+            let typ = match error {
+                crate::Error::OutOfMemory { .. } => native::WGPUErrorType_OutOfMemory,
+                crate::Error::Validation { .. } => native::WGPUErrorType_Validation,
+                // We handle device lost error early in ErrorSinkRaw::handle_error
+                // so we should never get device lost error here.
+                crate::Error::DeviceLost { .. } => unreachable!(),
+            };
 
-        let msg = CString::new(error.to_string()).unwrap();
-        unsafe {
-            callback(typ, msg.as_ptr(), userdata);
+            let msg = CString::new(error.to_string()).unwrap();
+            unsafe {
+                callback(typ, msg.as_ptr(), userdata);
+            };
         }
-    }
+        None => {
+            unsafe {
+                callback(native::WGPUErrorType_NoError, std::ptr::null(), userdata);
+            };
+        }
+    };
 }
 
 #[no_mangle]
@@ -3689,6 +3696,9 @@ pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
                 }))
             }
             _ => {
+                if let Some(texture_id) = result.texture_id {
+                    gfx_select!(texture_id => context.texture_drop(texture_id, false));
+                }
                 handle_error(
                     context,
                     error_sink,
