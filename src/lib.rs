@@ -2063,7 +2063,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
             cause,
             LABEL,
             desc.label,
-            "wgpuDeviceCreatePipelineLayout",
+            "wgpuDeviceCreateQuerySet",
         );
     }
 
@@ -2379,7 +2379,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
             cause,
             LABEL,
             desc.label,
-            "wgpuDeviceCreateSampler",
+            "wgpuDeviceCreateShaderModule",
         );
     }
 
