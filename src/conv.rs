@@ -342,12 +342,13 @@ pub fn write_limits_struct(
     wgt_limits: wgt::Limits,
     supported_limits: &mut native::WGPUSupportedLimits,
 ) {
-    let mut limits = supported_limits.limits; // This makes a copy - we copy back at the end
+    let mut limits = supported_limits.limits;
     limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
     limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
     limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
     limits.maxBindGroups = wgt_limits.max_bind_groups;
+    limits.maxBindingsPerBindGroup = wgt_limits.max_bindings_per_bind_group;
     limits.maxDynamicUniformBuffersPerPipelineLayout =
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout;
     limits.maxDynamicStorageBuffersPerPipelineLayout =
@@ -357,8 +358,8 @@ pub fn write_limits_struct(
     limits.maxStorageBuffersPerShaderStage = wgt_limits.max_storage_buffers_per_shader_stage;
     limits.maxStorageTexturesPerShaderStage = wgt_limits.max_storage_textures_per_shader_stage;
     limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
-    limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as u64;
-    limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as u64;
+    limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as _;
+    limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as _;
     limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
@@ -366,6 +367,12 @@ pub fn write_limits_struct(
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
     limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
+    // TODO: not yet in wgt
+    // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
+    // TODO: not yet in wgt
+    // limits.maxColorAttachments = wgt_limits.max_color_attachments;
+    // TODO: not yet in wgt
+    // limits.maxColorAttachmentBytesPerSample = wgt_limits.max_color_attachment_bytes_per_sample;
     limits.maxComputeWorkgroupStorageSize = wgt_limits.max_compute_workgroup_storage_size;
     limits.maxComputeInvocationsPerWorkgroup = wgt_limits.max_compute_invocations_per_workgroup;
     limits.maxComputeWorkgroupSizeX = wgt_limits.max_compute_workgroup_size_x;
@@ -376,7 +383,7 @@ pub fn write_limits_struct(
 
     if !supported_limits.nextInChain.is_null() {
         unsafe {
-            let mut extras = std::mem::transmute::<
+            let extras = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
                 *mut native::WGPUSupportedLimitsExtras,
             >(supported_limits.nextInChain);
@@ -411,9 +418,9 @@ pub fn map_required_limits(
     if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
-    //if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
-    //    wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
-    //}  not yet supportted in wgt
+    if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
+        wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
+    }
     if limits.maxDynamicUniformBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout =
             limits.maxDynamicUniformBuffersPerPipelineLayout;
@@ -464,12 +471,19 @@ pub fn map_required_limits(
     if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
-    //if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
-    //    wgt_limits.max_inter_stage_shader_variables = limits.maxIntmaxInterStageShaderVariableserStageShaderComponents;
-    //}  not yet in wgt
-    //if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
-    //    wgt_limits.max_color_attachments = limits.maxColorAttachments;
-    //}  not yet in wgt
+    // TODO: not yet in wgt
+    // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_inter_stage_shader_variables =
+    //         limits.maxInterStageShaderVariables;
+    // }
+    // TODO: not yet in wgt
+    // if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_color_attachments = limits.maxColorAttachments;
+    // }
+    // TODO: not yet in wgt
+    // if limits.maxColorAttachmentBytesPerSample != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_color_attachment_bytes_per_sample = limits.maxColorAttachmentBytesPerSample;
+    // }
     if limits.maxComputeWorkgroupStorageSize != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
