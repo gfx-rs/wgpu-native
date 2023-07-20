@@ -4,6 +4,7 @@ use conv::{
     map_swapchain_descriptor, CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
+use smallvec::SmallVec;
 use std::{
     borrow::Cow,
     cell::OnceCell,
@@ -2871,7 +2872,7 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
             command_buffer.open.store(false, atomic::Ordering::SeqCst);
             command_buffer.id
         })
-        .collect::<Vec<_>>();
+        .collect::<SmallVec<[_; 4]>>();
 
     if let Err(cause) = gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         handle_error_fatal(context, cause, "wgpuQueueSubmit");
@@ -3335,7 +3336,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     let bundle_ids = make_slice(bundles, bundle_count)
         .iter()
         .map(|v| v.as_ref().expect("invalid render bundle").id)
-        .collect::<Vec<_>>();
+        .collect::<SmallVec<[_; 4]>>();
     let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_execute_bundles(
@@ -3926,7 +3927,7 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
             command_buffer.open.store(false, atomic::Ordering::SeqCst);
             command_buffer.id
         })
-        .collect::<Vec<_>>();
+        .collect::<SmallVec<[_; 4]>>();
 
     match gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         Ok(submission_index) => submission_index.index,
