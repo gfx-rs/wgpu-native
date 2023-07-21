@@ -1,9 +1,8 @@
 use wgc::Label;
 
 use crate::native;
-use crate::utils::{make_slice, OwnedLabel};
+use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
-use std::path::Path;
 use std::{borrow::Cow, ffi::CStr};
 
 map_enum!(
@@ -253,12 +252,8 @@ pub fn map_instance_descriptor(
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
-                dxil_path: unsafe { extras.dxilPath.as_ref() }
-                    .and_then(|v| unsafe { OwnedLabel::new(v) }.into_inner())
-                    .map(|v| Path::new(&v).to_path_buf()),
-                dxc_path: unsafe { extras.dxcPath.as_ref() }
-                    .and_then(|v| unsafe { OwnedLabel::new(v) }.into_inner())
-                    .map(|v| Path::new(&v).to_path_buf()),
+                dxil_path: ptr_into_pathbuf(extras.dxilPath),
+                dxc_path: ptr_into_pathbuf(extras.dxcPath),
             },
             _ => wgt::Dx12Compiler::default(),
         };
@@ -276,7 +271,7 @@ pub fn map_instance_descriptor(
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
-) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
+) -> (wgt::DeviceDescriptor<Label<'a>>, *const std::ffi::c_char) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
         wgt::Limits::default(),
         |required_limits| unsafe {
@@ -289,13 +284,14 @@ pub fn map_device_descriptor<'a>(
 
     (
         wgt::DeviceDescriptor {
-            label: unsafe { OwnedLabel::new(des.label) }.into_cow(),
-            features: map_features(unsafe {
-                make_slice(des.requiredFeatures, des.requiredFeaturesCount)
-            }),
+            label: ptr_into_label(des.label),
+            features: map_features(make_slice(des.requiredFeatures, des.requiredFeaturesCount)),
             limits,
         },
-        extras.and_then(|extras| unsafe { OwnedLabel::new(extras.tracePath) }.into_inner()),
+        match extras {
+            Some(extras) => extras.tracePath,
+            None => std::ptr::null(),
+        },
     )
 }
 
@@ -304,7 +300,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
-    let bind_group_layouts = unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount) }
+    let bind_group_layouts = make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount)
         .iter()
         .map(|layout| {
             layout
@@ -315,12 +311,10 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         .collect::<Vec<_>>();
 
     let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
-        unsafe {
-            make_slice(
-                extras.pushConstantRanges,
-                extras.pushConstantRangeCount as usize,
-            )
-        }
+        make_slice(
+            extras.pushConstantRanges,
+            extras.pushConstantRangeCount as usize,
+        )
         .iter()
         .map(|range| wgt::PushConstantRange {
             stages: wgt::ShaderStages::from_bits(range.stages)
@@ -331,7 +325,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     });
 
     return wgc::binding_model::PipelineLayoutDescriptor {
-        label: OwnedLabel::new(des.label).into_cow(),
+        label: ptr_into_label(des.label),
         bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
@@ -526,7 +520,7 @@ pub fn map_shader_module<'a>(
 
     #[cfg(feature = "spirv")]
     if let Some(spirv) = spirv {
-        let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
+        let slice = make_slice(spirv.code, spirv.codeSize as usize);
         // Parse the given shader code and store its representation.
         let options = naga::front::spv::Options {
             adjust_coordinate_space: false, // we require NDC_Y_UP feature
@@ -546,7 +540,7 @@ pub fn map_shader_module<'a>(
             map_shader_stage(glsl.stage).expect("Unknown shader stage"),
         );
 
-        let raw_defines = unsafe { make_slice(glsl.defines, glsl.defineCount as usize) };
+        let raw_defines = make_slice(glsl.defines, glsl.defineCount as usize);
         for define in raw_defines {
             let name_c_str: &CStr = unsafe { CStr::from_ptr(define.name) };
             let name_str_slice: &str = name_c_str.to_str().expect("not a valid utf-8 string");
@@ -1126,7 +1120,7 @@ pub fn map_swapchain_descriptor(
                 native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,
                 _ => panic!("invalid alpha mode for swapchain descriptor"),
             },
-            unsafe { make_slice(extras.viewFormats, extras.viewFormatCount) }
+            make_slice(extras.viewFormats, extras.viewFormatCount)
                 .iter()
                 .map(|f| {
                     map_texture_format(*f).expect("invalid view format for swapchain descriptor")
@@ -1152,7 +1146,7 @@ pub fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
     wgt::QuerySetDescriptor {
-        label: unsafe { OwnedLabel::new(desc.label) }.into_cow(),
+        label: ptr_into_label(desc.label),
         count: desc.count,
         ty: match desc.type_ {
             native::WGPUQueryType_Occlusion => wgt::QueryType::Occlusion,
@@ -1160,7 +1154,7 @@ pub fn map_query_set_descriptor<'a>(
             native::WGPUQueryType_PipelineStatistics => {
                 let mut types = wgt::PipelineStatisticsTypes::empty();
 
-                unsafe { make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount) }
+                make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount)
                     .iter()
                     .for_each(|f| {
                         types.insert(match *f {

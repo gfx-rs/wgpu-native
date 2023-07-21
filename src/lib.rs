@@ -12,12 +12,11 @@ use std::{
     ffi::{CStr, CString},
     fmt::Display,
     num::NonZeroU64,
-    path::Path,
     sync::{atomic, Arc},
     thread,
 };
 use thiserror::Error;
-use utils::{make_slice, OwnedLabel};
+use utils::{make_slice, ptr_into_label, ptr_into_path};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
     gfx_select, id, resource, Label,
@@ -704,14 +703,19 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         }
         None => (
             wgt::DeviceDescriptor::default(),
-            None,
+            std::ptr::null(),
             DEFAULT_DEVICE_LOST_HANDLER,
         ),
     };
 
-    let trace_path = trace_str.as_ref().map(Path::new);
-
-    let (device_id, err) = gfx_select!(adapter_id => context.adapter_request_device(adapter_id, &desc, trace_path, ()));
+    let (device_id, err) = gfx_select!(adapter_id =>
+        context.adapter_request_device(
+            adapter_id,
+            &desc,
+            ptr_into_path(trace_str),
+            ()
+        )
+    );
     match err {
         None => {
             callback(
@@ -963,7 +967,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgc::command::ComputePassDescriptor::default(),
     };
@@ -1011,8 +1015,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
             },
         }
     });
+
     let desc = wgc::command::RenderPassDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         color_attachments: Cow::Owned(
             make_slice(descriptor.colorAttachments, descriptor.colorAttachmentCount)
                 .iter()
@@ -1233,7 +1238,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
 
     let desc = match descriptor {
         Some(descriptor) => wgt::CommandBufferDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgt::CommandBufferDescriptor::default(),
     };
@@ -1685,9 +1690,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         })
         .collect::<Vec<_>>();
 
-    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         layout: bind_group_layout_id,
         entries: Cow::Borrowed(&entries),
     };
@@ -1841,9 +1845,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         })
         .collect::<Vec<_>>();
 
-    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupLayoutDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         entries: Cow::Borrowed(&entries),
     };
     let (bind_group_layout_id, error) =
@@ -1876,9 +1879,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let label = OwnedLabel::new(descriptor.label);
     let desc = wgt::BufferDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         size: descriptor.size,
         usage: wgt::BufferUsages::from_bits(descriptor.usage).expect("invalid buffer usage"),
         mapped_at_creation: descriptor.mappedAtCreation,
@@ -1916,7 +1918,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     };
     let desc = match descriptor {
         Some(descriptor) => wgt::CommandEncoderDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgt::CommandEncoderDescriptor::default(),
     };
@@ -1959,12 +1961,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             .as_ref()
             .expect("invalid shader module for compute pipeline descriptor")
             .id,
-        entry_point: OwnedLabel::new(descriptor.compute.entryPoint)
-            .into_cow()
+        entry_point: ptr_into_label(descriptor.compute.entryPoint)
             .expect("invalid entry point for compute pipeline descriptor"),
     };
     let desc = wgc::pipeline::ComputePipelineDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         layout: descriptor.layout.as_ref().map(|v| v.id),
         stage,
     };
@@ -2086,8 +2087,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::command::RenderBundleEncoderDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
-        color_formats: unsafe { make_slice(descriptor.colorFormats, descriptor.colorFormatsCount) }
+        label: ptr_into_label(descriptor.label),
+        color_formats: make_slice(descriptor.colorFormats, descriptor.colorFormatsCount)
             .iter()
             .map(|format| conv::map_texture_format(*format))
             .collect(),
@@ -2125,7 +2126,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::pipeline::RenderPipelineDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         layout: descriptor.layout.as_ref().map(|v| v.id),
         vertex: wgc::pipeline::VertexState {
             stage: wgc::pipeline::ProgrammableStageDescriptor {
@@ -2135,8 +2136,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .as_ref()
                     .expect("invalid vertex shader module for vertex state")
                     .id,
-                entry_point: OwnedLabel::new(descriptor.vertex.entryPoint)
-                    .into_cow()
+                entry_point: ptr_into_label(descriptor.vertex.entryPoint)
                     .expect("invalid entry point for vertex state"),
             },
             buffers: Cow::Owned(
@@ -2223,8 +2223,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .as_ref()
                         .expect("invalid fragment shader module for render pipeline descriptor")
                         .id,
-                    entry_point: OwnedLabel::new(fragment.entryPoint)
-                        .into_cow()
+                    entry_point: ptr_into_label(fragment.entryPoint)
                         .expect("invalid entry point for fragment state"),
                 },
                 targets: Cow::Owned(
@@ -2293,7 +2292,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::resource::SamplerDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
             address_modes: [
                 conv::map_address_mode(descriptor.addressModeU),
                 conv::map_address_mode(descriptor.addressModeV),
@@ -2359,7 +2358,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let label = OwnedLabel::new(descriptor.label);
     let source = follow_chain!(
         map_shader_module(descriptor,
         WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
@@ -2368,7 +2366,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     );
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         shader_bound_checks: wgt::ShaderBoundChecks::default(),
     };
     let (shader_module_id, error) =
@@ -2433,7 +2431,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgt::TextureDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         size: conv::map_extent3d(&descriptor.size),
         mip_level_count: descriptor.mipLevelCount,
         sample_count: descriptor.sampleCount,
@@ -3052,7 +3050,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
 
     let desc = match descriptor {
         Some(descriptor) => wgt::RenderBundleDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgt::RenderBundleDescriptor::default(),
     };
@@ -3767,7 +3765,7 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::resource::TextureViewDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
             format: conv::map_texture_format(descriptor.format),
             dimension: conv::map_texture_view_dimension(descriptor.dimension),
             range: wgt::ImageSubresourceRange {
