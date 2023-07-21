@@ -30,45 +30,45 @@ trace = ["wgc/trace"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6c84d438a5335b18234c47830f9eb5a810ae8c21"
-version = "0.16"
+rev = "21098cdaceee49c22a7e3a9648ce019b4e74beec"
+version = "0.17"
 features = ["raw-window-handle", "gles"]
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6c84d438a5335b18234c47830f9eb5a810ae8c21"
-version = "0.16"
+rev = "21098cdaceee49c22a7e3a9648ce019b4e74beec"
+version = "0.17"
 features = ["metal"]
 
 [target.'cfg(windows)'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6c84d438a5335b18234c47830f9eb5a810ae8c21"
-version = "0.16"
+rev = "21098cdaceee49c22a7e3a9648ce019b4e74beec"
+version = "0.17"
 features = ["dx11", "dx12"]
 
 [target.'cfg(any(windows, all(unix, not(target_arch = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6c84d438a5335b18234c47830f9eb5a810ae8c21"
-version = "0.16"
+rev = "21098cdaceee49c22a7e3a9648ce019b4e74beec"
+version = "0.17"
 features = ["vulkan"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "6c84d438a5335b18234c47830f9eb5a810ae8c21"
-version = "0.16"
+rev = "21098cdaceee49c22a7e3a9648ce019b4e74beec"
+version = "0.17"
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "b99d58ea435090e561377949f428bce2c18451bb"
-version = "0.12.0"
+rev = "bac2d82a430fbfcf100ee22b7c3bc12f3d593079"
+version = "0.13.0"
 
 [dependencies]
 raw-window-handle = "0.5"
-paste = "1.0"
+paste = "1"
 log = "0.4"
 thiserror = "1"
 parking_lot = "0.12"

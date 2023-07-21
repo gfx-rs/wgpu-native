@@ -37,7 +37,7 @@ pub mod native {
 
 const LABEL: &str = "label";
 
-pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
+pub type Context = wgc::global::Global<wgc::identity::IdentityManagerFactory>;
 
 struct AdapterProperties {
     vendor_id: u32,
@@ -553,7 +553,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
     Arc::into_raw(Arc::new(WGPUInstanceImpl {
         context: Arc::new(Context::new(
             "wgpu",
-            wgc::hub::IdentityManagerFactory,
+            wgc::identity::IdentityManagerFactory,
             instance_desc,
         )),
     }))
@@ -617,10 +617,10 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     let props = adapter.properties.get_or_init(|| {
         match gfx_select!(adapter_id => context.adapter_get_info(adapter_id)) {
             Ok(info) => AdapterProperties {
-                vendor_id: info.vendor as u32,
+                vendor_id: info.vendor,
                 vendor_name: CString::new(info.driver).unwrap(),
                 architecture: CString::default(), // TODO
-                device_id: info.device as u32,
+                device_id: info.device,
                 name: CString::new(info.name).unwrap(),
                 driver_description: CString::new(info.driver_info).unwrap(),
                 adapter_type: match info.device_type {
