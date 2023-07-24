@@ -154,7 +154,7 @@ jobs:
     env:
       TARGET: x86_64-apple-darwin
       ARCHIVE_NAME: wgpu-macos-x86_64
-      MACOSX_DEPLOYMENT_TARGET: 10.13
+      MACOSX_DEPLOYMENT_TARGET: "10.13"
     steps:
     # Common part (same for each build)
     - uses: actions/checkout@v3
@@ -168,11 +168,6 @@ jobs:
       with:
         targets: ${{ env.TARGET }}
     # Build
-    - name: Select XCode version
-      run:
-        xcode_app=$(ls -1v /Applications/Xcode_*.app | tail -1)
-        echo $xcode_app
-        sudo xcode-select -s "$xcode_app"
     - name: Build
       run: make package
     # Upload (same for each build)
@@ -190,6 +185,7 @@ jobs:
     env:
       TARGET: aarch64-apple-darwin
       ARCHIVE_NAME: wgpu-macos-arm64
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
     # Common part (same for each build)
     - uses: actions/checkout@v3
@@ -203,13 +199,8 @@ jobs:
       with:
         targets: ${{ env.TARGET }}
     # Build
-    - name: Select XCode version
-      run:
-        xcode_app=$(ls -1v /Applications/Xcode_*.app | tail -1)
-        echo $xcode_app
-        sudo xcode-select -s "$xcode_app"
     - name: Build
-      run: SDKROOT=$(xcrun -sdk macosx11.0 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx11.0 --show-sdk-platform-version) make package
+      run: make package
     # Upload (same for each build)
     - name: Upload
       uses: actions/upload-artifact@v3
