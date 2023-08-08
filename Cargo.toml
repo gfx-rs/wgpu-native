@@ -8,7 +8,7 @@ authors = [
 	"Almar Klein <almar@almarklein.org>",
 ]
 edition = "2021"
-description = "WebGPU native implementation on gfx-hal"
+description = "WebGPU native implementation on wgpu-core"
 homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
 keywords = ["graphics"]

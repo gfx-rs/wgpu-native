@@ -188,11 +188,11 @@ map_enum!(
     map_composite_alpha_mode,
     WGPUCompositeAlphaMode,
     wgt::CompositeAlphaMode,
-    Auto,
-    Opaque,
-    PreMultiplied,
-    PostMultiplied,
-    Inherit
+    Auto: Auto,
+    Opaque: Opaque,
+    PreMultiplied: PreMultiplied,
+    UnPreMultiplied: PostMultiplied,
+    Inherit: Inherit
 );
 
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
@@ -895,7 +895,7 @@ pub fn map_primitive_state(
     depth_clip_control: Option<&native::WGPUPrimitiveDepthClipControl>,
 ) -> bool {
     if let Some(depth_clip_control) = depth_clip_control {
-        return depth_clip_control.unclippedDepth;
+        return depth_clip_control.unclippedDepth != 0;
     }
 
     false
@@ -1096,15 +1096,15 @@ pub fn to_native_composite_alpha_mode(
         wgt::CompositeAlphaMode::Auto => native::WGPUCompositeAlphaMode_Auto,
         wgt::CompositeAlphaMode::Opaque => native::WGPUCompositeAlphaMode_Opaque,
         wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_PreMultiplied,
-        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_PostMultiplied,
+        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_UnPreMultiplied,
         wgt::CompositeAlphaMode::Inherit => native::WGPUCompositeAlphaMode_Inherit,
     }
 }
 
 #[inline]
-pub fn map_swapchain_descriptor(
-    desc: &native::WGPUSwapChainDescriptor,
-    extras: Option<&native::WGPUSwapChainDescriptorExtras>,
+pub fn map_surface_configuration(
+    desc: &native::WGPUSurfaceConfiguration,
+    extras: Option<&native::WGPUSurfaceDescriptorExtras>,
 ) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
     let (alpha_mode, view_formats) = match extras {
         Some(extras) => (
@@ -1114,7 +1114,7 @@ pub fn map_swapchain_descriptor(
                 native::WGPUCompositeAlphaMode_PreMultiplied => {
                     wgt::CompositeAlphaMode::PreMultiplied
                 }
-                native::WGPUCompositeAlphaMode_PostMultiplied => {
+                native::WGPUCompositeAlphaMode_UnPreMultiplied => {
                     wgt::CompositeAlphaMode::PostMultiplied
                 }
                 native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,

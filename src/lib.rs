@@ -1,7 +1,7 @@
 use conv::{
     map_device_descriptor, map_instance_backend_flags, map_instance_descriptor,
     map_pipeline_layout_descriptor, map_primitive_state, map_shader_module, map_surface,
-    map_swapchain_descriptor, CreateSurfaceParams,
+    map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
@@ -275,6 +275,7 @@ impl Drop for WGPUShaderModuleImpl {
 pub struct WGPUSurfaceImpl {
     context: Arc<Context>,
     id: id::SurfaceId,
+    device: Option<WGPUDeviceImpl>,
 }
 impl Drop for WGPUSurfaceImpl {
     fn drop(&mut self) {
@@ -282,13 +283,6 @@ impl Drop for WGPUSurfaceImpl {
             self.context.surface_drop(self.id);
         }
     }
-}
-
-pub struct WGPUSwapChainImpl {
-    context: Arc<Context>,
-    surface_id: id::SurfaceId,
-    device_id: id::DeviceId,
-    error_sink: ErrorSink,
 }
 
 pub struct WGPUTextureImpl {
@@ -1005,13 +999,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
                 clear_value: desc.depthClearValue,
-                read_only: desc.depthReadOnly,
+                read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.stencilLoadOp),
                 store_op: conv::map_store_op(desc.stencilStoreOp),
                 clear_value: desc.stencilClearValue,
-                read_only: desc.stencilReadOnly,
+                read_only: desc.stencilReadOnly != 0,
             },
         }
     });
@@ -1761,7 +1755,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
                         _ => panic!("invalid texture view dimension for texture binding layout"),
                     },
-                    multisampled: entry.texture.multisampled,
+                    multisampled: entry.texture.multisampled != 0,
                 }
             } else if is_sampler {
                 match entry.sampler.type_ {
@@ -1820,7 +1814,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         }
                         _ => panic!("invalid buffer binding type for buffer binding layout"),
                     },
-                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset != 0,
                     min_binding_size: {
                         assert_ne!(
                             entry.buffer.minBindingSize,
@@ -1883,7 +1877,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         label: ptr_into_label(descriptor.label),
         size: descriptor.size,
         usage: wgt::BufferUsages::from_bits(descriptor.usage).expect("invalid buffer usage"),
-        mapped_at_creation: descriptor.mappedAtCreation,
+        mapped_at_creation: descriptor.mappedAtCreation != 0,
     };
 
     let (buffer_id, error) =
@@ -2095,8 +2089,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
         depth_stencil: conv::map_texture_format(descriptor.depthStencilFormat).map(|format| {
             wgt::RenderBundleDepthStencil {
                 format,
-                depth_read_only: descriptor.depthReadOnly,
-                stencil_read_only: descriptor.stencilReadOnly,
+                depth_read_only: descriptor.depthReadOnly != 0,
+                stencil_read_only: descriptor.stencilReadOnly != 0,
             }
         }),
         sample_count: descriptor.sampleCount,
@@ -2193,7 +2187,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             .map(|desc| wgt::DepthStencilState {
                 format: conv::map_texture_format(desc.format)
                     .expect("invalid texture format for depth stencil state"),
-                depth_write_enabled: desc.depthWriteEnabled,
+                depth_write_enabled: desc.depthWriteEnabled != 0,
                 depth_compare: conv::map_compare_function(desc.depthCompare)
                     .expect("invalid depth compare function for depth stencil state"),
                 stencil: wgt::StencilState {
@@ -2211,7 +2205,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
         multisample: wgt::MultisampleState {
             count: descriptor.multisample.count,
             mask: descriptor.multisample.mask as u64,
-            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled,
+            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled != 0,
         },
         fragment: descriptor
             .fragment
@@ -2385,37 +2379,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: shader_module_id,
-    }))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
-    device: native::WGPUDevice,
-    surface: native::WGPUSurface,
-    descriptor: Option<&native::WGPUSwapChainDescriptor>,
-) -> native::WGPUSwapChain {
-    let (device_id, context, error_sink) = {
-        let device = device.as_ref().expect("invalid device");
-        (device.id, &device.context, &device.error_sink)
-    };
-    let surface_id = surface.as_ref().expect("invalid surface").id;
-
-    let config = follow_chain!(
-        map_swapchain_descriptor(
-            descriptor.expect("invalid descriptor"),
-            WGPUSType_SwapChainDescriptorExtras => native::WGPUSwapChainDescriptorExtras)
-    );
-
-    let error = gfx_select!(device_id => context.surface_configure(surface_id, device_id, &config));
-    if let Some(cause) = error {
-        handle_error_fatal(context, cause, "wgpuDeviceCreateSwapChain");
-    }
-
-    Arc::into_raw(Arc::new(WGPUSwapChainImpl {
-        context: context.clone(),
-        surface_id,
-        device_id,
-        error_sink: error_sink.clone(),
     }))
 }
 
@@ -2655,6 +2618,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     Arc::into_raw(Arc::new(WGPUSurfaceImpl {
         context: context.clone(),
         id: surface_id,
+        device: None,
     }))
 }
 
@@ -2679,7 +2643,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     }
                     _ => wgt::PowerPreference::default(),
                 },
-                force_fallback_adapter: options.forceFallbackAdapter,
+                force_fallback_adapter: options.forceFallbackAdapter != 0,
                 compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
             },
             wgc::instance::AdapterInputs::Mask(
@@ -3635,6 +3599,43 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceConfigure(
+    surface: native::WGPUSurface,
+    descriptor: Option<&native::WGPUSurfaceConfiguration>,
+) {
+    let (surface_id, context, device_id) = {
+        let surface = surface.as_ref().expect("invalid surface");
+        let device = descriptor.expect("invalid descriptor").device.as_ref().expect("invalid device");
+        (surface.id, &surface.context, device.id)
+    };
+
+    let config = follow_chain!(
+        map_surface_configuration(
+            descriptor.expect("invalid descriptor"),
+            WGPUSType_SurfaceDescriptorExtras => native::WGPUSurfaceDescriptorExtras)
+    );
+
+    let error = gfx_select!(device_id => context.surface_configure(surface_id, device_id, &config));
+    if let Some(cause) = error {
+        handle_error_fatal(context, cause, "wgpuDeviceCreateSwapChain");
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfacePresent(
+    surface: native::WGPUSurface
+) {
+    let (surface_id, context, device_id) = {
+        let surface = surface.as_ref().expect("invalid surface");
+        (surface.id, &surface.context, surface.device.as_ref().expect("surface not configured").id)
+    };
+
+    if let Err(cause) = gfx_select!(device_id => context.surface_present(surface_id)) {
+        handle_error_fatal(context, cause, "wgpuSurfacePresent");
+    };
+}
+
 #[derive(Debug, Error)]
 pub enum SurfaceError {
     #[error("Surface timed out")]
@@ -3646,88 +3647,6 @@ pub enum SurfaceError {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
-    swap_chain: native::WGPUSwapChain,
-) -> native::WGPUTextureView {
-    let (surface_id, device_id, context, error_sink) = {
-        let swap_chain = swap_chain.as_ref().expect("invalid swap chain");
-        (
-            swap_chain.surface_id,
-            swap_chain.device_id,
-            &swap_chain.context,
-            &swap_chain.error_sink,
-        )
-    };
-
-    match gfx_select!(device_id => context.surface_get_current_texture(surface_id, ())) {
-        Ok(result) => match result.status {
-            wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
-                let texture_id = result.texture_id.unwrap();
-                let (texture_view_id, error) = gfx_select!(texture_id => context.texture_create_view(
-                    texture_id,
-                    &wgc::resource::TextureViewDescriptor::default(),
-                    ()
-                ));
-                gfx_select!(texture_id => context.texture_drop(texture_id, false));
-                if let Some(cause) = error {
-                    handle_error(
-                        context,
-                        error_sink,
-                        cause,
-                        "",
-                        None,
-                        "wgpuSwapChainGetCurrentTextureView",
-                    );
-                }
-
-                Arc::into_raw(Arc::new(WGPUTextureViewImpl {
-                    context: context.clone(),
-                    id: texture_view_id,
-                }))
-            }
-            _ => {
-                if let Some(texture_id) = result.texture_id {
-                    gfx_select!(texture_id => context.texture_drop(texture_id, false));
-                }
-                handle_error(
-                    context,
-                    error_sink,
-                    match result.status {
-                        wgt::SurfaceStatus::Timeout => &SurfaceError::Timeout,
-                        wgt::SurfaceStatus::Outdated => &SurfaceError::Outdated,
-                        wgt::SurfaceStatus::Lost => &SurfaceError::Lost,
-                        _ => unreachable!(),
-                    },
-                    "",
-                    None,
-                    "wgpuSwapChainGetCurrentTextureView",
-                );
-                std::ptr::null_mut()
-            }
-        },
-        Err(cause) => {
-            handle_error_fatal(context, cause, "wgpuSwapChainGetCurrentTextureView");
-        }
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
-    let (surface_id, device_id, context) = {
-        let swap_chain = swap_chain.as_ref().expect("invalid swap chain");
-        (
-            swap_chain.surface_id,
-            swap_chain.device_id,
-            &swap_chain.context,
-        )
-    };
-
-    if let Err(cause) = gfx_select!(device_id => context.surface_present(surface_id)) {
-        handle_error_fatal(context, cause, "wgpuSwapChainPresent");
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceReference(surface: native::WGPUSurface) {
     assert!(!surface.is_null(), "invalid surface");
     Arc::increment_strong_count(surface);
@@ -3736,19 +3655,6 @@ pub unsafe extern "C" fn wgpuSurfaceReference(surface: native::WGPUSurface) {
 pub unsafe extern "C" fn wgpuSurfaceRelease(surface: native::WGPUSurface) {
     assert!(!surface.is_null(), "invalid surface");
     Arc::decrement_strong_count(surface);
-}
-
-// SwapChain methods
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainReference(swap_chain: native::WGPUSwapChain) {
-    assert!(!swap_chain.is_null(), "invalid swap chain");
-    Arc::increment_strong_count(swap_chain);
-}
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainRelease(swap_chain: native::WGPUSwapChain) {
-    assert!(!swap_chain.is_null(), "invalid swap chain");
-    Arc::decrement_strong_count(swap_chain);
 }
 
 // Texture methods

@@ -223,3 +223,11 @@ pub extern "C" fn wgpuTextureViewSetLabel(
 ) {
     unimplemented!();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
+    _surface: native::WGPUSurface,
+    _surface_texture: Option<&native::WGPUSurfaceTexture>
+) {
+    unimplemented!();
+}

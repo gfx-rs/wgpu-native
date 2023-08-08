@@ -12,7 +12,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
     WGPUSType_SupportedLimitsExtras = 0x60000003,
     WGPUSType_InstanceExtras = 0x60000006,
-    WGPUSType_SwapChainDescriptorExtras = 0x60000007,
+    WGPUSType_SurfaceDescriptorExtras = 0x60000007,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -57,15 +57,6 @@ typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Dxc = 0x00000002,
     WGPUDx12Compiler_Force32 = 0x7FFFFFFF
 } WGPUDx12Compiler;
-
-typedef enum WGPUCompositeAlphaMode {
-    WGPUCompositeAlphaMode_Auto = 0x00000000,
-    WGPUCompositeAlphaMode_Opaque = 0x00000001,
-    WGPUCompositeAlphaMode_PreMultiplied = 0x00000002,
-    WGPUCompositeAlphaMode_PostMultiplied = 0x00000003,
-    WGPUCompositeAlphaMode_Inherit = 0x00000004,
-    WGPUCompositeAlphaMode_Force32 = 0x7FFFFFFF
-} WGPUCompositeAlphaMode;
 
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
@@ -157,21 +148,12 @@ typedef struct WGPUGlobalReport {
     WGPUHubReport gl;
 } WGPUGlobalReport;
 
-typedef struct WGPUSurfaceCapabilities {
-    size_t formatCount;
-    WGPUTextureFormat * formats;
-    size_t presentModeCount;
-    WGPUPresentMode * presentModes;
-    size_t alphaModeCount;
-    WGPUCompositeAlphaMode * alphaModes;
-} WGPUSurfaceCapabilities;
-
-typedef struct WGPUSwapChainDescriptorExtras {
+typedef struct WGPUSurfaceDescriptorExtras {
     WGPUChainedStruct chain;
     WGPUCompositeAlphaMode alphaMode;
     size_t viewFormatCount;
     WGPUTextureFormat const * viewFormats;
-} WGPUSwapChainDescriptorExtras;
+} WGPUSurfaceDescriptorExtras;
 
 typedef struct WGPUInstanceEnumerateAdapterOptions {
     WGPUChainedStruct const * nextInChain;
@@ -190,7 +172,7 @@ size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUInstanceEnumerat
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
+WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
 
