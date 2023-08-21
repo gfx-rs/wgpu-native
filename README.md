@@ -9,7 +9,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 
 - [gfx-rs/wgpu-rs](https://github.com/gfx-rs/wgpu/tree/master/wgpu) - idiomatic Rust wrapper with [a few more examples](https://github.com/gfx-rs/wgpu/tree/master/wgpu/examples) to get a feel of the API
 - [pygfx/wgpu-py](https://github.com/pygfx/wgpu-py) - Python wrapper
-- [trivaxy/wgpu.NET](https://github.com/trivaxy/WGPU.NET) - .NET wrapper
+- [trivaxy/wgpu.NET](https://github.com/trivaxy/WGPU.NET) - Raw .NET bindings with optional wrappers
 - [dotnet/Silk.NET](https://github.com/dotnet/Silk.NET) - Raw .NET bindings
 - [Alimer.Bindings.WebGPU](https://github.com/amerkoleci/Alimer.Bindings.WebGPU) - Cross platform .NET bindings for WebGPU
 - [wgpu.cr](https://github.com/chances/wgpu-crystal) - Crystal wrapper
