@@ -27,11 +27,11 @@ map_enum!(
     Store
 );
 #[inline]
-pub fn map_load_op(value: i32) -> wgc::command::LoadOp {
+pub fn map_load_op(value: native::WGPULoadOp) -> wgc::command::LoadOp {
     return _raw_map_load_op(value).unwrap_or(wgc::command::LoadOp::Clear)
 }
 #[inline]
-pub fn map_store_op(value: i32) -> wgc::command::StoreOp {
+pub fn map_store_op(value: native::WGPUStoreOp) -> wgc::command::StoreOp {
     return _raw_map_store_op(value).unwrap_or(wgc::command::StoreOp::Discard)
 }
 map_enum!(
