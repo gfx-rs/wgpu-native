@@ -5,22 +5,35 @@ use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
 use std::{borrow::Cow, ffi::CStr};
 
+// Ultimately map_load_op and map_store_op should be able to use the map_enum!
+// macro, but not until wgc supports "Undefined" as a valid value. For now the
+// "_raw_" map enum version is wrapped into a function that falls back to an
+// arbitrary default value.
+// (This is the easyfix of https://github.com/gfx-rs/wgpu-native/issues/290)
 map_enum!(
-    map_load_op,
+    _raw_map_load_op,
     WGPULoadOp,
     wgc::command::LoadOp,
-    "Unknown load op",
+    //"Unknown load op",
     Clear,
     Load
 );
 map_enum!(
-    map_store_op,
+    _raw_map_store_op,
     WGPUStoreOp,
     wgc::command::StoreOp,
-    "Unknown store op",
+    //"Unknown store op",
     Discard,
     Store
 );
+#[inline]
+pub fn map_load_op(value: native::WGPULoadOp) -> wgc::command::LoadOp {
+    return _raw_map_load_op(value).unwrap_or(wgc::command::LoadOp::Clear)
+}
+#[inline]
+pub fn map_store_op(value: native::WGPUStoreOp) -> wgc::command::StoreOp {
+    return _raw_map_store_op(value).unwrap_or(wgc::command::StoreOp::Discard)
+}
 map_enum!(
     map_address_mode,
     WGPUAddressMode,

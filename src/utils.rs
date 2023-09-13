@@ -149,7 +149,7 @@ macro_rules! follow_chain {
 /// ```
 /// Which expands into:
 /// ```ignore
-/// pub fn map_index_format(value: i32) -> Result<wgt::IndexFormat, i32> {
+/// pub fn map_index_format(value: native::WGPUIndexFormat) -> Result<wgt::IndexFormat, native::WGPUIndexFormat> {
 ///      match value {
 ///          native::WGPUIndexFormat_Uint16 => Ok(wgt::IndexFormat::Uint16),
 ///          native::WGPUIndexFormat_Uint32 => Ok(wgt::IndexFormat::Uint32),
