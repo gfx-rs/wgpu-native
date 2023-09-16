@@ -5,21 +5,21 @@
 
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
-    WGPUSType_DeviceExtras = 0x60000001,
-    WGPUSType_RequiredLimitsExtras = 0x60000002,
-    WGPUSType_PipelineLayoutExtras = 0x60000003,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000004,
-    WGPUSType_SupportedLimitsExtras = 0x60000005,
-    WGPUSType_InstanceExtras = 0x60000006,
+    WGPUSType_DeviceExtras = 0x00030001,
+    WGPUSType_RequiredLimitsExtras = 0x00030002,
+    WGPUSType_PipelineLayoutExtras = 0x00030003,
+    WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
+    WGPUSType_SupportedLimitsExtras = 0x00030005,
+    WGPUSType_InstanceExtras = 0x00030006,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
 typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_PushConstants = 0x60000001,
-    WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x60000002,
-    WGPUNativeFeature_MultiDrawIndirect = 0x60000003,
-    WGPUNativeFeature_MultiDrawIndirectCount = 0x60000004,
-    WGPUNativeFeature_VertexWritableStorage = 0x60000005,
+    WGPUNativeFeature_PushConstants = 0x00030001,
+    WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x00030002,
+    WGPUNativeFeature_MultiDrawIndirect = 0x00030003,
+    WGPUNativeFeature_MultiDrawIndirectCount = 0x00030004,
+    WGPUNativeFeature_VertexWritableStorage = 0x00030005,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
