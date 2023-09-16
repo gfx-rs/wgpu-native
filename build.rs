@@ -28,7 +28,6 @@ fn main() {
         ("WGPUSampler", "WGPUSamplerImpl"),
         ("WGPUShaderModule", "WGPUShaderModuleImpl"),
         ("WGPUSurface", "WGPUSurfaceImpl"),
-        ("WGPUSwapChain", "WGPUSwapChainImpl"),
         ("WGPUTexture", "WGPUTextureImpl"),
         ("WGPUTextureView", "WGPUTextureViewImpl"),
     ];

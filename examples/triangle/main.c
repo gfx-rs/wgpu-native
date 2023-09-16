@@ -2,6 +2,7 @@
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,9 +31,7 @@ struct demo {
   WGPUSurface surface;
   WGPUAdapter adapter;
   WGPUDevice device;
-  WGPUSwapChainDescriptor config;
-  WGPUSwapChain swapchain;
-  bool skip_curr_frame;
+  WGPUSurfaceConfiguration config;
 };
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
@@ -78,38 +77,13 @@ static void handle_glfw_framebuffer_size(GLFWwindow *window, int width,
   }
 
   struct demo *demo = glfwGetWindowUserPointer(window);
-  if (!demo || !demo->swapchain)
+  if (!demo)
     return;
 
   demo->config.width = width;
   demo->config.height = height;
 
-  if (demo->swapchain)
-    wgpuSwapChainRelease(demo->swapchain);
-  demo->swapchain =
-      wgpuDeviceCreateSwapChain(demo->device, demo->surface, &demo->config);
-  assert(demo->swapchain);
-}
-static void handle_curr_texture_error(WGPUErrorType type, char const *message,
-                                      void *userdata) {
-  if (type == WGPUErrorType_NoError)
-    return;
-
-  printf(LOG_PREFIX " curr_texture_error type=%#.8x message=%s\n", type,
-         message);
-
-  struct demo *demo = userdata;
-
-  if (strstr(message, "Surface timed out") != NULL) {
-    demo->skip_curr_frame = true;
-    return;
-  } else if (strstr(message, "Surface is outdated") != NULL) {
-    demo->skip_curr_frame = true;
-    return;
-  } else if (strstr(message, "Surface was lost") != NULL) {
-    demo->skip_curr_frame = true;
-    return;
-  }
+  wgpuSurfaceConfigure(demo->surface, &demo->config);
 }
 
 int main(int argc, char *argv[]) {
@@ -121,6 +95,7 @@ int main(int argc, char *argv[]) {
   WGPUShaderModule shader_module = NULL;
   WGPUPipelineLayout pipeline_layout = NULL;
   WGPURenderPipeline render_pipeline = NULL;
+  WGPUSurfaceCapabilities surface_capabilities = {0};
   int ret = EXIT_SUCCESS;
 
 #define ASSERT_CHECK(expr)                                                     \
@@ -141,7 +116,7 @@ int main(int argc, char *argv[]) {
 
   ASSERT_CHECK(glfwInit());
 
-  demo.instance = wgpuCreateInstance(&(const WGPUInstanceDescriptor){0});
+  demo.instance = wgpuCreateInstance(NULL);
   ASSERT_CHECK(demo.instance);
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -262,48 +237,49 @@ int main(int argc, char *argv[]) {
                    });
   ASSERT_CHECK(pipeline_layout);
 
-  WGPUTextureFormat surface_preferred_format =
-      wgpuSurfaceGetPreferredFormat(demo.surface, demo.adapter);
-  ASSERT_CHECK(surface_preferred_format != WGPUTextureFormat_Undefined);
+  wgpuSurfaceGetCapabilities(demo.surface, demo.adapter, &surface_capabilities);
 
   render_pipeline = wgpuDeviceCreateRenderPipeline(
-      demo.device, &(const WGPURenderPipelineDescriptor){
-                       .label = "render_pipeline",
-                       .layout = pipeline_layout,
-                       .vertex =
-                           (const WGPUVertexState){
-                               .module = shader_module,
-                               .entryPoint = "vs_main",
-                           },
-                       .fragment =
-                           &(const WGPUFragmentState){
-                               .module = shader_module,
-                               .entryPoint = "fs_main",
-                               .targetCount = 1,
-                               .targets =
-                                   (const WGPUColorTargetState[]){
-                                       (const WGPUColorTargetState){
-                                           .format = surface_preferred_format,
-                                           .writeMask = WGPUColorWriteMask_All,
-                                       },
-                                   },
-                           },
-                       .primitive =
-                           (const WGPUPrimitiveState){
-                               .topology = WGPUPrimitiveTopology_TriangleList,
-                           },
-                       .multisample =
-                           (const WGPUMultisampleState){
-                               .count = 1,
-                               .mask = 0xFFFFFFFF,
-                           },
-                   });
+      demo.device,
+      &(const WGPURenderPipelineDescriptor){
+          .label = "render_pipeline",
+          .layout = pipeline_layout,
+          .vertex =
+              (const WGPUVertexState){
+                  .module = shader_module,
+                  .entryPoint = "vs_main",
+              },
+          .fragment =
+              &(const WGPUFragmentState){
+                  .module = shader_module,
+                  .entryPoint = "fs_main",
+                  .targetCount = 1,
+                  .targets =
+                      (const WGPUColorTargetState[]){
+                          (const WGPUColorTargetState){
+                              .format = surface_capabilities.formats[0],
+                              .writeMask = WGPUColorWriteMask_All,
+                          },
+                      },
+              },
+          .primitive =
+              (const WGPUPrimitiveState){
+                  .topology = WGPUPrimitiveTopology_TriangleList,
+              },
+          .multisample =
+              (const WGPUMultisampleState){
+                  .count = 1,
+                  .mask = 0xFFFFFFFF,
+              },
+      });
   ASSERT_CHECK(render_pipeline);
 
-  demo.config = (WGPUSwapChainDescriptor){
+  demo.config = (const WGPUSurfaceConfiguration){
+      .device = demo.device,
       .usage = WGPUTextureUsage_RenderAttachment,
-      .format = surface_preferred_format,
+      .format = surface_capabilities.formats[0],
       .presentMode = WGPUPresentMode_Fifo,
+      .alphaMode = surface_capabilities.alphaModes[0],
   };
 
   {
@@ -313,24 +289,44 @@ int main(int argc, char *argv[]) {
     demo.config.height = height;
   }
 
-  demo.swapchain =
-      wgpuDeviceCreateSwapChain(demo.device, demo.surface, &demo.config);
-  ASSERT_CHECK(demo.swapchain);
+  wgpuSurfaceConfigure(demo.surface, &demo.config);
 
   while (!glfwWindowShouldClose(window)) {
-    demo.skip_curr_frame = false;
     glfwPollEvents();
 
-    wgpuDevicePushErrorScope(demo.device, WGPUErrorFilter_Validation);
-    WGPUTextureView next_texture =
-        wgpuSwapChainGetCurrentTextureView(demo.swapchain);
-    wgpuDevicePopErrorScope(demo.device, handle_curr_texture_error, &demo);
-    if (demo.skip_curr_frame) {
-      if (next_texture)
-        wgpuTextureViewRelease(next_texture);
+    WGPUSurfaceTexture surface_texture;
+    wgpuSurfaceGetCurrentTexture(demo.surface, &surface_texture);
+    switch (surface_texture.status) {
+    case WGPUSurfaceGetCurrentTextureStatus_Success:
+      // All good, could check for `surface_texture.suboptimal` here.
+      break;
+    case WGPUSurfaceGetCurrentTextureStatus_Timeout:
+    case WGPUSurfaceGetCurrentTextureStatus_Outdated:
+    case WGPUSurfaceGetCurrentTextureStatus_Lost: {
+      // Skip this frame, and re-configure surface.
+      wgpuTextureRelease(surface_texture.texture);
+      int width, height;
+      glfwGetWindowSize(window, &width, &height);
+      if (width != 0 && height != 0) {
+        demo.config.width = width;
+        demo.config.height = height;
+        wgpuSurfaceConfigure(demo.surface, &demo.config);
+      }
       continue;
     }
-    assert(next_texture);
+    case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
+    case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
+    case WGPUSurfaceGetCurrentTextureStatus_Force32:
+      // Fatal error
+      printf(LOG_PREFIX " get_current_texture status=%#.8x\n",
+             surface_texture.status);
+      abort();
+    }
+    assert(surface_texture.texture);
+
+    WGPUTextureView frame =
+        wgpuTextureCreateView(surface_texture.texture, NULL);
+    assert(frame);
 
     WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
         demo.device, &(const WGPUCommandEncoderDescriptor){
@@ -346,7 +342,7 @@ int main(int argc, char *argv[]) {
                                  .colorAttachments =
                                      (const WGPURenderPassColorAttachment[]){
                                          (const WGPURenderPassColorAttachment){
-                                             .view = next_texture,
+                                             .view = frame,
                                              .loadOp = WGPULoadOp_Clear,
                                              .storeOp = WGPUStoreOp_Store,
                                              .clearValue =
@@ -372,12 +368,13 @@ int main(int argc, char *argv[]) {
     assert(command_buffer);
 
     wgpuQueueSubmit(queue, 1, (const WGPUCommandBuffer[]){command_buffer});
-    wgpuSwapChainPresent(demo.swapchain);
+    wgpuSurfacePresent(demo.surface);
 
     wgpuCommandBufferRelease(command_buffer);
     wgpuRenderPassEncoderRelease(render_pass_encoder);
     wgpuCommandEncoderRelease(command_encoder);
-    wgpuTextureViewRelease(next_texture);
+    wgpuTextureViewRelease(frame);
+    wgpuTextureRelease(surface_texture.texture);
   }
 
 cleanup_and_exit:
@@ -387,8 +384,7 @@ cleanup_and_exit:
     wgpuPipelineLayoutRelease(pipeline_layout);
   if (shader_module)
     wgpuShaderModuleRelease(shader_module);
-  if (demo.swapchain)
-    wgpuSwapChainRelease(demo.swapchain);
+  wgpuSurfaceCapabilitiesFreeMembers(surface_capabilities);
   if (queue)
     wgpuQueueRelease(queue);
   if (demo.device)

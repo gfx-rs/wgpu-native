@@ -3,6 +3,7 @@
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
 
   frmwrk_setup_logging(WGPULogLevel_Warn);
 
-  instance = wgpuCreateInstance(&(const WGPUInstanceDescriptor){0});
+  instance = wgpuCreateInstance(NULL);
   ASSERT_CHECK(instance);
 
   wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,

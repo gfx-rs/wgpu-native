@@ -9,8 +9,7 @@
 int main(int argc, char *argv[]) {
   frmwrk_setup_logging(WGPULogLevel_Warn);
 
-  WGPUInstance instance =
-      wgpuCreateInstance(&(const WGPUInstanceDescriptor){0});
+  WGPUInstance instance = wgpuCreateInstance(NULL);
   assert(instance);
 
   const size_t adapter_count =
