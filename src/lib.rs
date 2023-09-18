@@ -965,9 +965,68 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
         )
     };
 
+    let all_timestamp_writes = descriptor.map(|descriptor| {
+        make_slice(descriptor.timestampWrites, descriptor.timestampWriteCount)
+        .iter()
+        .fold(None, |all_timestamp_writes,  timestamp_write| {
+            let query_set = timestamp_write.querySet
+                .as_ref()
+                .expect("invalid query set in timestamp writes")
+                .id;
+            match all_timestamp_writes {
+                None => Some(wgc::command::ComputePassTimestampWrites{
+                    query_set,
+                    beginning_of_pass_write_index:
+                        match timestamp_write.location {
+                            native::WGPUComputePassTimestampLocation_Beginning => Some(timestamp_write.queryIndex),
+                            _ => None,
+                        },
+                    end_of_pass_write_index:
+                        match timestamp_write.location {
+                            native::WGPUComputePassTimestampLocation_End => Some(timestamp_write.queryIndex),
+                            _ => None,
+                        },
+                }),
+                Some(prev_timestamp_writes) => {
+                    if prev_timestamp_writes.query_set != query_set {
+                        panic!("only ComputePassTimestampWrites where all query sets are the same are supported");
+                    }
+                    Some(wgc::command::ComputePassTimestampWrites{
+                        query_set,
+                        beginning_of_pass_write_index:
+                            match timestamp_write.location {
+                                native::WGPUComputePassTimestampLocation_Beginning => {
+                                    match prev_timestamp_writes.beginning_of_pass_write_index {
+                                        Some(_) => { panic!("only one Beginning query per ComputePassTimestampWrites is supported"); },
+                                        _ => {}
+                                    }
+                                    Some(timestamp_write.queryIndex)
+                                },
+                                _ => prev_timestamp_writes.beginning_of_pass_write_index,
+                            },
+                        end_of_pass_write_index:
+                            match timestamp_write.location {
+                                native::WGPUComputePassTimestampLocation_End => {
+                                    match prev_timestamp_writes.end_of_pass_write_index {
+                                        Some(_) => { panic!("only one End query per ComputePassTimestampWrites is supported"); },
+                                        _ => {}
+                                    }
+                                    Some(timestamp_write.queryIndex)
+                                },
+                                _ => prev_timestamp_writes.end_of_pass_write_index,
+                            },
+                    })
+                }
+            }
+        })
+    }).flatten();
+
     let desc = match descriptor {
-        Some(descriptor) => wgc::command::ComputePassDescriptor {
-            label: ptr_into_label(descriptor.label),
+        Some(descriptor) => {
+            wgc::command::ComputePassDescriptor {
+                label: ptr_into_label(descriptor.label),
+                timestamp_writes: all_timestamp_writes.as_ref(),
+            }
         },
         None => wgc::command::ComputePassDescriptor::default(),
     };
@@ -1016,6 +1075,60 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         }
     });
 
+    let all_timestamp_writes = make_slice(descriptor.timestampWrites, descriptor.timestampWriteCount)
+        .iter()
+        .fold(None, |all_timestamp_writes,  timestamp_write| {
+            let query_set = timestamp_write.querySet
+                .as_ref()
+                .expect("invalid query set in timestamp writes")
+                .id;
+            match all_timestamp_writes {
+                None => Some(wgc::command::RenderPassTimestampWrites{
+                    query_set,
+                    beginning_of_pass_write_index:
+                        match timestamp_write.location {
+                            native::WGPURenderPassTimestampLocation_Beginning => Some(timestamp_write.queryIndex),
+                            _ => None,
+                        },
+                    end_of_pass_write_index:
+                        match timestamp_write.location {
+                            native::WGPURenderPassTimestampLocation_End => Some(timestamp_write.queryIndex),
+                            _ => None,
+                        },
+                }),
+                Some(prev_timestamp_writes) => {
+                    if prev_timestamp_writes.query_set != query_set {
+                        panic!("only RenderPassTimestampWrites where all query sets are the same are supported");
+                    }
+                    Some(wgc::command::RenderPassTimestampWrites{
+                        query_set,
+                        beginning_of_pass_write_index:
+                            match timestamp_write.location {
+                                native::WGPURenderPassTimestampLocation_Beginning => {
+                                    match prev_timestamp_writes.beginning_of_pass_write_index {
+                                        Some(_) => { panic!("only one Beginning query per RenderPassTimestampWrites is supported"); },
+                                        _ => {}
+                                    }
+                                    Some(timestamp_write.queryIndex)
+                                },
+                                _ => prev_timestamp_writes.beginning_of_pass_write_index,
+                            },
+                        end_of_pass_write_index:
+                            match timestamp_write.location {
+                                native::WGPURenderPassTimestampLocation_End => {
+                                    match prev_timestamp_writes.end_of_pass_write_index {
+                                        Some(_) => { panic!("only one End query per RenderPassTimestampWrites is supported"); },
+                                        _ => {}
+                                    }
+                                    Some(timestamp_write.queryIndex)
+                                },
+                                _ => prev_timestamp_writes.end_of_pass_write_index,
+                            },
+                    })
+                }
+            }
+        });
+
     let desc = wgc::command::RenderPassDescriptor {
         label: ptr_into_label(descriptor.label),
         color_attachments: Cow::Owned(
@@ -1038,6 +1151,35 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .collect(),
         ),
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
+        // If timestamp_writes had a type more in sync with the webgpu.h API:
+        /*
+        timestamp_writes: Some(
+            make_slice(descriptor.timestampWrites, descriptor.timestampWriteCount)
+                .iter()
+                .map(|timestamp_write| {
+                    wgc::command::RenderPassTimestampWrites {
+                        query_set:
+                            timestamp_write.querySet
+                            .as_ref()
+                            .expect("invalid query set in timestamp writes")
+                            .id,
+                        beginning_of_pass_write_index:
+                            match timestamp_write.location {
+                                native::WGPURenderPassTimestampLocation_Beginning => Some(timestamp_write.queryIndex),
+                                _ => None,
+                            },
+                        end_of_pass_write_index:
+                            match timestamp_write.location {
+                                native::WGPURenderPassTimestampLocation_End => Some(timestamp_write.queryIndex),
+                                _ => None,
+                            },
+                    }
+                })
+                .collect(),
+        ),
+        */
+        timestamp_writes: all_timestamp_writes.as_ref(),
+        occlusion_query_set: None,
     };
 
     Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
