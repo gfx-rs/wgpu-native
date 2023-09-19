@@ -6,14 +6,12 @@
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
-    WGPUSType_AdapterExtras = 0x60000002,
-    WGPUSType_RequiredLimitsExtras = 0x60000003,
-    WGPUSType_PipelineLayoutExtras = 0x60000004,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
-    WGPUSType_SupportedLimitsExtras = 0x60000003,
+    WGPUSType_RequiredLimitsExtras = 0x60000002,
+    WGPUSType_PipelineLayoutExtras = 0x60000003,
+    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000004,
+    WGPUSType_SupportedLimitsExtras = 0x60000005,
     WGPUSType_InstanceExtras = 0x60000006,
-    WGPUSType_SwapChainDescriptorExtras = 0x60000007,
-    WGPUSType_BindGroupEntryExtras = 0x60000008,
+    WGPUSType_BindGroupEntryExtras = 0x60000007,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -61,15 +59,6 @@ typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Force32 = 0x7FFFFFFF
 } WGPUDx12Compiler;
 
-typedef enum WGPUCompositeAlphaMode {
-    WGPUCompositeAlphaMode_Auto = 0x00000000,
-    WGPUCompositeAlphaMode_Opaque = 0x00000001,
-    WGPUCompositeAlphaMode_PreMultiplied = 0x00000002,
-    WGPUCompositeAlphaMode_PostMultiplied = 0x00000003,
-    WGPUCompositeAlphaMode_Inherit = 0x00000004,
-    WGPUCompositeAlphaMode_Force32 = 0x7FFFFFFF
-} WGPUCompositeAlphaMode;
-
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackendFlags backends;
@@ -77,11 +66,6 @@ typedef struct WGPUInstanceExtras {
     const char * dxilPath;
     const char * dxcPath;
 } WGPUInstanceExtras;
-
-typedef struct WGPUAdapterExtras {
-    WGPUChainedStruct chain;
-    WGPUBackendType backend;
-} WGPUAdapterExtras;
 
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
@@ -165,21 +149,10 @@ typedef struct WGPUGlobalReport {
     WGPUHubReport gl;
 } WGPUGlobalReport;
 
-typedef struct WGPUSurfaceCapabilities {
-    size_t formatCount;
-    WGPUTextureFormat * formats;
-    size_t presentModeCount;
-    WGPUPresentMode * presentModes;
-    size_t alphaModeCount;
-    WGPUCompositeAlphaMode * alphaModes;
-} WGPUSurfaceCapabilities;
-
-typedef struct WGPUSwapChainDescriptorExtras {
-    WGPUChainedStruct chain;
-    WGPUCompositeAlphaMode alphaMode;
-    size_t viewFormatCount;
-    WGPUTextureFormat const * viewFormats;
-} WGPUSwapChainDescriptorExtras;
+typedef struct WGPUInstanceEnumerateAdapterOptions {
+    WGPUChainedStruct const * nextInChain;
+    WGPUInstanceBackendFlags backends;
+} WGPUInstanceEnumerateAdapterOptions;
 
 typedef struct WGPUBindGroupEntryExtras {
     WGPUChainedStruct const * nextInChain;
@@ -197,20 +170,19 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void *
 extern "C" {
 #endif
 
-void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport* report);
+void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
+size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
 
-WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, uint32_t commandCount, WGPUCommandBuffer const * commands);
+WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
+WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
 
 void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
-
-void wgpuSurfaceGetCapabilities(WGPUSurface surface, WGPUAdapter adapter, WGPUSurfaceCapabilities * capabilities);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 
@@ -219,30 +191,6 @@ void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder
 
 void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
-
-void wgpuAdapterDrop(WGPUAdapter adapter);
-void wgpuBindGroupDrop(WGPUBindGroup bindGroup);
-void wgpuBindGroupLayoutDrop(WGPUBindGroupLayout bindGroupLayout);
-void wgpuBufferDrop(WGPUBuffer buffer);
-void wgpuCommandBufferDrop(WGPUCommandBuffer commandBuffer);
-void wgpuCommandEncoderDrop(WGPUCommandEncoder commandEncoder);
-void wgpuComputePassEncoderDrop(WGPUComputePassEncoder computePassEncoder);
-void wgpuComputePipelineDrop(WGPUComputePipeline computePipeline);
-void wgpuDeviceDrop(WGPUDevice device);
-void wgpuInstanceDrop(WGPUInstance instance);
-void wgpuPipelineLayoutDrop(WGPUPipelineLayout pipelineLayout);
-void wgpuQuerySetDrop(WGPUQuerySet querySet);
-void wgpuQueueDrop(WGPUQueue queue);
-void wgpuRenderBundleDrop(WGPURenderBundle renderBundle);
-void wgpuRenderBundleEncoderDrop(WGPURenderBundleEncoder renderBundleEncoder);
-void wgpuRenderPassEncoderDrop(WGPURenderPassEncoder renderPassEncoder);
-void wgpuRenderPipelineDrop(WGPURenderPipeline renderPipeline);
-void wgpuSamplerDrop(WGPUSampler sampler);
-void wgpuShaderModuleDrop(WGPUShaderModule shaderModule);
-void wgpuSurfaceDrop(WGPUSurface surface);
-void wgpuSwapChainDrop(WGPUSwapChain swapChain);
-void wgpuTextureDrop(WGPUTexture texture);
-void wgpuTextureViewDrop(WGPUTextureView textureView);
 
 #ifdef __cplusplus
 } // extern "C"

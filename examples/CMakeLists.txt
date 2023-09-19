@@ -29,6 +29,7 @@ add_subdirectory(framework)
 
 add_subdirectory(capture)
 add_subdirectory(compute)
+add_subdirectory(enumerate_adapters)
 add_subdirectory(triangle)
 
 set(GLFW_USE_WAYLAND 1)

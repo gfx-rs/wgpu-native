@@ -1,27 +1,39 @@
 use wgc::Label;
 
 use crate::native;
-use crate::utils::{make_slice, OwnedLabel};
+use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
-use std::path::Path;
 use std::{borrow::Cow, ffi::CStr, slice};
 
+// Ultimately map_load_op and map_store_op should be able to use the map_enum!
+// macro, but not until wgc supports "Undefined" as a valid value. For now the
+// "_raw_" map enum version is wrapped into a function that falls back to an
+// arbitrary default value.
+// (This is the easyfix of https://github.com/gfx-rs/wgpu-native/issues/290)
 map_enum!(
-    map_load_op,
+    _raw_map_load_op,
     WGPULoadOp,
     wgc::command::LoadOp,
-    "Unknown load op",
+    //"Unknown load op",
     Clear,
     Load
 );
 map_enum!(
-    map_store_op,
+    _raw_map_store_op,
     WGPUStoreOp,
     wgc::command::StoreOp,
-    "Unknown store op",
+    //"Unknown store op",
     Discard,
     Store
 );
+#[inline]
+pub fn map_load_op(value: native::WGPULoadOp) -> wgc::command::LoadOp {
+    return _raw_map_load_op(value).unwrap_or(wgc::command::LoadOp::Clear);
+}
+#[inline]
+pub fn map_store_op(value: native::WGPUStoreOp) -> wgc::command::StoreOp {
+    return _raw_map_store_op(value).unwrap_or(wgc::command::StoreOp::Discard);
+}
 map_enum!(
     map_address_mode,
     WGPUAddressMode,
@@ -76,7 +88,8 @@ map_enum!(
     "Unknown present mode",
     Immediate,
     Mailbox,
-    Fifo
+    Fifo,
+    FifoRelaxed
 );
 map_enum!(
     map_primitive_topology,
@@ -189,11 +202,11 @@ map_enum!(
     map_composite_alpha_mode,
     WGPUCompositeAlphaMode,
     wgt::CompositeAlphaMode,
-    Auto,
-    Opaque,
-    PreMultiplied,
-    PostMultiplied,
-    Inherit
+    Auto: Auto,
+    Opaque: Opaque,
+    Premultiplied: PreMultiplied,
+    Unpremultiplied: PostMultiplied,
+    Inherit: Inherit
 );
 
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
@@ -253,12 +266,8 @@ pub fn map_instance_descriptor(
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
-                dxil_path: unsafe { extras.dxilPath.as_ref() }
-                    .and_then(|v| unsafe { OwnedLabel::new(v) }.into_inner())
-                    .map(|v| Path::new(&v).to_path_buf()),
-                dxc_path: unsafe { extras.dxcPath.as_ref() }
-                    .and_then(|v| unsafe { OwnedLabel::new(v) }.into_inner())
-                    .map(|v| Path::new(&v).to_path_buf()),
+                dxil_path: ptr_into_pathbuf(extras.dxilPath),
+                dxc_path: ptr_into_pathbuf(extras.dxcPath),
             },
             _ => wgt::Dx12Compiler::default(),
         };
@@ -273,22 +282,10 @@ pub fn map_instance_descriptor(
 }
 
 #[inline]
-pub fn map_adapter_options(
-    options: &native::WGPURequestAdapterOptions,
-    extras: Option<&native::WGPUAdapterExtras>,
-) -> (native::WGPUSurface, native::WGPUBackendType) {
-    if let Some(extras) = extras {
-        (options.compatibleSurface, extras.backend)
-    } else {
-        (options.compatibleSurface, native::WGPUBackendType_Null)
-    }
-}
-
-#[inline]
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
-) -> (wgt::DeviceDescriptor<Label<'a>>, Option<String>) {
+) -> (wgt::DeviceDescriptor<Label<'a>>, *const std::ffi::c_char) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
         wgt::Limits::default(),
         |required_limits| unsafe {
@@ -301,13 +298,14 @@ pub fn map_device_descriptor<'a>(
 
     (
         wgt::DeviceDescriptor {
-            label: unsafe { OwnedLabel::new(des.label) }.into_cow(),
-            features: map_features(unsafe {
-                make_slice(des.requiredFeatures, des.requiredFeaturesCount as usize)
-            }),
+            label: ptr_into_label(des.label),
+            features: map_features(make_slice(des.requiredFeatures, des.requiredFeatureCount)),
             limits,
         },
-        extras.and_then(|extras| unsafe { OwnedLabel::new(extras.tracePath) }.into_inner()),
+        match extras {
+            Some(extras) => extras.tracePath,
+            None => std::ptr::null(),
+        },
     )
 }
 
@@ -316,24 +314,21 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
     extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
-    let bind_group_layouts =
-        unsafe { make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount as usize) }
-            .iter()
-            .map(|layout| {
-                layout
-                    .as_ref()
-                    .expect("invalid bind group layout for pipeline layout descriptor")
-                    .id
-            })
-            .collect::<Vec<_>>();
+    let bind_group_layouts = make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount)
+        .iter()
+        .map(|layout| {
+            layout
+                .as_ref()
+                .expect("invalid bind group layout for pipeline layout descriptor")
+                .id
+        })
+        .collect::<Vec<_>>();
 
     let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
-        unsafe {
-            make_slice(
-                extras.pushConstantRanges,
-                extras.pushConstantRangeCount as usize,
-            )
-        }
+        make_slice(
+            extras.pushConstantRanges,
+            extras.pushConstantRangeCount as usize,
+        )
         .iter()
         .map(|range| wgt::PushConstantRange {
             stages: wgt::ShaderStages::from_bits(range.stages)
@@ -344,7 +339,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     });
 
     return wgc::binding_model::PipelineLayoutDescriptor {
-        label: OwnedLabel::new(des.label).into_cow(),
+        label: ptr_into_label(des.label),
         bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
@@ -355,12 +350,15 @@ pub fn write_limits_struct(
     wgt_limits: wgt::Limits,
     supported_limits: &mut native::WGPUSupportedLimits,
 ) {
-    let mut limits = supported_limits.limits; // This makes a copy - we copy back at the end
+    let mut limits = supported_limits.limits;
     limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
     limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
     limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
     limits.maxBindGroups = wgt_limits.max_bind_groups;
+    // TODO: not yet in wgt
+    // limits.maxBindGroupsPlusVertexBuffers = wgt_limits.max_bind_groups_plus_vertex_buffers;
+    limits.maxBindingsPerBindGroup = wgt_limits.max_bindings_per_bind_group;
     limits.maxDynamicUniformBuffersPerPipelineLayout =
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout;
     limits.maxDynamicStorageBuffersPerPipelineLayout =
@@ -370,8 +368,8 @@ pub fn write_limits_struct(
     limits.maxStorageBuffersPerShaderStage = wgt_limits.max_storage_buffers_per_shader_stage;
     limits.maxStorageTexturesPerShaderStage = wgt_limits.max_storage_textures_per_shader_stage;
     limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
-    limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as u64;
-    limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as u64;
+    limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as _;
+    limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as _;
     limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
@@ -379,6 +377,12 @@ pub fn write_limits_struct(
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
     limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
+    // TODO: not yet in wgt
+    // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
+    // TODO: not yet in wgt
+    // limits.maxColorAttachments = wgt_limits.max_color_attachments;
+    // TODO: not yet in wgt
+    // limits.maxColorAttachmentBytesPerSample = wgt_limits.max_color_attachment_bytes_per_sample;
     limits.maxComputeWorkgroupStorageSize = wgt_limits.max_compute_workgroup_storage_size;
     limits.maxComputeInvocationsPerWorkgroup = wgt_limits.max_compute_invocations_per_workgroup;
     limits.maxComputeWorkgroupSizeX = wgt_limits.max_compute_workgroup_size_x;
@@ -389,7 +393,7 @@ pub fn write_limits_struct(
 
     if !supported_limits.nextInChain.is_null() {
         unsafe {
-            let mut extras = std::mem::transmute::<
+            let extras = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
                 *mut native::WGPUSupportedLimitsExtras,
             >(supported_limits.nextInChain);
@@ -424,9 +428,13 @@ pub fn map_required_limits(
     if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
-    //if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
-    //    wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
-    //}  not yet supportted in wgt
+    // TODO: not yet in wgt
+    // if limits.maxBindGroupsPlusVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_bind_groups_plus_vertex_buffers = limits.maxBindGroupsPlusVertexBuffers;
+    // }
+    if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
+        wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
+    }
     if limits.maxDynamicUniformBuffersPerPipelineLayout != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout =
             limits.maxDynamicUniformBuffersPerPipelineLayout;
@@ -477,12 +485,19 @@ pub fn map_required_limits(
     if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
-    //if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
-    //    wgt_limits.max_inter_stage_shader_variables = limits.maxIntmaxInterStageShaderVariableserStageShaderComponents;
-    //}  not yet in wgt
-    //if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
-    //    wgt_limits.max_color_attachments = limits.maxColorAttachments;
-    //}  not yet in wgt
+    // TODO: not yet in wgt
+    // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_inter_stage_shader_variables =
+    //         limits.maxInterStageShaderVariables;
+    // }
+    // TODO: not yet in wgt
+    // if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_color_attachments = limits.maxColorAttachments;
+    // }
+    // TODO: not yet in wgt
+    // if limits.maxColorAttachmentBytesPerSample != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_color_attachment_bytes_per_sample = limits.maxColorAttachmentBytesPerSample;
+    // }
     if limits.maxComputeWorkgroupStorageSize != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
@@ -525,7 +540,7 @@ pub fn map_shader_module<'a>(
 
     #[cfg(feature = "spirv")]
     if let Some(spirv) = spirv {
-        let slice = unsafe { make_slice(spirv.code, spirv.codeSize as usize) };
+        let slice = make_slice(spirv.code, spirv.codeSize as usize);
         // Parse the given shader code and store its representation.
         let options = naga::front::spv::Options {
             adjust_coordinate_space: false, // we require NDC_Y_UP feature
@@ -545,7 +560,7 @@ pub fn map_shader_module<'a>(
             map_shader_stage(glsl.stage).expect("Unknown shader stage"),
         );
 
-        let raw_defines = unsafe { make_slice(glsl.defines, glsl.defineCount as usize) };
+        let raw_defines = make_slice(glsl.defines, glsl.defineCount as usize);
         for define in raw_defines {
             let name_c_str: &CStr = unsafe { CStr::from_ptr(define.name) };
             let name_str_slice: &str = name_c_str.to_str().expect("not a valid utf-8 string");
@@ -895,7 +910,19 @@ pub fn map_stencil_face_state(
 }
 
 #[inline]
-pub fn map_storage_report(report: wgc::hub::StorageReport) -> native::WGPUStorageReport {
+pub fn map_primitive_state(
+    _: &native::WGPUPrimitiveState,
+    depth_clip_control: Option<&native::WGPUPrimitiveDepthClipControl>,
+) -> bool {
+    if let Some(depth_clip_control) = depth_clip_control {
+        return depth_clip_control.unclippedDepth != 0;
+    }
+
+    false
+}
+
+#[inline]
+pub fn map_storage_report(report: wgc::storage::StorageReport) -> native::WGPUStorageReport {
     native::WGPUStorageReport {
         numOccupied: report.num_occupied,
         numVacant: report.num_error,
@@ -928,7 +955,7 @@ pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
 #[inline]
 pub fn write_global_report(
     native_report: &mut native::WGPUGlobalReport,
-    report: wgc::hub::GlobalReport,
+    report: wgc::global::GlobalReport,
 ) {
     native_report.surfaces = map_storage_report(report.surfaces);
 
@@ -1014,6 +1041,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_F16) {
         temp.push(native::WGPUFeatureName_ShaderF16);
     }
+    if features.contains(wgt::Features::RG11B10UFLOAT_RENDERABLE) {
+        temp.push(native::WGPUFeatureName_RG11B10UfloatRenderable);
+    }
 
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
@@ -1034,7 +1064,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_TextureBindingArray);
     }
-    if features.contains(wgt::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING) {
+    if features
+        .contains(wgt::Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING)
+    {
         temp.push(native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing);
     }
 
@@ -1056,6 +1088,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
+        native::WGPUFeatureName_RG11B10UfloatRenderable => Some(Features::RG11B10UFLOAT_RENDERABLE),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
@@ -1066,7 +1099,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_TextureBindingArray => Some(Features::TEXTURE_BINDING_ARRAY),
         native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing => Some(Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING),
         // not available in wgpu-core
-        native::WGPUFeatureName_RG11B10UfloatRenderable => None,
         native::WGPUFeatureName_BGRA8UnormStorage => None,
         _ => None,
     }
@@ -1078,10 +1110,8 @@ pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPres
         wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
         wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
         wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
-
-        wgt::PresentMode::AutoVsync
-        | wgt::PresentMode::AutoNoVsync
-        | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
+        wgt::PresentMode::FifoRelaxed => Some(native::WGPUPresentMode_FifoRelaxed),
+        wgt::PresentMode::AutoVsync | wgt::PresentMode::AutoNoVsync => None,
     }
 }
 
@@ -1092,8 +1122,8 @@ pub fn to_native_composite_alpha_mode(
     match mode {
         wgt::CompositeAlphaMode::Auto => native::WGPUCompositeAlphaMode_Auto,
         wgt::CompositeAlphaMode::Opaque => native::WGPUCompositeAlphaMode_Opaque,
-        wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_PreMultiplied,
-        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_PostMultiplied,
+        wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_Premultiplied,
+        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_Unpremultiplied,
         wgt::CompositeAlphaMode::Inherit => native::WGPUCompositeAlphaMode_Inherit,
     }
 }
@@ -1101,86 +1131,56 @@ pub fn to_native_composite_alpha_mode(
 #[inline]
 pub fn map_bind_group_entry<'a>(
     entry: &'a native::WGPUBindGroupEntry,
-    extras: Option<&native::WGPUBindGroupEntryExtras>
+    extras: Option<&native::WGPUBindGroupEntryExtras>,
 ) -> Option<wgc::binding_model::BindGroupEntry<'a>> {
     let entry_extras = extras?;
     unsafe {
         if entry_extras.textureViews.as_ref().is_some() {
-            let texture_views = slice::from_raw_parts(entry_extras.textureViews, usize::try_from(entry_extras.textureViewCount).unwrap())
+            let texture_views = slice::from_raw_parts(
+                entry_extras.textureViews,
+                usize::try_from(entry_extras.textureViewCount).unwrap(),
+            )
             .iter()
             .map(|view_ptr| view_ptr.as_ref().unwrap().id)
-            .collect();//Vec::new();
+            .collect(); //Vec::new();
 
             Some(wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::TextureViewArray(texture_views),
             })
-        }
-        else if entry_extras.samplers.as_ref().is_some() {
-            let samplers = slice::from_raw_parts(entry_extras.samplers, usize::try_from(entry_extras.samplerCount).unwrap())
+        } else if entry_extras.samplers.as_ref().is_some() {
+            let samplers = slice::from_raw_parts(
+                entry_extras.samplers,
+                usize::try_from(entry_extras.samplerCount).unwrap(),
+            )
             .iter()
             .map(|sampler_ptr| sampler_ptr.as_ref().unwrap().id)
-            .collect();//Vec::new();
+            .collect(); //Vec::new();
 
             Some(wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::SamplerArray(samplers),
             })
-        }
-        else if entry_extras.buffers.as_ref().is_some() {
-            let buffers = slice::from_raw_parts(entry_extras.buffers, usize::try_from(entry_extras.bufferCount).unwrap())
-                .iter()
-                .map(|buffer_ptr| wgc::binding_model::BufferBinding { buffer_id: buffer_ptr.as_ref().unwrap().id, offset: entry.offset, size: std::num::NonZeroU64::new(entry.size)})
-                .collect();
+        } else if entry_extras.buffers.as_ref().is_some() {
+            let buffers = slice::from_raw_parts(
+                entry_extras.buffers,
+                usize::try_from(entry_extras.bufferCount).unwrap(),
+            )
+            .iter()
+            .map(|buffer_ptr| wgc::binding_model::BufferBinding {
+                buffer_id: buffer_ptr.as_ref().unwrap().id,
+                offset: entry.offset,
+                size: std::num::NonZeroU64::new(entry.size),
+            })
+            .collect();
 
             Some(wgc::binding_model::BindGroupEntry {
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::BufferArray(buffers),
             })
-        }
-        else {
+        } else {
             None
         }
-    }
-}
-
-#[inline]
-pub fn map_swapchain_descriptor(
-    desc: &native::WGPUSwapChainDescriptor,
-    extras: Option<&native::WGPUSwapChainDescriptorExtras>,
-) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
-    let (alpha_mode, view_formats) = match extras {
-        Some(extras) => (
-            match extras.alphaMode {
-                native::WGPUCompositeAlphaMode_Auto => wgt::CompositeAlphaMode::Auto,
-                native::WGPUCompositeAlphaMode_Opaque => wgt::CompositeAlphaMode::Opaque,
-                native::WGPUCompositeAlphaMode_PreMultiplied => {
-                    wgt::CompositeAlphaMode::PreMultiplied
-                }
-                native::WGPUCompositeAlphaMode_PostMultiplied => {
-                    wgt::CompositeAlphaMode::PostMultiplied
-                }
-                native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,
-                _ => panic!("invalid alpha mode for swapchain descriptor"),
-            },
-            unsafe { make_slice(extras.viewFormats, extras.viewFormatCount) }
-                .iter()
-                .map(|f| {
-                    map_texture_format(*f).expect("invalid view format for swapchain descriptor")
-                })
-                .collect(),
-        ),
-        None => (wgt::CompositeAlphaMode::default(), Vec::new()),
-    };
-
-    wgt::SurfaceConfiguration {
-        usage: wgt::TextureUsages::from_bits(desc.usage).unwrap(),
-        format: map_texture_format(desc.format).expect("Texture format not defined"),
-        width: desc.width,
-        height: desc.height,
-        present_mode: map_present_mode(desc.presentMode),
-        alpha_mode,
-        view_formats,
     }
 }
 
@@ -1189,7 +1189,7 @@ pub fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
     wgt::QuerySetDescriptor {
-        label: unsafe { OwnedLabel::new(desc.label) }.into_cow(),
+        label: ptr_into_label(desc.label),
         count: desc.count,
         ty: match desc.type_ {
             native::WGPUQueryType_Occlusion => wgt::QueryType::Occlusion,
@@ -1197,7 +1197,7 @@ pub fn map_query_set_descriptor<'a>(
             native::WGPUQueryType_PipelineStatistics => {
                 let mut types = wgt::PipelineStatisticsTypes::empty();
 
-                unsafe { make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount as _) }
+                make_slice(desc.pipelineStatistics, desc.pipelineStatisticCount)
                     .iter()
                     .for_each(|f| {
                         types.insert(match *f {
@@ -1225,6 +1225,24 @@ pub fn map_query_set_descriptor<'a>(
             _ => panic!("invalid query type"),
         },
     }
+}
+
+#[inline]
+pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureUsages {
+    let mut temp = wgt::TextureUsages::empty();
+    if (flags & native::WGPUTextureUsage_CopySrc) != 0 {
+        temp.insert(wgt::TextureUsages::COPY_SRC);
+    }
+    if (flags & native::WGPUTextureUsage_CopyDst) != 0 {
+        temp.insert(wgt::TextureUsages::COPY_DST);
+    }
+    if (flags & native::WGPUTextureUsage_TextureBinding) != 0 {
+        temp.insert(wgt::TextureUsages::TEXTURE_BINDING);
+    }
+    if (flags & native::WGPUTextureUsage_RenderAttachment) != 0 {
+        temp.insert(wgt::TextureUsages::RENDER_ATTACHMENT);
+    }
+    temp
 }
 
 pub enum CreateSurfaceParams {

@@ -6,30 +6,30 @@ fn main() {
     println!("cargo:rerun-if-changed=ffi/webgpu-headers/webgpu.h");
     println!("cargo:rerun-if-changed=ffi/wgpu.h");
 
+    #[rustfmt::skip]
     let types_to_rename = vec![
-        ("WGPUInstance", "WGPUInstanceImpl"),
         ("WGPUAdapter", "WGPUAdapterImpl"),
-        ("WGPUSurface", "WGPUSurfaceImpl"),
-        ("WGPUDevice", "WGPUDeviceImpl"),
-        ("WGPUQueue", "WGPUQueueImpl"),
-        ("WGPUBuffer", "WGPUBufferImpl"),
-        ("WGPUTextureView", "WGPUTextureViewImpl"),
-        ("WGPUTexture", "WGPUTextureImpl"),
-        ("WGPUSampler", "WGPUSamplerImpl"),
-        ("WGPUBindGroupLayout", "WGPUBindGroupLayoutImpl"),
-        ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
         ("WGPUBindGroup", "WGPUBindGroupImpl"),
-        ("WGPUShaderModule", "WGPUShaderModuleImpl"),
-        ("WGPURenderPipeline", "WGPURenderPipelineImpl"),
-        ("WGPUComputePipeline", "WGPUComputePipelineImpl"),
-        ("WGPUCommandEncoder", "WGPUCommandEncoderImpl"),
+        ("WGPUBindGroupLayout", "WGPUBindGroupLayoutImpl"),
+        ("WGPUBuffer", "WGPUBufferImpl"),
         ("WGPUCommandBuffer", "WGPUCommandBufferImpl"),
-        ("WGPURenderPassEncoder", "WGPURenderPassEncoderImpl"),
+        ("WGPUCommandEncoder", "WGPUCommandEncoderImpl"),
         ("WGPUComputePassEncoder", "WGPUComputePassEncoderImpl"),
-        ("WGPURenderBundleEncoder", "WGPURenderBundleEncoderImpl"),
-        ("WGPURenderBundle", "WGPURenderBundleImpl"),
+        ("WGPUComputePipeline", "WGPUComputePipelineImpl"),
+        ("WGPUDevice", "WGPUDeviceImpl"),
+        ("WGPUInstance", "WGPUInstanceImpl"),
+        ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
         ("WGPUQuerySet", "WGPUQuerySetImpl"),
-        ("WGPUSwapChain", "WGPUSwapChainImpl"),
+        ("WGPUQueue", "WGPUQueueImpl"),
+        ("WGPURenderBundle", "WGPURenderBundleImpl"),
+        ("WGPURenderBundleEncoder", "WGPURenderBundleEncoderImpl"),
+        ("WGPURenderPassEncoder", "WGPURenderPassEncoderImpl"),
+        ("WGPURenderPipeline", "WGPURenderPipelineImpl"),
+        ("WGPUSampler", "WGPUSamplerImpl"),
+        ("WGPUShaderModule", "WGPUShaderModuleImpl"),
+        ("WGPUSurface", "WGPUSurfaceImpl"),
+        ("WGPUTexture", "WGPUTextureImpl"),
+        ("WGPUTextureView", "WGPUTextureViewImpl"),
     ];
     let mut builder = bindgen::Builder::default()
         .header("ffi/webgpu-headers/webgpu.h")
@@ -42,7 +42,7 @@ fn main() {
         .layout_tests(true);
 
     for (old_name, new_name) in types_to_rename {
-        let line = format!("pub type {old_name} = *mut crate::{new_name};");
+        let line = format!("pub type {old_name} = *const crate::{new_name};");
         builder = builder
             .blocklist_type(old_name)
             .blocklist_type(format!("{old_name}Impl"))

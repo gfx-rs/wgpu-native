@@ -1,48 +1,56 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    ffi::CStr,
+    path::{Path, PathBuf},
+};
 
-pub struct Userdata(*mut std::ffi::c_void);
+// A dummy wrapper that is `Send` + `Sync` to store userdata pointer
+// to be usable across Rust callbacks.
+pub(crate) struct Userdata(*mut std::ffi::c_void);
 impl Userdata {
-    pub const fn new(userdata: *mut std::ffi::c_void) -> Userdata {
+    #[inline]
+    pub(crate) const fn new(userdata: *mut std::ffi::c_void) -> Userdata {
         Userdata(userdata)
     }
 
-    pub fn as_ptr(&self) -> *mut std::ffi::c_void {
+    #[inline]
+    pub(crate) fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.0
     }
 }
-
 unsafe impl Send for Userdata {}
 unsafe impl Sync for Userdata {}
 
-pub struct OwnedLabel(Option<String>);
-impl OwnedLabel {
-    pub unsafe fn new(ptr: *const std::os::raw::c_char) -> Self {
-        Self(if ptr.is_null() {
-            None
-        } else {
-            Some(
-                unsafe { std::ffi::CStr::from_ptr(ptr) }
-                    .to_string_lossy()
-                    .to_string(),
-            )
-        })
-    }
-    pub fn into_inner(self) -> Option<String> {
-        self.0
-    }
-    pub fn as_cow(&self) -> Option<Cow<str>> {
-        self.0.as_ref().map(|s| Cow::Borrowed(s.as_str()))
-    }
-    pub fn into_cow<'a>(self) -> Option<Cow<'a, str>> {
-        self.0.map(Cow::Owned)
-    }
+#[inline]
+pub(crate) fn ptr_into_label<'a>(ptr: *const std::ffi::c_char) -> wgc::Label<'a> {
+    unsafe { ptr.as_ref() }.and_then(|ptr| {
+        unsafe { CStr::from_ptr(ptr) }
+            .to_str()
+            .ok()
+            .map(Cow::Borrowed)
+    })
+}
+#[inline]
+pub(crate) fn ptr_into_path<'a>(ptr: *const std::ffi::c_char) -> Option<&'a std::path::Path> {
+    unsafe { ptr.as_ref() }
+        .and_then(|v| unsafe { CStr::from_ptr(v) }.to_str().ok())
+        .map(Path::new)
+}
+#[inline]
+pub(crate) fn ptr_into_pathbuf(ptr: *const std::ffi::c_char) -> Option<std::path::PathBuf> {
+    unsafe { ptr.as_ref() }
+        .and_then(|v| unsafe { CStr::from_ptr(v) }.to_str().ok())
+        .map(PathBuf::from)
 }
 
-pub unsafe fn make_slice<'a, T: 'a>(pointer: *const T, count: usize) -> &'a [T] {
-    if count == 0 {
+// Safer wrapper around `slice::from_raw_parts` to handle
+// invalid `ptr` when `len` is zero.
+#[inline]
+pub(crate) fn make_slice<'a, T: 'a>(ptr: *const T, len: usize) -> &'a [T] {
+    if len == 0 {
         &[]
     } else {
-        std::slice::from_raw_parts(pointer, count)
+        unsafe { std::slice::from_raw_parts(ptr, len) }
     }
 }
 
@@ -141,7 +149,7 @@ macro_rules! follow_chain {
 /// ```
 /// Which expands into:
 /// ```ignore
-/// pub fn map_index_format(value: i32) -> Result<wgt::IndexFormat, i32> {
+/// pub fn map_index_format(value: native::WGPUIndexFormat) -> Result<wgt::IndexFormat, native::WGPUIndexFormat> {
 ///      match value {
 ///          native::WGPUIndexFormat_Uint16 => Ok(wgt::IndexFormat::Uint16),
 ///          native::WGPUIndexFormat_Uint32 => Ok(wgt::IndexFormat::Uint32),

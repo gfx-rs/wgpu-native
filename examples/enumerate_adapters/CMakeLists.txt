@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(triangle LANGUAGES C)
+project(enumerate_adapters LANGUAGES C)
 
-add_executable(triangle main.c)
+add_executable(enumerate_adapters main.c)
 
 if (MSVC)
     add_compile_options(/W4)
@@ -11,17 +11,13 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/../ffi)
 include_directories(${CMAKE_SOURCE_DIR}/framework)
-include_directories(${DEP_GLFW_DIR}/include)
 
 if (WIN32)
-    add_definitions(-DWGPU_TARGET_WINDOWS)
     set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt ntdll)
 elseif(UNIX AND NOT APPLE)
-    add_definitions(-DWGPU_TARGET_LINUX_X11)
     set(OS_LIBRARIES "-lm -ldl")
 elseif(APPLE)
-    add_definitions(-DWGPU_TARGET_MACOS)
     set(OS_LIBRARIES "-framework CoreFoundation -framework QuartzCore -framework Metal")
 endif()
 
-target_link_libraries(triangle framework glfw ${WGPU_LIBRARY} ${OS_LIBRARIES})
+target_link_libraries(enumerate_adapters framework ${WGPU_LIBRARY} ${OS_LIBRARIES})

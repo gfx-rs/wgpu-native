@@ -1,4 +1,6 @@
 #include "framework.h"
+#include "webgpu-headers/webgpu.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,16 +20,6 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   UNUSED(message)
   *(WGPUDevice *)userdata = device;
 }
-static void handle_device_lost(WGPUDeviceLostReason reason, char const *message,
-                               void *userdata) {
-  UNUSED(userdata)
-  printf(LOG_PREFIX " device_lost reason=%#.8x message=%s\n", reason, message);
-}
-static void handle_uncaptured_error(WGPUErrorType type, char const *message,
-                                    void *userdata) {
-  UNUSED(userdata)
-  printf(LOG_PREFIX " uncaptured_error type=%#.8x message=%s\n", type, message);
-}
 static void handle_buffer_map(WGPUBufferMapAsyncStatus status, void *userdata) {
   UNUSED(userdata)
   printf(LOG_PREFIX " buffer_map status=%#.8x\n", status);
@@ -46,6 +38,10 @@ int main(int argc, char *argv[]) {
   WGPUComputePipeline compute_pipeline = NULL;
   WGPUBindGroupLayout bind_group_layout = NULL;
   WGPUBindGroup bind_group = NULL;
+  WGPUCommandEncoder command_encoder = NULL;
+  WGPUComputePassEncoder compute_pass_encoder = NULL;
+  WGPUCommandBuffer command_buffer = NULL;
+  uint32_t *buf = NULL;
   int ret = EXIT_SUCCESS;
 
 #define ASSERT_CHECK(expr)                                                     \
@@ -64,7 +60,7 @@ int main(int argc, char *argv[]) {
   uint32_t numbers_size = sizeof(numbers);
   uint32_t numbers_length = numbers_size / sizeof(uint32_t);
 
-  instance = wgpuCreateInstance(&(const WGPUInstanceDescriptor){0});
+  instance = wgpuCreateInstance(NULL);
   ASSERT_CHECK(instance);
 
   wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,
@@ -77,9 +73,6 @@ int main(int argc, char *argv[]) {
 
   queue = wgpuDeviceGetQueue(device);
   ASSERT_CHECK(queue);
-
-  wgpuDeviceSetUncapturedErrorCallback(device, handle_uncaptured_error, NULL);
-  wgpuDeviceSetDeviceLostCallback(device, handle_device_lost, NULL);
 
   shader_module = frmwrk_load_shader_module(device, "shader.wgsl");
   ASSERT_CHECK(shader_module);
@@ -135,17 +128,16 @@ int main(int argc, char *argv[]) {
               });
   ASSERT_CHECK(bind_group);
 
-  WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
+  command_encoder = wgpuDeviceCreateCommandEncoder(
       device, &(const WGPUCommandEncoderDescriptor){
                   .label = "command_encoder",
               });
   ASSERT_CHECK(command_encoder);
 
-  WGPUComputePassEncoder compute_pass_encoder =
-      wgpuCommandEncoderBeginComputePass(command_encoder,
-                                         &(const WGPUComputePassDescriptor){
-                                             .label = "compute_pass",
-                                         });
+  compute_pass_encoder = wgpuCommandEncoderBeginComputePass(
+      command_encoder, &(const WGPUComputePassDescriptor){
+                           .label = "compute_pass",
+                       });
   ASSERT_CHECK(compute_pass_encoder);
 
   wgpuComputePassEncoderSetPipeline(compute_pass_encoder, compute_pipeline);
@@ -154,19 +146,15 @@ int main(int argc, char *argv[]) {
   wgpuComputePassEncoderDispatchWorkgroups(compute_pass_encoder, numbers_length,
                                            1, 1);
   wgpuComputePassEncoderEnd(compute_pass_encoder);
-  // compute_pass_encoder is unusable after wgpuComputePassEncoderEnd()
-  compute_pass_encoder = NULL;
 
   wgpuCommandEncoderCopyBufferToBuffer(command_encoder, storage_buffer, 0,
                                        staging_buffer, 0, numbers_size);
 
-  WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
+  command_buffer = wgpuCommandEncoderFinish(
       command_encoder, &(const WGPUCommandBufferDescriptor){
                            .label = "command_buffer",
                        });
   ASSERT_CHECK(command_buffer);
-  // command_encoder is unusable after wgpuCommandEncoderFinish()
-  command_encoder = NULL;
 
   wgpuQueueWriteBuffer(queue, storage_buffer, 0, &numbers, numbers_size);
   wgpuQueueSubmit(queue, 1, &command_buffer);
@@ -175,37 +163,43 @@ int main(int argc, char *argv[]) {
                      handle_buffer_map, NULL);
   wgpuDevicePoll(device, true, NULL);
 
-  uint32_t *buf =
-      (uint32_t *)wgpuBufferGetMappedRange(staging_buffer, 0, numbers_size);
+  buf = (uint32_t *)wgpuBufferGetMappedRange(staging_buffer, 0, numbers_size);
   ASSERT_CHECK(buf);
 
   printf("times: [%d, %d, %d, %d]\n", buf[0], buf[1], buf[2], buf[3]);
 
-  wgpuBufferUnmap(staging_buffer);
-  // mapped buffer is unusable after wgpuBufferUnmap()
-  buf = NULL;
-
 cleanup_and_exit:
+  if (buf) {
+    wgpuBufferUnmap(staging_buffer);
+    // mapped buf is unusable after wgpuBufferUnmap()
+    buf = NULL;
+  }
+  if (command_buffer)
+    wgpuCommandBufferRelease(command_buffer);
+  if (compute_pass_encoder)
+    wgpuComputePassEncoderRelease(compute_pass_encoder);
+  if (command_encoder)
+    wgpuCommandEncoderRelease(command_encoder);
   if (bind_group)
-    wgpuBindGroupDrop(bind_group);
+    wgpuBindGroupRelease(bind_group);
   if (bind_group_layout)
-    wgpuBindGroupLayoutDrop(bind_group_layout);
+    wgpuBindGroupLayoutRelease(bind_group_layout);
   if (compute_pipeline)
-    wgpuComputePipelineDrop(compute_pipeline);
+    wgpuComputePipelineRelease(compute_pipeline);
   if (storage_buffer)
-    wgpuBufferDrop(storage_buffer);
+    wgpuBufferRelease(storage_buffer);
   if (staging_buffer)
-    wgpuBufferDrop(staging_buffer);
+    wgpuBufferRelease(staging_buffer);
   if (shader_module)
-    wgpuShaderModuleDrop(shader_module);
+    wgpuShaderModuleRelease(shader_module);
   if (queue)
-    wgpuQueueDrop(queue);
+    wgpuQueueRelease(queue);
   if (device)
-    wgpuDeviceDrop(device);
+    wgpuDeviceRelease(device);
   if (adapter)
-    wgpuAdapterDrop(adapter);
+    wgpuAdapterRelease(adapter);
   if (instance)
-    wgpuInstanceDrop(instance);
+    wgpuInstanceRelease(instance);
 
   return ret;
 }

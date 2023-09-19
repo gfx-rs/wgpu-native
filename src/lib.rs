@@ -1,24 +1,26 @@
 use conv::{
-    map_adapter_options, map_device_descriptor, map_instance_descriptor,
-    map_pipeline_layout_descriptor, map_shader_module, map_surface, map_swapchain_descriptor,
-    write_limits_struct, CreateSurfaceParams, map_bind_group_entry
+    map_bind_group_entry, map_device_descriptor, map_instance_backend_flags,
+    map_instance_descriptor, map_pipeline_layout_descriptor, map_primitive_state,
+    map_shader_module, map_surface, CreateSurfaceParams,
 };
+use parking_lot::{Mutex, RwLock};
+use smallvec::SmallVec;
 use std::{
     borrow::Cow,
+    cell::OnceCell,
     error,
     ffi::{CStr, CString},
     fmt::Display,
+    mem,
     num::NonZeroU64,
-    num::NonZeroU32,
-    path::Path,
+    sync::atomic,
     sync::Arc,
-    sync::Mutex
+    thread,
 };
-use thiserror::Error;
-use utils::{make_slice, OwnedLabel};
+use utils::{make_slice, ptr_into_label, ptr_into_path};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
-    gfx_select, id::{self, TextureViewId, SamplerId}, resource, Label,
+    gfx_select, id, resource, Label,
 };
 
 pub mod conv;
@@ -36,49 +38,57 @@ pub mod native {
 
 const LABEL: &str = "label";
 
-pub type Context = wgc::hub::Global<wgc::hub::IdentityManagerFactory>;
+pub type Context = wgc::global::Global<wgc::identity::IdentityManagerFactory>;
 
-pub struct WGPUContextHandle<I: id::TypedId> {
-    pub context: Arc<Context>,
-    pub id: I,
-}
-
-pub type WGPUPipelineLayoutImpl = WGPUContextHandle<id::PipelineLayoutId>;
-pub type WGPUShaderModuleImpl = WGPUContextHandle<id::ShaderModuleId>;
-pub type WGPUBindGroupLayoutImpl = WGPUContextHandle<id::BindGroupLayoutId>;
-pub type WGPUBindGroupImpl = WGPUContextHandle<id::BindGroupId>;
-pub type WGPUCommandBufferImpl = WGPUContextHandle<id::CommandBufferId>;
-pub type WGPURenderBundleImpl = WGPUContextHandle<id::RenderBundleId>;
-pub type WGPURenderPipelineImpl = WGPUContextHandle<id::RenderPipelineId>;
-pub type WGPUComputePipelineImpl = WGPUContextHandle<id::ComputePipelineId>;
-pub type WGPUQuerySetImpl = WGPUContextHandle<id::QuerySetId>;
-pub type WGPUStagingBufferImpl = WGPUContextHandle<id::StagingBufferId>;
-pub type WGPUTextureViewImpl = WGPUContextHandle<id::TextureViewId>;
-pub type WGPUSamplerImpl = WGPUContextHandle<id::SamplerId>;
-pub type WGPUSurfaceImpl = WGPUContextHandle<id::SurfaceId>;
-
-pub struct WGPUInstanceImpl {
-    pub context: Arc<Context>,
+struct AdapterProperties {
+    vendor_id: u32,
+    vendor_name: CString,
+    architecture: CString,
+    device_id: u32,
+    name: CString,
+    driver_description: CString,
+    adapter_type: native::WGPUAdapterType,
+    backend_type: native::WGPUBackendType,
 }
 
 pub struct WGPUAdapterImpl {
-    pub context: Arc<Context>,
-    pub id: id::AdapterId,
-    pub name: std::ffi::CString,
-    pub vendor_name: std::ffi::CString,
-    pub architecture_name: std::ffi::CString,
-    pub driver_desc: std::ffi::CString,
-}
-pub struct WGPUDeviceImpl {
     context: Arc<Context>,
-    id: id::DeviceId,
-    error_sink: ErrorSink,
+    id: id::AdapterId,
+    properties: OnceCell<AdapterProperties>,
+}
+impl Drop for WGPUAdapterImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.adapter_drop(self.id));
+        }
+    }
 }
 
-pub struct WGPUQueueImpl {
+pub struct WGPUBindGroupImpl {
     context: Arc<Context>,
-    id: id::QueueId,
-    error_sink: ErrorSink,
+    id: id::BindGroupId,
+}
+impl Drop for WGPUBindGroupImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.bind_group_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUBindGroupLayoutImpl {
+    context: Arc<Context>,
+    id: id::BindGroupLayoutId,
+}
+impl Drop for WGPUBindGroupLayoutImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.bind_group_layout_drop(self.id));
+        }
+    }
 }
 
 pub struct WGPUBufferImpl {
@@ -87,42 +97,256 @@ pub struct WGPUBufferImpl {
     error_sink: ErrorSink,
     descriptor: native::WGPUBufferDescriptor,
 }
+impl Drop for WGPUBufferImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.buffer_drop(self.id, false));
+        }
+    }
+}
+
+pub struct WGPUCommandBufferImpl {
+    context: Arc<Context>,
+    id: id::CommandBufferId,
+    open: atomic::AtomicBool,
+}
+impl Drop for WGPUCommandBufferImpl {
+    fn drop(&mut self) {
+        if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.command_buffer_drop(self.id));
+        }
+    }
+}
 
 pub struct WGPUCommandEncoderImpl {
     context: Arc<Context>,
     id: id::CommandEncoderId,
     error_sink: ErrorSink,
+    open: atomic::AtomicBool,
+}
+impl Drop for WGPUCommandEncoderImpl {
+    fn drop(&mut self) {
+        if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.command_encoder_drop(self.id));
+        }
+    }
 }
 
-pub struct WGPUSwapChainImpl {
+pub struct WGPUComputePassEncoderImpl {
     context: Arc<Context>,
-    surface_id: id::SurfaceId,
+    encoder: RwLock<command::ComputePass>,
+    error_sink: ErrorSink,
+}
+
+pub struct WGPUComputePipelineImpl {
+    context: Arc<Context>,
+    id: id::ComputePipelineId,
+}
+impl Drop for WGPUComputePipelineImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.compute_pipeline_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUDeviceImpl {
+    context: Arc<Context>,
+    id: id::DeviceId,
+    error_sink: ErrorSink,
+}
+impl Drop for WGPUDeviceImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+
+            match gfx_select!(self.id => context.device_poll(self.id, wgt::Maintain::Wait)) {
+                Ok(_) => (),
+                Err(err) => handle_error_fatal(context, err, "WGPUDeviceImpl::drop"),
+            }
+
+            gfx_select!(self.id => context.device_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUInstanceImpl {
+    context: Arc<Context>,
+}
+
+pub struct WGPUPipelineLayoutImpl {
+    context: Arc<Context>,
+    id: id::PipelineLayoutId,
+}
+impl Drop for WGPUPipelineLayoutImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.pipeline_layout_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUQuerySetImpl {
+    context: Arc<Context>,
+    id: id::QuerySetId,
+}
+impl Drop for WGPUQuerySetImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.query_set_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUQueueImpl {
+    context: Arc<Context>,
+    id: id::QueueId,
+    error_sink: ErrorSink,
+}
+
+pub struct WGPURenderBundleImpl {
+    context: Arc<Context>,
+    id: id::RenderBundleId,
+}
+impl Drop for WGPURenderBundleImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.render_bundle_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPURenderBundleEncoderImpl {
+    context: Arc<Context>,
+    encoder: *mut RwLock<command::RenderBundleEncoder>,
+}
+
+pub struct WGPURenderPassEncoderImpl {
+    context: Arc<Context>,
+    encoder: RwLock<command::RenderPass>,
+    error_sink: ErrorSink,
+}
+
+pub struct WGPURenderPipelineImpl {
+    context: Arc<Context>,
+    id: id::RenderPipelineId,
+}
+impl Drop for WGPURenderPipelineImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.render_pipeline_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUSamplerImpl {
+    context: Arc<Context>,
+    id: id::SamplerId,
+}
+impl Drop for WGPUSamplerImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.sampler_drop(self.id));
+        }
+    }
+}
+
+pub struct WGPUShaderModuleImpl {
+    context: Arc<Context>,
+    id: id::ShaderModuleId,
+}
+impl Drop for WGPUShaderModuleImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.shader_module_drop(self.id));
+        }
+    }
+}
+
+struct SurfaceData {
     device_id: id::DeviceId,
     error_sink: ErrorSink,
+    texture_data: TextureData,
+}
+
+pub struct WGPUSurfaceImpl {
+    context: Arc<Context>,
+    id: id::SurfaceId,
+    data: Mutex<Option<SurfaceData>>,
+    // Shared bool between Texture & Surface to track surface_present calls
+    has_surface_presented: Arc<atomic::AtomicBool>,
+}
+impl Drop for WGPUSurfaceImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.surface_drop(self.id);
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+struct TextureData {
+    usage: native::WGPUTextureUsageFlags,
+    dimension: native::WGPUTextureDimension,
+    size: native::WGPUExtent3D,
+    format: native::WGPUTextureFormat,
+    mip_level_count: u32,
+    sample_count: u32,
 }
 
 pub struct WGPUTextureImpl {
     context: Arc<Context>,
     id: id::TextureId,
     error_sink: ErrorSink,
-    descriptor: native::WGPUTextureDescriptor,
+    data: TextureData,
+    surface_id: Option<id::SurfaceId>,
+    // Shared bool between Texture & Surface to track surface_present calls
+    has_surface_presented: Arc<atomic::AtomicBool>,
+}
+impl Drop for WGPUTextureImpl {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            return;
+        }
+        match self.surface_id {
+            Some(surface_id) => {
+                if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
+                    let context = &self.context;
+                    match gfx_select!(self.id => context.surface_texture_discard(surface_id)) {
+                        Ok(_) => (),
+                        Err(cause) => handle_error_fatal(context, cause, "wgpuTextureRelease"),
+                    }
+                }
+            }
+            None => {
+                let context = &self.context;
+                gfx_select!(self.id => context.texture_drop(self.id, false));
+            }
+        }
+    }
 }
 
-pub struct WGPURenderPassEncoderImpl {
+pub struct WGPUTextureViewImpl {
     context: Arc<Context>,
-    encoder: command::RenderPass,
-    error_sink: ErrorSink,
+    id: id::TextureViewId,
 }
-
-pub struct WGPUComputePassEncoderImpl {
-    context: Arc<Context>,
-    encoder: command::ComputePass,
-    error_sink: ErrorSink,
-}
-
-pub struct WGPURenderBundleEncoderImpl {
-    context: Arc<Context>,
-    encoder: command::RenderBundleEncoder,
+impl Drop for WGPUTextureViewImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            let _ = gfx_select!(self.id => context.texture_view_drop(self.id, false));
+        }
+    }
 }
 
 struct DeviceCallback<T> {
@@ -218,11 +442,11 @@ struct ErrorSinkRaw {
 }
 
 impl ErrorSinkRaw {
-    fn new() -> ErrorSinkRaw {
+    fn new(device_lost_handler: DeviceLostCallback) -> ErrorSinkRaw {
         ErrorSinkRaw {
             scopes: Vec::new(),
             uncaptured_handler: DEFAULT_UNCAPTURED_ERROR_HANDLER,
-            device_lost_handler: DEFAULT_DEVICE_LOST_HANDLER,
+            device_lost_handler,
         }
     }
 
@@ -318,7 +542,7 @@ fn handle_error(
         label: label.unwrap_or_default().to_string(),
         label_key,
     };
-    let mut sink = sink_mutex.lock().unwrap();
+    let mut sink = sink_mutex.lock();
     let mut source_opt: Option<&(dyn error::Error + 'static)> = Some(&error);
     while let Some(source) = source_opt {
         match source.downcast_ref::<wgc::device::DeviceError>() {
@@ -350,16 +574,18 @@ fn handle_error(
 pub unsafe extern "C" fn wgpuCreateInstance(
     descriptor: Option<&native::WGPUInstanceDescriptor>,
 ) -> native::WGPUInstance {
-    let descriptor = descriptor.expect("invalid descriptor");
+    let instance_desc = match descriptor {
+        Some(descriptor) => follow_chain!(map_instance_descriptor(
+            descriptor,
+            WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+        )),
+        None => wgt::InstanceDescriptor::default(),
+    };
 
-    let instance_desc = follow_chain!(map_instance_descriptor(descriptor,
-        WGPUSType_InstanceExtras => native::WGPUInstanceExtras
-    ));
-
-    Box::into_raw(Box::new(WGPUInstanceImpl {
+    Arc::into_raw(Arc::new(WGPUInstanceImpl {
         context: Arc::new(Context::new(
             "wgpu",
-            wgc::hub::IdentityManagerFactory,
+            wgc::identity::IdentityManagerFactory,
             instance_desc,
         )),
     }))
@@ -394,7 +620,7 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
     limits: Option<&mut native::WGPUSupportedLimits>,
-) -> bool {
+) -> native::WGPUBool {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
@@ -407,7 +633,7 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
         Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetLimits"),
     }
 
-    true // indicates that we can fill WGPUChainedStructOut
+    true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
 
 #[no_mangle]
@@ -415,49 +641,56 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
     adapter: native::WGPUAdapter,
     properties: Option<&mut native::WGPUAdapterProperties>,
 ) {
-    let adapter = adapter.as_mut().expect("invalid adapter");
+    let adapter = adapter.as_ref().expect("invalid adapter");
     let properties = properties.expect("invalid return pointer \"properties\"");
-    let context = &adapter.context;
+    let context = adapter.context.as_ref();
     let adapter_id = adapter.id;
 
-    match gfx_select!(adapter_id => context.adapter_get_info(adapter_id)) {
-        Ok(props) => {
-            adapter.name = CString::new(props.name).unwrap();
-            adapter.vendor_name = CString::new(props.driver).unwrap();
-            adapter.driver_desc = CString::new(props.driver_info).unwrap();
-
-            properties.vendorID = props.vendor as u32;
-            properties.vendorName = adapter.vendor_name.as_ptr();
-            properties.architecture = adapter.architecture_name.as_ptr();
-            properties.deviceID = props.device as u32;
-            properties.name = adapter.name.as_ptr();
-            properties.driverDescription = adapter.driver_desc.as_ptr();
-            properties.adapterType = match props.device_type {
-                wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
-                wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
-                wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
-                wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
-                wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
-            };
-            properties.backendType = match props.backend {
-                wgt::Backend::Empty => native::WGPUBackendType_Null,
-                wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
-                wgt::Backend::Metal => native::WGPUBackendType_Metal,
-                wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
-                wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
-                wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
-                wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
-            };
+    let props = adapter.properties.get_or_init(|| {
+        match gfx_select!(adapter_id => context.adapter_get_info(adapter_id)) {
+            Ok(info) => AdapterProperties {
+                vendor_id: info.vendor,
+                vendor_name: CString::new(info.driver).unwrap(),
+                architecture: CString::default(), // TODO
+                device_id: info.device,
+                name: CString::new(info.name).unwrap(),
+                driver_description: CString::new(info.driver_info).unwrap(),
+                adapter_type: match info.device_type {
+                    wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+                    wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+                    wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+                    wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+                    wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+                },
+                backend_type: match info.backend {
+                    wgt::Backend::Empty => native::WGPUBackendType_Null,
+                    wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+                    wgt::Backend::Metal => native::WGPUBackendType_Metal,
+                    wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+                    wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
+                    wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+                    wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
+                },
+            },
+            Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetProperties"),
         }
-        Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetProperties"),
-    }
+    });
+
+    properties.vendorID = props.vendor_id;
+    properties.vendorName = props.vendor_name.as_ptr();
+    properties.architecture = props.architecture.as_ptr();
+    properties.deviceID = props.device_id;
+    properties.name = props.name.as_ptr();
+    properties.driverDescription = props.driver_description.as_ptr();
+    properties.adapterType = props.adapter_type;
+    properties.backendType = props.backend_type;
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterHasFeature(
     adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
-) -> bool {
+) -> native::WGPUBool {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
@@ -469,10 +702,10 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
-        None => return false,
+        None => return false as native::WGPUBool,
     };
 
-    adapter_features.contains(feature)
+    adapter_features.contains(feature) as native::WGPUBool
 }
 
 #[no_mangle]
@@ -488,25 +721,41 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
     let callback = callback.expect("invalid callback");
 
-    let (desc, trace_str) = match descriptor {
-        Some(descriptor) => follow_chain!(
-            map_device_descriptor(descriptor,
-            WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+    let (desc, trace_str, device_lost_handler) = match descriptor {
+        Some(descriptor) => {
+            let (desc, trace_str) = follow_chain!(
+                map_device_descriptor(descriptor,
+                WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+            );
+            let device_lost_handler = DeviceLostCallback {
+                callback: descriptor.deviceLostCallback,
+                userdata: descriptor.deviceLostUserdata,
+            };
+            (desc, trace_str, device_lost_handler)
+        }
+        None => (
+            wgt::DeviceDescriptor::default(),
+            std::ptr::null(),
+            DEFAULT_DEVICE_LOST_HANDLER,
         ),
-        None => (wgt::DeviceDescriptor::default(), None),
     };
 
-    let trace_path = trace_str.as_ref().map(Path::new);
-
-    let (device_id, err) = gfx_select!(adapter_id => context.adapter_request_device(adapter_id, &desc, trace_path, ()));
+    let (device_id, err) = gfx_select!(adapter_id =>
+        context.adapter_request_device(
+            adapter_id,
+            &desc,
+            ptr_into_path(trace_str),
+            ()
+        )
+    );
     match err {
         None => {
             callback(
                 native::WGPURequestDeviceStatus_Success,
-                Box::into_raw(Box::new(WGPUDeviceImpl {
+                Arc::into_raw(Arc::new(WGPUDeviceImpl {
                     context: context.clone(),
                     id: device_id,
-                    error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new())),
+                    error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new(device_lost_handler))),
                 })),
                 std::ptr::null(),
                 userdata,
@@ -523,6 +772,47 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             );
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterReference(adapter: native::WGPUAdapter) {
+    assert!(!adapter.is_null(), "invalid adapter");
+    Arc::increment_strong_count(adapter);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterRelease(adapter: native::WGPUAdapter) {
+    assert!(!adapter.is_null(), "invalid adapter");
+    Arc::decrement_strong_count(adapter);
+}
+
+// BindGroup methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBindGroupReference(bind_group: native::WGPUBindGroup) {
+    assert!(!bind_group.is_null(), "invalid bind group");
+    Arc::increment_strong_count(bind_group);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBindGroupRelease(bind_group: native::WGPUBindGroup) {
+    assert!(!bind_group.is_null(), "invalid bind group");
+    Arc::decrement_strong_count(bind_group);
+}
+
+// BindGroupLayout methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBindGroupLayoutReference(
+    bind_group_layout: native::WGPUBindGroupLayout,
+) {
+    assert!(!bind_group_layout.is_null(), "invalid bind group layout");
+    Arc::increment_strong_count(bind_group_layout);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBindGroupLayoutRelease(
+    bind_group_layout: native::WGPUBindGroupLayout,
+) {
+    assert!(!bind_group_layout.is_null(), "invalid bind group layout");
+    Arc::decrement_strong_count(bind_group_layout);
 }
 
 // Buffer methods
@@ -596,9 +886,11 @@ pub unsafe extern "C" fn wgpuBufferGetSize(buffer: native::WGPUBuffer) -> u64 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuBufferGetUsage(buffer: native::WGPUBuffer) -> native::WGPUBufferUsage {
+pub unsafe extern "C" fn wgpuBufferGetUsage(
+    buffer: native::WGPUBuffer,
+) -> native::WGPUBufferUsageFlags {
     let descriptor = buffer.as_ref().expect("invalid buffer").descriptor;
-    descriptor.usage as _
+    descriptor.usage
 }
 
 #[no_mangle]
@@ -630,11 +922,16 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
                     Err(resource::BufferAccessError::Device(_)) => {
                         native::WGPUBufferMapAsyncStatus_DeviceLost
                     }
+                    Err(resource::BufferAccessError::MapAlreadyPending) => {
+                        native::WGPUBufferMapAsyncStatus_MappingAlreadyPending
+                    }
                     Err(resource::BufferAccessError::Invalid)
                     | Err(resource::BufferAccessError::Destroyed) => {
                         native::WGPUBufferMapAsyncStatus_DestroyedBeforeCallback
                     }
-                    Err(_) => native::WGPUBufferMapAsyncStatus_Error,
+                    Err(_) => native::WGPUBufferMapAsyncStatus_ValidationError,
+                    // TODO: WGPUBufferMapAsyncStatus_OffsetOutOfRange
+                    // TODO: WGPUBufferMapAsyncStatus_SizeOutOfRange
                 };
 
                 callback(status, userdata.as_ptr());
@@ -642,11 +939,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         )),
     };
 
-    match gfx_select!(buffer_id => context.buffer_map_async(buffer_id, offset as u64 .. (offset + size) as u64, operation))
+    if let Err(cause) = gfx_select!(buffer_id => context.buffer_map_async(buffer_id, offset as u64 .. (offset + size) as u64, operation))
     {
-        Ok(()) => (),
-        Err(err) => handle_error(context, error_sink, err, "", None, "wgpuBufferMapAsync"),
-    }
+        handle_error(context, error_sink, cause, "", None, "wgpuBufferMapAsync")
+    };
 }
 
 #[no_mangle]
@@ -655,10 +951,34 @@ pub unsafe extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
         let buffer = buffer.as_ref().expect("invalid buffer");
         (buffer.id, &buffer.context, &buffer.error_sink)
     };
-    match gfx_select!(buffer_id => context.buffer_unmap(buffer_id)) {
-        Ok(()) => (),
-        Err(err) => handle_error(context, error_sink, err, "", None, "wgpuBufferUnmap"),
+
+    if let Err(cause) = gfx_select!(buffer_id => context.buffer_unmap(buffer_id)) {
+        handle_error(context, error_sink, cause, "", None, "wgpuBufferUnmap")
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferReference(buffer: native::WGPUBuffer) {
+    assert!(!buffer.is_null(), "invalid buffer");
+    Arc::increment_strong_count(buffer);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferRelease(buffer: native::WGPUBuffer) {
+    assert!(!buffer.is_null(), "invalid buffer");
+    Arc::decrement_strong_count(buffer);
+}
+
+// CommandBuffer methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandBufferReference(command_buffer: native::WGPUCommandBuffer) {
+    assert!(!command_buffer.is_null(), "invalid command buffer");
+    Arc::increment_strong_count(command_buffer);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandBufferRelease(command_buffer: native::WGPUCommandBuffer) {
+    assert!(!command_buffer.is_null(), "invalid command buffer");
+    Arc::decrement_strong_count(command_buffer);
 }
 
 // CommandEncoder methods
@@ -679,14 +999,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgc::command::ComputePassDescriptor::default(),
     };
 
-    Box::into_raw(Box::new(WGPUComputePassEncoderImpl {
+    Arc::into_raw(Arc::new(WGPUComputePassEncoderImpl {
         context: context.clone(),
-        encoder: wgc::command::ComputePass::new(command_encoder_id, &desc),
+        encoder: RwLock::new(wgc::command::ComputePass::new(command_encoder_id, &desc)),
         error_sink: error_sink.clone(),
     }))
 }
@@ -717,47 +1037,44 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
                 clear_value: desc.depthClearValue,
-                read_only: desc.depthReadOnly,
+                read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.stencilLoadOp),
                 store_op: conv::map_store_op(desc.stencilStoreOp),
                 clear_value: desc.stencilClearValue,
-                read_only: desc.stencilReadOnly,
+                read_only: desc.stencilReadOnly != 0,
             },
         }
     });
+
     let desc = wgc::command::RenderPassDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         color_attachments: Cow::Owned(
-            make_slice(
-                descriptor.colorAttachments,
-                descriptor.colorAttachmentCount as usize,
-            )
-            .iter()
-            .map(|color_attachment| {
-                color_attachment
-                    .view
-                    .as_ref()
-                    .map(|view| wgc::command::RenderPassColorAttachment {
-                        view: view.id,
-                        resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
-                        channel: wgc::command::PassChannel {
-                            load_op: conv::map_load_op(color_attachment.loadOp),
-                            store_op: conv::map_store_op(color_attachment.storeOp),
-                            clear_value: conv::map_color(&color_attachment.clearValue),
-                            read_only: false,
-                        },
+            make_slice(descriptor.colorAttachments, descriptor.colorAttachmentCount)
+                .iter()
+                .map(|color_attachment| {
+                    color_attachment.view.as_ref().map(|view| {
+                        wgc::command::RenderPassColorAttachment {
+                            view: view.id,
+                            resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
+                            channel: wgc::command::PassChannel {
+                                load_op: conv::map_load_op(color_attachment.loadOp),
+                                store_op: conv::map_store_op(color_attachment.storeOp),
+                                clear_value: conv::map_color(&color_attachment.clearValue),
+                                read_only: false,
+                            },
+                        }
                     })
-            })
-            .collect(),
+                })
+                .collect(),
         ),
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
     };
 
-    Box::into_raw(Box::new(WGPURenderPassEncoderImpl {
+    Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
         context: context.clone(),
-        encoder: wgc::command::RenderPass::new(command_encoder_id, &desc),
+        encoder: RwLock::new(wgc::command::RenderPass::new(command_encoder_id, &desc)),
         error_sink: error_sink.clone(),
     }))
 }
@@ -943,17 +1260,17 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
     command_encoder: native::WGPUCommandEncoder,
     descriptor: Option<&native::WGPUCommandBufferDescriptor>,
 ) -> native::WGPUCommandBuffer {
-    assert!(!command_encoder.is_null(), "invalid command encoder");
-
-    // NOTE: Automatically drop the encoder
-    let command_encoder = Box::from_raw(command_encoder);
-    let context = &command_encoder.context;
-    let command_encoder_id = command_encoder.id;
-    let error_sink = &command_encoder.error_sink;
+    let command_encoder = command_encoder.as_ref().expect("invalid command encoder");
+    let (command_encoder_id, context, error_sink) = (
+        command_encoder.id,
+        &command_encoder.context,
+        &command_encoder.error_sink,
+    );
+    command_encoder.open.store(false, atomic::Ordering::SeqCst);
 
     let desc = match descriptor {
         Some(descriptor) => wgt::CommandBufferDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgt::CommandBufferDescriptor::default(),
     };
@@ -969,9 +1286,11 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
             "wgpuCommandEncoderFinish",
         );
     }
-    Box::into_raw(Box::new(WGPUCommandBufferImpl {
+
+    Arc::into_raw(Arc::new(WGPUCommandBufferImpl {
         context: context.clone(),
         id: command_buffer_id,
+        open: atomic::AtomicBool::new(true),
     }))
 }
 
@@ -1126,6 +1445,17 @@ pub unsafe extern "C" fn wgpuCommandEncoderWriteTimestamp(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderReference(command_encoder: native::WGPUCommandEncoder) {
+    assert!(!command_encoder.is_null(), "invalid command encoder");
+    Arc::increment_strong_count(command_encoder);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderRelease(command_encoder: native::WGPUCommandEncoder) {
+    assert!(!command_encoder.is_null(), "invalid command encoder");
+    Arc::decrement_strong_count(command_encoder);
+}
+
 // ComputePassEncoder methods
 
 #[no_mangle]
@@ -1134,10 +1464,15 @@ pub unsafe extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
     query_set: native::WGPUQuerySet,
     query_index: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
+    let pass = pass.as_ref().expect("invalid compute pass");
     let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let mut encoder = pass.encoder.write();
 
-    compute_ffi::wgpu_compute_pass_begin_pipeline_statistics_query(pass, query_set_id, query_index);
+    compute_ffi::wgpu_compute_pass_begin_pipeline_statistics_query(
+        &mut encoder,
+        query_set_id,
+        query_index,
+    );
 }
 
 #[no_mangle]
@@ -1147,10 +1482,11 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
     workgroup_count_y: u32,
     workgroup_count_z: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let mut encoder = pass.encoder.write();
 
     compute_ffi::wgpu_compute_pass_dispatch_workgroups(
-        pass,
+        &mut encoder,
         workgroup_count_x,
         workgroup_count_y,
         workgroup_count_z,
@@ -1163,14 +1499,15 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
+    let pass = pass.as_ref().expect("invalid compute pass");
     let indirect_buffer_id = indirect_buffer
-        .as_mut()
+        .as_ref()
         .expect("invalid indirect buffer")
         .id;
+    let mut encoder = pass.encoder.write();
 
     compute_ffi::wgpu_compute_pass_dispatch_workgroups_indirect(
-        pass,
+        &mut encoder,
         indirect_buffer_id,
         indirect_offset,
     );
@@ -1178,15 +1515,11 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePassEncoder) {
-    assert!(!pass.is_null(), "invalid compute pass");
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let (encoder, context, error_sink) = (pass.encoder.read(), &pass.context, &pass.error_sink);
+    let command_encoder_id = encoder.parent_id();
 
-    // NOTE: Automatically drops the compute pass
-    let pass = Box::from_raw(pass);
-    let context = &pass.context;
-    let error_sink = &pass.error_sink;
-    let command_encoder_id = pass.encoder.parent_id();
-
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_run_compute_pass(command_encoder_id, &pass.encoder))
+    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_run_compute_pass(command_encoder_id, &encoder))
     {
         let name = wgc::gfx_select!(command_encoder_id => context.command_buffer_label(command_encoder_id));
         handle_error(
@@ -1204,8 +1537,10 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePass
 pub unsafe extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
     pass: native::WGPUComputePassEncoder,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
-    compute_ffi::wgpu_compute_pass_end_pipeline_statistics_query(pass);
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let mut encoder = pass.encoder.write();
+
+    compute_ffi::wgpu_compute_pass_end_pipeline_statistics_query(&mut encoder);
 }
 
 #[no_mangle]
@@ -1213,14 +1548,18 @@ pub unsafe extern "C" fn wgpuComputePassEncoderInsertDebugMarker(
     pass: native::WGPUComputePassEncoder,
     marker_label: *const std::ffi::c_char,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
-    compute_ffi::wgpu_compute_pass_insert_debug_marker(pass, marker_label, 0);
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let mut encoder = pass.encoder.write();
+
+    compute_ffi::wgpu_compute_pass_insert_debug_marker(&mut encoder, marker_label, 0);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderPopDebugGroup(pass: native::WGPUComputePassEncoder) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
-    compute_ffi::wgpu_compute_pass_pop_debug_group(pass);
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let mut encoder = pass.encoder.write();
+
+    compute_ffi::wgpu_compute_pass_pop_debug_group(&mut encoder);
 }
 
 #[no_mangle]
@@ -1228,8 +1567,10 @@ pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroup(
     pass: native::WGPUComputePassEncoder,
     group_label: *const std::ffi::c_char,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
-    compute_ffi::wgpu_compute_pass_push_debug_group(pass, group_label, 0);
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let mut encoder = pass.encoder.write();
+
+    compute_ffi::wgpu_compute_pass_push_debug_group(&mut encoder, group_label, 0);
 }
 
 #[no_mangle]
@@ -1237,18 +1578,20 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     pass: native::WGPUComputePassEncoder,
     group_index: u32,
     bind_group: native::WGPUBindGroup,
-    dynamic_offset_count: u32,
+    dynamic_offset_count: usize,
     dynamic_offsets: *const u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
+    let pass = pass.as_ref().expect("invalid compute pass");
+    //TODO: as per webgpu.h bindgroup is nullable
     let bind_group_id = bind_group.as_ref().expect("invalid bind group").id;
+    let mut encoder = pass.encoder.write();
 
     compute_ffi::wgpu_compute_pass_set_bind_group(
-        pass,
+        &mut encoder,
         group_index,
         bind_group_id,
         dynamic_offsets,
-        dynamic_offset_count as usize,
+        dynamic_offset_count,
     );
 }
 
@@ -1257,13 +1600,35 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
     pass: native::WGPUComputePassEncoder,
     compute_pipeline: native::WGPUComputePipeline,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid compute pass").encoder;
+    let pass = pass.as_ref().expect("invalid compute pass");
     let compute_pipeline_id = compute_pipeline
         .as_ref()
         .expect("invalid compute pipeline")
         .id;
+    let mut encoder = pass.encoder.write();
 
-    compute_ffi::wgpu_compute_pass_set_pipeline(pass, compute_pipeline_id);
+    compute_ffi::wgpu_compute_pass_set_pipeline(&mut encoder, compute_pipeline_id);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderReference(
+    compute_pass_encoder: native::WGPUComputePassEncoder,
+) {
+    assert!(
+        !compute_pass_encoder.is_null(),
+        "invalid command pass encoder"
+    );
+    Arc::increment_strong_count(compute_pass_encoder);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderRelease(
+    compute_pass_encoder: native::WGPUComputePassEncoder,
+) {
+    assert!(
+        !compute_pass_encoder.is_null(),
+        "invalid command pass encoder"
+    );
+    Arc::decrement_strong_count(compute_pass_encoder);
 }
 
 // ComputePipeline methods
@@ -1286,10 +1651,23 @@ pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
         );
     }
 
-    Box::into_raw(Box::new(WGPUBindGroupLayoutImpl {
+    Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
         context: context.clone(),
         id: bind_group_layout_id,
     }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePipelineReference(
+    compute_pipeline: native::WGPUComputePipeline,
+) {
+    assert!(!compute_pipeline.is_null(), "invalid command pipeline");
+    Arc::increment_strong_count(compute_pipeline);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePipelineRelease(compute_pipeline: native::WGPUComputePipeline) {
+    assert!(!compute_pipeline.is_null(), "invalid command pipeline");
+    Arc::decrement_strong_count(compute_pipeline);
 }
 
 // Device methods
@@ -1310,7 +1688,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         .expect("invalid bind group layout for bind group descriptor")
         .id;
 
-    let entries = make_slice(descriptor.entries, descriptor.entryCount as usize)
+    let entries = make_slice(descriptor.entries, descriptor.entryCount)
         .iter()
         .map(|entry| {
             if let Some(buffer) = entry.buffer.as_ref() {
@@ -1340,7 +1718,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
                 }
             } else {
                 let bind_group_entry = follow_chain!(map_bind_group_entry(entry, WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras));
-                
+
                 if bind_group_entry.is_some() {
                     bind_group_entry.unwrap()
                 }
@@ -1351,9 +1729,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         })
         .collect::<Vec<_>>();
 
-    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         layout: bind_group_layout_id,
         entries: Cow::Borrowed(&entries),
     };
@@ -1370,7 +1747,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         );
     }
 
-    Box::into_raw(Box::new(WGPUBindGroupImpl {
+    Arc::into_raw(Arc::new(WGPUBindGroupImpl {
         context: context.clone(),
         id: bind_group_id,
     }))
@@ -1387,13 +1764,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let entries = make_slice(descriptor.entries, descriptor.entryCount as usize)
+    let entries = make_slice(descriptor.entries, descriptor.entryCount)
         .iter()
         .map(|entry| {
             let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
             let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
             let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
-            
+
             let is_storage_texture =
                 entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
@@ -1424,8 +1801,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
                         _ => panic!("invalid texture view dimension for texture binding layout"),
                     },
-                    multisampled: entry.texture.multisampled,
-                    
+                    multisampled: entry.texture.multisampled != 0,
                 }
             } else if is_sampler {
                 match entry.sampler.type_ {
@@ -1484,7 +1860,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         }
                         _ => panic!("invalid buffer binding type for buffer binding layout"),
                     },
-                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset != 0,
                     min_binding_size: {
                         assert_ne!(
                             entry.buffer.minBindingSize,
@@ -1499,21 +1875,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                 panic!("invalid bind group layout entry for bind group layout descriptor");
             };
 
-            let array_length = NonZeroU32::new(entry.count);
-
             wgt::BindGroupLayoutEntry {
                 ty,
                 binding: entry.binding,
                 visibility: wgt::ShaderStages::from_bits(entry.visibility)
                     .expect("invalid visibility for bind group layout entry"),
-                count: array_length,
+                count: None,
             }
         })
         .collect::<Vec<_>>();
 
-    let label = OwnedLabel::new(descriptor.label);
     let desc = wgc::binding_model::BindGroupLayoutDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         entries: Cow::Borrowed(&entries),
     };
     let (bind_group_layout_id, error) =
@@ -1528,7 +1901,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
             "wgpuDeviceCreateBindGroupLayout",
         );
     }
-    Box::into_raw(Box::new(WGPUBindGroupLayoutImpl {
+
+    Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
         context: context.clone(),
         id: bind_group_layout_id,
     }))
@@ -1545,12 +1919,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let label = OwnedLabel::new(descriptor.label);
     let desc = wgt::BufferDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         size: descriptor.size,
         usage: wgt::BufferUsages::from_bits(descriptor.usage).expect("invalid buffer usage"),
-        mapped_at_creation: descriptor.mappedAtCreation,
+        mapped_at_creation: descriptor.mappedAtCreation != 0,
     };
 
     let (buffer_id, error) =
@@ -1566,7 +1939,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         );
     }
 
-    Box::into_raw(Box::new(WGPUBufferImpl {
+    Arc::into_raw(Arc::new(WGPUBufferImpl {
         context: context.clone(),
         id: buffer_id,
         error_sink: error_sink.clone(),
@@ -1585,7 +1958,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     };
     let desc = match descriptor {
         Some(descriptor) => wgt::CommandEncoderDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgt::CommandEncoderDescriptor::default(),
     };
@@ -1602,10 +1975,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
         );
     }
 
-    Box::into_raw(Box::new(WGPUCommandEncoderImpl {
+    Arc::into_raw(Arc::new(WGPUCommandEncoderImpl {
         context: context.clone(),
         id: command_encoder_id,
         error_sink: error_sink.clone(),
+        open: atomic::AtomicBool::new(true),
     }))
 }
 
@@ -1627,12 +2001,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             .as_ref()
             .expect("invalid shader module for compute pipeline descriptor")
             .id,
-        entry_point: OwnedLabel::new(descriptor.compute.entryPoint)
-            .into_cow()
+        entry_point: ptr_into_label(descriptor.compute.entryPoint)
             .expect("invalid entry point for compute pipeline descriptor"),
     };
     let desc = wgc::pipeline::ComputePipelineDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         layout: descriptor.layout.as_ref().map(|v| v.id),
         stage,
     };
@@ -1669,7 +2042,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             "wgpuDeviceCreateComputePipeline",
         );
     }
-    Box::into_raw(Box::new(WGPUComputePipelineImpl {
+
+    Arc::into_raw(Arc::new(WGPUComputePipelineImpl {
         context: context.clone(),
         id: compute_pipeline_id,
     }))
@@ -1703,7 +2077,8 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
             "wgpuDeviceCreatePipelineLayout",
         );
     }
-    Box::into_raw(Box::new(WGPUPipelineLayoutImpl {
+
+    Arc::into_raw(Arc::new(WGPUPipelineLayoutImpl {
         context: context.clone(),
         id: pipeline_layout_id,
     }))
@@ -1730,10 +2105,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
             cause,
             LABEL,
             desc.label,
-            "wgpuDeviceCreatePipelineLayout",
+            "wgpuDeviceCreateQuerySet",
         );
     }
-    Box::into_raw(Box::new(WGPUQuerySetImpl {
+
+    Arc::into_raw(Arc::new(WGPUQuerySetImpl {
         context: context.clone(),
         id: query_set_id,
     }))
@@ -1751,21 +2127,16 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::command::RenderBundleEncoderDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
-        color_formats: unsafe {
-            make_slice(
-                descriptor.colorFormats,
-                descriptor.colorFormatsCount as usize,
-            )
-        }
-        .iter()
-        .map(|format| conv::map_texture_format(*format))
-        .collect(),
+        label: ptr_into_label(descriptor.label),
+        color_formats: make_slice(descriptor.colorFormats, descriptor.colorFormatCount)
+            .iter()
+            .map(|format| conv::map_texture_format(*format))
+            .collect(),
         depth_stencil: conv::map_texture_format(descriptor.depthStencilFormat).map(|format| {
             wgt::RenderBundleDepthStencil {
                 format,
-                depth_read_only: descriptor.depthReadOnly,
-                stencil_read_only: descriptor.stencilReadOnly,
+                depth_read_only: descriptor.depthReadOnly != 0,
+                stencil_read_only: descriptor.stencilReadOnly != 0,
             }
         }),
         sample_count: descriptor.sampleCount,
@@ -1773,9 +2144,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     };
 
     match wgc::command::RenderBundleEncoder::new(&desc, device_id, None) {
-        Ok(encoder) => Box::into_raw(Box::new(WGPURenderBundleEncoderImpl {
+        Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
             context: context.clone(),
-            encoder,
+            encoder: Box::into_raw(Box::new(RwLock::new(encoder))),
         })),
         Err(cause) => {
             handle_error_fatal(context, cause, "wgpuDeviceCreateRenderBundleEncoder");
@@ -1795,7 +2166,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgc::pipeline::RenderPipelineDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         layout: descriptor.layout.as_ref().map(|v| v.id),
         vertex: wgc::pipeline::VertexState {
             stage: wgc::pipeline::ProgrammableStageDescriptor {
@@ -1805,36 +2176,32 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .as_ref()
                     .expect("invalid vertex shader module for vertex state")
                     .id,
-                entry_point: OwnedLabel::new(descriptor.vertex.entryPoint)
-                    .into_cow()
+                entry_point: ptr_into_label(descriptor.vertex.entryPoint)
                     .expect("invalid entry point for vertex state"),
             },
             buffers: Cow::Owned(
-                make_slice(
-                    descriptor.vertex.buffers,
-                    descriptor.vertex.bufferCount as usize,
-                )
-                .iter()
-                .map(|buffer| wgc::pipeline::VertexBufferLayout {
-                    array_stride: buffer.arrayStride,
-                    step_mode: match buffer.stepMode {
-                        native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
-                        native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
-                        _ => panic!("invalid vertex step mode for vertex buffer layout"),
-                    },
-                    attributes: Cow::Owned(
-                        make_slice(buffer.attributes, buffer.attributeCount as usize)
-                            .iter()
-                            .map(|attribute| wgt::VertexAttribute {
-                                format: conv::map_vertex_format(attribute.format)
-                                    .expect("invalid vertex format for vertex attribute"),
-                                offset: attribute.offset,
-                                shader_location: attribute.shaderLocation,
-                            })
-                            .collect(),
-                    ),
-                })
-                .collect(),
+                make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
+                    .iter()
+                    .map(|buffer| wgc::pipeline::VertexBufferLayout {
+                        array_stride: buffer.arrayStride,
+                        step_mode: match buffer.stepMode {
+                            native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
+                            native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
+                            _ => panic!("invalid vertex step mode for vertex buffer layout"),
+                        },
+                        attributes: Cow::Owned(
+                            make_slice(buffer.attributes, buffer.attributeCount)
+                                .iter()
+                                .map(|attribute| wgt::VertexAttribute {
+                                    format: conv::map_vertex_format(attribute.format)
+                                        .expect("invalid vertex format for vertex attribute"),
+                                    offset: attribute.offset,
+                                    shader_location: attribute.shaderLocation,
+                                })
+                                .collect(),
+                        ),
+                    })
+                    .collect(),
             ),
         },
         primitive: wgt::PrimitiveState {
@@ -1851,7 +2218,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 native::WGPUCullMode_Back => Some(wgt::Face::Back),
                 _ => panic!("invalid cull mode for primitive state"),
             },
-            unclipped_depth: false, // todo: fill this via extras
+            unclipped_depth: follow_chain!(
+                map_primitive_state(
+                    &descriptor.primitive,
+                    WGPUSType_PrimitiveDepthClipControl => native::WGPUPrimitiveDepthClipControl
+                )
+            ),
             polygon_mode: wgt::PolygonMode::Fill,
             conservative: false,
         },
@@ -1861,7 +2233,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             .map(|desc| wgt::DepthStencilState {
                 format: conv::map_texture_format(desc.format)
                     .expect("invalid texture format for depth stencil state"),
-                depth_write_enabled: desc.depthWriteEnabled,
+                depth_write_enabled: desc.depthWriteEnabled != 0,
                 depth_compare: conv::map_compare_function(desc.depthCompare)
                     .expect("invalid depth compare function for depth stencil state"),
                 stencil: wgt::StencilState {
@@ -1879,7 +2251,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
         multisample: wgt::MultisampleState {
             count: descriptor.multisample.count,
             mask: descriptor.multisample.mask as u64,
-            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled,
+            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled != 0,
         },
         fragment: descriptor
             .fragment
@@ -1891,12 +2263,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .as_ref()
                         .expect("invalid fragment shader module for render pipeline descriptor")
                         .id,
-                    entry_point: OwnedLabel::new(fragment.entryPoint)
-                        .into_cow()
+                    entry_point: ptr_into_label(fragment.entryPoint)
                         .expect("invalid entry point for fragment state"),
                 },
                 targets: Cow::Owned(
-                    make_slice(fragment.targets, fragment.targetCount as usize)
+                    make_slice(fragment.targets, fragment.targetCount)
                         .iter()
                         .map(|color_target| {
                             conv::map_texture_format(color_target.format).map(|format| {
@@ -1942,7 +2313,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             "wgpuDeviceCreateRenderPipeline",
         );
     }
-    Box::into_raw(Box::new(WGPURenderPipelineImpl {
+
+    Arc::into_raw(Arc::new(WGPURenderPipelineImpl {
         context: context.clone(),
         id: render_pipeline_id,
     }))
@@ -1960,7 +2332,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::resource::SamplerDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
             address_modes: [
                 conv::map_address_mode(descriptor.addressModeU),
                 conv::map_address_mode(descriptor.addressModeV),
@@ -2008,7 +2380,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
             "wgpuDeviceCreateSampler",
         );
     }
-    Box::into_raw(Box::new(WGPUSamplerImpl {
+
+    Arc::into_raw(Arc::new(WGPUSamplerImpl {
         context: context.clone(),
         id: sampler_id,
     }))
@@ -2025,7 +2398,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let label = OwnedLabel::new(descriptor.label);
     let source = follow_chain!(
         map_shader_module(descriptor,
         WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
@@ -2034,7 +2406,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     );
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: label.as_cow(),
+        label: ptr_into_label(descriptor.label),
         shader_bound_checks: wgt::ShaderBoundChecks::default(),
     };
     let (shader_module_id, error) =
@@ -2046,42 +2418,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
             cause,
             LABEL,
             desc.label,
-            "wgpuDeviceCreateSampler",
+            "wgpuDeviceCreateShaderModule",
         );
     }
-    Box::into_raw(Box::new(WGPUShaderModuleImpl {
+
+    Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: shader_module_id,
-    }))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
-    device: native::WGPUDevice,
-    surface: native::WGPUSurface,
-    descriptor: Option<&native::WGPUSwapChainDescriptor>,
-) -> native::WGPUSwapChain {
-    let (device_id, context, error_sink) = {
-        let device = device.as_ref().expect("invalid device");
-        (device.id, &device.context, &device.error_sink)
-    };
-    let surface_id = surface.as_ref().expect("invalid surface").id;
-
-    let config = follow_chain!(
-        map_swapchain_descriptor(
-            descriptor.expect("invalid descriptor"),
-            WGPUSType_SwapChainDescriptorExtras => native::WGPUSwapChainDescriptorExtras)
-    );
-
-    let error = gfx_select!(device_id => context.surface_configure(surface_id, device_id, &config));
-    if let Some(cause) = error {
-        handle_error_fatal(context, cause, "wgpuDeviceCreateSwapChain");
-    }
-    Box::into_raw(Box::new(WGPUSwapChainImpl {
-        context: context.clone(),
-        surface_id,
-        device_id,
-        error_sink: error_sink.clone(),
     }))
 }
 
@@ -2097,7 +2440,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let desc = wgt::TextureDescriptor {
-        label: OwnedLabel::new(descriptor.label).into_cow(),
+        label: ptr_into_label(descriptor.label),
         size: conv::map_extent3d(&descriptor.size),
         mip_level_count: descriptor.mipLevelCount,
         sample_count: descriptor.sampleCount,
@@ -2106,7 +2449,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
             .expect("invalid texture format for texture descriptor"),
         usage: wgt::TextureUsages::from_bits(descriptor.usage)
             .expect("invalid texture usage for texture descriptor"),
-        view_formats: make_slice(descriptor.viewFormats, descriptor.viewFormatCount as usize)
+        view_formats: make_slice(descriptor.viewFormats, descriptor.viewFormatCount)
             .iter()
             .map(|v| {
                 conv::map_texture_format(*v).expect("invalid view format for texture descriptor")
@@ -2126,11 +2469,21 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
             "wgpuDeviceCreateTexture",
         );
     }
-    Box::into_raw(Box::new(WGPUTextureImpl {
+
+    Arc::into_raw(Arc::new(WGPUTextureImpl {
         context: context.clone(),
         id: texture_id,
         error_sink: error_sink.clone(),
-        descriptor: *descriptor,
+        surface_id: None,
+        has_surface_presented: Arc::default(),
+        data: TextureData {
+            usage: descriptor.usage,
+            dimension: descriptor.dimension,
+            size: descriptor.size,
+            format: descriptor.format,
+            mip_level_count: descriptor.mipLevelCount,
+            sample_count: descriptor.sampleCount,
+        },
     }))
 }
 
@@ -2166,7 +2519,7 @@ pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: native::WGPUDevice,
     limits: Option<&mut native::WGPUSupportedLimits>,
-) -> bool {
+) -> native::WGPUBool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
@@ -2175,11 +2528,11 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
 
     let result = gfx_select!(device_id => context.device_limits(device_id));
     match result {
-        Ok(wgt_limits) => write_limits_struct(wgt_limits, limits),
+        Ok(wgt_limits) => conv::write_limits_struct(wgt_limits, limits),
         Err(err) => handle_error_fatal(context, err, "wgpuDeviceGetLimits"),
     }
 
-    true // indicates that we can fill WGPUChainedStructOut
+    true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
 
 #[no_mangle]
@@ -2188,7 +2541,8 @@ pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> nativ
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context, &device.error_sink)
     };
-    Box::into_raw(Box::new(WGPUQueueImpl {
+
+    Arc::into_raw(Arc::new(WGPUQueueImpl {
         context: context.clone(),
         id: device_id,
         error_sink: error_sink.clone(),
@@ -2199,7 +2553,7 @@ pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> nativ
 pub unsafe extern "C" fn wgpuDeviceHasFeature(
     device: native::WGPUDevice,
     feature: native::WGPUFeatureName,
-) -> bool {
+) -> native::WGPUBool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
@@ -2211,10 +2565,10 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
-        None => return false,
+        None => return false as native::WGPUBool,
     };
 
-    device_features.contains(feature)
+    device_features.contains(feature) as native::WGPUBool
 }
 
 #[no_mangle]
@@ -2222,28 +2576,33 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
     device: native::WGPUDevice,
     callback: native::WGPUErrorCallback,
     userdata: *mut ::std::os::raw::c_void,
-) -> bool {
+) {
     let device = device.as_ref().expect("invalid device");
     let callback = callback.expect("invalid callback");
-    let mut error_sink = device.error_sink.lock().unwrap();
+    let mut error_sink = device.error_sink.lock();
     let scope = error_sink.scopes.pop().unwrap();
 
-    if let Some(error) = scope.error {
-        let typ = match error {
-            crate::Error::OutOfMemory { .. } => native::WGPUErrorType_OutOfMemory,
-            crate::Error::Validation { .. } => native::WGPUErrorType_Validation,
-            // We handle device lost error early in ErrorSinkRaw::handle_error
-            // so we should never get device lost error here.
-            crate::Error::DeviceLost { .. } => unreachable!(),
-        };
+    match scope.error {
+        Some(error) => {
+            let typ = match error {
+                crate::Error::OutOfMemory { .. } => native::WGPUErrorType_OutOfMemory,
+                crate::Error::Validation { .. } => native::WGPUErrorType_Validation,
+                // We handle device lost error early in ErrorSinkRaw::handle_error
+                // so we should never get device lost error here.
+                crate::Error::DeviceLost { .. } => unreachable!(),
+            };
 
-        let msg = CString::new(error.to_string()).unwrap();
-        unsafe {
-            callback(typ, msg.as_ptr(), userdata);
+            let msg = CString::new(error.to_string()).unwrap();
+            unsafe {
+                callback(typ, msg.as_ptr(), userdata);
+            };
         }
-    }
-
-    false
+        None => {
+            unsafe {
+                callback(native::WGPUErrorType_NoError, std::ptr::null(), userdata);
+            };
+        }
+    };
 }
 
 #[no_mangle]
@@ -2252,7 +2611,7 @@ pub unsafe extern "C" fn wgpuDevicePushErrorScope(
     filter: native::WGPUErrorFilter,
 ) {
     let device = device.as_ref().expect("invalid device");
-    let mut error_sink = device.error_sink.lock().unwrap();
+    let mut error_sink = device.error_sink.lock();
     error_sink.scopes.push(ErrorScope {
         error: None,
         filter: match filter {
@@ -2264,25 +2623,25 @@ pub unsafe extern "C" fn wgpuDevicePushErrorScope(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceSetDeviceLostCallback(
-    device: native::WGPUDevice,
-    callback: native::WGPUDeviceLostCallback,
-    userdata: *mut std::os::raw::c_void,
-) {
-    let device = device.as_ref().expect("invalid device");
-    let mut error_sink = device.error_sink.lock().unwrap();
-    error_sink.device_lost_handler = DeviceLostCallback { callback, userdata };
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
     device: native::WGPUDevice,
     callback: native::WGPUErrorCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
     let device = device.as_ref().expect("invalid device");
-    let mut error_sink = device.error_sink.lock().unwrap();
+    let mut error_sink = device.error_sink.lock();
     error_sink.uncaptured_handler = UncapturedErrorCallback { callback, userdata };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceReference(device: native::WGPUDevice) {
+    assert!(!device.is_null(), "invalid device");
+    Arc::increment_strong_count(device);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceRelease(device: native::WGPUDevice) {
+    assert!(!device.is_null(), "invalid device");
+    Arc::decrement_strong_count(device);
 }
 
 // Instance methods
@@ -2311,9 +2670,11 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
         CreateSurfaceParams::Metal(layer) => context.instance_create_surface_metal(layer, ()),
     };
 
-    Box::into_raw(Box::new(WGPUSurfaceImpl {
+    Arc::into_raw(Arc::new(WGPUSurfaceImpl {
         context: context.clone(),
         id: surface_id,
+        data: Mutex::default(),
+        has_surface_presented: Arc::default(),
     }))
 }
 
@@ -2329,38 +2690,36 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     let callback = callback.expect("invalid callback");
 
     let (desc, inputs) = match options {
-        Some(options) => {
-            let (compatible_surface, given_backend) = follow_chain!(
-                map_adapter_options(options,
-                WGPUSType_AdapterExtras => native::WGPUAdapterExtras)
-            );
-
-            (
-                wgt::RequestAdapterOptions {
-                    power_preference: match options.powerPreference {
-                        native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
-                        native::WGPUPowerPreference_HighPerformance => {
-                            wgt::PowerPreference::HighPerformance
-                        }
-                        _ => wgt::PowerPreference::default(),
-                    },
-                    force_fallback_adapter: options.forceFallbackAdapter,
-                    compatible_surface: compatible_surface.as_ref().map(|surface| surface.id),
+        Some(options) => (
+            wgt::RequestAdapterOptions {
+                power_preference: match options.powerPreference {
+                    native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
+                    native::WGPUPowerPreference_HighPerformance => {
+                        wgt::PowerPreference::HighPerformance
+                    }
+                    _ => wgt::PowerPreference::default(),
                 },
-                wgc::instance::AdapterInputs::Mask(
-                    match given_backend {
-                        native::WGPUBackendType_Null => wgt::Backends::all(),
-                        native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
-                        native::WGPUBackendType_Metal => wgt::Backends::METAL,
-                        native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
-                        native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
-                        native::WGPUBackendType_OpenGL => wgt::Backends::GL,
-                        _ => panic!("invalid backend type for adapter extras"),
-                    },
-                    |_| (),
-                ),
-            )
-        }
+                force_fallback_adapter: options.forceFallbackAdapter != 0,
+                compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
+            },
+            wgc::instance::AdapterInputs::Mask(
+                match options.backendType {
+                    native::WGPUBackendType_Undefined => wgt::Backends::all(),
+                    native::WGPUBackendType_WebGPU => wgt::Backends::BROWSER_WEBGPU,
+                    native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
+                    native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
+                    native::WGPUBackendType_Metal => wgt::Backends::METAL,
+                    native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
+                    native::WGPUBackendType_OpenGL => wgt::Backends::GL,
+                    // TODO
+                    native::WGPUBackendType_Null | native::WGPUBackendType_OpenGLES => {
+                        panic!("unsupported backend type for adapter options")
+                    }
+                    _ => panic!("invalid backend type for adapter options"),
+                },
+                |_| (),
+            ),
+        ),
         None => (
             wgt::RequestAdapterOptions::default(),
             wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
@@ -2371,13 +2730,10 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         Ok(adapter_id) => {
             callback(
                 native::WGPURequestAdapterStatus_Success,
-                Box::into_raw(Box::new(WGPUAdapterImpl {
+                Arc::into_raw(Arc::new(WGPUAdapterImpl {
                     context: context.clone(),
                     id: adapter_id,
-                    name: CString::default(),
-                    vendor_name: CString::default(),
-                    architecture_name: CString::default(),
-                    driver_desc: CString::default(),
+                    properties: OnceCell::default(),
                 })),
                 std::ptr::null(),
                 userdata,
@@ -2404,11 +2760,90 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     };
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
+    instance: native::WGPUInstance,
+    options: Option<&native::WGPUInstanceEnumerateAdapterOptions>,
+    adapters: *mut native::WGPUAdapter,
+) -> usize {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+
+    let inputs = match options {
+        Some(options) => wgc::instance::AdapterInputs::Mask(
+            map_instance_backend_flags(options.backends as native::WGPUInstanceBackend),
+            |_| (),
+        ),
+        None => wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
+    };
+
+    let result = context.enumerate_adapters(inputs);
+    let count = result.len();
+
+    if !adapters.is_null() {
+        let temp = std::slice::from_raw_parts_mut(adapters, count);
+
+        result.iter().enumerate().for_each(|(i, id)| {
+            // It's users responsibility to drop the adapters they
+            // don't need.
+
+            temp[i] = Arc::into_raw(Arc::new(WGPUAdapterImpl {
+                context: context.clone(),
+                id: *id,
+                properties: OnceCell::default(),
+            }));
+        });
+    } else {
+        // Drop all the adapters when only counting length.
+
+        result
+            .iter()
+            .for_each(|id| gfx_select!(id => context.adapter_drop(*id)));
+    }
+
+    count
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceReference(instance: native::WGPUInstance) {
+    assert!(!instance.is_null(), "invalid instance");
+    Arc::increment_strong_count(instance);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceRelease(instance: native::WGPUInstance) {
+    assert!(!instance.is_null(), "invalid instance");
+    Arc::decrement_strong_count(instance);
+}
+
+// PipelineLayout methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineLayoutReference(pipeline_layout: native::WGPUPipelineLayout) {
+    assert!(!pipeline_layout.is_null(), "invalid pipeline layout");
+    Arc::increment_strong_count(pipeline_layout);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineLayoutRelease(pipeline_layout: native::WGPUPipelineLayout) {
+    assert!(!pipeline_layout.is_null(), "invalid pipeline layout");
+    Arc::decrement_strong_count(pipeline_layout);
+}
+
 // QuerySet methods
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
     //TODO: empty implementation, wait till wgpu-core implements a way.
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetReference(query_set: native::WGPUQuerySet) {
+    assert!(!query_set.is_null(), "invalid query set");
+    Arc::increment_strong_count(query_set);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetRelease(query_set: native::WGPUQuerySet) {
+    assert!(!query_set.is_null(), "invalid query set");
+    Arc::decrement_strong_count(query_set);
 }
 
 // Queue methods
@@ -2440,7 +2875,7 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueSubmit(
     queue: native::WGPUQueue,
-    command_count: u32,
+    command_count: usize,
     commands: *const native::WGPUCommandBuffer,
 ) {
     let (queue_id, context) = {
@@ -2448,16 +2883,14 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
         (queue.id, &queue.context)
     };
 
-    let command_buffers = make_slice(commands, command_count as usize)
+    let command_buffers = make_slice(commands, command_count)
         .iter()
         .map(|command_buffer| {
-            let command_buffer = *command_buffer;
-            assert!(!command_buffer.is_null(), "invalid command buffer");
-
-            // NOTE: Automaticaly drop the command buffer
-            Box::from_raw(command_buffer).id
+            let command_buffer = command_buffer.as_ref().expect("invalid command buffer");
+            command_buffer.open.store(false, atomic::Ordering::SeqCst);
+            command_buffer.id
         })
-        .collect::<Vec<_>>();
+        .collect::<SmallVec<[_; 4]>>();
 
     if let Err(cause) = gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         handle_error_fatal(context, cause, "wgpuQueueSubmit");
@@ -2478,9 +2911,12 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
     };
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
 
-    let slice = make_slice(data, data_size);
-    if let Err(cause) = gfx_select!(queue_id => context.queue_write_buffer(queue_id, buffer_id, buffer_offset, slice))
-    {
+    if let Err(cause) = gfx_select!(queue_id => context.queue_write_buffer(
+        queue_id,
+        buffer_id,
+        buffer_offset,
+        make_slice(data, data_size)
+    )) {
         handle_error(context, error_sink, cause, "", None, "wgpuQueueWriteBuffer");
     }
 }
@@ -2499,11 +2935,10 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
         (queue.id, &queue.context, &queue.error_sink)
     };
 
-    let slice = make_slice(data, data_size);
     if let Err(cause) = gfx_select!(queue_id => context.queue_write_texture(
         queue_id,
         &conv::map_image_copy_texture(destination.expect("invalid destination")),
-        slice,
+        make_slice(data, data_size),
         &conv::map_texture_data_layout(data_layout.expect("invalid data layout")),
         &conv::map_extent3d(write_size.expect("invalid write size"))
     )) {
@@ -2518,6 +2953,30 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueReference(queue: native::WGPUQueue) {
+    assert!(!queue.is_null(), "invalid queue");
+    Arc::increment_strong_count(queue);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueRelease(queue: native::WGPUQueue) {
+    assert!(!queue.is_null(), "invalid queue");
+    Arc::decrement_strong_count(queue);
+}
+
+// RenderBundle methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleReference(render_bundle: native::WGPURenderBundle) {
+    assert!(!render_bundle.is_null(), "invalid render bundle");
+    Arc::increment_strong_count(render_bundle);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleRelease(render_bundle: native::WGPURenderBundle) {
+    assert!(!render_bundle.is_null(), "invalid render bundle");
+    Arc::decrement_strong_count(render_bundle);
+}
+
 // RenderBundleEncoder methods
 
 #[no_mangle]
@@ -2528,10 +2987,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDraw(
     first_vertex: u32,
     first_instance: u32,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle: &WGPURenderBundleEncoderImpl = bundle.as_ref().expect("invalid render bundle");
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
     bundle_ffi::wgpu_render_bundle_draw(
-        bundle,
+        &mut encoder,
         vertex_count,
         instance_count,
         first_vertex,
@@ -2548,10 +3008,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexed(
     base_vertex: i32,
     first_instance: u32,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
     bundle_ffi::wgpu_render_bundle_draw_indexed(
-        bundle,
+        &mut encoder,
         index_count,
         instance_count,
         first_index,
@@ -2566,14 +3027,15 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexedIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
     let indirect_buffer_id = indirect_buffer
         .as_ref()
         .expect("invalid indirect buffer")
         .id;
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
     bundle_ffi::wgpu_render_bundle_draw_indexed_indirect(
-        bundle,
+        &mut encoder,
         indirect_buffer_id,
         indirect_offset,
     );
@@ -2585,13 +3047,14 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
     indirect_buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
     let indirect_buffer_id = indirect_buffer
         .as_ref()
         .expect("invalid indirect buffer")
         .id;
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
-    bundle_ffi::wgpu_render_bundle_draw_indirect(bundle, indirect_buffer_id, indirect_offset);
+    bundle_ffi::wgpu_render_bundle_draw_indirect(&mut encoder, indirect_buffer_id, indirect_offset);
 }
 
 #[no_mangle]
@@ -2601,25 +3064,25 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
 ) -> native::WGPURenderBundle {
     assert!(!bundle.is_null(), "invalid render bundle");
 
-    // NOTE: Automatically drops the bundle encoder
-    let bundle = Box::from_raw(bundle);
+    let bundle = bundle.as_ref().unwrap();
     let context = &bundle.context;
-    let bundle_encoder = bundle.encoder;
-    let device_id = bundle_encoder.parent();
+    let encoder = Box::from_raw(bundle.encoder);
 
     let desc = match descriptor {
         Some(descriptor) => wgt::RenderBundleDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
         },
         None => wgt::RenderBundleDescriptor::default(),
     };
 
+    let encoder = encoder.into_inner();
     let (render_bundle_id, error) =
-        gfx_select!(device_id => context.render_bundle_encoder_finish(bundle_encoder, &desc, ()));
+        gfx_select!(encoder.parent() => context.render_bundle_encoder_finish(encoder, &desc, ()));
     if let Some(cause) = error {
         handle_error_fatal(context, cause, "wgpuRenderBundleEncoderFinish");
     }
-    Box::into_raw(Box::new(WGPURenderBundleImpl {
+
+    Arc::into_raw(Arc::new(WGPURenderBundleImpl {
         context: context.clone(),
         id: render_bundle_id,
     }))
@@ -2630,16 +3093,20 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderInsertDebugMarker(
     bundle: native::WGPURenderBundleEncoder,
     marker_label: *const std::ffi::c_char,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
-    bundle_ffi::wgpu_render_bundle_insert_debug_marker(bundle, marker_label);
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
+
+    bundle_ffi::wgpu_render_bundle_insert_debug_marker(&mut encoder, marker_label);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleEncoderPopDebugGroup(
     bundle: native::WGPURenderBundleEncoder,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
-    bundle_ffi::wgpu_render_bundle_pop_debug_group(bundle);
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
+
+    bundle_ffi::wgpu_render_bundle_pop_debug_group(&mut encoder);
 }
 
 #[no_mangle]
@@ -2647,8 +3114,10 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderPushDebugGroup(
     bundle: native::WGPURenderBundleEncoder,
     group_label: *const std::ffi::c_char,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
-    bundle_ffi::wgpu_render_bundle_push_debug_group(bundle, group_label);
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
+
+    bundle_ffi::wgpu_render_bundle_push_debug_group(&mut encoder, group_label);
 }
 
 #[no_mangle]
@@ -2656,17 +3125,20 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     bundle: native::WGPURenderBundleEncoder,
     group_index: u32,
     group: native::WGPUBindGroup,
-    dynamic_offset_count: u32,
+    dynamic_offset_count: usize,
     dynamic_offsets: *const u32,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    // TODO: as per webgpu.h bindgroup is nullable
     let bind_group_id = group.as_ref().expect("invalid bind group").id;
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
+
     bundle_ffi::wgpu_render_bundle_set_bind_group(
-        bundle,
+        &mut encoder,
         group_index,
         bind_group_id,
         dynamic_offsets,
-        dynamic_offset_count as usize,
+        dynamic_offset_count,
     );
 }
 
@@ -2678,11 +3150,12 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
     bundle_ffi::wgpu_render_bundle_set_index_buffer(
-        bundle,
+        &mut encoder,
         buffer_id,
         conv::map_index_format(format).expect("invalid index format"),
         offset,
@@ -2699,10 +3172,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPipeline(
     bundle: native::WGPURenderBundleEncoder,
     pipeline: native::WGPURenderPipeline,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
     let pipeline_id = pipeline.as_ref().expect("invalid render pipeline").id;
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
-    bundle_ffi::wgpu_render_bundle_set_pipeline(bundle, pipeline_id);
+    bundle_ffi::wgpu_render_bundle_set_pipeline(&mut encoder, pipeline_id);
 }
 
 #[no_mangle]
@@ -2713,11 +3187,13 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let bundle = &mut bundle.as_mut().expect("invalid render bundle").encoder;
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    // TODO: as per webgpu.h buffer is nullable
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = bundle.encoder.as_ref().unwrap().write();
 
     bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
-        bundle,
+        &mut encoder,
         slot,
         buffer_id,
         offset,
@@ -2729,6 +3205,27 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     );
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderReference(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+) {
+    assert!(
+        !render_bundle_encoder.is_null(),
+        "invalid render bundle encoder"
+    );
+    Arc::increment_strong_count(render_bundle_encoder);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderRelease(
+    render_bundle_encoder: native::WGPURenderBundleEncoder,
+) {
+    assert!(
+        !render_bundle_encoder.is_null(),
+        "invalid render bundle encoder"
+    );
+    Arc::decrement_strong_count(render_bundle_encoder);
+}
+
 // RenderPassEncoder methods
 
 #[no_mangle]
@@ -2737,10 +3234,15 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
     query_set: native::WGPUQuerySet,
     query_index: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_begin_pipeline_statistics_query(pass, query_set_id, query_index);
+    render_ffi::wgpu_render_pass_begin_pipeline_statistics_query(
+        &mut encoder,
+        query_set_id,
+        query_index,
+    );
 }
 
 #[no_mangle]
@@ -2751,9 +3253,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     first_vertex: u32,
     first_instance: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
+
     render_ffi::wgpu_render_pass_draw(
-        pass,
+        &mut encoder,
         vertex_count,
         instance_count,
         first_vertex,
@@ -2770,9 +3274,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
     base_vertex: u32,
     first_instance: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
+
     render_ffi::wgpu_render_pass_draw_indexed(
-        pass,
+        &mut encoder,
         index_count,
         instance_count,
         first_index,
@@ -2787,10 +3293,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
     buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_draw_indexed_indirect(pass, buffer_id, indirect_offset);
+    render_ffi::wgpu_render_pass_draw_indexed_indirect(&mut encoder, buffer_id, indirect_offset);
 }
 
 #[no_mangle]
@@ -2799,23 +3306,20 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
     buffer: native::WGPUBuffer,
     indirect_offset: u64,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_draw_indirect(pass, buffer_id, indirect_offset);
+    render_ffi::wgpu_render_pass_draw_indirect(&mut encoder, buffer_id, indirect_offset);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEncoder) {
-    assert!(!pass.is_null(), "invalid render pass");
+    let pass = pass.as_ref().expect("invalid render pass");
+    let (encoder, context, error_sink) = (pass.encoder.read(), &pass.context, &pass.error_sink);
+    let command_encoder_id = encoder.parent_id();
 
-    // NOTE: Automatically drops the render pass
-    let pass = Box::from_raw(pass);
-    let context = &pass.context;
-    let error_sink = &pass.error_sink;
-    let command_encoder_id = pass.encoder.parent_id();
-
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_run_render_pass(command_encoder_id, &pass.encoder))
+    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_run_render_pass(command_encoder_id, &encoder))
     {
         let name =
             gfx_select!(command_encoder_id => context.command_buffer_label(command_encoder_id));
@@ -2834,24 +3338,30 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEn
 pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
     pass: native::WGPURenderPassEncoder,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
-    render_ffi::wgpu_render_pass_end_pipeline_statistics_query(pass);
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
+
+    render_ffi::wgpu_render_pass_end_pipeline_statistics_query(&mut encoder);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
     pass: native::WGPURenderPassEncoder,
-    bundle_count: u32,
+    bundle_count: usize,
     bundles: *const native::WGPURenderBundle,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
-
-    let bundle_ids = make_slice(bundles, bundle_count as usize)
+    let pass = pass.as_ref().expect("invalid render pass");
+    let bundle_ids = make_slice(bundles, bundle_count)
         .iter()
         .map(|v| v.as_ref().expect("invalid render bundle").id)
-        .collect::<Vec<_>>();
+        .collect::<SmallVec<[_; 4]>>();
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_execute_bundles(pass, bundle_ids.as_ptr(), bundle_ids.len());
+    render_ffi::wgpu_render_pass_execute_bundles(
+        &mut encoder,
+        bundle_ids.as_ptr(),
+        bundle_ids.len(),
+    );
 }
 
 #[no_mangle]
@@ -2859,16 +3369,18 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarker(
     pass: native::WGPURenderPassEncoder,
     marker_label: *const std::ffi::c_char,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_insert_debug_marker(pass, marker_label, 0);
+    render_ffi::wgpu_render_pass_insert_debug_marker(&mut encoder, marker_label, 0);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderPopDebugGroup(pass: native::WGPURenderPassEncoder) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_pop_debug_group(pass);
+    render_ffi::wgpu_render_pass_pop_debug_group(&mut encoder);
 }
 
 #[no_mangle]
@@ -2876,9 +3388,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
     pass: native::WGPURenderPassEncoder,
     group_label: *const std::ffi::c_char,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_push_debug_group(pass, group_label, 0);
+    render_ffi::wgpu_render_pass_push_debug_group(&mut encoder, group_label, 0);
 }
 
 #[no_mangle]
@@ -2886,18 +3399,20 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     pass: native::WGPURenderPassEncoder,
     group_index: u32,
     bind_group: native::WGPUBindGroup,
-    dynamic_offset_count: u32,
+    dynamic_offset_count: usize,
     dynamic_offsets: *const u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    // TODO: as per webgpu.h bindgroup is nullable
     let bind_group_id = bind_group.as_ref().expect("invalid bind group").id;
+    let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_set_bind_group(
-        pass,
+        &mut encoder,
         group_index,
         bind_group_id,
         dynamic_offsets,
-        dynamic_offset_count as usize,
+        dynamic_offset_count,
     );
 }
 
@@ -2906,10 +3421,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
     pass: native::WGPURenderPassEncoder,
     color: Option<&native::WGPUColor>,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_set_blend_constant(
-        pass,
+        &mut encoder,
         &conv::map_color(color.expect("invalid color")),
     );
 }
@@ -2922,10 +3438,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = pass.encoder.write();
 
-    pass.set_index_buffer(
+    encoder.set_index_buffer(
         buffer_id,
         conv::map_index_format(index_format).expect("Index format cannot be undefined"),
         offset,
@@ -2942,13 +3459,14 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
     pass: native::WGPURenderPassEncoder,
     render_pipeline: native::WGPURenderPipeline,
 ) {
-    let render_pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let render_pipeline_id = render_pipeline
         .as_ref()
         .expect("invalid render pipeline")
         .id;
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_set_pipeline(render_pass, render_pipeline_id);
+    render_ffi::wgpu_render_pass_set_pipeline(&mut encoder, render_pipeline_id);
 }
 
 #[no_mangle]
@@ -2959,9 +3477,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
     w: u32,
     h: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_set_scissor_rect(pass, x, y, w, h);
+    render_ffi::wgpu_render_pass_set_scissor_rect(&mut encoder, x, y, w, h);
 }
 
 #[no_mangle]
@@ -2969,9 +3488,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
     pass: native::WGPURenderPassEncoder,
     reference: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_set_stencil_reference(pass, reference);
+    render_ffi::wgpu_render_pass_set_stencil_reference(&mut encoder, reference);
 }
 
 #[no_mangle]
@@ -2982,11 +3502,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     offset: u64,
     size: u64,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    // TODO: as per webgpu.h buffer is nullable
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_set_vertex_buffer(
-        pass,
+        &mut encoder,
         slot,
         buffer_id,
         offset,
@@ -3008,9 +3530,31 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetViewport(
     depth_min: f32,
     depth_max: f32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_set_viewport(pass, x, y, w, h, depth_min, depth_max);
+    render_ffi::wgpu_render_pass_set_viewport(&mut encoder, x, y, w, h, depth_min, depth_max);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderReference(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+) {
+    assert!(
+        !render_pass_encoder.is_null(),
+        "invalid render pass encoder"
+    );
+    Arc::increment_strong_count(render_pass_encoder);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderRelease(
+    render_pass_encoder: native::WGPURenderPassEncoder,
+) {
+    assert!(
+        !render_pass_encoder.is_null(),
+        "invalid render pass encoder"
+    );
+    Arc::decrement_strong_count(render_pass_encoder);
 }
 
 // RenderPipeline methods
@@ -3032,13 +3576,237 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
             f = format_error(context, &cause)
         );
     }
-    Box::into_raw(Box::new(WGPUBindGroupLayoutImpl {
+
+    Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
         context: context.clone(),
         id: bind_group_layout_id,
     }))
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPipelineReference(render_pipeline: native::WGPURenderPipeline) {
+    assert!(!render_pipeline.is_null(), "invalid render pipeline");
+    Arc::increment_strong_count(render_pipeline);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPipelineRelease(render_pipeline: native::WGPURenderPipeline) {
+    assert!(!render_pipeline.is_null(), "invalid render pipeline");
+    Arc::decrement_strong_count(render_pipeline);
+}
+
+// Sampler methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSamplerReference(sampler: native::WGPUSampler) {
+    assert!(!sampler.is_null(), "invalid sampler");
+    Arc::increment_strong_count(sampler);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSamplerRelease(sampler: native::WGPUSampler) {
+    assert!(!sampler.is_null(), "invalid sampler");
+    Arc::decrement_strong_count(sampler);
+}
+
+// ShaderModule methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuShaderModuleReference(shader_module: native::WGPUShaderModule) {
+    assert!(!shader_module.is_null(), "invalid shader module");
+    Arc::increment_strong_count(shader_module);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuShaderModuleRelease(shader_module: native::WGPUShaderModule) {
+    assert!(!shader_module.is_null(), "invalid shader module");
+    Arc::decrement_strong_count(shader_module);
+}
+
 // Surface methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceConfigure(
+    surface: native::WGPUSurface,
+    config: Option<&native::WGPUSurfaceConfiguration>,
+) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let config = config.expect("invalid config");
+    let device = config
+        .device
+        .as_ref()
+        .expect("invalid device for surface configuration");
+    let context = &device.context;
+
+    let surface_config = wgt::SurfaceConfiguration {
+        usage: conv::map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
+        format: conv::map_texture_format(config.format)
+            .expect("invalid format for surface configuration"),
+        width: config.width,
+        height: config.height,
+        present_mode: conv::map_present_mode(config.presentMode),
+        alpha_mode: conv::map_composite_alpha_mode(config.alphaMode)
+            .expect("invalid alpha mode for surface configuration"),
+        view_formats: make_slice(config.viewFormats, config.viewFormatCount)
+            .iter()
+            .map(|f| {
+                conv::map_texture_format(*f).expect("invalid view format for surface configuration")
+            })
+            .collect(),
+    };
+
+    match wgc::gfx_select!(device.id => context.surface_configure(surface.id, device.id, &surface_config))
+    {
+        Some(cause) => handle_error_fatal(context, cause, "wgpuSurfaceConfigure"),
+        None => {
+            let mut surface_data_guard = surface.data.lock();
+            *surface_data_guard = Some(SurfaceData {
+                device_id: device.id,
+                error_sink: device.error_sink.clone(),
+                texture_data: TextureData {
+                    usage: config.usage,
+                    dimension: native::WGPUTextureDimension_2D,
+                    format: config.format,
+                    mip_level_count: 1,
+                    size: native::WGPUExtent3D {
+                        width: config.width,
+                        height: config.height,
+                        depthOrArrayLayers: 1,
+                    },
+                    sample_count: 1,
+                },
+            });
+            surface
+                .has_surface_presented
+                .store(false, atomic::Ordering::SeqCst);
+        }
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
+    capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
+) {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, &adapter.context)
+    };
+    let surface_id = surface.as_ref().expect("invalid surface").id;
+    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
+
+    let caps = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
+    {
+        Ok(caps) => caps,
+        Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
+            wgt::SurfaceCapabilities::default()
+        }
+        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCapabilities"),
+    };
+
+    let formats = caps
+        .formats
+        .iter()
+        // some texture formats are not in webgpu.h and
+        // conv::to_native_texture_format returns None for them.
+        // so, filter them out.
+        .filter_map(|f| conv::to_native_texture_format(*f))
+        .collect::<Vec<_>>();
+
+    if !formats.is_empty() {
+        let mut array = formats.into_boxed_slice();
+        capabilities.formats = array.as_mut_ptr();
+        capabilities.formatCount = array.len();
+        mem::forget(array);
+    } else {
+        capabilities.formats = std::ptr::null_mut();
+        capabilities.formatCount = 0;
+    }
+
+    let present_modes = caps
+        .present_modes
+        .iter()
+        .filter_map(|f| conv::to_native_present_mode(*f))
+        .collect::<Vec<_>>();
+
+    if !present_modes.is_empty() {
+        let mut array = present_modes.into_boxed_slice();
+        capabilities.presentModes = array.as_mut_ptr();
+        capabilities.presentModeCount = array.len();
+        mem::forget(array);
+    } else {
+        capabilities.presentModes = std::ptr::null_mut();
+        capabilities.presentModeCount = 0;
+    }
+
+    let alpha_modes = caps
+        .alpha_modes
+        .iter()
+        .map(|f| conv::to_native_composite_alpha_mode(*f))
+        .collect::<Vec<_>>();
+
+    if !alpha_modes.is_empty() {
+        let mut array = alpha_modes.into_boxed_slice();
+        capabilities.alphaModes = array.as_mut_ptr();
+        capabilities.alphaModeCount = array.len();
+        mem::forget(array);
+    } else {
+        capabilities.alphaModes = std::ptr::null_mut();
+        capabilities.alphaModeCount = 0;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
+    surface: native::WGPUSurface,
+    surface_texture: Option<&mut native::WGPUSurfaceTexture>,
+) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let context = &surface.context;
+    let surface_texture = surface_texture.expect("invalid return pointer \"surface_texture\"");
+
+    let surface_data_guard = surface.data.lock();
+    let surface_data = match surface_data_guard.as_ref() {
+        Some(surface_data) => surface_data,
+        None => handle_error_fatal(
+            context,
+            wgc::present::SurfaceError::NotConfigured,
+            "wgpuSurfaceGetCurrentTexture",
+        ),
+    };
+
+    match wgc::gfx_select!(surface_data.device_id => context.surface_get_current_texture(surface.id, ()))
+    {
+        Ok(wgc::present::SurfaceOutput { status, texture_id }) => {
+            surface
+                .has_surface_presented
+                .store(false, atomic::Ordering::SeqCst);
+            surface_texture.status = match status {
+                wgt::SurfaceStatus::Good => native::WGPUSurfaceGetCurrentTextureStatus_Success,
+                wgt::SurfaceStatus::Suboptimal => {
+                    native::WGPUSurfaceGetCurrentTextureStatus_Success
+                }
+                wgt::SurfaceStatus::Timeout => native::WGPUSurfaceGetCurrentTextureStatus_Timeout,
+                wgt::SurfaceStatus::Outdated => native::WGPUSurfaceGetCurrentTextureStatus_Outdated,
+                wgt::SurfaceStatus::Lost => native::WGPUSurfaceGetCurrentTextureStatus_Lost,
+            };
+            surface_texture.suboptimal = match status {
+                wgt::SurfaceStatus::Suboptimal => true as native::WGPUBool,
+                _ => false as native::WGPUBool,
+            };
+            surface_texture.texture = match texture_id {
+                Some(texture_id) => Arc::into_raw(Arc::new(WGPUTextureImpl {
+                    context: context.clone(),
+                    id: texture_id,
+                    error_sink: surface_data.error_sink.clone(),
+                    data: surface_data.texture_data,
+                    surface_id: Some(surface.id),
+                    has_surface_presented: surface.has_surface_presented.clone(),
+                })),
+                None => std::ptr::null_mut(),
+            };
+        }
+        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCurrentTexture"),
+    };
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
@@ -3073,92 +3841,75 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     }
 }
 
-#[derive(Debug, Error)]
-pub enum SurfaceError {
-    #[error("Surface timed out")]
-    Timeout,
-    #[error("Surface is outdated")]
-    Outdated,
-    #[error("Surface was lost")]
-    Lost,
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let context = &surface.context;
+    let surface_data_guard = surface.data.lock();
+    let surface_data = match surface_data_guard.as_ref() {
+        Some(surface_data) => surface_data,
+        None => handle_error_fatal(
+            context,
+            wgc::present::SurfaceError::NotConfigured,
+            "wgpuSurfacePresent",
+        ),
+    };
+
+    match wgc::gfx_select!(surface_data.device_id => context.surface_present(surface.id)) {
+        Ok(_status) => surface
+            .has_surface_presented
+            .store(true, atomic::Ordering::SeqCst),
+        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfacePresent"),
+    };
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
-    swap_chain: native::WGPUSwapChain,
-) -> native::WGPUTextureView {
-    let (surface_id, device_id, context, error_sink) = {
-        let swap_chain = swap_chain.as_ref().expect("invalid swap chain");
-        (
-            swap_chain.surface_id,
-            swap_chain.device_id,
-            &swap_chain.context,
-            &swap_chain.error_sink,
-        )
-    };
+pub unsafe extern "C" fn wgpuSurfaceUnconfigure(surface: native::WGPUSurface) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let mut surface_data_guard = surface.data.lock();
+    let _ = surface_data_guard.take(); // drop SurfaceData
+    surface
+        .has_surface_presented
+        .store(false, atomic::Ordering::SeqCst);
+}
 
-    match gfx_select!(device_id => context.surface_get_current_texture(surface_id, ())) {
-        Ok(result) => match result.status {
-            wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
-                let texture_id = result.texture_id.unwrap();
-                let (texture_view_id, error) = gfx_select!(texture_id => context.texture_create_view(
-                    texture_id,
-                    &wgc::resource::TextureViewDescriptor::default(),
-                    ()
-                ));
-                gfx_select!(texture_id => context.texture_drop(texture_id, false));
-                if let Some(cause) = error {
-                    handle_error(
-                        context,
-                        error_sink,
-                        cause,
-                        "",
-                        None,
-                        "wgpuSwapChainGetCurrentTextureView",
-                    );
-                }
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceReference(surface: native::WGPUSurface) {
+    assert!(!surface.is_null(), "invalid surface");
+    Arc::increment_strong_count(surface);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceRelease(surface: native::WGPUSurface) {
+    assert!(!surface.is_null(), "invalid surface");
+    Arc::decrement_strong_count(surface);
+}
 
-                Box::into_raw(Box::new(WGPUTextureViewImpl {
-                    context: context.clone(),
-                    id: texture_view_id,
-                }))
-            }
-            _ => {
-                handle_error(
-                    context,
-                    error_sink,
-                    match result.status {
-                        wgt::SurfaceStatus::Timeout => &SurfaceError::Timeout,
-                        wgt::SurfaceStatus::Outdated => &SurfaceError::Outdated,
-                        wgt::SurfaceStatus::Lost => &SurfaceError::Lost,
-                        _ => unreachable!(),
-                    },
-                    "",
-                    None,
-                    "wgpuSwapChainGetCurrentTextureView",
-                );
-                std::ptr::null_mut()
-            }
-        },
-        Err(cause) => {
-            handle_error_fatal(context, cause, "wgpuSwapChainGetCurrentTextureView");
-        }
+// SurfaceCapabilities methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(
+    capabilities: native::WGPUSurfaceCapabilities,
+) {
+    if !capabilities.formats.is_null() && capabilities.formatCount > 0 {
+        drop(Vec::from_raw_parts(
+            capabilities.formats,
+            capabilities.formatCount,
+            capabilities.formatCount,
+        ));
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
-    let (surface_id, device_id, context) = {
-        let swap_chain = swap_chain.as_ref().expect("invalid swap chain");
-        (
-            swap_chain.surface_id,
-            swap_chain.device_id,
-            &swap_chain.context,
-        )
-    };
-
-    if let Err(cause) = gfx_select!(device_id => context.surface_present(surface_id)) {
-        handle_error_fatal(context, cause, "wgpuSwapChainPresent");
+    if !capabilities.presentModes.is_null() && capabilities.presentModeCount > 0 {
+        drop(Vec::from_raw_parts(
+            capabilities.presentModes,
+            capabilities.presentModeCount,
+            capabilities.presentModeCount,
+        ));
+    }
+    if !capabilities.alphaModes.is_null() && capabilities.alphaModeCount > 0 {
+        drop(Vec::from_raw_parts(
+            capabilities.alphaModes,
+            capabilities.alphaModeCount,
+            capabilities.alphaModeCount,
+        ));
     }
 }
 
@@ -3176,7 +3927,7 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::resource::TextureViewDescriptor {
-            label: OwnedLabel::new(descriptor.label).into_cow(),
+            label: ptr_into_label(descriptor.label),
             format: conv::map_texture_format(descriptor.format),
             dimension: conv::map_texture_view_dimension(descriptor.dimension),
             range: wgt::ImageSubresourceRange {
@@ -3210,7 +3961,8 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
             "wgpuTextureCreateView",
         );
     }
-    Box::into_raw(Box::new(WGPUTextureViewImpl {
+
+    Arc::into_raw(Arc::new(WGPUTextureViewImpl {
         context: context.clone(),
         id: texture_view_id,
     }))
@@ -3229,56 +3981,80 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetDepthOrArrayLayers(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.size.depthOrArrayLayers
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.size.depthOrArrayLayers
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetDimension(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureDimension {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.dimension
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.dimension
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetFormat(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureFormat {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.format
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.format
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetHeight(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.size.height
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.size.height
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetMipLevelCount(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.mipLevelCount
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.mip_level_count
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetSampleCount(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.sampleCount
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.sample_count
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetUsage(
     texture: native::WGPUTexture,
-) -> native::WGPUTextureUsage {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.usage as _
+) -> native::WGPUTextureUsageFlags {
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.usage
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetWidth(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.size.width
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.size.width
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureReference(texture: native::WGPUTexture) {
+    assert!(!texture.is_null(), "invalid texture");
+    Arc::increment_strong_count(texture);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureRelease(texture: native::WGPUTexture) {
+    assert!(!texture.is_null(), "invalid texture");
+    Arc::decrement_strong_count(texture);
+}
+
+// TextureView methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureViewReference(texture_view: native::WGPUTextureView) {
+    assert!(!texture_view.is_null(), "invalid texture");
+    Arc::increment_strong_count(texture_view);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureViewRelease(texture_view: native::WGPUTextureView) {
+    assert!(!texture_view.is_null(), "invalid texture");
+    Arc::decrement_strong_count(texture_view);
 }
 
 // wgpu.h functions
@@ -3296,7 +4072,7 @@ pub unsafe extern "C" fn wgpuGenerateReport(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
     queue: native::WGPUQueue,
-    command_count: u32,
+    command_count: usize,
     commands: *const native::WGPUCommandBuffer,
 ) -> native::WGPUSubmissionIndex {
     let (queue_id, context) = {
@@ -3304,16 +4080,14 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
         (queue.id, &queue.context)
     };
 
-    let command_buffers = make_slice(commands, command_count as usize)
+    let command_buffers = make_slice(commands, command_count)
         .iter()
         .map(|command_buffer| {
-            let command_buffer = *command_buffer;
-            assert!(!command_buffer.is_null(), "invalid command buffer");
-
-            // NOTE: Automaticaly drop the command buffer
-            Box::from_raw(command_buffer).id
+            let command_buffer = command_buffer.as_ref().expect("invalid command buffer");
+            command_buffer.open.store(false, atomic::Ordering::SeqCst);
+            command_buffer.id
         })
-        .collect::<Vec<_>>();
+        .collect::<SmallVec<[_; 4]>>();
 
     match gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
         Ok(submission_index) => submission_index.index,
@@ -3358,76 +4132,6 @@ pub unsafe extern "C" fn wgpuDevicePoll(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
-    surface: native::WGPUSurface,
-    adapter: native::WGPUAdapter,
-    capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
-) {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
-    };
-    let surface_id = surface.as_ref().expect("invalid surface").id;
-    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
-
-    let caps = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
-    {
-        Ok(caps) => caps,
-        Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
-            wgt::SurfaceCapabilities::default()
-        }
-        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCapabilities"),
-    };
-
-    let formats = caps
-        .formats
-        .iter()
-        // some texture formats are not in webgpu.h and
-        // conv::to_native_texture_format returns None for them.
-        // so, filter them out.
-        .filter_map(|f| conv::to_native_texture_format(*f))
-        .collect::<Vec<_>>();
-
-    capabilities.formatCount = formats.len();
-
-    if !capabilities.formats.is_null() {
-        std::ptr::copy_nonoverlapping(formats.as_ptr(), capabilities.formats, formats.len());
-    }
-
-    let present_modes = caps
-        .present_modes
-        .iter()
-        .filter_map(|f| conv::to_native_present_mode(*f))
-        .collect::<Vec<_>>();
-
-    capabilities.presentModeCount = present_modes.len();
-
-    if !capabilities.presentModes.is_null() {
-        std::ptr::copy_nonoverlapping(
-            present_modes.as_ptr(),
-            capabilities.presentModes,
-            present_modes.len(),
-        );
-    }
-
-    let alpha_modes = caps
-        .alpha_modes
-        .iter()
-        .map(|f| conv::to_native_composite_alpha_mode(*f))
-        .collect::<Vec<_>>();
-
-    capabilities.alphaModeCount = alpha_modes.len();
-
-    if !capabilities.alphaModes.is_null() {
-        std::ptr::copy_nonoverlapping(
-            alpha_modes.as_ptr(),
-            capabilities.alphaModes,
-            alpha_modes.len(),
-        );
-    }
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     pass: native::WGPURenderPassEncoder,
     stages: native::WGPUShaderStageFlags,
@@ -3435,10 +4139,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     size_bytes: u32,
     size: *const u8,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_set_push_constants(
-        pass,
+        &mut encoder,
         wgt::ShaderStages::from_bits(stages).expect("invalid shader stage"),
         offset,
         size_bytes,
@@ -3453,10 +4158,11 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
     offset: u64,
     count: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_multi_draw_indirect(pass, buffer_id, offset, count);
+    render_ffi::wgpu_render_pass_multi_draw_indirect(&mut encoder, buffer_id, offset, count);
 }
 
 #[no_mangle]
@@ -3466,10 +4172,16 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirect(
     offset: u64,
     count: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let mut encoder = pass.encoder.write();
 
-    render_ffi::wgpu_render_pass_multi_draw_indexed_indirect(pass, buffer_id, offset, count);
+    render_ffi::wgpu_render_pass_multi_draw_indexed_indirect(
+        &mut encoder,
+        buffer_id,
+        offset,
+        count,
+    );
 }
 
 #[no_mangle]
@@ -3481,12 +4193,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     count_buffer_offset: u64,
     max_count: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
+    let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_multi_draw_indirect_count(
-        pass,
+        &mut encoder,
         buffer_id,
         offset,
         count_buffer_id,
@@ -3504,220 +4217,17 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
     count_buffer_offset: u64,
     max_count: u32,
 ) {
-    let pass = &mut pass.as_mut().expect("invalid render pass").encoder;
+    let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
+    let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_multi_draw_indexed_indirect_count(
-        pass,
+        &mut encoder,
         buffer_id,
         offset,
         count_buffer_id,
         count_buffer_offset,
         max_count,
     );
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuAdapterDrop(adapter: native::WGPUAdapter) {
-    assert!(!adapter.is_null(), "invalid adapter");
-    let adapter = Box::from_raw(adapter);
-    let context = &adapter.context;
-
-    gfx_select!(adapter.id => context.adapter_drop(adapter.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuBindGroupDrop(bind_group: native::WGPUBindGroup) {
-    assert!(!bind_group.is_null(), "invalid bind group");
-    let bind_group = Box::from_raw(bind_group);
-    let context = &bind_group.context;
-
-    gfx_select!(bind_group.id => context.bind_group_drop(bind_group.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuBindGroupLayoutDrop(bind_group_layout: native::WGPUBindGroupLayout) {
-    assert!(!bind_group_layout.is_null(), "invalid bind group layout");
-    let bind_group_layout = Box::from_raw(bind_group_layout);
-    let context = &bind_group_layout.context;
-
-    gfx_select!(bind_group_layout.id => context.bind_group_layout_drop(bind_group_layout.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuBufferDrop(buffer: native::WGPUBuffer) {
-    assert!(!buffer.is_null(), "invalid buffer");
-    let buffer = Box::from_raw(buffer);
-    let context = &buffer.context;
-
-    gfx_select!(buffer.id => context.buffer_drop(buffer.id, false));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuCommandBufferDrop(command_buffer: native::WGPUCommandBuffer) {
-    assert!(!command_buffer.is_null(), "invalid command buffer");
-    let command_buffer = Box::from_raw(command_buffer);
-    let context = &command_buffer.context;
-
-    gfx_select!(command_buffer.id => context.command_buffer_drop(command_buffer.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuCommandEncoderDrop(command_encoder: native::WGPUCommandEncoder) {
-    assert!(!command_encoder.is_null(), "invalid command encoder");
-    let command_encoder = Box::from_raw(command_encoder);
-    let context = &command_encoder.context;
-
-    gfx_select!(command_encoder.id => context.command_encoder_drop(command_encoder.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderDrop(
-    compute_pass_encoder: native::WGPUComputePassEncoder,
-) {
-    assert!(
-        !compute_pass_encoder.is_null(),
-        "invalid compute pass encoder"
-    );
-    drop(Box::from_raw(compute_pass_encoder));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuComputePipelineDrop(compute_pipeline: native::WGPUComputePipeline) {
-    assert!(!compute_pipeline.is_null(), "invalid compute pipeline");
-    let compute_pipeline = Box::from_raw(compute_pipeline);
-    let context = &compute_pipeline.context;
-
-    gfx_select!(compute_pipeline.id => context.compute_pipeline_drop(compute_pipeline.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceDrop(device: native::WGPUDevice) {
-    assert!(!device.is_null(), "invalid device");
-    let device = Box::from_raw(device);
-    let context = &device.context;
-
-    gfx_select!(device.id => context.device_drop(device.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuInstanceDrop(instance: native::WGPUInstance) {
-    assert!(!instance.is_null(), "invalid instance");
-    drop(Box::from_raw(instance));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuPipelineLayoutDrop(pipeline_layout: native::WGPUPipelineLayout) {
-    assert!(!pipeline_layout.is_null(), "invalid pipeline layout");
-    let pipeline_layout = Box::from_raw(pipeline_layout);
-    let context = &pipeline_layout.context;
-
-    gfx_select!(pipeline_layout.id => context.pipeline_layout_drop(pipeline_layout.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuQuerySetDrop(query_set: native::WGPUQuerySet) {
-    assert!(!query_set.is_null(), "invalid query set");
-    let query_set = Box::from_raw(query_set);
-    let context = &query_set.context;
-
-    gfx_select!(query_set.id => context.query_set_drop(query_set.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuQueueDrop(queue: native::WGPUQueue) {
-    assert!(!queue.is_null(), "invalid queue");
-    drop(Box::from_raw(queue));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuRenderBundleDrop(render_bundle: native::WGPURenderBundle) {
-    assert!(!render_bundle.is_null(), "invalid render bundle");
-    let render_bundle = Box::from_raw(render_bundle);
-    let context = &render_bundle.context;
-
-    gfx_select!(render_bundle.id => context.render_bundle_drop(render_bundle.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuRenderBundleEncoderDrop(
-    render_bundle_encoder: native::WGPURenderBundleEncoder,
-) {
-    assert!(
-        !render_bundle_encoder.is_null(),
-        "invalid render bundle encoder"
-    );
-    drop(Box::from_raw(render_bundle_encoder));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderDrop(
-    render_pass_encoder: native::WGPURenderPassEncoder,
-) {
-    assert!(
-        !render_pass_encoder.is_null(),
-        "invalid render pass encoder"
-    );
-    drop(Box::from_raw(render_pass_encoder));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPipelineDrop(render_pipeline: native::WGPURenderPipeline) {
-    assert!(!render_pipeline.is_null(), "invalid render pipeline");
-    let render_pipeline = Box::from_raw(render_pipeline);
-    let context = &render_pipeline.context;
-
-    gfx_select!(render_pipeline.id => context.render_pipeline_drop(render_pipeline.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSamplerDrop(sampler: native::WGPUSampler) {
-    assert!(!sampler.is_null(), "invalid sampler");
-    let sampler = Box::from_raw(sampler);
-    let context = &sampler.context;
-
-    gfx_select!(sampler.id => context.sampler_drop(sampler.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuShaderModuleDrop(shader_module: native::WGPUShaderModule) {
-    assert!(!shader_module.is_null(), "invalid shader module");
-    let shader_module = Box::from_raw(shader_module);
-    let context = &shader_module.context;
-
-    gfx_select!(shader_module.id => context.shader_module_drop(shader_module.id));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceDrop(surface: native::WGPUSurface) {
-    assert!(!surface.is_null(), "invalid surface");
-    let surface = Box::from_raw(surface);
-    let context = &surface.context;
-
-    context.surface_drop(surface.id);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainDrop(swap_chain: native::WGPUSwapChain) {
-    assert!(!swap_chain.is_null(), "invalid swap chain");
-    drop(Box::from_raw(swap_chain));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuTextureDrop(texture: native::WGPUTexture) {
-    assert!(!texture.is_null(), "invalid texture");
-    let texture = Box::from_raw(texture);
-    let context = &texture.context;
-
-    gfx_select!(texture.id => context.texture_drop(texture.id, false));
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuTextureViewDrop(texture_view: native::WGPUTextureView) {
-    assert!(!texture_view.is_null(), "invalid texture view");
-    let texture_view = Box::from_raw(texture_view);
-    let context = &texture_view.context;
-
-    let _ = gfx_select!(texture_view.id => context.texture_view_drop(texture_view.id, false));
 }

@@ -111,6 +111,18 @@ example-compute-release: examples-release
 run-example-compute-release: example-compute-release
 	cd examples/compute && "../build/RelWithDebInfo/compute/compute"
 
+example-enumerate_adapters: examples-debug
+	cd examples/build/Debug && cmake --build . --target enumerate_adapters
+
+run-example-enumerate_adapters: example-enumerate_adapters
+	cd examples/enumerate_adapters && "../build/Debug/enumerate_adapters/enumerate_adapters"
+
+example-enumerate_adapters-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target enumerate_adapters
+
+run-example-enumerate_adapters-release: example-enumerate_adapters-release
+	cd examples/triangle && "../build/RelWithDebInfo/enumerate_adapters/enumerate_adapters"
+
 example-triangle: examples-debug
 	cd examples/build/Debug && cmake --build . --target triangle
 
