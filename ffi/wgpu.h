@@ -6,13 +6,11 @@
 typedef enum WGPUNativeSType {
     // Start at 6 to prevent collisions with webgpu STypes
     WGPUSType_DeviceExtras = 0x60000001,
-    WGPUSType_AdapterExtras = 0x60000002,
-    WGPUSType_RequiredLimitsExtras = 0x60000003,
-    WGPUSType_PipelineLayoutExtras = 0x60000004,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000005,
-    WGPUSType_SupportedLimitsExtras = 0x60000003,
+    WGPUSType_RequiredLimitsExtras = 0x60000002,
+    WGPUSType_PipelineLayoutExtras = 0x60000003,
+    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000004,
+    WGPUSType_SupportedLimitsExtras = 0x60000005,
     WGPUSType_InstanceExtras = 0x60000006,
-    WGPUSType_SwapChainDescriptorExtras = 0x60000007,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -57,15 +55,6 @@ typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Dxc = 0x00000002,
     WGPUDx12Compiler_Force32 = 0x7FFFFFFF
 } WGPUDx12Compiler;
-
-typedef enum WGPUCompositeAlphaMode {
-    WGPUCompositeAlphaMode_Auto = 0x00000000,
-    WGPUCompositeAlphaMode_Opaque = 0x00000001,
-    WGPUCompositeAlphaMode_PreMultiplied = 0x00000002,
-    WGPUCompositeAlphaMode_PostMultiplied = 0x00000003,
-    WGPUCompositeAlphaMode_Inherit = 0x00000004,
-    WGPUCompositeAlphaMode_Force32 = 0x7FFFFFFF
-} WGPUCompositeAlphaMode;
 
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
@@ -157,22 +146,6 @@ typedef struct WGPUGlobalReport {
     WGPUHubReport gl;
 } WGPUGlobalReport;
 
-typedef struct WGPUSurfaceCapabilities {
-    size_t formatCount;
-    WGPUTextureFormat * formats;
-    size_t presentModeCount;
-    WGPUPresentMode * presentModes;
-    size_t alphaModeCount;
-    WGPUCompositeAlphaMode * alphaModes;
-} WGPUSurfaceCapabilities;
-
-typedef struct WGPUSwapChainDescriptorExtras {
-    WGPUChainedStruct chain;
-    WGPUCompositeAlphaMode alphaMode;
-    size_t viewFormatCount;
-    WGPUTextureFormat const * viewFormats;
-} WGPUSwapChainDescriptorExtras;
-
 typedef struct WGPUInstanceEnumerateAdapterOptions {
     WGPUChainedStruct const * nextInChain;
     WGPUInstanceBackendFlags backends;
@@ -190,15 +163,13 @@ size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPUInstanceEnumerat
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-bool wgpuDevicePoll(WGPUDevice device, bool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
+WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
 
 void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
-
-void wgpuSurfaceGetCapabilities(WGPUSurface surface, WGPUAdapter adapter, WGPUSurfaceCapabilities * capabilities);
 
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
 

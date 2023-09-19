@@ -1,5 +1,6 @@
 #include "framework.h"
 #include "webgpu-headers/webgpu.h"
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -59,7 +60,7 @@ int main(int argc, char *argv[]) {
   uint32_t numbers_size = sizeof(numbers);
   uint32_t numbers_length = numbers_size / sizeof(uint32_t);
 
-  instance = wgpuCreateInstance(&(const WGPUInstanceDescriptor){0});
+  instance = wgpuCreateInstance(NULL);
   ASSERT_CHECK(instance);
 
   wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,

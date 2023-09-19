@@ -28,11 +28,11 @@ map_enum!(
 );
 #[inline]
 pub fn map_load_op(value: native::WGPULoadOp) -> wgc::command::LoadOp {
-    return _raw_map_load_op(value).unwrap_or(wgc::command::LoadOp::Clear)
+    return _raw_map_load_op(value).unwrap_or(wgc::command::LoadOp::Clear);
 }
 #[inline]
 pub fn map_store_op(value: native::WGPUStoreOp) -> wgc::command::StoreOp {
-    return _raw_map_store_op(value).unwrap_or(wgc::command::StoreOp::Discard)
+    return _raw_map_store_op(value).unwrap_or(wgc::command::StoreOp::Discard);
 }
 map_enum!(
     map_address_mode,
@@ -88,7 +88,8 @@ map_enum!(
     "Unknown present mode",
     Immediate,
     Mailbox,
-    Fifo
+    Fifo,
+    FifoRelaxed
 );
 map_enum!(
     map_primitive_topology,
@@ -201,11 +202,11 @@ map_enum!(
     map_composite_alpha_mode,
     WGPUCompositeAlphaMode,
     wgt::CompositeAlphaMode,
-    Auto,
-    Opaque,
-    PreMultiplied,
-    PostMultiplied,
-    Inherit
+    Auto: Auto,
+    Opaque: Opaque,
+    Premultiplied: PreMultiplied,
+    Unpremultiplied: PostMultiplied,
+    Inherit: Inherit
 );
 
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
@@ -298,7 +299,7 @@ pub fn map_device_descriptor<'a>(
     (
         wgt::DeviceDescriptor {
             label: ptr_into_label(des.label),
-            features: map_features(make_slice(des.requiredFeatures, des.requiredFeaturesCount)),
+            features: map_features(make_slice(des.requiredFeatures, des.requiredFeatureCount)),
             limits,
         },
         match extras {
@@ -355,6 +356,8 @@ pub fn write_limits_struct(
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
     limits.maxTextureArrayLayers = wgt_limits.max_texture_array_layers;
     limits.maxBindGroups = wgt_limits.max_bind_groups;
+    // TODO: not yet in wgt
+    // limits.maxBindGroupsPlusVertexBuffers = wgt_limits.max_bind_groups_plus_vertex_buffers;
     limits.maxBindingsPerBindGroup = wgt_limits.max_bindings_per_bind_group;
     limits.maxDynamicUniformBuffersPerPipelineLayout =
         wgt_limits.max_dynamic_uniform_buffers_per_pipeline_layout;
@@ -425,6 +428,10 @@ pub fn map_required_limits(
     if limits.maxBindGroups != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bind_groups = limits.maxBindGroups;
     }
+    // TODO: not yet in wgt
+    // if limits.maxBindGroupsPlusVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
+    //     wgt_limits.max_bind_groups_plus_vertex_buffers = limits.maxBindGroupsPlusVertexBuffers;
+    // }
     if limits.maxBindingsPerBindGroup != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_bindings_per_bind_group = limits.maxBindingsPerBindGroup;
     }
@@ -908,7 +915,7 @@ pub fn map_primitive_state(
     depth_clip_control: Option<&native::WGPUPrimitiveDepthClipControl>,
 ) -> bool {
     if let Some(depth_clip_control) = depth_clip_control {
-        return depth_clip_control.unclippedDepth;
+        return depth_clip_control.unclippedDepth != 0;
     }
 
     false
@@ -1094,10 +1101,8 @@ pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPres
         wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
         wgt::PresentMode::Immediate => Some(native::WGPUPresentMode_Immediate),
         wgt::PresentMode::Mailbox => Some(native::WGPUPresentMode_Mailbox),
-
-        wgt::PresentMode::AutoVsync
-        | wgt::PresentMode::AutoNoVsync
-        | wgt::PresentMode::FifoRelaxed => None, // needs to be supported in webgpu.h
+        wgt::PresentMode::FifoRelaxed => Some(native::WGPUPresentMode_FifoRelaxed),
+        wgt::PresentMode::AutoVsync | wgt::PresentMode::AutoNoVsync => None,
     }
 }
 
@@ -1108,49 +1113,9 @@ pub fn to_native_composite_alpha_mode(
     match mode {
         wgt::CompositeAlphaMode::Auto => native::WGPUCompositeAlphaMode_Auto,
         wgt::CompositeAlphaMode::Opaque => native::WGPUCompositeAlphaMode_Opaque,
-        wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_PreMultiplied,
-        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_PostMultiplied,
+        wgt::CompositeAlphaMode::PreMultiplied => native::WGPUCompositeAlphaMode_Premultiplied,
+        wgt::CompositeAlphaMode::PostMultiplied => native::WGPUCompositeAlphaMode_Unpremultiplied,
         wgt::CompositeAlphaMode::Inherit => native::WGPUCompositeAlphaMode_Inherit,
-    }
-}
-
-#[inline]
-pub fn map_swapchain_descriptor(
-    desc: &native::WGPUSwapChainDescriptor,
-    extras: Option<&native::WGPUSwapChainDescriptorExtras>,
-) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
-    let (alpha_mode, view_formats) = match extras {
-        Some(extras) => (
-            match extras.alphaMode {
-                native::WGPUCompositeAlphaMode_Auto => wgt::CompositeAlphaMode::Auto,
-                native::WGPUCompositeAlphaMode_Opaque => wgt::CompositeAlphaMode::Opaque,
-                native::WGPUCompositeAlphaMode_PreMultiplied => {
-                    wgt::CompositeAlphaMode::PreMultiplied
-                }
-                native::WGPUCompositeAlphaMode_PostMultiplied => {
-                    wgt::CompositeAlphaMode::PostMultiplied
-                }
-                native::WGPUCompositeAlphaMode_Inherit => wgt::CompositeAlphaMode::Inherit,
-                _ => panic!("invalid alpha mode for swapchain descriptor"),
-            },
-            make_slice(extras.viewFormats, extras.viewFormatCount)
-                .iter()
-                .map(|f| {
-                    map_texture_format(*f).expect("invalid view format for swapchain descriptor")
-                })
-                .collect(),
-        ),
-        None => (wgt::CompositeAlphaMode::default(), Vec::new()),
-    };
-
-    wgt::SurfaceConfiguration {
-        usage: wgt::TextureUsages::from_bits(desc.usage).unwrap(),
-        format: map_texture_format(desc.format).expect("Texture format not defined"),
-        width: desc.width,
-        height: desc.height,
-        present_mode: map_present_mode(desc.presentMode),
-        alpha_mode,
-        view_formats,
     }
 }
 
@@ -1167,7 +1132,7 @@ pub fn map_query_set_descriptor<'a>(
             native::WGPUQueryType_PipelineStatistics => {
                 let mut types = wgt::PipelineStatisticsTypes::empty();
 
-                make_slice(desc.pipelineStatistics, desc.pipelineStatisticsCount)
+                make_slice(desc.pipelineStatistics, desc.pipelineStatisticCount)
                     .iter()
                     .for_each(|f| {
                         types.insert(match *f {
@@ -1195,6 +1160,24 @@ pub fn map_query_set_descriptor<'a>(
             _ => panic!("invalid query type"),
         },
     }
+}
+
+#[inline]
+pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureUsages {
+    let mut temp = wgt::TextureUsages::empty();
+    if (flags & native::WGPUTextureUsage_CopySrc) != 0 {
+        temp.insert(wgt::TextureUsages::COPY_SRC);
+    }
+    if (flags & native::WGPUTextureUsage_CopyDst) != 0 {
+        temp.insert(wgt::TextureUsages::COPY_DST);
+    }
+    if (flags & native::WGPUTextureUsage_TextureBinding) != 0 {
+        temp.insert(wgt::TextureUsages::TEXTURE_BINDING);
+    }
+    if (flags & native::WGPUTextureUsage_RenderAttachment) != 0 {
+        temp.insert(wgt::TextureUsages::RENDER_ATTACHMENT);
+    }
+    temp
 }
 
 pub enum CreateSurfaceParams {
