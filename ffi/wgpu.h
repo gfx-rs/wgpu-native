@@ -12,6 +12,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_SupportedLimitsExtras = 0x60000005,
     WGPUSType_InstanceExtras = 0x60000006,
     WGPUSType_BindGroupEntryExtras = 0x60000007,
+    WGPUSType_BindGroupLayoutEntryExtras = 0x60000008,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -163,6 +164,11 @@ typedef struct WGPUBindGroupEntryExtras {
     WGPUTextureView const * textureViews;
     size_t textureViewCount;
 } WGPUBindGroupEntryExtras;
+
+typedef struct WGPUBindGroupLayoutEntryExtras {
+    WGPUChainedStruct const * nextInChain;
+    uint32_t count;
+} WGPUBindGroupLayoutEntryExtras;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 
