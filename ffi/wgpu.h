@@ -4,7 +4,7 @@
 #include "webgpu-headers/webgpu.h"
 
 typedef enum WGPUNativeSType {
-    // Start at 6 to prevent collisions with webgpu STypes
+    // Start at 0003 since that's allocated range for wgpu-native
     WGPUSType_DeviceExtras = 0x00030001,
     WGPUSType_RequiredLimitsExtras = 0x00030002,
     WGPUSType_PipelineLayoutExtras = 0x00030003,
