@@ -1,7 +1,7 @@
 use conv::{
     map_device_descriptor, map_instance_backend_flags, map_instance_descriptor,
     map_pipeline_layout_descriptor, map_primitive_state, map_shader_module, map_surface,
-    map_swapchain_descriptor, CreateSurfaceParams,
+    CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
@@ -11,11 +11,11 @@ use std::{
     error,
     ffi::{CStr, CString},
     fmt::Display,
+    mem,
     num::NonZeroU64,
     sync::{atomic, Arc},
     thread,
 };
-use thiserror::Error;
 use utils::{make_slice, ptr_into_label, ptr_into_path};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
@@ -272,9 +272,18 @@ impl Drop for WGPUShaderModuleImpl {
     }
 }
 
+struct SurfaceData {
+    device_id: id::DeviceId,
+    error_sink: ErrorSink,
+    texture_data: TextureData,
+}
+
 pub struct WGPUSurfaceImpl {
     context: Arc<Context>,
     id: id::SurfaceId,
+    data: Mutex<Option<SurfaceData>>,
+    // Shared bool between Texture & Surface to track surface_present calls
+    has_surface_presented: Arc<atomic::AtomicBool>,
 }
 impl Drop for WGPUSurfaceImpl {
     fn drop(&mut self) {
@@ -284,24 +293,44 @@ impl Drop for WGPUSurfaceImpl {
     }
 }
 
-pub struct WGPUSwapChainImpl {
-    context: Arc<Context>,
-    surface_id: id::SurfaceId,
-    device_id: id::DeviceId,
-    error_sink: ErrorSink,
+#[derive(Copy, Clone)]
+struct TextureData {
+    usage: native::WGPUTextureUsageFlags,
+    dimension: native::WGPUTextureDimension,
+    size: native::WGPUExtent3D,
+    format: native::WGPUTextureFormat,
+    mip_level_count: u32,
+    sample_count: u32,
 }
 
 pub struct WGPUTextureImpl {
     context: Arc<Context>,
     id: id::TextureId,
     error_sink: ErrorSink,
-    descriptor: native::WGPUTextureDescriptor,
+    data: TextureData,
+    surface_id: Option<id::SurfaceId>,
+    // Shared bool between Texture & Surface to track surface_present calls
+    has_surface_presented: Arc<atomic::AtomicBool>,
 }
 impl Drop for WGPUTextureImpl {
     fn drop(&mut self) {
-        if !thread::panicking() {
-            let context = &self.context;
-            gfx_select!(self.id => context.texture_drop(self.id, false));
+        if thread::panicking() {
+            return;
+        }
+        match self.surface_id {
+            Some(surface_id) => {
+                if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
+                    let context = &self.context;
+                    match gfx_select!(self.id => context.surface_texture_discard(surface_id)) {
+                        Ok(_) => (),
+                        Err(cause) => handle_error_fatal(context, cause, "wgpuTextureRelease"),
+                    }
+                }
+            }
+            None => {
+                let context = &self.context;
+                gfx_select!(self.id => context.texture_drop(self.id, false));
+            }
         }
     }
 }
@@ -544,11 +573,13 @@ fn handle_error(
 pub unsafe extern "C" fn wgpuCreateInstance(
     descriptor: Option<&native::WGPUInstanceDescriptor>,
 ) -> native::WGPUInstance {
-    let descriptor = descriptor.expect("invalid descriptor");
-
-    let instance_desc = follow_chain!(map_instance_descriptor(descriptor,
-        WGPUSType_InstanceExtras => native::WGPUInstanceExtras
-    ));
+    let instance_desc = match descriptor {
+        Some(descriptor) => follow_chain!(map_instance_descriptor(
+            descriptor,
+            WGPUSType_InstanceExtras => native::WGPUInstanceExtras
+        )),
+        None => wgt::InstanceDescriptor::default(),
+    };
 
     Arc::into_raw(Arc::new(WGPUInstanceImpl {
         context: Arc::new(Context::new(
@@ -588,7 +619,7 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
 pub unsafe extern "C" fn wgpuAdapterGetLimits(
     adapter: native::WGPUAdapter,
     limits: Option<&mut native::WGPUSupportedLimits>,
-) -> bool {
+) -> native::WGPUBool {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
@@ -601,7 +632,7 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
         Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetLimits"),
     }
 
-    true // indicates that we can fill WGPUChainedStructOut
+    true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
 
 #[no_mangle]
@@ -658,7 +689,7 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
 pub unsafe extern "C" fn wgpuAdapterHasFeature(
     adapter: native::WGPUAdapter,
     feature: native::WGPUFeatureName,
-) -> bool {
+) -> native::WGPUBool {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
@@ -670,10 +701,10 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
-        None => return false,
+        None => return false as native::WGPUBool,
     };
 
-    adapter_features.contains(feature)
+    adapter_features.contains(feature) as native::WGPUBool
 }
 
 #[no_mangle]
@@ -1064,13 +1095,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 load_op: conv::map_load_op(desc.depthLoadOp),
                 store_op: conv::map_store_op(desc.depthStoreOp),
                 clear_value: desc.depthClearValue,
-                read_only: desc.depthReadOnly,
+                read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.stencilLoadOp),
                 store_op: conv::map_store_op(desc.stencilStoreOp),
                 clear_value: desc.stencilClearValue,
-                read_only: desc.stencilReadOnly,
+                read_only: desc.stencilReadOnly != 0,
             },
         }
     });
@@ -1903,7 +1934,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
                         _ => panic!("invalid texture view dimension for texture binding layout"),
                     },
-                    multisampled: entry.texture.multisampled,
+                    multisampled: entry.texture.multisampled != 0,
                 }
             } else if is_sampler {
                 match entry.sampler.type_ {
@@ -1962,7 +1993,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
                         }
                         _ => panic!("invalid buffer binding type for buffer binding layout"),
                     },
-                    has_dynamic_offset: entry.buffer.hasDynamicOffset,
+                    has_dynamic_offset: entry.buffer.hasDynamicOffset != 0,
                     min_binding_size: {
                         assert_ne!(
                             entry.buffer.minBindingSize,
@@ -2025,7 +2056,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         label: ptr_into_label(descriptor.label),
         size: descriptor.size,
         usage: wgt::BufferUsages::from_bits(descriptor.usage).expect("invalid buffer usage"),
-        mapped_at_creation: descriptor.mappedAtCreation,
+        mapped_at_creation: descriptor.mappedAtCreation != 0,
     };
 
     let (buffer_id, error) =
@@ -2230,15 +2261,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
 
     let desc = wgc::command::RenderBundleEncoderDescriptor {
         label: ptr_into_label(descriptor.label),
-        color_formats: make_slice(descriptor.colorFormats, descriptor.colorFormatsCount)
+        color_formats: make_slice(descriptor.colorFormats, descriptor.colorFormatCount)
             .iter()
             .map(|format| conv::map_texture_format(*format))
             .collect(),
         depth_stencil: conv::map_texture_format(descriptor.depthStencilFormat).map(|format| {
             wgt::RenderBundleDepthStencil {
                 format,
-                depth_read_only: descriptor.depthReadOnly,
-                stencil_read_only: descriptor.stencilReadOnly,
+                depth_read_only: descriptor.depthReadOnly != 0,
+                stencil_read_only: descriptor.stencilReadOnly != 0,
             }
         }),
         sample_count: descriptor.sampleCount,
@@ -2335,7 +2366,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             .map(|desc| wgt::DepthStencilState {
                 format: conv::map_texture_format(desc.format)
                     .expect("invalid texture format for depth stencil state"),
-                depth_write_enabled: desc.depthWriteEnabled,
+                depth_write_enabled: desc.depthWriteEnabled != 0,
                 depth_compare: conv::map_compare_function(desc.depthCompare)
                     .expect("invalid depth compare function for depth stencil state"),
                 stencil: wgt::StencilState {
@@ -2353,7 +2384,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
         multisample: wgt::MultisampleState {
             count: descriptor.multisample.count,
             mask: descriptor.multisample.mask as u64,
-            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled,
+            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled != 0,
         },
         fragment: descriptor
             .fragment
@@ -2531,37 +2562,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateSwapChain(
-    device: native::WGPUDevice,
-    surface: native::WGPUSurface,
-    descriptor: Option<&native::WGPUSwapChainDescriptor>,
-) -> native::WGPUSwapChain {
-    let (device_id, context, error_sink) = {
-        let device = device.as_ref().expect("invalid device");
-        (device.id, &device.context, &device.error_sink)
-    };
-    let surface_id = surface.as_ref().expect("invalid surface").id;
-
-    let config = follow_chain!(
-        map_swapchain_descriptor(
-            descriptor.expect("invalid descriptor"),
-            WGPUSType_SwapChainDescriptorExtras => native::WGPUSwapChainDescriptorExtras)
-    );
-
-    let error = gfx_select!(device_id => context.surface_configure(surface_id, device_id, &config));
-    if let Some(cause) = error {
-        handle_error_fatal(context, cause, "wgpuDeviceCreateSwapChain");
-    }
-
-    Arc::into_raw(Arc::new(WGPUSwapChainImpl {
-        context: context.clone(),
-        surface_id,
-        device_id,
-        error_sink: error_sink.clone(),
-    }))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateTexture(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUTextureDescriptor>,
@@ -2607,7 +2607,16 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
         context: context.clone(),
         id: texture_id,
         error_sink: error_sink.clone(),
-        descriptor: *descriptor,
+        surface_id: None,
+        has_surface_presented: Arc::default(),
+        data: TextureData {
+            usage: descriptor.usage,
+            dimension: descriptor.dimension,
+            size: descriptor.size,
+            format: descriptor.format,
+            mip_level_count: descriptor.mipLevelCount,
+            sample_count: descriptor.sampleCount,
+        },
     }))
 }
 
@@ -2643,7 +2652,7 @@ pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
 pub unsafe extern "C" fn wgpuDeviceGetLimits(
     device: native::WGPUDevice,
     limits: Option<&mut native::WGPUSupportedLimits>,
-) -> bool {
+) -> native::WGPUBool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
@@ -2656,7 +2665,7 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
         Err(err) => handle_error_fatal(context, err, "wgpuDeviceGetLimits"),
     }
 
-    true // indicates that we can fill WGPUChainedStructOut
+    true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
 
 #[no_mangle]
@@ -2677,7 +2686,7 @@ pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> nativ
 pub unsafe extern "C" fn wgpuDeviceHasFeature(
     device: native::WGPUDevice,
     feature: native::WGPUFeatureName,
-) -> bool {
+) -> native::WGPUBool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
@@ -2689,10 +2698,10 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
-        None => return false,
+        None => return false as native::WGPUBool,
     };
 
-    device_features.contains(feature)
+    device_features.contains(feature) as native::WGPUBool
 }
 
 #[no_mangle]
@@ -2797,6 +2806,8 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     Arc::into_raw(Arc::new(WGPUSurfaceImpl {
         context: context.clone(),
         id: surface_id,
+        data: Mutex::default(),
+        has_surface_presented: Arc::default(),
     }))
 }
 
@@ -2821,7 +2832,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     }
                     _ => wgt::PowerPreference::default(),
                 },
-                force_fallback_adapter: options.forceFallbackAdapter,
+                force_fallback_adapter: options.forceFallbackAdapter != 0,
                 compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
             },
             wgc::instance::AdapterInputs::Mask(
@@ -3745,6 +3756,192 @@ pub unsafe extern "C" fn wgpuShaderModuleRelease(shader_module: native::WGPUShad
 // Surface methods
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceConfigure(
+    surface: native::WGPUSurface,
+    config: Option<&native::WGPUSurfaceConfiguration>,
+) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let config = config.expect("invalid config");
+    let device = config
+        .device
+        .as_ref()
+        .expect("invalid device for surface configuration");
+    let context = &device.context;
+
+    let surface_config = wgt::SurfaceConfiguration {
+        usage: conv::map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
+        format: conv::map_texture_format(config.format)
+            .expect("invalid format for surface configuration"),
+        width: config.width,
+        height: config.height,
+        present_mode: conv::map_present_mode(config.presentMode),
+        alpha_mode: conv::map_composite_alpha_mode(config.alphaMode)
+            .expect("invalid alpha mode for surface configuration"),
+        view_formats: make_slice(config.viewFormats, config.viewFormatCount)
+            .iter()
+            .map(|f| {
+                conv::map_texture_format(*f).expect("invalid view format for surface configuration")
+            })
+            .collect(),
+    };
+
+    match wgc::gfx_select!(device.id => context.surface_configure(surface.id, device.id, &surface_config))
+    {
+        Some(cause) => handle_error_fatal(context, cause, "wgpuSurfaceConfigure"),
+        None => {
+            let mut surface_data_guard = surface.data.lock();
+            *surface_data_guard = Some(SurfaceData {
+                device_id: device.id,
+                error_sink: device.error_sink.clone(),
+                texture_data: TextureData {
+                    usage: config.usage,
+                    dimension: native::WGPUTextureDimension_2D,
+                    format: config.format,
+                    mip_level_count: 1,
+                    size: native::WGPUExtent3D {
+                        width: config.width,
+                        height: config.height,
+                        depthOrArrayLayers: 1,
+                    },
+                    sample_count: 1,
+                },
+            });
+            surface
+                .has_surface_presented
+                .store(false, atomic::Ordering::SeqCst);
+        }
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
+    capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
+) {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, &adapter.context)
+    };
+    let surface_id = surface.as_ref().expect("invalid surface").id;
+    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
+
+    let caps = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
+    {
+        Ok(caps) => caps,
+        Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
+            wgt::SurfaceCapabilities::default()
+        }
+        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCapabilities"),
+    };
+
+    let formats = caps
+        .formats
+        .iter()
+        // some texture formats are not in webgpu.h and
+        // conv::to_native_texture_format returns None for them.
+        // so, filter them out.
+        .filter_map(|f| conv::to_native_texture_format(*f))
+        .collect::<Vec<_>>();
+
+    if !formats.is_empty() {
+        let mut array = formats.into_boxed_slice();
+        capabilities.formats = array.as_mut_ptr();
+        capabilities.formatCount = array.len();
+        mem::forget(array);
+    } else {
+        capabilities.formats = std::ptr::null_mut();
+        capabilities.formatCount = 0;
+    }
+
+    let present_modes = caps
+        .present_modes
+        .iter()
+        .filter_map(|f| conv::to_native_present_mode(*f))
+        .collect::<Vec<_>>();
+
+    if !present_modes.is_empty() {
+        let mut array = present_modes.into_boxed_slice();
+        capabilities.presentModes = array.as_mut_ptr();
+        capabilities.presentModeCount = array.len();
+        mem::forget(array);
+    } else {
+        capabilities.presentModes = std::ptr::null_mut();
+        capabilities.presentModeCount = 0;
+    }
+
+    let alpha_modes = caps
+        .alpha_modes
+        .iter()
+        .map(|f| conv::to_native_composite_alpha_mode(*f))
+        .collect::<Vec<_>>();
+
+    if !alpha_modes.is_empty() {
+        let mut array = alpha_modes.into_boxed_slice();
+        capabilities.alphaModes = array.as_mut_ptr();
+        capabilities.alphaModeCount = array.len();
+        mem::forget(array);
+    } else {
+        capabilities.alphaModes = std::ptr::null_mut();
+        capabilities.alphaModeCount = 0;
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
+    surface: native::WGPUSurface,
+    surface_texture: Option<&mut native::WGPUSurfaceTexture>,
+) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let context = &surface.context;
+    let surface_texture = surface_texture.expect("invalid return pointer \"surface_texture\"");
+
+    let surface_data_guard = surface.data.lock();
+    let surface_data = match surface_data_guard.as_ref() {
+        Some(surface_data) => surface_data,
+        None => handle_error_fatal(
+            context,
+            wgc::present::SurfaceError::NotConfigured,
+            "wgpuSurfaceGetCurrentTexture",
+        ),
+    };
+
+    match wgc::gfx_select!(surface_data.device_id => context.surface_get_current_texture(surface.id, ()))
+    {
+        Ok(wgc::present::SurfaceOutput { status, texture_id }) => {
+            surface
+                .has_surface_presented
+                .store(false, atomic::Ordering::SeqCst);
+            surface_texture.status = match status {
+                wgt::SurfaceStatus::Good => native::WGPUSurfaceGetCurrentTextureStatus_Success,
+                wgt::SurfaceStatus::Suboptimal => {
+                    native::WGPUSurfaceGetCurrentTextureStatus_Success
+                }
+                wgt::SurfaceStatus::Timeout => native::WGPUSurfaceGetCurrentTextureStatus_Timeout,
+                wgt::SurfaceStatus::Outdated => native::WGPUSurfaceGetCurrentTextureStatus_Outdated,
+                wgt::SurfaceStatus::Lost => native::WGPUSurfaceGetCurrentTextureStatus_Lost,
+            };
+            surface_texture.suboptimal = match status {
+                wgt::SurfaceStatus::Suboptimal => true as native::WGPUBool,
+                _ => false as native::WGPUBool,
+            };
+            surface_texture.texture = match texture_id {
+                Some(texture_id) => Arc::into_raw(Arc::new(WGPUTextureImpl {
+                    context: context.clone(),
+                    id: texture_id,
+                    error_sink: surface_data.error_sink.clone(),
+                    data: surface_data.texture_data,
+                    surface_id: Some(surface.id),
+                    has_surface_presented: surface.has_surface_presented.clone(),
+                })),
+                None => std::ptr::null_mut(),
+            };
+        }
+        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCurrentTexture"),
+    };
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
@@ -3777,96 +3974,36 @@ pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
     }
 }
 
-#[derive(Debug, Error)]
-pub enum SurfaceError {
-    #[error("Surface timed out")]
-    Timeout,
-    #[error("Surface is outdated")]
-    Outdated,
-    #[error("Surface was lost")]
-    Lost,
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let context = &surface.context;
+    let surface_data_guard = surface.data.lock();
+    let surface_data = match surface_data_guard.as_ref() {
+        Some(surface_data) => surface_data,
+        None => handle_error_fatal(
+            context,
+            wgc::present::SurfaceError::NotConfigured,
+            "wgpuSurfacePresent",
+        ),
+    };
+
+    match wgc::gfx_select!(surface_data.device_id => context.surface_present(surface.id)) {
+        Ok(_status) => surface
+            .has_surface_presented
+            .store(true, atomic::Ordering::SeqCst),
+        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfacePresent"),
+    };
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainGetCurrentTextureView(
-    swap_chain: native::WGPUSwapChain,
-) -> native::WGPUTextureView {
-    let (surface_id, device_id, context, error_sink) = {
-        let swap_chain = swap_chain.as_ref().expect("invalid swap chain");
-        (
-            swap_chain.surface_id,
-            swap_chain.device_id,
-            &swap_chain.context,
-            &swap_chain.error_sink,
-        )
-    };
-
-    match gfx_select!(device_id => context.surface_get_current_texture(surface_id, ())) {
-        Ok(result) => match result.status {
-            wgt::SurfaceStatus::Good | wgt::SurfaceStatus::Suboptimal => {
-                let texture_id = result.texture_id.unwrap();
-                let (texture_view_id, error) = gfx_select!(texture_id => context.texture_create_view(
-                    texture_id,
-                    &wgc::resource::TextureViewDescriptor::default(),
-                    ()
-                ));
-                gfx_select!(texture_id => context.texture_drop(texture_id, false));
-                if let Some(cause) = error {
-                    handle_error(
-                        context,
-                        error_sink,
-                        cause,
-                        "",
-                        None,
-                        "wgpuSwapChainGetCurrentTextureView",
-                    );
-                }
-
-                Arc::into_raw(Arc::new(WGPUTextureViewImpl {
-                    context: context.clone(),
-                    id: texture_view_id,
-                }))
-            }
-            _ => {
-                if let Some(texture_id) = result.texture_id {
-                    gfx_select!(texture_id => context.texture_drop(texture_id, false));
-                }
-                handle_error(
-                    context,
-                    error_sink,
-                    match result.status {
-                        wgt::SurfaceStatus::Timeout => &SurfaceError::Timeout,
-                        wgt::SurfaceStatus::Outdated => &SurfaceError::Outdated,
-                        wgt::SurfaceStatus::Lost => &SurfaceError::Lost,
-                        _ => unreachable!(),
-                    },
-                    "",
-                    None,
-                    "wgpuSwapChainGetCurrentTextureView",
-                );
-                std::ptr::null_mut()
-            }
-        },
-        Err(cause) => {
-            handle_error_fatal(context, cause, "wgpuSwapChainGetCurrentTextureView");
-        }
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainPresent(swap_chain: native::WGPUSwapChain) {
-    let (surface_id, device_id, context) = {
-        let swap_chain = swap_chain.as_ref().expect("invalid swap chain");
-        (
-            swap_chain.surface_id,
-            swap_chain.device_id,
-            &swap_chain.context,
-        )
-    };
-
-    if let Err(cause) = gfx_select!(device_id => context.surface_present(surface_id)) {
-        handle_error_fatal(context, cause, "wgpuSwapChainPresent");
-    }
+pub unsafe extern "C" fn wgpuSurfaceUnconfigure(surface: native::WGPUSurface) {
+    let surface = surface.as_ref().expect("invalid surface");
+    let mut surface_data_guard = surface.data.lock();
+    let _ = surface_data_guard.take(); // drop SurfaceData
+    surface
+        .has_surface_presented
+        .store(false, atomic::Ordering::SeqCst);
 }
 
 #[no_mangle]
@@ -3880,17 +4017,33 @@ pub unsafe extern "C" fn wgpuSurfaceRelease(surface: native::WGPUSurface) {
     Arc::decrement_strong_count(surface);
 }
 
-// SwapChain methods
+// SurfaceCapabilities methods
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainReference(swap_chain: native::WGPUSwapChain) {
-    assert!(!swap_chain.is_null(), "invalid swap chain");
-    Arc::increment_strong_count(swap_chain);
-}
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSwapChainRelease(swap_chain: native::WGPUSwapChain) {
-    assert!(!swap_chain.is_null(), "invalid swap chain");
-    Arc::decrement_strong_count(swap_chain);
+pub unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(
+    capabilities: native::WGPUSurfaceCapabilities,
+) {
+    if !capabilities.formats.is_null() && capabilities.formatCount > 0 {
+        drop(Vec::from_raw_parts(
+            capabilities.formats,
+            capabilities.formatCount,
+            capabilities.formatCount,
+        ));
+    }
+    if !capabilities.presentModes.is_null() && capabilities.presentModeCount > 0 {
+        drop(Vec::from_raw_parts(
+            capabilities.presentModes,
+            capabilities.presentModeCount,
+            capabilities.presentModeCount,
+        ));
+    }
+    if !capabilities.alphaModes.is_null() && capabilities.alphaModeCount > 0 {
+        drop(Vec::from_raw_parts(
+            capabilities.alphaModes,
+            capabilities.alphaModeCount,
+            capabilities.alphaModeCount,
+        ));
+    }
 }
 
 // Texture methods
@@ -3961,56 +4114,56 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetDepthOrArrayLayers(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.size.depthOrArrayLayers
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.size.depthOrArrayLayers
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetDimension(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureDimension {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.dimension
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.dimension
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetFormat(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureFormat {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.format
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.format
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetHeight(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.size.height
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.size.height
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetMipLevelCount(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.mipLevelCount
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.mip_level_count
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetSampleCount(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.sampleCount
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.sample_count
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetUsage(
     texture: native::WGPUTexture,
 ) -> native::WGPUTextureUsageFlags {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.usage
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.usage
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuTextureGetWidth(texture: native::WGPUTexture) -> u32 {
-    let descriptor = texture.as_ref().expect("invalid texture").descriptor;
-    descriptor.size.width
+    let texture = texture.as_ref().expect("invalid texture");
+    texture.data.size.width
 }
 
 #[no_mangle]
@@ -4108,76 +4261,6 @@ pub unsafe extern "C" fn wgpuDevicePoll(
         Err(cause) => {
             handle_error_fatal(context, cause, "wgpuDevicePoll");
         }
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
-    surface: native::WGPUSurface,
-    adapter: native::WGPUAdapter,
-    capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
-) {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
-    };
-    let surface_id = surface.as_ref().expect("invalid surface").id;
-    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
-
-    let caps = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
-    {
-        Ok(caps) => caps,
-        Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
-            wgt::SurfaceCapabilities::default()
-        }
-        Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCapabilities"),
-    };
-
-    let formats = caps
-        .formats
-        .iter()
-        // some texture formats are not in webgpu.h and
-        // conv::to_native_texture_format returns None for them.
-        // so, filter them out.
-        .filter_map(|f| conv::to_native_texture_format(*f))
-        .collect::<Vec<_>>();
-
-    capabilities.formatCount = formats.len();
-
-    if !capabilities.formats.is_null() {
-        std::ptr::copy_nonoverlapping(formats.as_ptr(), capabilities.formats, formats.len());
-    }
-
-    let present_modes = caps
-        .present_modes
-        .iter()
-        .filter_map(|f| conv::to_native_present_mode(*f))
-        .collect::<Vec<_>>();
-
-    capabilities.presentModeCount = present_modes.len();
-
-    if !capabilities.presentModes.is_null() {
-        std::ptr::copy_nonoverlapping(
-            present_modes.as_ptr(),
-            capabilities.presentModes,
-            present_modes.len(),
-        );
-    }
-
-    let alpha_modes = caps
-        .alpha_modes
-        .iter()
-        .map(|f| conv::to_native_composite_alpha_mode(*f))
-        .collect::<Vec<_>>();
-
-    capabilities.alphaModeCount = alpha_modes.len();
-
-    if !capabilities.alphaModes.is_null() {
-        std::ptr::copy_nonoverlapping(
-            alpha_modes.as_ptr(),
-            capabilities.alphaModes,
-            alpha_modes.len(),
-        );
     }
 }
 
