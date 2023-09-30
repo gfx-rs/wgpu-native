@@ -209,6 +209,17 @@ map_enum!(
     Inherit: Inherit
 );
 
+map_enum!(
+    map_gles3_minor_version,
+    WGPUGles3MinorVersion,
+    wgt::Gles3MinorVersion,
+    "Unknown gles3 minor version",
+    Automatic,
+    Version0,
+    Version1,
+    Version2
+);
+
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
 pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
     native::WGPU_LIMIT_U64_UNDEFINED as _;
@@ -275,6 +286,8 @@ pub fn map_instance_descriptor(
         wgt::InstanceDescriptor {
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
+            gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
+
         }
     } else {
         wgt::InstanceDescriptor::default()

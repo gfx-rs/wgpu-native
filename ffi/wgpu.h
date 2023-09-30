@@ -56,10 +56,19 @@ typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Force32 = 0x7FFFFFFF
 } WGPUDx12Compiler;
 
+typedef enum WGPUGles3MinorVersion {
+    WGPUGles3MinorVersion_Automatic = 0x00000000,
+    WGPUGles3MinorVersion_Version0 = 0x00000001,
+    WGPUGles3MinorVersion_Version1 = 0x00000002,
+    WGPUGles3MinorVersion_Version2 = 0x00000003,
+    WGPUGles3MinorVersion_Force32 = 0x7FFFFFFF
+} WGPUGles3MinorVersion;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackendFlags backends;
     WGPUDx12Compiler dx12ShaderCompiler;
+    WGPUGles3MinorVersion gles3MinorVersion;
     const char * dxilPath;
     const char * dxcPath;
 } WGPUInstanceExtras;
