@@ -1098,7 +1098,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         ),
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
         timestamp_writes: timestamp_writes.as_ref(),
-        occlusion_query_set: None,
+        occlusion_query_set: None, // TODO:
     };
 
     Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
