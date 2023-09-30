@@ -453,8 +453,7 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 [[package]]
 name = "metal"
 version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "623b5e6cefd76e58f774bd3cc0c6f5c7615c58c03a97815245a25c3c9bdee318"
+source = "git+https://github.com/gfx-rs/metal-rs/?rev=d24f1a4#d24f1a4ae92470bf87a0c65ecfe78c9299835505"
 dependencies = [
  "bitflags 2.3.3",
  "block",
@@ -474,7 +473,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "naga"
 version = "0.13.0"
-source = "git+https://github.com/gfx-rs/naga?rev=cc87b8f9eb30bb55d0735b89d3df3e099e1a6e7c#cc87b8f9eb30bb55d0735b89d3df3e099e1a6e7c"
+source = "git+https://github.com/gfx-rs/naga?rev=df8107b7#df8107b78812cc2b1e3d5de35279cedc1f0da3fb"
 dependencies = [
  "bit-set",
  "bitflags 2.3.3",
@@ -892,7 +891,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "0.17.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=0ffdae31a1f75e1041ed4472eb0552c487831efe#0ffdae31a1f75e1041ed4472eb0552c487831efe"
+source = "git+https://github.com/gfx-rs/wgpu?rev=9a76c483da4891fb7046c579e36d7c54bdb0b251#9a76c483da4891fb7046c579e36d7c54bdb0b251"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -916,7 +915,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.17.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=0ffdae31a1f75e1041ed4472eb0552c487831efe#0ffdae31a1f75e1041ed4472eb0552c487831efe"
+source = "git+https://github.com/gfx-rs/wgpu?rev=9a76c483da4891fb7046c579e36d7c54bdb0b251#9a76c483da4891fb7046c579e36d7c54bdb0b251"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -969,7 +968,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.17.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=0ffdae31a1f75e1041ed4472eb0552c487831efe#0ffdae31a1f75e1041ed4472eb0552c487831efe"
+source = "git+https://github.com/gfx-rs/wgpu?rev=9a76c483da4891fb7046c579e36d7c54bdb0b251#9a76c483da4891fb7046c579e36d7c54bdb0b251"
 dependencies = [
  "bitflags 2.3.3",
  "js-sys",
