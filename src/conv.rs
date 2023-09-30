@@ -1133,6 +1133,14 @@ pub fn to_native_composite_alpha_mode(
 }
 
 #[inline]
+pub fn map_query_set_index(index: u32) -> Option<u32> {
+    match index {
+        native::WGPU_QUERY_SET_INDEX_UNDEFINED => None,
+        _ => Some(index),
+    }
+}
+
+#[inline]
 pub fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
