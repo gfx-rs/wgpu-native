@@ -1012,11 +1012,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     }).flatten();
 
     let desc = match descriptor {
-        Some(descriptor) => {
-            wgc::command::ComputePassDescriptor {
-                label: ptr_into_label(descriptor.label),
-                timestamp_writes: timestamp_writes.as_ref(),
-            }
+        Some(descriptor) => wgc::command::ComputePassDescriptor {
+            label: ptr_into_label(descriptor.label),
+            timestamp_writes: timestamp_writes.as_ref(),
         },
         None => wgc::command::ComputePassDescriptor::default(),
     };
