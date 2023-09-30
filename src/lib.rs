@@ -999,6 +999,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
             label: ptr_into_label(descriptor.label),
+            timestamp_writes: None,
         },
         None => wgc::command::ComputePassDescriptor::default(),
     };
@@ -1069,6 +1070,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .collect(),
         ),
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
+        timestamp_writes: None,
+        occlusion_query_set: None,
     };
 
     Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
