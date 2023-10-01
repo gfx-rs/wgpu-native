@@ -210,6 +210,17 @@ map_enum!(
     Inherit: Inherit
 );
 
+map_enum!(
+    map_gles3_minor_version,
+    WGPUGles3MinorVersion,
+    wgt::Gles3MinorVersion,
+    "Unknown gles3 minor version",
+    Automatic,
+    Version0,
+    Version1,
+    Version2
+);
+
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
 pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
     native::WGPU_LIMIT_U64_UNDEFINED as _;
@@ -276,6 +287,7 @@ pub fn map_instance_descriptor(
         wgt::InstanceDescriptor {
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
+            gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
         }
     } else {
         wgt::InstanceDescriptor::default()
@@ -1311,6 +1323,13 @@ pub fn map_bind_group_layout_entry<'a>(
         visibility: wgt::ShaderStages::from_bits(entry.visibility)
             .expect("invalid visibility for bind group layout entry"),
         count: extras.map(|v| NonZeroU32::new(v.count)).flatten(),
+    }
+}
+
+pub fn map_query_set_index(index: u32) -> Option<u32> {
+    match index {
+        native::WGPU_QUERY_SET_INDEX_UNDEFINED => None,
+        _ => Some(index),
     }
 }
 

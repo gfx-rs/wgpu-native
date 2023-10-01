@@ -4,26 +4,26 @@
 #include "webgpu-headers/webgpu.h"
 
 typedef enum WGPUNativeSType {
-    // Start at 6 to prevent collisions with webgpu STypes
-    WGPUSType_DeviceExtras = 0x60000001,
-    WGPUSType_RequiredLimitsExtras = 0x60000002,
-    WGPUSType_PipelineLayoutExtras = 0x60000003,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x60000004,
-    WGPUSType_SupportedLimitsExtras = 0x60000005,
-    WGPUSType_InstanceExtras = 0x60000006,
-    WGPUSType_BindGroupEntryExtras = 0x60000007,
-    WGPUSType_BindGroupLayoutEntryExtras = 0x60000008,
+    // Start at 0003 since that's allocated range for wgpu-native
+    WGPUSType_DeviceExtras = 0x00030001,
+    WGPUSType_RequiredLimitsExtras = 0x00030002,
+    WGPUSType_PipelineLayoutExtras = 0x00030003,
+    WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
+    WGPUSType_SupportedLimitsExtras = 0x00030005,
+    WGPUSType_InstanceExtras = 0x00030006,
+    WGPUSType_BindGroupEntryExtras = 0x00030007,
+    WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
 typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_PushConstants = 0x60000001,
-    WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x60000002,
-    WGPUNativeFeature_MultiDrawIndirect = 0x60000003,
-    WGPUNativeFeature_MultiDrawIndirectCount = 0x60000004,
-    WGPUNativeFeature_VertexWritableStorage = 0x60000005,
-    WGPUNativeFeature_TextureBindingArray = 0x60000006,
-    WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x60000007,
+    WGPUNativeFeature_PushConstants = 0x00030001,
+    WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x00030002,
+    WGPUNativeFeature_MultiDrawIndirect = 0x00030003,
+    WGPUNativeFeature_MultiDrawIndirectCount = 0x00030004,
+    WGPUNativeFeature_VertexWritableStorage = 0x00030005,
+    WGPUNativeFeature_TextureBindingArray = 0x00030006,
+    WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x00030007,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
@@ -60,10 +60,19 @@ typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Force32 = 0x7FFFFFFF
 } WGPUDx12Compiler;
 
+typedef enum WGPUGles3MinorVersion {
+    WGPUGles3MinorVersion_Automatic = 0x00000000,
+    WGPUGles3MinorVersion_Version0 = 0x00000001,
+    WGPUGles3MinorVersion_Version1 = 0x00000002,
+    WGPUGles3MinorVersion_Version2 = 0x00000003,
+    WGPUGles3MinorVersion_Force32 = 0x7FFFFFFF
+} WGPUGles3MinorVersion;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackendFlags backends;
     WGPUDx12Compiler dx12ShaderCompiler;
+    WGPUGles3MinorVersion gles3MinorVersion;
     const char * dxilPath;
     const char * dxcPath;
 } WGPUInstanceExtras;

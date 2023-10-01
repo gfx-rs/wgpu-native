@@ -1,7 +1,7 @@
 use conv::{
     map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
     map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
-    map_primitive_state, map_shader_module, map_surface, CreateSurfaceParams,
+    map_primitive_state, map_query_set_index, map_shader_module, map_surface, CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
@@ -997,9 +997,30 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
         )
     };
 
+    let timestamp_writes = descriptor
+        .map(|descriptor| {
+            descriptor.timestampWrites.as_ref().map(|timestamp_write| {
+                wgc::command::ComputePassTimestampWrites {
+                    query_set: timestamp_write
+                        .querySet
+                        .as_ref()
+                        .expect("invalid query set in timestamp writes")
+                        .id,
+                    beginning_of_pass_write_index: map_query_set_index(
+                        timestamp_write.beginningOfPassWriteIndex,
+                    ),
+                    end_of_pass_write_index: map_query_set_index(
+                        timestamp_write.endOfPassWriteIndex,
+                    ),
+                }
+            })
+        })
+        .flatten();
+
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
             label: ptr_into_label(descriptor.label),
+            timestamp_writes: timestamp_writes.as_ref(),
         },
         None => wgc::command::ComputePassDescriptor::default(),
     };
@@ -1048,6 +1069,20 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         }
     });
 
+    let timestamp_writes = descriptor.timestampWrites.as_ref().map(|timestamp_write| {
+        wgc::command::RenderPassTimestampWrites {
+            query_set: timestamp_write
+                .querySet
+                .as_ref()
+                .expect("invalid query set in timestamp writes")
+                .id,
+            beginning_of_pass_write_index: map_query_set_index(
+                timestamp_write.beginningOfPassWriteIndex,
+            ),
+            end_of_pass_write_index: map_query_set_index(timestamp_write.endOfPassWriteIndex),
+        }
+    });
+
     let desc = wgc::command::RenderPassDescriptor {
         label: ptr_into_label(descriptor.label),
         color_attachments: Cow::Owned(
@@ -1070,6 +1105,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .collect(),
         ),
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
+        timestamp_writes: timestamp_writes.as_ref(),
+        occlusion_query_set: None, // TODO:
     };
 
     Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
