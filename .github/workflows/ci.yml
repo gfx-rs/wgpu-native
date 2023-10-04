@@ -29,6 +29,23 @@ jobs:
         uses: actions/setup-python@v4
       - run: python checks.py
 
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+          components: rustfmt
+      - name: Run rustfmt
+        run: |
+          cargo fmt -- --check
+
   clippy:
     name: Clippy ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
