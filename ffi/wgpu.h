@@ -165,7 +165,7 @@ typedef struct WGPUInstanceEnumerateAdapterOptions {
 } WGPUInstanceEnumerateAdapterOptions;
 
 typedef struct WGPUBindGroupEntryExtras {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     WGPUBuffer const * buffers;
     size_t bufferCount;
     WGPUSampler const * samplers;
@@ -175,7 +175,7 @@ typedef struct WGPUBindGroupEntryExtras {
 } WGPUBindGroupEntryExtras;
 
 typedef struct WGPUBindGroupLayoutEntryExtras {
-    WGPUChainedStruct const * nextInChain;
+    WGPUChainedStruct chain;
     uint32_t count;
 } WGPUBindGroupLayoutEntryExtras;
 
