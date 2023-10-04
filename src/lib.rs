@@ -1106,7 +1106,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         ),
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
         timestamp_writes: timestamp_writes.as_ref(),
-        occlusion_query_set: None, // TODO:
+        occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
     };
 
     Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
@@ -3122,6 +3122,17 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderRelease(
 // RenderPassEncoder methods
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderBeginOcclusionQuery(
+    pass: native::WGPURenderPassEncoder,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
+
+    render_ffi::wgpu_render_pass_begin_occlusion_query(&mut encoder, query_index);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
     pass: native::WGPURenderPassEncoder,
     query_set: native::WGPUQuerySet,
@@ -3225,6 +3236,16 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEn
             "wgpuRenderPassEncoderEnd",
         );
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderEndOcclusionQuery(
+    pass: native::WGPURenderPassEncoder,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
+
+    render_ffi::wgpu_render_pass_end_occlusion_query(&mut encoder);
 }
 
 #[no_mangle]

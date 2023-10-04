@@ -153,21 +153,6 @@ pub extern "C" fn wgpuRenderBundleEncoderSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuRenderPassEncoderBeginOcclusionQuery(
-    _render_pass_encoder: native::WGPURenderPassEncoder,
-    _query_index: u32,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuRenderPassEncoderEndOcclusionQuery(
-    _render_pass_encoder: native::WGPURenderPassEncoder,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuRenderPassEncoderSetLabel(
     _render_pass_encoder: native::WGPURenderPassEncoder,
     _label: *const ::std::os::raw::c_char,
