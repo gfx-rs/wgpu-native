@@ -721,10 +721,25 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
     let callback = callback.expect("invalid callback");
 
+    let adapter_limits = match gfx_select!(adapter_id => context.adapter_limits(adapter_id)) {
+        Ok(adapter_limits) => adapter_limits,
+        Err(cause) => {
+            let msg = CString::new(format_error(context, &cause)).unwrap();
+            callback(
+                native::WGPURequestDeviceStatus_Error,
+                std::ptr::null(),
+                msg.as_ptr(),
+                userdata,
+            );
+            return;
+        }
+    };
+    let use_downlevel = !wgt::Limits::default().check_limits(&adapter_limits);
+
     let (desc, trace_str, device_lost_handler) = match descriptor {
         Some(descriptor) => {
             let (desc, trace_str) = follow_chain!(
-                map_device_descriptor((descriptor),
+                map_device_descriptor((descriptor, use_downlevel),
                 WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
             );
             let device_lost_handler = DeviceLostCallback {
@@ -734,7 +749,13 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             (desc, trace_str, device_lost_handler)
         }
         None => (
-            wgt::DeviceDescriptor::default(),
+            wgt::DeviceDescriptor {
+                limits: match use_downlevel {
+                    true => wgt::Limits::downlevel_defaults(),
+                    false => wgt::Limits::default(),
+                },
+                ..Default::default()
+            },
             std::ptr::null(),
             DEFAULT_DEVICE_LOST_HANDLER,
         ),
