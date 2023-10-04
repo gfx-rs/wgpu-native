@@ -79,17 +79,17 @@ typedef struct vertex {
 } vertex;
 
 static const WGPUVertexAttribute vertex_attributes[] = {
-    (const WGPUVertexAttribute){
+    {
         .format = WGPUVertexFormat_Float32x2,
         .offset = 0,
         .shaderLocation = 0,
     },
-    (const WGPUVertexAttribute){
+    {
         .format = WGPUVertexFormat_Float32x2,
         .offset = 0 + 8, // 0 + sizeof(Float32x2)
         .shaderLocation = 1,
     },
-    (const WGPUVertexAttribute){
+    {
         .format = WGPUVertexFormat_Sint32,
         .offset = 0 + 8 + 8, // 0 + sizeof(Float32x2) + sizeof(Float32x2)
         .shaderLocation = 2,
