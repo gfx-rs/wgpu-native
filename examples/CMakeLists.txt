@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(examples LANGUAGES C)
 
+set(CMAKE_C_STANDARD 99)
+
 if(APPLE)
     add_compile_options(-x objective-c)
 endif()
@@ -30,6 +32,7 @@ add_subdirectory(framework)
 add_subdirectory(capture)
 add_subdirectory(compute)
 add_subdirectory(enumerate_adapters)
+add_subdirectory(texture_arrays)
 add_subdirectory(triangle)
 
 set(GLFW_USE_WAYLAND 1)

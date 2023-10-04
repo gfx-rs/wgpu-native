@@ -123,6 +123,18 @@ example-enumerate_adapters-release: examples-release
 run-example-enumerate_adapters-release: example-enumerate_adapters-release
 	cd examples/triangle && "../build/RelWithDebInfo/enumerate_adapters/enumerate_adapters"
 
+example-texture_arrays: examples-debug
+	cd examples/build/Debug && cmake --build . --target texture_arrays
+
+run-example-texture_arrays: example-texture_arrays
+	cd examples/texture_arrays && "../build/Debug/texture_arrays/texture_arrays"
+
+example-texture_arrays-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target texture_arrays
+
+run-example-texture_arrays-release: example-texture_arrays-release
+	cd examples/texture_arrays && "../build/RelWithDebInfo/texture_arrays/texture_arrays"
+
 example-triangle: examples-debug
 	cd examples/build/Debug && cmake --build . --target triangle
 

@@ -1,7 +1,7 @@
 use conv::{
-    map_device_descriptor, map_instance_backend_flags, map_instance_descriptor,
-    map_pipeline_layout_descriptor, map_primitive_state, map_query_set_index, map_shader_module,
-    map_surface, CreateSurfaceParams,
+    map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
+    map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
+    map_primitive_state, map_query_set_index, map_shader_module, map_surface, CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
@@ -13,7 +13,8 @@ use std::{
     fmt::Display,
     mem,
     num::NonZeroU64,
-    sync::{atomic, Arc},
+    sync::atomic,
+    sync::Arc,
     thread,
 };
 use utils::{make_slice, ptr_into_label, ptr_into_path};
@@ -1727,34 +1728,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     let entries = make_slice(descriptor.entries, descriptor.entryCount)
         .iter()
         .map(|entry| {
-            if let Some(buffer) = entry.buffer.as_ref() {
-                wgc::binding_model::BindGroupEntry {
-                    binding: entry.binding,
-                    resource: wgc::binding_model::BindingResource::Buffer(
-                        wgc::binding_model::BufferBinding {
-                            buffer_id: buffer.id,
-                            offset: entry.offset,
-                            size: match entry.size {
-                                0 => panic!("invalid size"),
-                                conv::WGPU_WHOLE_SIZE => None,
-                                _ => Some(NonZeroU64::new_unchecked(entry.size)),
-                            },
-                        },
-                    ),
-                }
-            } else if let Some(sampler) = entry.sampler.as_ref() {
-                wgc::binding_model::BindGroupEntry {
-                    binding: entry.binding,
-                    resource: wgc::binding_model::BindingResource::Sampler(sampler.id),
-                }
-            } else if let Some(texture_view) = entry.textureView.as_ref() {
-                wgc::binding_model::BindGroupEntry {
-                    binding: entry.binding,
-                    resource: wgc::binding_model::BindingResource::TextureView(texture_view.id),
-                }
-            } else {
-                panic!("invalid bind group entry for bind group descriptor");
-            }
+            follow_chain!(map_bind_group_entry(entry,
+                WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras)
+            )
         })
         .collect::<Vec<_>>();
 
@@ -1796,120 +1772,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     let entries = make_slice(descriptor.entries, descriptor.entryCount)
         .iter()
         .map(|entry| {
-            let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
-            let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
-            let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
-            let is_storage_texture =
-                entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
-
-            let ty = if is_texture {
-                wgt::BindingType::Texture {
-                    sample_type: match entry.texture.sampleType {
-                        native::WGPUTextureSampleType_Float => {
-                            wgt::TextureSampleType::Float { filterable: true }
-                        }
-                        native::WGPUTextureSampleType_UnfilterableFloat => {
-                            wgt::TextureSampleType::Float { filterable: false }
-                        }
-                        native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
-                        native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
-                        native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
-                        _ => panic!("invalid sample type for texture binding layout"),
-                    },
-                    view_dimension: match entry.texture.viewDimension {
-                        native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
-                        native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
-                        native::WGPUTextureViewDimension_2DArray => {
-                            wgt::TextureViewDimension::D2Array
-                        }
-                        native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
-                        native::WGPUTextureViewDimension_CubeArray => {
-                            wgt::TextureViewDimension::CubeArray
-                        }
-                        native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                        _ => panic!("invalid texture view dimension for texture binding layout"),
-                    },
-                    multisampled: entry.texture.multisampled != 0,
-                }
-            } else if is_sampler {
-                match entry.sampler.type_ {
-                    native::WGPUSamplerBindingType_Filtering => {
-                        wgt::BindingType::Sampler(wgt::SamplerBindingType::Filtering)
-                    }
-                    native::WGPUSamplerBindingType_NonFiltering => {
-                        wgt::BindingType::Sampler(wgt::SamplerBindingType::NonFiltering)
-                    }
-                    native::WGPUSamplerBindingType_Comparison => {
-                        wgt::BindingType::Sampler(wgt::SamplerBindingType::Comparison)
-                    }
-                    _ => panic!("invalid sampler binding type for sampler binding layout"),
-                }
-            } else if is_storage_texture {
-                wgt::BindingType::StorageTexture {
-                    access: match entry.storageTexture.access {
-                        native::WGPUStorageTextureAccess_WriteOnly => {
-                            wgt::StorageTextureAccess::WriteOnly
-                        }
-                        _ => {
-                            panic!(
-                                "invalid storage texture access for storage texture binding layout"
-                            )
-                        }
-                    },
-                    format: conv::map_texture_format(entry.storageTexture.format)
-                        .expect("invalid texture format for storage texture binding layout"),
-                    view_dimension: match entry.storageTexture.viewDimension {
-                        native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
-                        native::WGPUTextureViewDimension_2D => wgt::TextureViewDimension::D2,
-                        native::WGPUTextureViewDimension_2DArray => {
-                            wgt::TextureViewDimension::D2Array
-                        }
-                        native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
-                        native::WGPUTextureViewDimension_CubeArray => {
-                            wgt::TextureViewDimension::CubeArray
-                        }
-                        native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                        _ => {
-                            panic!(
-                                "invalid texture view dimension for storage texture binding layout"
-                            )
-                        }
-                    },
-                }
-            } else if is_buffer {
-                wgt::BindingType::Buffer {
-                    ty: match entry.buffer.type_ {
-                        native::WGPUBufferBindingType_Uniform => wgt::BufferBindingType::Uniform,
-                        native::WGPUBufferBindingType_Storage => {
-                            wgt::BufferBindingType::Storage { read_only: false }
-                        }
-                        native::WGPUBufferBindingType_ReadOnlyStorage => {
-                            wgt::BufferBindingType::Storage { read_only: true }
-                        }
-                        _ => panic!("invalid buffer binding type for buffer binding layout"),
-                    },
-                    has_dynamic_offset: entry.buffer.hasDynamicOffset != 0,
-                    min_binding_size: {
-                        assert_ne!(
-                            entry.buffer.minBindingSize,
-                            conv::WGPU_WHOLE_SIZE,
-                            "invalid min binding size for buffer binding layout, use 0 instead"
-                        );
-
-                        NonZeroU64::new(entry.buffer.minBindingSize)
-                    },
-                }
-            } else {
-                panic!("invalid bind group layout entry for bind group layout descriptor");
-            };
-
-            wgt::BindGroupLayoutEntry {
-                ty,
-                binding: entry.binding,
-                visibility: wgt::ShaderStages::from_bits(entry.visibility)
-                    .expect("invalid visibility for bind group layout entry"),
-                count: None, // TODO - What is this?
-            }
+            follow_chain!(map_bind_group_layout_entry(entry,
+                WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras)
+            )
         })
         .collect::<Vec<_>>();
 

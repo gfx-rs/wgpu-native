@@ -11,6 +11,8 @@ typedef enum WGPUNativeSType {
     WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
     WGPUSType_SupportedLimitsExtras = 0x00030005,
     WGPUSType_InstanceExtras = 0x00030006,
+    WGPUSType_BindGroupEntryExtras = 0x00030007,
+    WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -20,6 +22,8 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_MultiDrawIndirect = 0x00030003,
     WGPUNativeFeature_MultiDrawIndirectCount = 0x00030004,
     WGPUNativeFeature_VertexWritableStorage = 0x00030005,
+    WGPUNativeFeature_TextureBindingArray = 0x00030006,
+    WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x00030007,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
@@ -159,6 +163,21 @@ typedef struct WGPUInstanceEnumerateAdapterOptions {
     WGPUChainedStruct const * nextInChain;
     WGPUInstanceBackendFlags backends;
 } WGPUInstanceEnumerateAdapterOptions;
+
+typedef struct WGPUBindGroupEntryExtras {
+    WGPUChainedStruct chain;
+    WGPUBuffer const * buffers;
+    size_t bufferCount;
+    WGPUSampler const * samplers;
+    size_t samplerCount;
+    WGPUTextureView const * textureViews;
+    size_t textureViewCount;
+} WGPUBindGroupEntryExtras;
+
+typedef struct WGPUBindGroupLayoutEntryExtras {
+    WGPUChainedStruct chain;
+    uint32_t count;
+} WGPUBindGroupLayoutEntryExtras;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 

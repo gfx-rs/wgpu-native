@@ -1,8 +1,4 @@
 #include "framework.h"
-#include "wgpu.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 static void log_callback(WGPULogLevel level, char const *message,
                          void *userdata) {
@@ -86,6 +82,39 @@ cleanup:
   if (buf)
     free(buf);
   return shader_module;
+}
+
+#define COPY_BUFFER_ALIGNMENT 4
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+
+WGPUBuffer frmwrk_device_create_buffer_init(
+    WGPUDevice device, const frmwrk_buffer_init_descriptor *descriptor) {
+  assert(descriptor);
+  if (descriptor->content_size == 0) {
+    return wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
+                                              .label = descriptor->label,
+                                              .size = 0,
+                                              .usage = descriptor->usage,
+                                              .mappedAtCreation = false,
+                                          });
+  }
+
+  size_t unpadded_size = descriptor->content_size;
+  size_t align_mask = COPY_BUFFER_ALIGNMENT - 1;
+  size_t padded_size =
+      MAX((unpadded_size + align_mask) & ~align_mask, COPY_BUFFER_ALIGNMENT);
+  WGPUBuffer buffer =
+      wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
+                                         .label = descriptor->label,
+                                         .size = padded_size,
+                                         .usage = descriptor->usage,
+                                         .mappedAtCreation = true,
+                                     });
+  void *buf = wgpuBufferGetMappedRange(buffer, 0, unpadded_size);
+  memcpy(buf, descriptor->content, unpadded_size);
+  wgpuBufferUnmap(buffer);
+
+  return buffer;
 }
 
 #define print_storage_report(report, prefix)                                   \
