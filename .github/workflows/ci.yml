@@ -193,6 +193,7 @@ jobs:
           make example-compute
           make example-triangle
           make example-enumerate_adapters
+          make example-texture_arrays
       - if: ${{ matrix.run_examples }}
         name: Run examples debug
         run: |
@@ -205,10 +206,10 @@ jobs:
           make example-compute-release
           make example-triangle-release
           make example-enumerate_adapters-release
+          make example-texture_arrays-release
       - if: ${{ matrix.run_examples }}
         name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
           make run-example-enumerate_adapters-release
-
