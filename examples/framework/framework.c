@@ -88,7 +88,8 @@ cleanup:
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 
 WGPUBuffer frmwrk_device_create_buffer_init(
-    WGPUDevice device, frmwrk_buffer_init_descriptor descriptor[static 1]) {
+    WGPUDevice device, const frmwrk_buffer_init_descriptor *descriptor) {
+  assert(descriptor);
   if (descriptor->content_size == 0) {
     return wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
                                               .label = descriptor->label,

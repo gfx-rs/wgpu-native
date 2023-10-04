@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
 
   wgpuAdapterRequestDevice(
       demo.adapter,
-      &(WGPUDeviceDescriptor){
+      &(const WGPUDeviceDescriptor){
           .requiredFeatureCount = required_device_feature_count,
           .requiredFeatures = required_device_features,
       },
@@ -327,7 +327,7 @@ int main(int argc, char *argv[]) {
   printf("Using fragment entry point: '%s'\n", fragment_entry_point);
 
   WGPUBuffer vertex_buffer = frmwrk_device_create_buffer_init(
-      demo.device, &(frmwrk_buffer_init_descriptor){
+      demo.device, &(const frmwrk_buffer_init_descriptor){
                        .label = "Vertex Buffer",
                        .content = (void *)vertices,
                        .content_size = sizeof(vertices),
@@ -336,7 +336,7 @@ int main(int argc, char *argv[]) {
   assert(vertex_buffer);
 
   WGPUBuffer index_buffer = frmwrk_device_create_buffer_init(
-      demo.device, &(frmwrk_buffer_init_descriptor){
+      demo.device, &(const frmwrk_buffer_init_descriptor){
                        .label = "Index Buffer",
                        .content = (void *)indices,
                        .content_size = sizeof(indices),
@@ -349,7 +349,7 @@ int main(int argc, char *argv[]) {
       [64] = 1,
   };
   WGPUBuffer texture_index_buffer = frmwrk_device_create_buffer_init(
-      demo.device, &(frmwrk_buffer_init_descriptor){
+      demo.device, &(const frmwrk_buffer_init_descriptor){
                        .label = "Texture Index Buffer",
                        .content = texture_index_buffer_contents,
                        .content_size = sizeof(texture_index_buffer_contents),
@@ -374,25 +374,25 @@ int main(int argc, char *argv[]) {
   /* clang-format on */
 
   WGPUTexture red_texture = wgpuDeviceCreateTexture(
-      demo.device, &(WGPUTextureDescriptor){
+      demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
                        .label = "red",
                    });
   assert(red_texture);
   WGPUTexture green_texture = wgpuDeviceCreateTexture(
-      demo.device, &(WGPUTextureDescriptor){
+      demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
                        .label = "green",
                    });
   assert(green_texture);
   WGPUTexture blue_texture = wgpuDeviceCreateTexture(
-      demo.device, &(WGPUTextureDescriptor){
+      demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
                        .label = "blue",
                    });
   assert(blue_texture);
   WGPUTexture white_texture = wgpuDeviceCreateTexture(
-      demo.device, &(WGPUTextureDescriptor){
+      demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
                        .label = "white",
                    });

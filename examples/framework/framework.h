@@ -21,6 +21,6 @@ void frmwrk_setup_logging(WGPULogLevel level);
 WGPUShaderModule frmwrk_load_shader_module(WGPUDevice device, const char *name);
 void frmwrk_print_global_report(WGPUGlobalReport report);
 WGPUBuffer frmwrk_device_create_buffer_init(
-    WGPUDevice device, frmwrk_buffer_init_descriptor descriptor[static 1]);
+    WGPUDevice device, const frmwrk_buffer_init_descriptor *descriptor);
 
 #endif // FRAMEWORK_H
