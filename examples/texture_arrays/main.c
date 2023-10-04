@@ -2,12 +2,10 @@
 #include "webgpu-headers/webgpu.h"
 #include "wgpu.h"
 #include <assert.h>
-#include <malloc/_malloc.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/_types/_size_t.h>
 
 #if defined(WGPU_TARGET_MACOS)
 #include <QuartzCore/CAMetalLayer.h>
