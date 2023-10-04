@@ -54,6 +54,11 @@ pub(crate) fn make_slice<'a, T: 'a>(ptr: *const T, len: usize) -> &'a [T] {
     }
 }
 
+// Check if downlevel limits should be preffered over the default limits.
+pub fn should_use_downlevel_limits(adapter_limits: &wgt::Limits) -> bool {
+    !wgt::Limits::default().check_limits(adapter_limits)
+}
+
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.
 ///
 /// # Syntax:
@@ -222,4 +227,29 @@ macro_rules! map_enum {
             map_fn(value).expect($err_msg)
         }
     };
+}
+
+#[test]
+pub fn test_should_use_downlevel_limits() {
+    {
+        let adapter_limits = wgt::Limits {
+            max_bind_groups: 2, // default are 4
+            ..Default::default()
+        };
+        assert_eq!(should_use_downlevel_limits(&adapter_limits), true);
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_bind_groups: 4, // default are 4
+            ..Default::default()
+        };
+        assert_eq!(should_use_downlevel_limits(&adapter_limits), false);
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_bind_groups: 8, // default are 4
+            ..Default::default()
+        };
+        assert_eq!(should_use_downlevel_limits(&adapter_limits), false);
+    }
 }

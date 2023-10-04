@@ -17,7 +17,7 @@ use std::{
     sync::Arc,
     thread,
 };
-use utils::{make_slice, ptr_into_label, ptr_into_path};
+use utils::{make_slice, ptr_into_label, ptr_into_path, should_use_downlevel_limits};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
     gfx_select, id, resource, Label,
@@ -734,7 +734,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             return;
         }
     };
-    let use_downlevel = !wgt::Limits::default().check_limits(&adapter_limits);
+    let use_downlevel = should_use_downlevel_limits(&adapter_limits);
 
     let (desc, trace_str, device_lost_handler) = match descriptor {
         Some(descriptor) => {
