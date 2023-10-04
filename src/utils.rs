@@ -86,7 +86,7 @@ pub(crate) fn make_slice<'a, T: 'a>(ptr: *const T, len: usize) -> &'a [T] {
 
 #[macro_export]
 macro_rules! follow_chain {
-    ($func:ident($base:expr $(, $stype:ident => $ty:ty)*)) => {{
+    ($func:ident(($base:expr) $(, $stype:ident => $ty:ty)*)) => {{
     #[allow(non_snake_case)] // We use the type name as an easily usable temporary name
     {
         $(
@@ -114,6 +114,34 @@ macro_rules! follow_chain {
         }
         $func($base, $($stype),*)
     }}};
+    ($func:ident(($base1:expr, $base2:expr) $(, $stype:ident => $ty:ty)*)) => {{
+        #[allow(non_snake_case)] // We use the type name as an easily usable temporary name
+        {
+            $(
+                let mut $stype: Option<&$ty> = None;
+            )*
+            let mut chain_opt: Option<&$crate::native::WGPUChainedStruct> = $base1.nextInChain.as_ref();
+            while let Some(next_in_chain) = chain_opt {
+                match next_in_chain.sType {
+                    $(
+                        $crate::native::$stype => {
+                            let next_in_chain_ptr = next_in_chain as *const $crate::native::WGPUChainedStruct;
+                            assert_eq!(
+                                0,
+                                next_in_chain_ptr.align_offset(::std::mem::align_of::<$ty>()),
+                                concat!("Chain structure pointer is not aligned correctly to dereference as ", stringify!($ty), ". Correct alignment: {}"),
+                                ::std::mem::align_of::<$ty>()
+                            );
+                            let type_ptr: *const $ty = next_in_chain_ptr as _;
+                            $stype = Some(&*type_ptr);
+                        }
+                    )*
+                    _ => {}
+                }
+                chain_opt = next_in_chain.next.as_ref();
+            }
+            $func($base1, $base2, $($stype),*)
+        }}};
 }
 
 /// Creates a function which maps native constants to wgpu enums.

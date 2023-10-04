@@ -1,5 +1,3 @@
-use wgc::Label;
-
 use crate::native;
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
@@ -298,12 +296,15 @@ pub fn map_instance_descriptor(
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     extras: Option<&native::WGPUDeviceExtras>,
-) -> (wgt::DeviceDescriptor<Label<'a>>, *const std::ffi::c_char) {
+) -> (
+    wgt::DeviceDescriptor<wgc::Label<'a>>,
+    *const std::ffi::c_char,
+) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
         wgt::Limits::default(),
         |required_limits| unsafe {
             follow_chain!(
-                map_required_limits(required_limits,
+                map_required_limits((required_limits),
                 WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
             )
         },
