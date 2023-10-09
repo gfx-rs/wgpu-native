@@ -1,5 +1,3 @@
-use wgc::Label;
-
 use crate::native;
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
@@ -297,13 +295,20 @@ pub fn map_instance_descriptor(
 #[inline]
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
+    use_downlevel: bool,
     extras: Option<&native::WGPUDeviceExtras>,
-) -> (wgt::DeviceDescriptor<Label<'a>>, *const std::ffi::c_char) {
+) -> (
+    wgt::DeviceDescriptor<wgc::Label<'a>>,
+    *const std::ffi::c_char,
+) {
     let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
-        wgt::Limits::default(),
+        match use_downlevel {
+            true => wgt::Limits::downlevel_defaults(),
+            false => wgt::Limits::default(),
+        },
         |required_limits| unsafe {
             follow_chain!(
-                map_required_limits(required_limits,
+                map_required_limits((required_limits, use_downlevel),
                 WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
             )
         },
@@ -422,10 +427,14 @@ pub fn write_limits_struct(
 #[inline]
 pub fn map_required_limits(
     required_limits: &native::WGPURequiredLimits,
+    use_downlevel: bool,
     extras: Option<&native::WGPURequiredLimitsExtras>,
 ) -> wgt::Limits {
     let limits = required_limits.limits;
-    let mut wgt_limits = wgt::Limits::default();
+    let mut wgt_limits = match use_downlevel {
+        true => wgt::Limits::downlevel_defaults(),
+        false => wgt::Limits::default(),
+    };
     if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
     }

@@ -17,7 +17,7 @@ use std::{
     sync::Arc,
     thread,
 };
-use utils::{make_slice, ptr_into_label, ptr_into_path};
+use utils::{make_slice, ptr_into_label, ptr_into_path, should_use_downlevel_limits};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
     gfx_select, id, resource, Label,
@@ -576,7 +576,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 ) -> native::WGPUInstance {
     let instance_desc = match descriptor {
         Some(descriptor) => follow_chain!(map_instance_descriptor(
-            descriptor,
+            (descriptor),
             WGPUSType_InstanceExtras => native::WGPUInstanceExtras
         )),
         None => wgt::InstanceDescriptor::default(),
@@ -721,10 +721,25 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
     let callback = callback.expect("invalid callback");
 
+    let adapter_limits = match gfx_select!(adapter_id => context.adapter_limits(adapter_id)) {
+        Ok(adapter_limits) => adapter_limits,
+        Err(cause) => {
+            let msg = CString::new(format_error(context, &cause)).unwrap();
+            callback(
+                native::WGPURequestDeviceStatus_Error,
+                std::ptr::null(),
+                msg.as_ptr(),
+                userdata,
+            );
+            return;
+        }
+    };
+    let use_downlevel = should_use_downlevel_limits(&adapter_limits);
+
     let (desc, trace_str, device_lost_handler) = match descriptor {
         Some(descriptor) => {
             let (desc, trace_str) = follow_chain!(
-                map_device_descriptor(descriptor,
+                map_device_descriptor((descriptor, use_downlevel),
                 WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
             );
             let device_lost_handler = DeviceLostCallback {
@@ -734,7 +749,13 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             (desc, trace_str, device_lost_handler)
         }
         None => (
-            wgt::DeviceDescriptor::default(),
+            wgt::DeviceDescriptor {
+                limits: match use_downlevel {
+                    true => wgt::Limits::downlevel_defaults(),
+                    false => wgt::Limits::default(),
+                },
+                ..Default::default()
+            },
             std::ptr::null(),
             DEFAULT_DEVICE_LOST_HANDLER,
         ),
@@ -1728,7 +1749,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
     let entries = make_slice(descriptor.entries, descriptor.entryCount)
         .iter()
         .map(|entry| {
-            follow_chain!(map_bind_group_entry(entry,
+            follow_chain!(map_bind_group_entry((entry),
                 WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras)
             )
         })
@@ -1772,7 +1793,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
     let entries = make_slice(descriptor.entries, descriptor.entryCount)
         .iter()
         .map(|entry| {
-            follow_chain!(map_bind_group_layout_entry(entry,
+            follow_chain!(map_bind_group_layout_entry((entry),
                 WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras)
             )
         })
@@ -1955,7 +1976,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
 
     let desc = follow_chain!(
         map_pipeline_layout_descriptor(
-            descriptor,
+            (descriptor),
             WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
     );
     let (pipeline_layout_id, error) =
@@ -2113,7 +2134,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             },
             unclipped_depth: follow_chain!(
                 map_primitive_state(
-                    &descriptor.primitive,
+                    (&descriptor.primitive),
                     WGPUSType_PrimitiveDepthClipControl => native::WGPUPrimitiveDepthClipControl
                 )
             ),
@@ -2292,7 +2313,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let source = follow_chain!(
-        map_shader_module(descriptor,
+        map_shader_module((descriptor),
         WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
         WGPUSType_ShaderModuleWGSLDescriptor => native::WGPUShaderModuleWGSLDescriptor,
         WGPUSType_ShaderModuleGLSLDescriptor => native::WGPUShaderModuleGLSLDescriptor)
@@ -2548,7 +2569,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     let descriptor = descriptor.expect("invalid descriptor");
 
     let create_surface_params = follow_chain!(
-        map_surface(descriptor,
+        map_surface((descriptor),
             WGPUSType_SurfaceDescriptorFromWindowsHWND => native::WGPUSurfaceDescriptorFromWindowsHWND,
             WGPUSType_SurfaceDescriptorFromXcbWindow => native::WGPUSurfaceDescriptorFromXcbWindow,
             WGPUSType_SurfaceDescriptorFromXlibWindow => native::WGPUSurfaceDescriptorFromXlibWindow,
