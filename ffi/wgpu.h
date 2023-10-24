@@ -38,17 +38,17 @@ typedef enum WGPULogLevel {
 } WGPULogLevel;
 
 typedef enum WGPUInstanceBackend {
-    WGPUInstanceBackend_Vulkan = 1 << 1,
-    WGPUInstanceBackend_GL = 1 << 5,
+    WGPUInstanceBackend_All = 0x00000000,
+    WGPUInstanceBackend_Vulkan = 1 << 0,
+    WGPUInstanceBackend_GL = 1 << 1,
     WGPUInstanceBackend_Metal = 1 << 2,
     WGPUInstanceBackend_DX12 = 1 << 3,
     WGPUInstanceBackend_DX11 = 1 << 4,
-    WGPUInstanceBackend_BrowserWebGPU = 1 << 6,
+    WGPUInstanceBackend_BrowserWebGPU = 1 << 5,
     WGPUInstanceBackend_Primary = WGPUInstanceBackend_Vulkan | WGPUInstanceBackend_Metal |
         WGPUInstanceBackend_DX12 |
         WGPUInstanceBackend_BrowserWebGPU,
     WGPUInstanceBackend_Secondary = WGPUInstanceBackend_GL | WGPUInstanceBackend_DX11,
-    WGPUInstanceBackend_None = 0x00000000,
     WGPUInstanceBackend_Force32 = 0x7FFFFFFF
 } WGPUInstanceBackend;
 typedef WGPUFlags WGPUInstanceBackendFlags;

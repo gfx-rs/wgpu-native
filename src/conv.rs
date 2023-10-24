@@ -298,7 +298,10 @@ pub fn map_instance_descriptor(
         };
 
         wgt::InstanceDescriptor {
-            backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
+            backends: match extras.backends as native::WGPUInstanceBackend {
+                native::WGPUInstanceBackend_All => wgt::Backends::all(),
+                backends => map_instance_backend_flags(backends),
+            },
             dx12_shader_compiler,
             gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
             flags: match extras.flags as native::WGPUInstanceFlag {
