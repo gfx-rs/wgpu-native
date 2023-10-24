@@ -38,20 +38,29 @@ typedef enum WGPULogLevel {
 } WGPULogLevel;
 
 typedef enum WGPUInstanceBackend {
-    WGPUInstanceBackend_Vulkan = 1 << 1,
-    WGPUInstanceBackend_GL = 1 << 5,
+    WGPUInstanceBackend_All = 0x00000000,
+    WGPUInstanceBackend_Vulkan = 1 << 0,
+    WGPUInstanceBackend_GL = 1 << 1,
     WGPUInstanceBackend_Metal = 1 << 2,
     WGPUInstanceBackend_DX12 = 1 << 3,
     WGPUInstanceBackend_DX11 = 1 << 4,
-    WGPUInstanceBackend_BrowserWebGPU = 1 << 6,
+    WGPUInstanceBackend_BrowserWebGPU = 1 << 5,
     WGPUInstanceBackend_Primary = WGPUInstanceBackend_Vulkan | WGPUInstanceBackend_Metal |
         WGPUInstanceBackend_DX12 |
         WGPUInstanceBackend_BrowserWebGPU,
     WGPUInstanceBackend_Secondary = WGPUInstanceBackend_GL | WGPUInstanceBackend_DX11,
-    WGPUInstanceBackend_None = 0x00000000,
     WGPUInstanceBackend_Force32 = 0x7FFFFFFF
 } WGPUInstanceBackend;
 typedef WGPUFlags WGPUInstanceBackendFlags;
+
+typedef enum WGPUInstanceFlag {
+    WGPUInstanceFlag_Default = 0x00000000,
+    WGPUInstanceFlag_Debug = 1 << 0,
+    WGPUInstanceFlag_Validation = 1 << 1,
+    WGPUInstanceFlag_DiscardHalLabels = 1 << 2,
+    WGPUInstanceFlag_Force32 = 0x7FFFFFFF
+} WGPUInstanceFlag;
+typedef WGPUFlags WGPUInstanceFlags;
 
 typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Undefined = 0x00000000,
@@ -71,6 +80,7 @@ typedef enum WGPUGles3MinorVersion {
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackendFlags backends;
+    WGPUInstanceFlags flags;
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
     const char * dxilPath;
@@ -82,14 +92,19 @@ typedef struct WGPUDeviceExtras {
     const char * tracePath;
 } WGPUDeviceExtras;
 
+typedef struct WGPUNativeLimits {
+    uint32_t maxPushConstantSize;
+    uint32_t maxNonSamplerBindings;
+} WGPUNativeLimits;
+
 typedef struct WGPURequiredLimitsExtras {
     WGPUChainedStruct chain;
-    uint32_t maxPushConstantSize;
+    WGPUNativeLimits limits;
 } WGPURequiredLimitsExtras;
 
 typedef struct WGPUSupportedLimitsExtras {
     WGPUChainedStructOut chain;
-    uint32_t maxPushConstantSize;
+    WGPUNativeLimits limits;
 } WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {

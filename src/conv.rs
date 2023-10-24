@@ -245,7 +245,7 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
 
 #[inline]
 pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Backends {
-    let mut result: wgt::Backends = wgt::Backends::empty();
+    let mut result = wgt::Backends::empty();
     if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
     }
@@ -268,6 +268,21 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
 }
 
 #[inline]
+pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags {
+    let mut result = wgt::InstanceFlags::empty();
+    if (flags & native::WGPUInstanceFlag_Debug) != 0 {
+        result.insert(wgt::InstanceFlags::DEBUG);
+    }
+    if (flags & native::WGPUInstanceFlag_Validation) != 0 {
+        result.insert(wgt::InstanceFlags::VALIDATION);
+    }
+    if (flags & native::WGPUInstanceFlag_DiscardHalLabels) != 0 {
+        result.insert(wgt::InstanceFlags::DISCARD_HAL_LABELS);
+    }
+    result
+}
+
+#[inline]
 pub fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
@@ -283,9 +298,16 @@ pub fn map_instance_descriptor(
         };
 
         wgt::InstanceDescriptor {
-            backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
+            backends: match extras.backends as native::WGPUInstanceBackend {
+                native::WGPUInstanceBackend_All => wgt::Backends::all(),
+                backends => map_instance_backend_flags(backends),
+            },
             dx12_shader_compiler,
             gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
+            flags: match extras.flags as native::WGPUInstanceFlag {
+                native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
+                flags => map_instance_flags(flags),
+            },
         }
     } else {
         wgt::InstanceDescriptor::default()
@@ -388,12 +410,12 @@ pub fn write_limits_struct(
     limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
     limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as _;
     limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as _;
-    limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
-    limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
     limits.maxBufferSize = wgt_limits.max_buffer_size;
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
+    limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
+    limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
     // TODO: not yet in wgt
     // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
@@ -409,19 +431,22 @@ pub fn write_limits_struct(
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
     supported_limits.limits = limits;
 
-    if !supported_limits.nextInChain.is_null() {
-        unsafe {
+    match unsafe { supported_limits.nextInChain.as_ref() } {
+        Some(native::WGPUChainedStructOut {
+            sType: native::WGPUSType_SupportedLimitsExtras,
+            ..
+        }) => unsafe {
             let extras = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
                 *mut native::WGPUSupportedLimitsExtras,
             >(supported_limits.nextInChain);
-
-            (*extras).chain.next = std::ptr::null_mut();
-            (*extras).chain.sType = native::WGPUSType_SupportedLimitsExtras;
-
-            (*extras).maxPushConstantSize = wgt_limits.max_push_constant_size;
-        }
-    }
+            (*extras).limits = native::WGPUNativeLimits {
+                maxPushConstantSize: wgt_limits.max_push_constant_size,
+                maxNonSamplerBindings: wgt_limits.max_non_sampler_bindings,
+            };
+        },
+        _ => {}
+    };
 }
 
 #[inline]
@@ -509,8 +534,7 @@ pub fn map_required_limits(
     }
     // TODO: not yet in wgt
     // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
-    //     wgt_limits.max_inter_stage_shader_variables =
-    //         limits.maxInterStageShaderVariables;
+    //     wgt_limits.max_inter_stage_shader_variables = limits.maxInterStageShaderVariables;
     // }
     // TODO: not yet in wgt
     // if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -539,8 +563,12 @@ pub fn map_required_limits(
         wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
     if let Some(extras) = extras {
-        if extras.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
-            wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
+        let limits = extras.limits;
+        if limits.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_push_constant_size = limits.maxPushConstantSize;
+        }
+        if limits.maxNonSamplerBindings != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_non_sampler_bindings = limits.maxNonSamplerBindings;
         }
     }
     wgt_limits
@@ -815,6 +843,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rg16Snorm => None,
         wgt::TextureFormat::Rgba16Unorm => None,
         wgt::TextureFormat::Rgba16Snorm => None,
+        wgt::TextureFormat::Rgb10a2Uint => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -985,7 +1014,7 @@ pub fn write_global_report(
         windows,
         all(
             unix,
-            not(target_arch = "emscripten"),
+            not(target_os = "emscripten"),
             not(target_os = "ios"),
             not(target_os = "macos")
         )
@@ -1013,6 +1042,7 @@ pub fn write_global_report(
         }
     }
 
+    #[cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))]
     if let Some(gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;
