@@ -245,7 +245,7 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
 
 #[inline]
 pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Backends {
-    let mut result: wgt::Backends = wgt::Backends::empty();
+    let mut result = wgt::Backends::empty();
     if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
     }
@@ -263,6 +263,21 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
     }
     if (flags & native::WGPUInstanceBackend_DX11) != 0 {
         result |= wgt::Backends::DX11;
+    }
+    result
+}
+
+#[inline]
+pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags {
+    let mut result = wgt::InstanceFlags::empty();
+    if (flags & native::WGPUInstanceFlag_Debug) != 0 {
+        result.insert(wgt::InstanceFlags::DEBUG);
+    }
+    if (flags & native::WGPUInstanceFlag_Validation) != 0 {
+        result.insert(wgt::InstanceFlags::VALIDATION);
+    }
+    if (flags & native::WGPUInstanceFlag_DiscardHalLabels) != 0 {
+        result.insert(wgt::InstanceFlags::DISCARD_HAL_LABELS);
     }
     result
 }
@@ -286,7 +301,10 @@ pub fn map_instance_descriptor(
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
             gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
-            flags: wgt::InstanceFlags::default(), // TODO: expose in wgpu.h
+            flags: match extras.flags as native::WGPUInstanceFlag {
+                native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
+                flags => map_instance_flags(flags),
+            },
         }
     } else {
         wgt::InstanceDescriptor::default()

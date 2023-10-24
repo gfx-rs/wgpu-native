@@ -53,6 +53,15 @@ typedef enum WGPUInstanceBackend {
 } WGPUInstanceBackend;
 typedef WGPUFlags WGPUInstanceBackendFlags;
 
+typedef enum WGPUInstanceFlag {
+    WGPUInstanceFlag_Default = 0x00000000,
+    WGPUInstanceFlag_Debug = 1 << 0,
+    WGPUInstanceFlag_Validation = 1 << 1,
+    WGPUInstanceFlag_DiscardHalLabels = 1 << 2,
+    WGPUInstanceFlag_Force32 = 0x7FFFFFFF
+} WGPUInstanceFlag;
+typedef WGPUFlags WGPUInstanceFlags;
+
 typedef enum WGPUDx12Compiler {
     WGPUDx12Compiler_Undefined = 0x00000000,
     WGPUDx12Compiler_Fxc = 0x00000001,
@@ -71,6 +80,7 @@ typedef enum WGPUGles3MinorVersion {
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackendFlags backends;
+    WGPUInstanceFlags flags;
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
     const char * dxilPath;
