@@ -286,6 +286,7 @@ pub fn map_instance_descriptor(
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
             gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
+            flags: wgt::InstanceFlags::default(), // TODO: expose in wgpu.h
         }
     } else {
         wgt::InstanceDescriptor::default()
@@ -815,6 +816,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rg16Snorm => None,
         wgt::TextureFormat::Rgba16Unorm => None,
         wgt::TextureFormat::Rgba16Snorm => None,
+        wgt::TextureFormat::Rgb10a2Uint => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -985,7 +987,7 @@ pub fn write_global_report(
         windows,
         all(
             unix,
-            not(target_arch = "emscripten"),
+            not(target_os = "emscripten"),
             not(target_os = "ios"),
             not(target_os = "macos")
         )
@@ -1013,6 +1015,7 @@ pub fn write_global_report(
         }
     }
 
+    #[cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))]
     if let Some(gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;

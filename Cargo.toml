@@ -20,7 +20,9 @@ crate-type = ["lib", "cdylib", "staticlib"]
 [features]
 default = ["wgsl", "spirv", "glsl", "trace"]
 
-angle = ["wgc/angle"]
+# Enables the GLES backend on Windows & macOS
+angle = ["wgc/gles"]
+# Enables the Vulkan backend on macOS & iOS
 vulkan-portability = ["wgc/vulkan"]
 wgsl = ["wgc/wgsl"]
 spirv = ["naga/spv-in"]
@@ -30,40 +32,51 @@ trace = ["wgc/trace"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "9a76c483da4891fb7046c579e36d7c54bdb0b251"
+rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
 version = "0.17"
-features = ["raw-window-handle", "gles"]
+features = ["raw-window-handle"]
 
+# We want the wgpu-core Metal backend on macOS and iOS.
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "9a76c483da4891fb7046c579e36d7c54bdb0b251"
+rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
 version = "0.17"
 features = ["metal"]
 
+# We want the wgpu-core Direct3D backends and OpenGL (via WGL) on Windows.
 [target.'cfg(windows)'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "9a76c483da4891fb7046c579e36d7c54bdb0b251"
+rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
 version = "0.17"
-features = ["dx11", "dx12"]
+features = ["dx11", "dx12", "gles"]
 
-[target.'cfg(any(windows, all(unix, not(target_arch = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
+# We want the wgpu-core Vulkan backend on Unix (but not emscripten, macOS, iOS) and Windows.
+[target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "9a76c483da4891fb7046c579e36d7c54bdb0b251"
+rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
 version = "0.17"
 features = ["vulkan"]
+
+# We want the wgpu-core GLES backend on Unix (but not macOS, iOS).
+[target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies.wgc]
+package = "wgpu-core"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
+version = "0.17"
+features = ["gles"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "9a76c483da4891fb7046c579e36d7c54bdb0b251"
+rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
 version = "0.17"
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "df8107b7"
+rev = "e25280df9316434ef7752970016d01a3aede3f17"
 version = "0.13.0"
 
 [dependencies]
@@ -75,7 +88,7 @@ parking_lot = "0.12"
 smallvec = "1"
 
 [build-dependencies]
-bindgen = "0.66"
+bindgen = "0.68"
 
 [workspace]
 resolver = "2"
