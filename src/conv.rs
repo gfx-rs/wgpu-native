@@ -410,12 +410,12 @@ pub fn write_limits_struct(
     limits.maxUniformBuffersPerShaderStage = wgt_limits.max_uniform_buffers_per_shader_stage;
     limits.maxUniformBufferBindingSize = wgt_limits.max_uniform_buffer_binding_size as _;
     limits.maxStorageBufferBindingSize = wgt_limits.max_storage_buffer_binding_size as _;
-    limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
-    limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxVertexBuffers = wgt_limits.max_vertex_buffers;
     limits.maxBufferSize = wgt_limits.max_buffer_size;
     limits.maxVertexAttributes = wgt_limits.max_vertex_attributes;
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
+    limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
+    limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
     // TODO: not yet in wgt
     // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
@@ -431,19 +431,22 @@ pub fn write_limits_struct(
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
     supported_limits.limits = limits;
 
-    if !supported_limits.nextInChain.is_null() {
-        unsafe {
+    match unsafe { supported_limits.nextInChain.as_ref() } {
+        Some(native::WGPUChainedStructOut {
+            sType: native::WGPUSType_SupportedLimitsExtras,
+            ..
+        }) => unsafe {
             let extras = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
                 *mut native::WGPUSupportedLimitsExtras,
             >(supported_limits.nextInChain);
-
-            (*extras).chain.next = std::ptr::null_mut();
-            (*extras).chain.sType = native::WGPUSType_SupportedLimitsExtras;
-
-            (*extras).maxPushConstantSize = wgt_limits.max_push_constant_size;
-        }
-    }
+            (*extras).limits = native::WGPUNativeLimits {
+                maxPushConstantSize: wgt_limits.max_push_constant_size,
+                maxNonSamplerBindings: wgt_limits.max_non_sampler_bindings,
+            };
+        },
+        _ => {}
+    };
 }
 
 #[inline]
@@ -531,8 +534,7 @@ pub fn map_required_limits(
     }
     // TODO: not yet in wgt
     // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
-    //     wgt_limits.max_inter_stage_shader_variables =
-    //         limits.maxInterStageShaderVariables;
+    //     wgt_limits.max_inter_stage_shader_variables = limits.maxInterStageShaderVariables;
     // }
     // TODO: not yet in wgt
     // if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -561,8 +563,12 @@ pub fn map_required_limits(
         wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
     if let Some(extras) = extras {
-        if extras.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
-            wgt_limits.max_push_constant_size = extras.maxPushConstantSize;
+        let limits = extras.limits;
+        if limits.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_push_constant_size = limits.maxPushConstantSize;
+        }
+        if limits.maxNonSamplerBindings != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_non_sampler_bindings = limits.maxNonSamplerBindings;
         }
     }
     wgt_limits

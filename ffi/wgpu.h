@@ -92,14 +92,19 @@ typedef struct WGPUDeviceExtras {
     const char * tracePath;
 } WGPUDeviceExtras;
 
+typedef struct WGPUNativeLimits {
+    uint32_t maxPushConstantSize;
+    uint32_t maxNonSamplerBindings;
+} WGPUNativeLimits;
+
 typedef struct WGPURequiredLimitsExtras {
     WGPUChainedStruct chain;
-    uint32_t maxPushConstantSize;
+    WGPUNativeLimits limits;
 } WGPURequiredLimitsExtras;
 
 typedef struct WGPUSupportedLimitsExtras {
     WGPUChainedStructOut chain;
-    uint32_t maxPushConstantSize;
+    WGPUNativeLimits limits;
 } WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {
