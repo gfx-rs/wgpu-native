@@ -4,9 +4,9 @@ version = 3
 
 [[package]]
 name = "ahash"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd7d5a2cecb58716e47d67d5703a249964b14c7be1ec3cad3affc295b2d1c35d"
+checksum = "91429305e9f0a25f6205c5b8e0d2db09e0708a7a6df0f42212bb56c32c8ac97a"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -487,8 +487,9 @@ checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
 
 [[package]]
 name = "metal"
-version = "0.26.0"
-source = "git+https://github.com/gfx-rs/metal-rs/?rev=d24f1a4#d24f1a4ae92470bf87a0c65ecfe78c9299835505"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c43f73953f8cbe511f021b58f18c3ce1c3d1ae13fe953293e13345bf83217f25"
 dependencies = [
  "bitflags 2.4.1",
  "block",
@@ -507,8 +508,8 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "naga"
-version = "0.13.0"
-source = "git+https://github.com/gfx-rs/naga?rev=e25280df9316434ef7752970016d01a3aede3f17#e25280df9316434ef7752970016d01a3aede3f17"
+version = "0.14.0"
+source = "git+https://github.com/gfx-rs/naga?rev=92e41b43e437146b5d946eb238de963be1168016#92e41b43e437146b5d946eb238de963be1168016"
 dependencies = [
  "bit-set",
  "bitflags 2.4.1",
@@ -754,18 +755,18 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "serde"
-version = "1.0.189"
+version = "1.0.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e422a44e74ad4001bdc8eede9a4570ab52f71190e9c076d14369f38b9200537"
+checksum = "91d3c334ca1ee894a2c6f6ad698fe8c435b76d504b13d436f0685d648d6d96f7"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.189"
+version = "1.0.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e48d1f918009ce3145511378cf68d613e3b3d9137d67272562080d68a2b32d5"
+checksum = "67c5609f394e5c2bd7fc51efda478004ea80ef42fee983d5c67a65e34f32c0e3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -933,8 +934,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.17.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=dd9b282c72a696ffaee100b69e7c8e37668e6149#dd9b282c72a696ffaee100b69e7c8e37668e6149"
+version = "0.18.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=49b7ec97c164bac9ee877f45cdd806fbefecc5a4#49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -957,8 +958,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.17.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=dd9b282c72a696ffaee100b69e7c8e37668e6149#dd9b282c72a696ffaee100b69e7c8e37668e6149"
+version = "0.18.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=49b7ec97c164bac9ee877f45cdd806fbefecc5a4#49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1012,8 +1013,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "0.17.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=dd9b282c72a696ffaee100b69e7c8e37668e6149#dd9b282c72a696ffaee100b69e7c8e37668e6149"
+version = "0.18.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=49b7ec97c164bac9ee877f45cdd806fbefecc5a4#49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
 dependencies = [
  "bitflags 2.4.1",
  "js-sys",
@@ -1138,18 +1139,18 @@ checksum = "0fcb9cbac069e033553e8bb871be2fbdffcab578eb25bd0f7c508cedc6dcd75a"
 
 [[package]]
 name = "zerocopy"
-version = "0.7.11"
+version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c19fae0c8a9efc6a8281f2e623db8af1db9e57852e04cde3e754dd2dc29340f"
+checksum = "81ba595b9f2772fbee2312de30eeb80ec773b4cb2f1e8098db024afadda6c06f"
 dependencies = [
  "zerocopy-derive",
 ]
 
 [[package]]
 name = "zerocopy-derive"
-version = "0.7.11"
+version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc56589e9ddd1f1c28d4b4b5c773ce232910a6bb67a70133d61c9e347585efe9"
+checksum = "772666c41fb6dceaf520b564b962d738a8e1a83b41bd48945f50837aed78bb1d"
 dependencies = [
  "proc-macro2",
  "quote",

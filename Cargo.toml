@@ -6,6 +6,7 @@ authors = [
 	"Joshua Groves <josh@joshgroves.com>",
 	"Noah Charlton <ncharlton002@gmail.com>",
 	"Almar Klein <almar@almarklein.org>",
+	"Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
 description = "WebGPU native implementation on gfx-hal"
@@ -32,52 +33,52 @@ trace = ["wgc/trace"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
-version = "0.17"
+rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+version = "0.18"
 features = ["raw-window-handle"]
 
 # We want the wgpu-core Metal backend on macOS and iOS.
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
-version = "0.17"
+rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+version = "0.18"
 features = ["metal"]
 
 # We want the wgpu-core Direct3D backends and OpenGL (via WGL) on Windows.
 [target.'cfg(windows)'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
-version = "0.17"
+rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+version = "0.18"
 features = ["dx11", "dx12", "gles"]
 
 # We want the wgpu-core Vulkan backend on Unix (but not emscripten, macOS, iOS) and Windows.
 [target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
-version = "0.17"
+rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+version = "0.18"
 features = ["vulkan"]
 
 # We want the wgpu-core GLES backend on Unix (but not macOS, iOS).
 [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
-version = "0.17"
+rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+version = "0.18"
 features = ["gles"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "dd9b282c72a696ffaee100b69e7c8e37668e6149"
-version = "0.17"
+rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+version = "0.18"
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/naga"
-rev = "e25280df9316434ef7752970016d01a3aede3f17"
-version = "0.13.0"
+rev = "92e41b43e437146b5d946eb238de963be1168016"
+version = "0.14"
 
 [dependencies]
 raw-window-handle = "0.5"
