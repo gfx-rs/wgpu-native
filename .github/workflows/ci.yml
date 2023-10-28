@@ -12,6 +12,7 @@ env:
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
+  CACHE_SUFFIX: a
 
 jobs:
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
@@ -125,6 +126,10 @@ jobs:
         with:
           target: ${{ matrix.target }}
           components: clippy
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: clippy-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       - name: Setup Environment
         run: ${{ matrix.setup_env }}
       - name: Run clippy
@@ -199,6 +204,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: examples-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       - name: Setup Environment
         run: ${{ matrix.setup_env }}
       - name: Run tests

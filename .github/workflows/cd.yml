@@ -20,6 +20,9 @@
 
 name: CD
 
+env:
+  CACHE_SUFFIX: a
+
 on:
   workflow_dispatch:
   push:
@@ -90,6 +93,10 @@ jobs:
         with:
           toolchain: stable-msvc
           targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Install llvm
         run: |
@@ -128,6 +135,10 @@ jobs:
         with:
           toolchain: stable-i686-pc-windows-msvc
           targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Install llvm
         run: |
@@ -166,6 +177,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: make package
@@ -197,6 +212,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: make package
