@@ -4,7 +4,7 @@ name: CI
 
 on:
   push:
-    branches: [ "*" ]
+    branches: ["*"]
   pull_request:
     branches-ignore: []
 
@@ -14,7 +14,6 @@ env:
   RUST_BACKTRACE: full
 
 jobs:
-
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
   integrity-build:
     name: Code integrity checks
@@ -55,7 +54,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-            # Linux
+          # Linux
           - name: Linux x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu

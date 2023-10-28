@@ -23,11 +23,10 @@ name: CD
 on:
   workflow_dispatch:
   push:
-    tags: [ 'v*' ]
-    branches: [ trunk, cd ]
+    tags: ["v*"]
+    branches: [trunk, cd]
 
 jobs:
-
   # -----
   linux-x86_64:
     # Config
@@ -39,16 +38,16 @@ jobs:
       TOOLCHAIN: stable-x86_64-unknown-linux-gnu
       IMAGE: manylinux_2_28_x86_64
     steps:
-    # Common part (same for nearly each build)
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Set WGPU_NATIVE_VERSION
-      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    # Build
-    - name: Build
-      run: |
+      # Common part (same for nearly each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      # Build
+      - name: Build
+        run: |
           CID=$(docker create -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME -e WGPU_NATIVE_VERSION quay.io/pypa/$IMAGE bash -c "\
             cp -r /tmp/src/. . && \
             rm -rf ./dist && \
@@ -63,12 +62,12 @@ jobs:
           mkdir -p dist
           docker cp $CID:/tmp/wgpu-native/dist/. dist/.
           docker rm $CID
-    # Upload (same for each build)
-    - name: Upload
-      uses: actions/upload-artifact@v3
-      with:
-        path: dist
-        name: dist
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
 
   # -----
   windows-x86_64:
@@ -79,34 +78,34 @@ jobs:
       TARGET: x86_64-pc-windows-msvc
       ARCHIVE_NAME: wgpu-windows-x86_64
     steps:
-    # Common part (same for each build)
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Set WGPU_NATIVE_VERSION
-      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable-msvc
-        targets: ${{ env.TARGET }}
-    # Build
-    - name: Install llvm
-      run: |
-        set -x
-        choco install -y llvm
-        echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
-      shell: bash
-    - name: Build
-      run: make package
-      shell: bash
-    # Upload (same for each build)
-    - name: Upload
-      uses: actions/upload-artifact@v3
-      with:
-        path: dist
-        name: dist
+      # Common part (same for each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-msvc
+          targets: ${{ env.TARGET }}
+      # Build
+      - name: Install llvm
+        run: |
+          set -x
+          choco install -y llvm
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" >> $GITHUB_ENV
+        shell: bash
+      - name: Build
+        run: make package
+        shell: bash
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
 
   # -----
   windows-i686:
@@ -117,34 +116,34 @@ jobs:
       TARGET: i686-pc-windows-msvc
       ARCHIVE_NAME: wgpu-windows-i686
     steps:
-    # Common part (same for each build)
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Set WGPU_NATIVE_VERSION
-      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable-i686-pc-windows-msvc
-        targets: ${{ env.TARGET }}
-    # Build
-    - name: Install llvm
-      run: |
-        set -x
-        choco install -y --x86 --force llvm
-        echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
-      shell: bash
-    - name: Build
-      run: make package
-      shell: bash
-    # Upload (same for each build)
-    - name: Upload
-      uses: actions/upload-artifact@v3
-      with:
-        path: dist
-        name: dist
+      # Common part (same for each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable-i686-pc-windows-msvc
+          targets: ${{ env.TARGET }}
+      # Build
+      - name: Install llvm
+        run: |
+          set -x
+          choco install -y --x86 --force llvm
+          echo "LIBCLANG_PATH=C:\Program Files (x86)\LLVM\lib" >> $GITHUB_ENV
+        shell: bash
+      - name: Build
+        run: make package
+        shell: bash
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
 
   # -----
   macos-x86_64:
@@ -156,26 +155,26 @@ jobs:
       ARCHIVE_NAME: wgpu-macos-x86_64
       MACOSX_DEPLOYMENT_TARGET: "10.13"
     steps:
-    # Common part (same for each build)
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Set WGPU_NATIVE_VERSION
-      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ env.TARGET }}
-    # Build
-    - name: Build
-      run: make package
-    # Upload (same for each build)
-    - name: Upload
-      uses: actions/upload-artifact@v3
-      with:
-        path: dist
-        name: dist
+      # Common part (same for each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      # Build
+      - name: Build
+        run: make package
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
 
   # -----
   macos-arm64:
@@ -187,62 +186,63 @@ jobs:
       ARCHIVE_NAME: wgpu-macos-arm64
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
-    # Common part (same for each build)
-    - uses: actions/checkout@v3
-      with:
-        submodules: true
-    - name: Set WGPU_NATIVE_VERSION
-      run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ env.TARGET }}
-    # Build
-    - name: Build
-      run: make package
-    # Upload (same for each build)
-    - name: Upload
-      uses: actions/upload-artifact@v3
-      with:
-        path: dist
-        name: dist
+      # Common part (same for each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      # Build
+      - name: Build
+        run: make package
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
 
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux64),
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
-    needs: [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    needs:
+      [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
-    - uses: actions/checkout@v3
-    - name: set version (which gets used as release name)
-      run: |
+      - uses: actions/checkout@v3
+      - name: set version (which gets used as release name)
+        run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
-      shell: bash
-    - name: Download assets
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
-        path: dist
-    - name: Create commit-sha file
-      env:
-        GITHUB_SHA: ${{ github.sha }}
-      run: |
-        echo $GITHUB_SHA > dist/commit-sha
-    - name: Upload Release Assets
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ env.WGPU_NATIVE_VERSION }}
-        name: ${{ env.WGPU_NATIVE_VERSION }}
-        files: |
-          dist/*.zip
-          dist/commit-sha
-        body: |
+        shell: bash
+      - name: Download assets
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist
+      - name: Create commit-sha file
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          echo $GITHUB_SHA > dist/commit-sha
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.WGPU_NATIVE_VERSION }}
+          name: ${{ env.WGPU_NATIVE_VERSION }}
+          files: |
+            dist/*.zip
+            dist/commit-sha
+          body: |
             Autogenerated binary modules.
             The Linux builds are built on AlmaLinux 8 [manylinux_2_28](https://github.com/pypa/manylinux#manylinux).
             The MacOS builds target MacOS 10.13 High Sierra and up.
-        draft: false
-        prerelease: false
+          draft: false
+          prerelease: false
