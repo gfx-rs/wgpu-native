@@ -208,16 +208,86 @@ jobs:
         path: dist
         name: dist
 
+  distribution-release:
+    name: Create easy-to-integrate distributions (release)
+    needs: [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download assets
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+    - name: Create commit-sha file
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo $GITHUB_SHA > dist/commit-sha
+    - name: Prepare distribution
+      run: |
+        cp dist/commit-sha distribution
+        cp ffi/webgpu-headers/webgpu.h distribution/include/webgpu
+        cp ffi/wgpu.h distribution/include/webgpu
+        for zipfile in wgpu-*-release.zip
+          arch=$(echo $zipfile | cut -d- -f2-3)
+          mkdir -p distribution/bin/$arch
+          unzip dist/wgpu-*-release.zip distribution/bin/
+          unzip -d distribution/bin $zipfile *.so *.dylib *.dll
+        done
+        mv distribution webgpu
+        zip -r wgpu-distribution-release.zip webgpu
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        path: wgpu-distribution-release.zip
+        name: dist
+
+  distribution-debug:
+    name: Create easy-to-integrate distributions (debug)
+    needs: [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    runs-on: ubuntu-18.04
+    steps:
+    - uses: actions/checkout@v3
+    - name: Download assets
+      uses: actions/download-artifact@v3
+      with:
+        name: dist
+    - name: Create commit-sha file
+      env:
+        GITHUB_SHA: ${{ github.sha }}
+      run: |
+        echo $GITHUB_SHA > dist/commit-sha
+    - name: Prepare distribution
+      run: |
+        cp dist/commit-sha distribution
+        cp ffi/webgpu-headers/webgpu.h distribution/include/webgpu
+        cp ffi/wgpu.h distribution/include/webgpu
+        for zipfile in wgpu-*-debug.zip
+          arch=$(echo $zipfile | cut -d- -f2-3)
+          mkdir -p distribution/bin/$arch
+          unzip dist/wgpu-*-debug.zip distribution/bin/
+          unzip -d distribution/bin $zipfile *.so *.dylib *.dll
+        done
+        mv distribution webgpu
+        zip -r wgpu-distribution-debug.zip webgpu
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        path: wgpu-distribution-debug.zip
+        name: dist
+
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux64),
   # plus a file containing the commit sha.
   publish:
     name: Publish Github release
-    needs: [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+    needs: [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64, distribution-release, distribution-debug]
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
     - name: set version (which gets used as release name)
       run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
