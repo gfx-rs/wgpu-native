@@ -13,6 +13,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_InstanceExtras = 0x00030006,
     WGPUSType_BindGroupEntryExtras = 0x00030007,
     WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
+    WGPUSType_QuerySetDescriptorExtras = 0x00030009,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -24,6 +25,7 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_VertexWritableStorage = 0x00030005,
     WGPUNativeFeature_TextureBindingArray = 0x00030006,
     WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x00030007,
+    WGPUNativeFeature_PipelineStatisticsQuery = 0x00030008,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
@@ -76,6 +78,20 @@ typedef enum WGPUGles3MinorVersion {
     WGPUGles3MinorVersion_Version2 = 0x00000003,
     WGPUGles3MinorVersion_Force32 = 0x7FFFFFFF
 } WGPUGles3MinorVersion;
+
+typedef enum WGPUPipelineStatisticName {
+    WGPUPipelineStatisticName_VertexShaderInvocations = 0x00000000,
+    WGPUPipelineStatisticName_ClipperInvocations = 0x00000001,
+    WGPUPipelineStatisticName_ClipperPrimitivesOut = 0x00000002,
+    WGPUPipelineStatisticName_FragmentShaderInvocations = 0x00000003,
+    WGPUPipelineStatisticName_ComputeShaderInvocations = 0x00000004,
+    WGPUPipelineStatisticName_Force32 = 0x7FFFFFFF
+} WGPUPipelineStatisticName WGPU_ENUM_ATTRIBUTE;
+
+typedef enum WGPUNativeQueryType {
+    WGPUNativeQueryType_PipelineStatistics = 0x00030000,
+    WGPUNativeQueryType_Force32 = 0x7FFFFFFF
+} WGPUNativeQueryType WGPU_ENUM_ATTRIBUTE;
 
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
@@ -194,6 +210,12 @@ typedef struct WGPUBindGroupLayoutEntryExtras {
     uint32_t count;
 } WGPUBindGroupLayoutEntryExtras;
 
+typedef struct WGPUQuerySetDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPUPipelineStatisticName const * pipelineStatistics;
+    size_t pipelineStatisticCount;
+} WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 
 #ifdef __cplusplus
@@ -221,6 +243,11 @@ void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder
 
 void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
+
+void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
+void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+void wgpuRenderPassEncoderEndPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder);
 
 #ifdef __cplusplus
 } // extern "C"

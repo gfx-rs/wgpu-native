@@ -1,7 +1,8 @@
 use conv::{
     map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
     map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
-    map_primitive_state, map_query_set_index, map_shader_module, map_surface, CreateSurfaceParams,
+    map_primitive_state, map_query_set_descriptor, map_query_set_index, map_shader_module,
+    map_surface, CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
@@ -1517,23 +1518,6 @@ pub unsafe extern "C" fn wgpuCommandEncoderRelease(command_encoder: native::WGPU
 // ComputePassEncoder methods
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
-    pass: native::WGPUComputePassEncoder,
-    query_set: native::WGPUQuerySet,
-    query_index: u32,
-) {
-    let pass = pass.as_ref().expect("invalid compute pass");
-    let query_set_id = query_set.as_ref().expect("invalid query set").id;
-    let mut encoder = pass.encoder.write();
-
-    compute_ffi::wgpu_compute_pass_begin_pipeline_statistics_query(
-        &mut encoder,
-        query_set_id,
-        query_index,
-    );
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
     pass: native::WGPUComputePassEncoder,
     workgroup_count_x: u32,
@@ -1589,16 +1573,6 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePass
             "wgpuComputePassEncoderEnd",
         )
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
-    pass: native::WGPUComputePassEncoder,
-) {
-    let pass = pass.as_ref().expect("invalid compute pass");
-    let mut encoder = pass.encoder.write();
-
-    compute_ffi::wgpu_compute_pass_end_pipeline_statistics_query(&mut encoder);
 }
 
 #[no_mangle]
@@ -2007,8 +1981,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context, &device.error_sink)
     };
+    let descriptor = descriptor.expect("invalid query set descriptor");
 
-    let desc = conv::map_query_set_descriptor(descriptor.expect("invalid query set descriptor"));
+    let desc = follow_chain!(
+        map_query_set_descriptor(
+            (descriptor),
+            WGPUSType_QuerySetDescriptorExtras => native::WGPUQuerySetDescriptorExtras)
+    );
 
     let (query_set_id, error) =
         gfx_select!(device_id => context.device_create_query_set(device_id, &desc, ()));
@@ -3154,23 +3133,6 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderBeginOcclusionQuery(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
-    pass: native::WGPURenderPassEncoder,
-    query_set: native::WGPUQuerySet,
-    query_index: u32,
-) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let query_set_id = query_set.as_ref().expect("invalid query set").id;
-    let mut encoder = pass.encoder.write();
-
-    render_ffi::wgpu_render_pass_begin_pipeline_statistics_query(
-        &mut encoder,
-        query_set_id,
-        query_index,
-    );
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     pass: native::WGPURenderPassEncoder,
     vertex_count: u32,
@@ -3267,16 +3229,6 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEndOcclusionQuery(
     let mut encoder = pass.encoder.write();
 
     render_ffi::wgpu_render_pass_end_occlusion_query(&mut encoder);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
-    pass: native::WGPURenderPassEncoder,
-) {
-    let pass = pass.as_ref().expect("invalid render pass");
-    let mut encoder = pass.encoder.write();
-
-    render_ffi::wgpu_render_pass_end_pipeline_statistics_query(&mut encoder);
 }
 
 #[no_mangle]
@@ -4165,4 +4117,58 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
         count_buffer_offset,
         max_count,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
+    pass: native::WGPUComputePassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let mut encoder = pass.encoder.write();
+
+    compute_ffi::wgpu_compute_pass_begin_pipeline_statistics_query(
+        &mut encoder,
+        query_set_id,
+        query_index,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
+    pass: native::WGPUComputePassEncoder,
+) {
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let mut encoder = pass.encoder.write();
+
+    compute_ffi::wgpu_compute_pass_end_pipeline_statistics_query(&mut encoder);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
+    pass: native::WGPURenderPassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let mut encoder = pass.encoder.write();
+
+    render_ffi::wgpu_render_pass_begin_pipeline_statistics_query(
+        &mut encoder,
+        query_set_id,
+        query_index,
+    );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
+    pass: native::WGPURenderPassEncoder,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let mut encoder = pass.encoder.write();
+
+    render_ffi::wgpu_render_pass_end_pipeline_statistics_query(&mut encoder);
 }
