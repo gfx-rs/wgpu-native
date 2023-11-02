@@ -54,9 +54,23 @@ pub(crate) fn make_slice<'a, T: 'a>(ptr: *const T, len: usize) -> &'a [T] {
     }
 }
 
-// Check if downlevel limits should be preffered over the default limits.
-pub fn should_use_downlevel_limits(adapter_limits: &wgt::Limits) -> bool {
-    !wgt::Limits::default().check_limits(adapter_limits)
+#[inline]
+fn limits_gteq_default(limits: &wgt::Limits) -> bool {
+    wgt::Limits::check_limits(&wgt::Limits::default(), limits)
+}
+#[inline]
+fn limits_gteq_downlevel_defaults(limits: &wgt::Limits) -> bool {
+    wgt::Limits::check_limits(&wgt::Limits::downlevel_defaults(), limits)
+}
+#[inline]
+pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) -> wgt::Limits {
+    if limits_gteq_default(adapter_limits) {
+        return wgt::Limits::default();
+    }
+    if limits_gteq_downlevel_defaults(adapter_limits) {
+        return wgt::Limits::downlevel_defaults();
+    }
+    wgt::Limits::downlevel_webgl2_defaults()
 }
 
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.
@@ -230,26 +244,104 @@ macro_rules! map_enum {
 }
 
 #[test]
-pub fn test_should_use_downlevel_limits() {
+pub fn test_get_base_device_limits_from_adapter_limits() {
+    // max_uniform_buffer_binding_size
+    //  default: 64 << 10
+    //  downlevel_defaults: 16 << 10
+    //  downlevel_webgl2_defaults: 16 << 10
     {
         let adapter_limits = wgt::Limits {
-            max_bind_groups: 2, // default are 4
+            max_uniform_buffer_binding_size: (16 << 10) - 1,
             ..Default::default()
         };
-        assert_eq!(should_use_downlevel_limits(&adapter_limits), true);
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::downlevel_webgl2_defaults(),
+        );
     }
     {
         let adapter_limits = wgt::Limits {
-            max_bind_groups: 4, // default are 4
+            max_uniform_buffer_binding_size: 16 << 10,
             ..Default::default()
         };
-        assert_eq!(should_use_downlevel_limits(&adapter_limits), false);
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::downlevel_defaults(),
+        );
     }
     {
         let adapter_limits = wgt::Limits {
-            max_bind_groups: 8, // default are 4
+            max_uniform_buffer_binding_size: (16 << 10) + 1,
             ..Default::default()
         };
-        assert_eq!(should_use_downlevel_limits(&adapter_limits), false);
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::downlevel_defaults(),
+        );
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_uniform_buffer_binding_size: 64 << 10,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::default(),
+        );
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_uniform_buffer_binding_size: (64 << 10) + 1,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::default(),
+        );
+    }
+
+    // max_compute_workgroups_per_dimension
+    //  default: 65535
+    //  downlevel_defaults: 65535
+    //  downlevel_webgl2_defaults: 0
+    {
+        let adapter_limits = wgt::Limits {
+            max_compute_workgroups_per_dimension: 0,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::downlevel_webgl2_defaults(),
+        );
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_compute_workgroups_per_dimension: 65535 - 1,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::downlevel_webgl2_defaults(),
+        );
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_compute_workgroups_per_dimension: 65535,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::default(),
+        );
+    }
+    {
+        let adapter_limits = wgt::Limits {
+            max_compute_workgroups_per_dimension: 65535 + 1,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits::default(),
+        );
     }
 }

@@ -317,30 +317,25 @@ pub fn map_instance_descriptor(
 #[inline]
 pub fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
-    use_downlevel: bool,
+    base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     *const std::ffi::c_char,
 ) {
-    let limits = unsafe { des.requiredLimits.as_ref() }.map_or(
-        match use_downlevel {
-            true => wgt::Limits::downlevel_defaults(),
-            false => wgt::Limits::default(),
-        },
-        |required_limits| unsafe {
-            follow_chain!(
-                map_required_limits((required_limits, use_downlevel),
-                WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
-            )
-        },
-    );
-
     (
         wgt::DeviceDescriptor {
             label: ptr_into_label(des.label),
             features: map_features(make_slice(des.requiredFeatures, des.requiredFeatureCount)),
-            limits,
+            limits: match unsafe { des.requiredLimits.as_ref() } {
+                Some(required_limits) => unsafe {
+                    follow_chain!(
+                        map_required_limits((required_limits, base_limits),
+                        WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+                    )
+                },
+                None => base_limits,
+            },
         },
         match extras {
             Some(extras) => extras.tracePath,
@@ -452,14 +447,11 @@ pub fn write_limits_struct(
 #[inline]
 pub fn map_required_limits(
     required_limits: &native::WGPURequiredLimits,
-    use_downlevel: bool,
+    base_limits: wgt::Limits,
     extras: Option<&native::WGPURequiredLimitsExtras>,
 ) -> wgt::Limits {
     let limits = required_limits.limits;
-    let mut wgt_limits = match use_downlevel {
-        true => wgt::Limits::downlevel_defaults(),
-        false => wgt::Limits::default(),
-    };
+    let mut wgt_limits = base_limits;
     if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
     }
