@@ -1075,9 +1075,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TIMESTAMP_QUERY) {
         temp.push(native::WGPUFeatureName_TimestampQuery);
     }
-    if features.contains(wgt::Features::PIPELINE_STATISTICS_QUERY) {
-        temp.push(native::WGPUFeatureName_PipelineStatisticsQuery);
-    }
     if features.contains(wgt::Features::TEXTURE_COMPRESSION_BC) {
         temp.push(native::WGPUFeatureName_TextureCompressionBC);
     }
@@ -1121,6 +1118,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     {
         temp.push(native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing);
     }
+    if features.contains(wgt::Features::PIPELINE_STATISTICS_QUERY) {
+        temp.push(native::WGPUNativeFeature_PipelineStatisticsQuery);
+    }
 
     temp
 }
@@ -1134,7 +1134,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_DepthClipControl => Some(Features::DEPTH_CLIP_CONTROL),
         native::WGPUFeatureName_Depth32FloatStencil8 => Some(Features::DEPTH32FLOAT_STENCIL8),
         native::WGPUFeatureName_TimestampQuery => Some(Features::TIMESTAMP_QUERY),
-        native::WGPUFeatureName_PipelineStatisticsQuery => Some(Features::PIPELINE_STATISTICS_QUERY),
         native::WGPUFeatureName_TextureCompressionBC => Some(Features::TEXTURE_COMPRESSION_BC),
         native::WGPUFeatureName_TextureCompressionETC2 => Some(Features::TEXTURE_COMPRESSION_ETC2),
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC),
@@ -1150,6 +1149,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_VertexWritableStorage => Some(Features::VERTEX_WRITABLE_STORAGE),
         native::WGPUNativeFeature_TextureBindingArray => Some(Features::TEXTURE_BINDING_ARRAY),
         native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing => Some(Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING),
+        native::WGPUNativeFeature_PipelineStatisticsQuery => Some(Features::PIPELINE_STATISTICS_QUERY),
         // not available in wgpu-core
         native::WGPUFeatureName_BGRA8UnormStorage => None,
         _ => None,
@@ -1375,17 +1375,18 @@ pub fn map_query_set_index(index: u32) -> Option<u32> {
 #[inline]
 pub fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
+    extras: Option<&native::WGPUQuerySetDescriptorExtras>,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
     wgt::QuerySetDescriptor {
         label: ptr_into_label(desc.label),
         count: desc.count,
-        ty: match desc.type_ {
-            native::WGPUQueryType_Occlusion => wgt::QueryType::Occlusion,
-            native::WGPUQueryType_Timestamp => wgt::QueryType::Timestamp,
-            native::WGPUQueryType_PipelineStatistics => {
+        ty: match (desc.type_, extras) {
+            (native::WGPUQueryType_Occlusion, _) => wgt::QueryType::Occlusion,
+            (native::WGPUQueryType_Timestamp, _) => wgt::QueryType::Timestamp,
+            (native::WGPUNativeQueryType_PipelineStatistics, Some(extras)) => {
                 let mut types = wgt::PipelineStatisticsTypes::empty();
 
-                make_slice(desc.pipelineStatistics, desc.pipelineStatisticCount)
+                make_slice(extras.pipelineStatistics, extras.pipelineStatisticCount)
                     .iter()
                     .for_each(|f| {
                         types.insert(match *f {
