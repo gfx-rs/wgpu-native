@@ -111,16 +111,6 @@ pub extern "C" fn wgpuPipelineLayoutSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuQuerySetGetCount(_query_set: native::WGPUQuerySet) -> u32 {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuQuerySetGetType(_query_set: native::WGPUQuerySet) -> native::WGPUQueryType {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuQuerySetSetLabel(
     _query_set: native::WGPUQuerySet,
     _label: *const ::std::os::raw::c_char,

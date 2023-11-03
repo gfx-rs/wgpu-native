@@ -194,9 +194,14 @@ impl Drop for WGPUPipelineLayoutImpl {
     }
 }
 
+struct QuerySetData {
+    query_type: native::WGPUQueryType,
+    query_count: u32,
+}
 pub struct WGPUQuerySetImpl {
     context: Arc<Context>,
     id: id::QuerySetId,
+    data: QuerySetData,
 }
 impl Drop for WGPUQuerySetImpl {
     fn drop(&mut self) {
@@ -2010,6 +2015,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
     Arc::into_raw(Arc::new(WGPUQuerySetImpl {
         context: context.clone(),
         id: query_set_id,
+        data: QuerySetData {
+            query_type: descriptor.type_,
+            query_count: descriptor.count,
+        },
     }))
 }
 
@@ -2751,6 +2760,20 @@ pub unsafe extern "C" fn wgpuPipelineLayoutRelease(pipeline_layout: native::WGPU
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
     //TODO: needs to be implemented in wgpu-core
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetGetCount(query_set: native::WGPUQuerySet) -> u32 {
+    let query_set = query_set.as_ref().expect("invalid query set");
+    query_set.data.query_count
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetGetType(
+    query_set: native::WGPUQuerySet,
+) -> native::WGPUQueryType {
+    let query_set = query_set.as_ref().expect("invalid query set");
+    query_set.data.query_type
 }
 
 #[no_mangle]
