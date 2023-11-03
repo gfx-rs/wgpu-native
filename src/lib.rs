@@ -1924,7 +1924,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
                 wgt::ShaderStages::COMPUTE,
                 error
             );
-            log::warn!("Please report it to https://github.com/gfx-rs/naga");
+            log::warn!("Please report it to https://github.com/gfx-rs/wgpu");
         }
         handle_error(
             context,
@@ -2202,7 +2202,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     if let Some(cause) = error {
         if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
             log::error!("Shader translation error for stage {:?}: {}", stage, error);
-            log::error!("Please report it to https://github.com/gfx-rs/naga");
+            log::error!("Please report it to https://github.com/gfx-rs/wgpu");
         }
         handle_error(
             context,
