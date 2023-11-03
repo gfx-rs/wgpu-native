@@ -18,7 +18,9 @@ use std::{
     sync::Arc,
     thread,
 };
-use utils::{make_slice, ptr_into_label, ptr_into_path, should_use_downlevel_limits};
+use utils::{
+    get_base_device_limits_from_adapter_limits, make_slice, ptr_into_label, ptr_into_path,
+};
 use wgc::{
     command::{self, bundle_ffi, compute_ffi, render_ffi},
     gfx_select, id, resource, Label,
@@ -735,12 +737,15 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             return;
         }
     };
-    let use_downlevel = should_use_downlevel_limits(&adapter_limits);
+    let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits)
+        // make sure we use the texture resolution limits from the adapter,
+        // so we can support images the size of the surface.
+        .using_resolution(adapter_limits);
 
     let (desc, trace_str, device_lost_handler) = match descriptor {
         Some(descriptor) => {
             let (desc, trace_str) = follow_chain!(
-                map_device_descriptor((descriptor, use_downlevel),
+                map_device_descriptor((descriptor, base_limits),
                 WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
             );
             let device_lost_handler = DeviceLostCallback {
@@ -751,10 +756,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         }
         None => (
             wgt::DeviceDescriptor {
-                limits: match use_downlevel {
-                    true => wgt::Limits::downlevel_defaults(),
-                    false => wgt::Limits::default(),
-                },
+                limits: base_limits,
                 ..Default::default()
             },
             std::ptr::null(),
