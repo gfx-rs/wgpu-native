@@ -566,18 +566,28 @@ pub fn map_required_limits(
     wgt_limits
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ShaderParseError {
+    #[error(transparent)]
+    Spirv(#[from] naga::front::spv::Error),
+    #[error("GLSL Parse Error: {0:?}")]
+    Glsl(Vec<naga::front::glsl::Error>),
+}
+
 #[inline]
 pub fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
     spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
     wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
     glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>,
-) -> wgc::pipeline::ShaderModuleSource<'a> {
+) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
     if let Some(wgsl) = wgsl {
         let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
-        return wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(str_slice));
+        return Ok(wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(
+            str_slice,
+        )));
     }
 
     #[cfg(feature = "spirv")]
@@ -590,8 +600,10 @@ pub fn map_shader_module<'a>(
             block_ctx_dump_prefix: None,
         };
         let frontend = naga::front::spv::Frontend::new(slice.iter().cloned(), &options);
-        let module = frontend.parse().unwrap();
-        return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
+        match frontend.parse() {
+            Ok(module) => return Ok(wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module))),
+            Err(cause) => return Err(ShaderParseError::Spirv(cause)),
+        };
     }
 
     #[cfg(feature = "glsl")]
@@ -599,7 +611,8 @@ pub fn map_shader_module<'a>(
         let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
         let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
         let mut options = naga::front::glsl::Options::from(
-            map_shader_stage(glsl.stage).expect("Unknown shader stage"),
+            map_shader_stage(glsl.stage)
+                .expect("invalid shader stage for shader module glsl descriptor"),
         );
 
         let raw_defines = make_slice(glsl.defines, glsl.defineCount as usize);
@@ -616,8 +629,10 @@ pub fn map_shader_module<'a>(
         }
 
         let mut frontend = naga::front::glsl::Frontend::default();
-        let module = frontend.parse(&options, str_slice).unwrap();
-        return wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module));
+        match frontend.parse(&options, str_slice) {
+            Ok(module) => return Ok(wgc::pipeline::ShaderModuleSource::Naga(Cow::Owned(module))),
+            Err(causes) => return Err(ShaderParseError::Glsl(causes)),
+        };
     }
 
     panic!("Shader not provided.");
