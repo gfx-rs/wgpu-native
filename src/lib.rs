@@ -1086,14 +1086,17 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .expect("invalid texture view for depth stencil attachment")
                 .id,
             depth: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.depthLoadOp),
-                store_op: conv::map_store_op(desc.depthStoreOp),
+                load_op: conv::map_load_op(desc.depthLoadOp).unwrap_or(wgc::command::LoadOp::Load),
+                store_op: conv::map_store_op(desc.depthStoreOp)
+                    .unwrap_or(wgc::command::StoreOp::Store),
                 clear_value: desc.depthClearValue,
                 read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.stencilLoadOp),
-                store_op: conv::map_store_op(desc.stencilStoreOp),
+                load_op: conv::map_load_op(desc.stencilLoadOp)
+                    .unwrap_or(wgc::command::LoadOp::Load),
+                store_op: conv::map_store_op(desc.stencilStoreOp)
+                    .unwrap_or(wgc::command::StoreOp::Store),
                 clear_value: desc.stencilClearValue,
                 read_only: desc.stencilReadOnly != 0,
             },
@@ -1125,8 +1128,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                             view: view.id,
                             resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
                             channel: wgc::command::PassChannel {
-                                load_op: conv::map_load_op(color_attachment.loadOp),
-                                store_op: conv::map_store_op(color_attachment.storeOp),
+                                load_op: conv::map_load_op(color_attachment.loadOp)
+                                    .expect("invalid load op for render pass color attachment"),
+                                store_op: conv::map_store_op(color_attachment.storeOp)
+                                    .expect("invalid store op for render pass color attachment"),
                                 clear_value: conv::map_color(&color_attachment.clearValue),
                                 read_only: false,
                             },
