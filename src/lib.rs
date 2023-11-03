@@ -265,13 +265,15 @@ impl Drop for WGPUSamplerImpl {
 
 pub struct WGPUShaderModuleImpl {
     context: Arc<Context>,
-    id: id::ShaderModuleId,
+    id: Option<id::ShaderModuleId>,
 }
 impl Drop for WGPUShaderModuleImpl {
     fn drop(&mut self) {
-        if !thread::panicking() {
-            let context = &self.context;
-            gfx_select!(self.id => context.shader_module_drop(self.id));
+        if let Some(id) = self.id {
+            if !thread::panicking() {
+                let context = &self.context;
+                gfx_select!(id => context.shader_module_drop(id));
+            }
         }
     }
 }
@@ -367,7 +369,7 @@ unsafe extern "C" fn default_uncaptured_error_handler(
     _userdata: *mut ::std::os::raw::c_void,
 ) {
     let message = unsafe { CStr::from_ptr(message) }.to_str().unwrap();
-    log::error!("Handling wgpu uncaptured errors as fatal by default");
+    log::warn!("Handling wgpu uncaptured errors as fatal by default");
     panic!("wgpu uncaptured error:\n{message}\n");
 }
 const DEFAULT_UNCAPTURED_ERROR_HANDLER: UncapturedErrorCallback = UncapturedErrorCallback {
@@ -381,7 +383,7 @@ unsafe extern "C" fn default_device_lost_handler(
     _userdata: *mut ::std::os::raw::c_void,
 ) {
     let message = unsafe { CStr::from_ptr(message) }.to_str().unwrap();
-    log::error!("Handling wgpu device lost errors as fatal by default");
+    log::warn!("Handling wgpu device lost errors as fatal by default");
     panic!("wgpu device lost error:\n{message}\n");
 }
 const DEFAULT_DEVICE_LOST_HANDLER: DeviceLostCallback = DeviceLostCallback {
@@ -1890,7 +1892,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             .module
             .as_ref()
             .expect("invalid shader module for compute pipeline descriptor")
-            .id,
+            .id
+            .expect("invalid shader module for compute pipeline descriptor"),
         entry_point: ptr_into_label(descriptor.compute.entryPoint)
             .expect("invalid entry point for compute pipeline descriptor"),
     };
@@ -1921,7 +1924,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
                 wgt::ShaderStages::COMPUTE,
                 error
             );
-            log::warn!("Please report it to https://github.com/gfx-rs/naga");
+            log::warn!("Please report it to https://github.com/gfx-rs/wgpu");
         }
         handle_error(
             context,
@@ -2070,7 +2073,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .module
                     .as_ref()
                     .expect("invalid vertex shader module for vertex state")
-                    .id,
+                    .id
+                    .expect("invalid vertex shader module for vertex state"),
                 entry_point: ptr_into_label(descriptor.vertex.entryPoint)
                     .expect("invalid entry point for vertex state"),
             },
@@ -2157,7 +2161,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .module
                         .as_ref()
                         .expect("invalid fragment shader module for render pipeline descriptor")
-                        .id,
+                        .id
+                        .expect("invalid fragment shader module for render pipeline descriptor"),
                     entry_point: ptr_into_label(fragment.entryPoint)
                         .expect("invalid entry point for fragment state"),
                 },
@@ -2197,7 +2202,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     if let Some(cause) = error {
         if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
             log::error!("Shader translation error for stage {:?}: {}", stage, error);
-            log::error!("Please report it to https://github.com/gfx-rs/naga");
+            log::error!("Please report it to https://github.com/gfx-rs/wgpu");
         }
         handle_error(
             context,
@@ -2293,17 +2298,35 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let source = follow_chain!(
-        map_shader_module((descriptor),
-        WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
-        WGPUSType_ShaderModuleWGSLDescriptor => native::WGPUShaderModuleWGSLDescriptor,
-        WGPUSType_ShaderModuleGLSLDescriptor => native::WGPUShaderModuleGLSLDescriptor)
-    );
-
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: ptr_into_label(descriptor.label),
         shader_bound_checks: wgt::ShaderBoundChecks::default(),
     };
+
+    let source = match follow_chain!(
+        map_shader_module((descriptor),
+        WGPUSType_ShaderModuleSPIRVDescriptor => native::WGPUShaderModuleSPIRVDescriptor,
+        WGPUSType_ShaderModuleWGSLDescriptor => native::WGPUShaderModuleWGSLDescriptor,
+        WGPUSType_ShaderModuleGLSLDescriptor => native::WGPUShaderModuleGLSLDescriptor)
+    ) {
+        Ok(source) => source,
+        Err(cause) => {
+            handle_error(
+                context,
+                error_sink,
+                cause,
+                LABEL,
+                desc.label,
+                "wgpuDeviceCreateShaderModule",
+            );
+
+            return Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
+                context: context.clone(),
+                id: None,
+            }));
+        }
+    };
+
     let (shader_module_id, error) =
         gfx_select!(device_id => context.device_create_shader_module(device_id, &desc, source, ()));
     if let Some(cause) = error {
@@ -2319,7 +2342,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
-        id: shader_module_id,
+        id: Some(shader_module_id),
     }))
 }
 
@@ -2384,7 +2407,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
 
 #[no_mangle]
 pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
-    //TODO: empty implementation, wait till wgpu-core implements a way.
+    //TODO: needs to be implemented in wgpu-core
 }
 
 #[no_mangle]
@@ -2727,7 +2750,7 @@ pub unsafe extern "C" fn wgpuPipelineLayoutRelease(pipeline_layout: native::WGPU
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
-    //TODO: empty implementation, wait till wgpu-core implements a way.
+    //TODO: needs to be implemented in wgpu-core
 }
 
 #[no_mangle]
