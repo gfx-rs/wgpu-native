@@ -405,11 +405,12 @@ pub fn write_limits_struct(
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
     supported_limits.limits = limits;
 
-    match unsafe { supported_limits.nextInChain.as_ref() } {
-        Some(native::WGPUChainedStructOut {
-            sType: native::WGPUSType_SupportedLimitsExtras,
-            ..
-        }) => unsafe {
+    if let Some(native::WGPUChainedStructOut {
+        sType: native::WGPUSType_SupportedLimitsExtras,
+        ..
+    }) = unsafe { supported_limits.nextInChain.as_ref() }
+    {
+        unsafe {
             let extras = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
                 *mut native::WGPUSupportedLimitsExtras,
@@ -418,8 +419,7 @@ pub fn write_limits_struct(
                 maxPushConstantSize: wgt_limits.max_push_constant_size,
                 maxNonSamplerBindings: wgt_limits.max_non_sampler_bindings,
             };
-        },
-        _ => {}
+        }
     };
 }
 
@@ -1245,8 +1245,8 @@ pub fn map_bind_group_entry<'a>(
 }
 
 #[inline]
-pub fn map_bind_group_layout_entry<'a>(
-    entry: &'a native::WGPUBindGroupLayoutEntry,
+pub fn map_bind_group_layout_entry(
+    entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
 ) -> wgt::BindGroupLayoutEntry {
     let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
@@ -1347,7 +1347,7 @@ pub fn map_bind_group_layout_entry<'a>(
         binding: entry.binding,
         visibility: wgt::ShaderStages::from_bits(entry.visibility)
             .expect("invalid visibility for bind group layout entry"),
-        count: extras.map(|v| NonZeroU32::new(v.count)).flatten(),
+        count: extras.and_then(|v| NonZeroU32::new(v.count)),
     }
 }
 
