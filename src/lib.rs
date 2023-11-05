@@ -194,9 +194,14 @@ impl Drop for WGPUPipelineLayoutImpl {
     }
 }
 
+struct QuerySetData {
+    query_type: native::WGPUQueryType,
+    query_count: u32,
+}
 pub struct WGPUQuerySetImpl {
     context: Arc<Context>,
     id: id::QuerySetId,
+    data: QuerySetData,
 }
 impl Drop for WGPUQuerySetImpl {
     fn drop(&mut self) {
@@ -1023,25 +1028,21 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
         )
     };
 
-    let timestamp_writes = descriptor
-        .map(|descriptor| {
-            descriptor.timestampWrites.as_ref().map(|timestamp_write| {
-                wgc::command::ComputePassTimestampWrites {
-                    query_set: timestamp_write
-                        .querySet
-                        .as_ref()
-                        .expect("invalid query set in timestamp writes")
-                        .id,
-                    beginning_of_pass_write_index: map_query_set_index(
-                        timestamp_write.beginningOfPassWriteIndex,
-                    ),
-                    end_of_pass_write_index: map_query_set_index(
-                        timestamp_write.endOfPassWriteIndex,
-                    ),
-                }
-            })
+    let timestamp_writes = descriptor.and_then(|descriptor| {
+        descriptor.timestampWrites.as_ref().map(|timestamp_write| {
+            wgc::command::ComputePassTimestampWrites {
+                query_set: timestamp_write
+                    .querySet
+                    .as_ref()
+                    .expect("invalid query set in timestamp writes")
+                    .id,
+                beginning_of_pass_write_index: map_query_set_index(
+                    timestamp_write.beginningOfPassWriteIndex,
+                ),
+                end_of_pass_write_index: map_query_set_index(timestamp_write.endOfPassWriteIndex),
+            }
         })
-        .flatten();
+    });
 
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
@@ -1081,14 +1082,17 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .expect("invalid texture view for depth stencil attachment")
                 .id,
             depth: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.depthLoadOp),
-                store_op: conv::map_store_op(desc.depthStoreOp),
+                load_op: conv::map_load_op(desc.depthLoadOp).unwrap_or(wgc::command::LoadOp::Load),
+                store_op: conv::map_store_op(desc.depthStoreOp)
+                    .unwrap_or(wgc::command::StoreOp::Store),
                 clear_value: desc.depthClearValue,
                 read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.stencilLoadOp),
-                store_op: conv::map_store_op(desc.stencilStoreOp),
+                load_op: conv::map_load_op(desc.stencilLoadOp)
+                    .unwrap_or(wgc::command::LoadOp::Load),
+                store_op: conv::map_store_op(desc.stencilStoreOp)
+                    .unwrap_or(wgc::command::StoreOp::Store),
                 clear_value: desc.stencilClearValue,
                 read_only: desc.stencilReadOnly != 0,
             },
@@ -1120,8 +1124,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                             view: view.id,
                             resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
                             channel: wgc::command::PassChannel {
-                                load_op: conv::map_load_op(color_attachment.loadOp),
-                                store_op: conv::map_store_op(color_attachment.storeOp),
+                                load_op: conv::map_load_op(color_attachment.loadOp)
+                                    .expect("invalid load op for render pass color attachment"),
+                                store_op: conv::map_store_op(color_attachment.storeOp)
+                                    .expect("invalid store op for render pass color attachment"),
                                 clear_value: conv::map_color(&color_attachment.clearValue),
                                 read_only: false,
                             },
@@ -2010,6 +2016,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
     Arc::into_raw(Arc::new(WGPUQuerySetImpl {
         context: context.clone(),
         id: query_set_id,
+        data: QuerySetData {
+            query_type: descriptor.type_,
+            query_count: descriptor.count,
+        },
     }))
 }
 
@@ -2751,6 +2761,20 @@ pub unsafe extern "C" fn wgpuPipelineLayoutRelease(pipeline_layout: native::WGPU
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
     //TODO: needs to be implemented in wgpu-core
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetGetCount(query_set: native::WGPUQuerySet) -> u32 {
+    let query_set = query_set.as_ref().expect("invalid query set");
+    query_set.data.query_count
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQuerySetGetType(
+    query_set: native::WGPUQuerySet,
+) -> native::WGPUQueryType {
+    let query_set = query_set.as_ref().expect("invalid query set");
+    query_set.data.query_type
 }
 
 #[no_mangle]
