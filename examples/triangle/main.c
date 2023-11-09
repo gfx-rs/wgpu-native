@@ -304,7 +304,9 @@ int main(int argc, char *argv[]) {
     case WGPUSurfaceGetCurrentTextureStatus_Outdated:
     case WGPUSurfaceGetCurrentTextureStatus_Lost: {
       // Skip this frame, and re-configure surface.
-      wgpuTextureRelease(surface_texture.texture);
+      if (surface_texture.texture != NULL) {
+        wgpuTextureRelease(surface_texture.texture);
+      }
       int width, height;
       glfwGetWindowSize(window, &width, &height);
       if (width != 0 && height != 0) {
