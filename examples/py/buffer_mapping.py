@@ -43,6 +43,10 @@ data = ptr2memoryview(data_ptr, 64)
 print("All zeros (data has not been flushed):")
 print(data.tolist())
 
+# Question, is this expected or:
+# * should wgpuBufferMapAsync fail?
+# * should it show the 42s?
+
 del data
 lib.wgpuBufferUnmap(buffer)
 
