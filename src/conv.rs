@@ -1,9 +1,9 @@
 use crate::native;
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
-use std::num::{NonZeroU32, NonZeroU64};
+use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
+use std::ptr::NonNull;
 use std::{borrow::Cow, ffi::CStr};
-use core::ptr::NonNull;
 
 map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp, Clear, Load);
 map_enum!(
@@ -1444,9 +1444,9 @@ pub unsafe fn map_surface(
     #[cfg(windows)]
     if let Some(win) = _win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
-        let mut window_handle = raw_window_handle::Win32WindowHandle::new();
-        window_handle.hwnd = win.hwnd;
-        window_handle.hinstance = win.hinstance;
+        let mut window_handle =
+            raw_window_handle::Win32WindowHandle::new(NonZeroIsize::new_unchecked(win.hwnd as _));
+        window_handle.hinstance = NonZeroIsize::new(win.hinstance as _);
 
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Windows(display_handle),
@@ -1464,7 +1464,8 @@ pub unsafe fn map_surface(
         if let Some(xcb) = _xcb {
             let connection = NonNull::<std::ffi::c_void>::new_unchecked(xcb.connection);
             let display_handle = raw_window_handle::XcbDisplayHandle::new(Some(connection), 0);
-            let window_handle = raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
+            let window_handle =
+                raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
 
             return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Xcb(display_handle),
@@ -1504,8 +1505,8 @@ pub unsafe fn map_surface(
     #[cfg(target_os = "android")]
     if let Some(android) = _android {
         let display_handle = raw_window_handle::AndroidDisplayHandle::new();
-        let mut window_handle = raw_window_handle::AndroidNdkWindowHandle::new();
-        window_handle.a_native_window = android.window;
+        let window_handle =
+            raw_window_handle::AndroidNdkWindowHandle::new(NonNull::new_unchecked(android.window));
 
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Android(display_handle),
