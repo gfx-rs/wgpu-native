@@ -33,7 +33,7 @@ trace = ["wgc/trace"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.18"
 features = ["raw-window-handle"]
 
@@ -41,7 +41,7 @@ features = ["raw-window-handle"]
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.18"
 features = ["metal"]
 
@@ -49,7 +49,7 @@ features = ["metal"]
 [target.'cfg(windows)'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.18"
 features = ["dx11", "dx12", "gles"]
 
@@ -57,7 +57,7 @@ features = ["dx11", "dx12", "gles"]
 [target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.18"
 features = ["vulkan"]
 
@@ -65,19 +65,19 @@ features = ["vulkan"]
 [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.18"
 features = ["gles"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "49b7ec97c164bac9ee877f45cdd806fbefecc5a4"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.18"
 
 [dependencies.naga]
-git = "https://github.com/gfx-rs/naga"
-rev = "92e41b43e437146b5d946eb238de963be1168016"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "f22009ee7697a3278f2426e794ae10a469e4f4c3"
 version = "0.14"
 
 [dependencies]
