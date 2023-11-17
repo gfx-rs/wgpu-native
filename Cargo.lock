@@ -208,8 +208,7 @@ dependencies = [
 [[package]]
 name = "d3d12"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e16e44ab292b1dddfdaf7be62cfd8877df52f2f3fde5858d95bab606be259f20"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2e7fd75712bfaacdaaa5538204cfe8b9360f82ca#2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
 dependencies = [
  "bitflags 2.4.1",
  "libloading 0.8.1",
@@ -291,8 +290,7 @@ checksum = "d2fabcfbdc87f4758337ca535fb41a6d701b65693ce38287d856d1674551ec9b"
 [[package]]
 name = "glow"
 version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "886c2a30b160c4c6fec8f987430c26b526b7988ca71f664e6a699ddf6f9601e4"
+source = "git+https://github.com/grovesNL/glow.git?rev=29ff917a2b2ff7ce0a81b2cc5681de6d4735b36e#29ff917a2b2ff7ce0a81b2cc5681de6d4735b36e"
 dependencies = [
  "js-sys",
  "slotmap",
@@ -508,8 +506,8 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "naga"
-version = "0.14.1"
-source = "git+https://github.com/gfx-rs/wgpu?rev=f22009ee7697a3278f2426e794ae10a469e4f4c3#f22009ee7697a3278f2426e794ae10a469e4f4c3"
+version = "0.14.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2e7fd75712bfaacdaaa5538204cfe8b9360f82ca#2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
 dependencies = [
  "bit-set",
  "bitflags 2.4.1",
@@ -674,9 +672,9 @@ checksum = "9c8a99fddc9f0ba0a85884b8d14e3592853e787d581ca1816c91349b10e4eeab"
 
 [[package]]
 name = "raw-window-handle"
-version = "0.5.2"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2ff9a1f06a88b01621b7ae906ef0211290d1c8a168a15542486a8f61c0833b9"
+checksum = "42a9830a0e1b9fb145ebb365b8bc4ccd75f290f98c0247deafbbe2c75cefb544"
 
 [[package]]
 name = "redox_syscall"
@@ -934,8 +932,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.18.1"
-source = "git+https://github.com/gfx-rs/wgpu?rev=f22009ee7697a3278f2426e794ae10a469e4f4c3#f22009ee7697a3278f2426e794ae10a469e4f4c3"
+version = "0.18.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2e7fd75712bfaacdaaa5538204cfe8b9360f82ca#2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -959,7 +957,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "0.18.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=f22009ee7697a3278f2426e794ae10a469e4f4c3#f22009ee7697a3278f2426e794ae10a469e4f4c3"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2e7fd75712bfaacdaaa5538204cfe8b9360f82ca#2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1014,7 +1012,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.18.0"
-source = "git+https://github.com/gfx-rs/wgpu?rev=f22009ee7697a3278f2426e794ae10a469e4f4c3#f22009ee7697a3278f2426e794ae10a469e4f4c3"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2e7fd75712bfaacdaaa5538204cfe8b9360f82ca#2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
 dependencies = [
  "bitflags 2.4.1",
  "js-sys",

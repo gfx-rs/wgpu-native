@@ -1,7 +1,8 @@
 use crate::native;
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
-use std::num::{NonZeroU32, NonZeroU64};
+use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
+use std::ptr::NonNull;
 use std::{borrow::Cow, ffi::CStr};
 
 map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp, Clear, Load);
@@ -1442,10 +1443,10 @@ pub unsafe fn map_surface(
 ) -> CreateSurfaceParams {
     #[cfg(windows)]
     if let Some(win) = _win {
-        let display_handle = raw_window_handle::WindowsDisplayHandle::empty();
-        let mut window_handle = raw_window_handle::Win32WindowHandle::empty();
-        window_handle.hwnd = win.hwnd;
-        window_handle.hinstance = win.hinstance;
+        let display_handle = raw_window_handle::WindowsDisplayHandle::new();
+        let mut window_handle =
+            raw_window_handle::Win32WindowHandle::new(NonZeroIsize::new_unchecked(win.hwnd as _));
+        window_handle.hinstance = NonZeroIsize::new(win.hinstance as _);
 
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Windows(display_handle),
@@ -1461,10 +1462,10 @@ pub unsafe fn map_surface(
     ))]
     {
         if let Some(xcb) = _xcb {
-            let mut display_handle = raw_window_handle::XcbDisplayHandle::empty();
-            display_handle.connection = xcb.connection;
-            let mut window_handle = raw_window_handle::XcbWindowHandle::empty();
-            window_handle.window = xcb.window;
+            let connection = NonNull::<std::ffi::c_void>::new_unchecked(xcb.connection);
+            let display_handle = raw_window_handle::XcbDisplayHandle::new(Some(connection), 0);
+            let window_handle =
+                raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
 
             return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Xcb(display_handle),
@@ -1473,10 +1474,9 @@ pub unsafe fn map_surface(
         }
 
         if let Some(xlib) = _xlib {
-            let mut display_handle = raw_window_handle::XlibDisplayHandle::empty();
-            display_handle.display = xlib.display;
-            let mut window_handle = raw_window_handle::XlibWindowHandle::empty();
-            window_handle.window = xlib.window as _;
+            let display = NonNull::<std::ffi::c_void>::new_unchecked(xlib.display);
+            let display_handle = raw_window_handle::XlibDisplayHandle::new(Some(display), 0);
+            let window_handle = raw_window_handle::XlibWindowHandle::new(xlib.window as _);
 
             return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Xlib(display_handle),
@@ -1485,10 +1485,10 @@ pub unsafe fn map_surface(
         }
 
         if let Some(wl) = _wl {
-            let mut display_handle = raw_window_handle::WaylandDisplayHandle::empty();
-            display_handle.display = wl.display;
-            let mut window_handle = raw_window_handle::WaylandWindowHandle::empty();
-            window_handle.surface = wl.surface;
+            let display = NonNull::<std::ffi::c_void>::new_unchecked(wl.display);
+            let surface = NonNull::<std::ffi::c_void>::new_unchecked(wl.surface);
+            let display_handle = raw_window_handle::WaylandDisplayHandle::new(display);
+            let window_handle = raw_window_handle::WaylandWindowHandle::new(surface);
 
             return CreateSurfaceParams::Raw((
                 raw_window_handle::RawDisplayHandle::Wayland(display_handle),
@@ -1504,9 +1504,9 @@ pub unsafe fn map_surface(
 
     #[cfg(target_os = "android")]
     if let Some(android) = _android {
-        let display_handle = raw_window_handle::AndroidDisplayHandle::empty();
-        let mut window_handle = raw_window_handle::AndroidNdkWindowHandle::empty();
-        window_handle.a_native_window = android.window;
+        let display_handle = raw_window_handle::AndroidDisplayHandle::new();
+        let window_handle =
+            raw_window_handle::AndroidNdkWindowHandle::new(NonNull::new_unchecked(android.window));
 
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Android(display_handle),
