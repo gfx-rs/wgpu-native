@@ -245,6 +245,7 @@ pub struct WGPURenderPassEncoderImpl {
 pub struct WGPURenderPipelineImpl {
     context: Arc<Context>,
     id: id::RenderPipelineId,
+    error_sink: ErrorSink,
 }
 impl Drop for WGPURenderPipelineImpl {
     fn drop(&mut self) {
@@ -2227,6 +2228,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     Arc::into_raw(Arc::new(WGPURenderPipelineImpl {
         context: context.clone(),
         id: render_pipeline_id,
+        error_sink: error_sink.clone(),
     }))
 }
 
@@ -3500,17 +3502,13 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
     render_pipeline: native::WGPURenderPipeline,
     group_index: u32,
 ) -> native::WGPUBindGroupLayout {
-    let (render_pipeline_id, context) = {
+    let (render_pipeline_id, context, error_sink) = {
         let render_pipeline = render_pipeline.as_ref().expect("invalid render pipeline");
-        (render_pipeline.id, &render_pipeline.context)
+        (render_pipeline.id, &render_pipeline.context, &render_pipeline.error_sink)
     };
-
     let (bind_group_layout_id, error) = gfx_select!(render_pipeline_id => context.render_pipeline_get_bind_group_layout(render_pipeline_id, group_index, ()));
     if let Some(cause) = error {
-        panic!(
-            "Error in wgpuRenderPipelineGetBindGroupLayout: Error reflecting bind group {group_index}: {f}",
-            f = format_error(context, &cause)
-        );
+        handle_error(context, error_sink, cause, "", None, "wgpuRenderPipelineGetBindGroupLayout")
     }
 
     Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
