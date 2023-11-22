@@ -147,6 +147,7 @@ pub struct WGPUComputePassEncoderImpl {
 pub struct WGPUComputePipelineImpl {
     context: Arc<Context>,
     id: id::ComputePipelineId,
+    error_sink: ErrorSink,
 }
 impl Drop for WGPUComputePipelineImpl {
     fn drop(&mut self) {
@@ -1681,17 +1682,21 @@ pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
     pipeline: native::WGPUComputePipeline,
     group_index: u32,
 ) -> native::WGPUBindGroupLayout {
-    let (pipeline_id, context) = {
+    let (pipeline_id, context, error_sink) = {
         let pipeline = pipeline.as_ref().expect("invalid pipeline");
-        (pipeline.id, &pipeline.context)
+        (pipeline.id, &pipeline.context, &pipeline.error_sink)
     };
 
     let (bind_group_layout_id, error) = gfx_select!(pipeline_id => context.compute_pipeline_get_bind_group_layout(pipeline_id, group_index, ()));
     if let Some(cause) = error {
-        panic!(
-            "Error in wgpuComputePipelineGetBindGroupLayout: Error reflecting bind group {group_index}: {f}",
-            f = format_error(context, &cause)
-        );
+        handle_error(
+            context,
+            error_sink,
+            cause,
+            "",
+            None,
+            "wgpuComputePipelineGetBindGroupLayout",
+        )
     }
 
     Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
@@ -1946,6 +1951,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     Arc::into_raw(Arc::new(WGPUComputePipelineImpl {
         context: context.clone(),
         id: compute_pipeline_id,
+        error_sink: error_sink.clone(),
     }))
 }
 
