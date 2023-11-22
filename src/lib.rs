@@ -3504,11 +3504,22 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
 ) -> native::WGPUBindGroupLayout {
     let (render_pipeline_id, context, error_sink) = {
         let render_pipeline = render_pipeline.as_ref().expect("invalid render pipeline");
-        (render_pipeline.id, &render_pipeline.context, &render_pipeline.error_sink)
+        (
+            render_pipeline.id,
+            &render_pipeline.context,
+            &render_pipeline.error_sink,
+        )
     };
     let (bind_group_layout_id, error) = gfx_select!(render_pipeline_id => context.render_pipeline_get_bind_group_layout(render_pipeline_id, group_index, ()));
     if let Some(cause) = error {
-        handle_error(context, error_sink, cause, "", None, "wgpuRenderPipelineGetBindGroupLayout")
+        handle_error(
+            context,
+            error_sink,
+            cause,
+            "",
+            None,
+            "wgpuRenderPipelineGetBindGroupLayout",
+        )
     }
 
     Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
