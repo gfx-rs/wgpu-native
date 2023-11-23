@@ -1059,9 +1059,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::DEPTH32FLOAT_STENCIL8) {
         temp.push(native::WGPUFeatureName_Depth32FloatStencil8);
     }
-    if features.contains(wgt::Features::TIMESTAMP_QUERY) {
-        temp.push(native::WGPUFeatureName_TimestampQuery);
-    }
     if features.contains(wgt::Features::TEXTURE_COMPRESSION_BC) {
         temp.push(native::WGPUFeatureName_TextureCompressionBC);
     }
@@ -1070,6 +1067,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC) {
         temp.push(native::WGPUFeatureName_TextureCompressionASTC);
+    }
+    if features.contains(wgt::Features::TIMESTAMP_QUERY) {
+        temp.push(native::WGPUFeatureName_TimestampQuery);
     }
     if features.contains(wgt::Features::INDIRECT_FIRST_INSTANCE) {
         temp.push(native::WGPUFeatureName_IndirectFirstInstance);
@@ -1080,6 +1080,12 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::RG11B10UFLOAT_RENDERABLE) {
         temp.push(native::WGPUFeatureName_RG11B10UfloatRenderable);
     }
+    if features.contains(wgt::Features::BGRA8UNORM_STORAGE) {
+        temp.push(native::WGPUFeatureName_BGRA8UnormStorage);
+    }
+    //if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
+    //    temp.push(native::WGPUFeatureName_Float32Filterable);
+    //} -> not yet available in wgpu-core
 
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
