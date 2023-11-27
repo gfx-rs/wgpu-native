@@ -199,6 +199,15 @@ map_enum!(
     Version2
 );
 
+map_enum!(
+    map_storage_texture_access,
+    WGPUStorageTextureAccess,
+    wgt::StorageTextureAccess,
+    WriteOnly,
+    ReadOnly,
+    ReadWrite
+);
+
 pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
 pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
     native::WGPU_LIMIT_U64_UNDEFINED as _;
@@ -739,6 +748,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_RGBA8Sint => Some(wgt::TextureFormat::Rgba8Sint),
         native::WGPUTextureFormat_BGRA8Unorm => Some(wgt::TextureFormat::Bgra8Unorm),
         native::WGPUTextureFormat_BGRA8UnormSrgb => Some(wgt::TextureFormat::Bgra8UnormSrgb),
+        native::WGPUTextureFormat_RGB10A2Uint => Some(wgt::TextureFormat::Rgb10a2Uint),
         native::WGPUTextureFormat_RGB10A2Unorm => Some(wgt::TextureFormat::Rgb10a2Unorm),
         native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Float),
         native::WGPUTextureFormat_RGB9E5Ufloat => Some(wgt::TextureFormat::Rgb9e5Ufloat),
@@ -818,10 +828,6 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
 pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::WGPUTextureFormat> {
     use wgt::{AstcBlock, AstcChannel};
 
-    // TODO: unimplemented in wgpu-core
-    // native::WGPUTextureFormat_Stencil8,
-    // native::WGPUTextureFormat_Depth16Unorm
-
     match rs_type {
         // unimplemented in webgpu.h
         wgt::TextureFormat::R16Unorm => None,
@@ -830,7 +836,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rg16Snorm => None,
         wgt::TextureFormat::Rgba16Unorm => None,
         wgt::TextureFormat::Rgba16Snorm => None,
-        wgt::TextureFormat::Rgb10a2Uint => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -857,6 +862,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rgba8Sint => Some(native::WGPUTextureFormat_RGBA8Sint),
         wgt::TextureFormat::Bgra8Unorm => Some(native::WGPUTextureFormat_BGRA8Unorm),
         wgt::TextureFormat::Bgra8UnormSrgb => Some(native::WGPUTextureFormat_BGRA8UnormSrgb),
+        wgt::TextureFormat::Rgb10a2Uint => Some(native::WGPUTextureFormat_RGB10A2Uint),
         wgt::TextureFormat::Rgb10a2Unorm => Some(native::WGPUTextureFormat_RGB10A2Unorm),
         wgt::TextureFormat::Rg11b10Float => Some(native::WGPUTextureFormat_RG11B10Ufloat),
         wgt::TextureFormat::Rgb9e5Ufloat => Some(native::WGPUTextureFormat_RGB9E5Ufloat),
@@ -1260,7 +1266,6 @@ pub fn map_bind_group_layout_entry(
     let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
     let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
     let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
-
     let is_storage_texture =
         entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
 
@@ -1304,12 +1309,8 @@ pub fn map_bind_group_layout_entry(
         }
     } else if is_storage_texture {
         wgt::BindingType::StorageTexture {
-            access: match entry.storageTexture.access {
-                native::WGPUStorageTextureAccess_WriteOnly => wgt::StorageTextureAccess::WriteOnly,
-                _ => {
-                    panic!("invalid storage texture access for storage texture binding layout")
-                }
-            },
+            access: map_storage_texture_access(entry.storageTexture.access)
+                .expect("invalid storage texture access for storage texture binding layout"),
             format: map_texture_format(entry.storageTexture.format)
                 .expect("invalid texture format for storage texture binding layout"),
             view_dimension: match entry.storageTexture.viewDimension {

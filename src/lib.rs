@@ -1906,6 +1906,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             .expect("invalid shader module for compute pipeline descriptor")
             .id
             .expect("invalid shader module for compute pipeline descriptor"),
+        // TODO: wgpu-core should allow 'None' here
         entry_point: ptr_into_label(descriptor.compute.entryPoint)
             .expect("invalid entry point for compute pipeline descriptor"),
     };
@@ -2092,6 +2093,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .expect("invalid vertex shader module for vertex state")
                     .id
                     .expect("invalid vertex shader module for vertex state"),
+                // TODO: wgpu-core should allow 'None' here
                 entry_point: ptr_into_label(descriptor.vertex.entryPoint)
                     .expect("invalid entry point for vertex state"),
             },
@@ -2180,6 +2182,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .expect("invalid fragment shader module for render pipeline descriptor")
                         .id
                         .expect("invalid fragment shader module for render pipeline descriptor"),
+                    // TODO: wgpu-core should allow 'None' here
                     entry_point: ptr_into_label(fragment.entryPoint)
                         .expect("invalid entry point for fragment state"),
                 },
