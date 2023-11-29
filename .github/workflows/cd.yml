@@ -73,13 +73,13 @@ jobs:
           name: dist
 
   # -----
-  linux-arm64:
+  linux-aarch64:
     # Config
-    name: release - linux-arm64
+    name: release - linux-aarch64
     runs-on: ubuntu-latest
     env:
       TARGET: aarch64-unknown-linux-gnu
-      ARCHIVE_NAME: wgpu-linux-arm64
+      ARCHIVE_NAME: wgpu-linux-aarch64
       TOOLCHAIN: stable-aarch64-unknown-linux-gnu
       IMAGE: manylinux_2_28_aarch64
     steps:
@@ -279,7 +279,7 @@ jobs:
   publish:
     name: Publish Github release
     needs:
-      [linux-x86_64, linux-arm64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+      [linux-x86_64, linux-aarch64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
