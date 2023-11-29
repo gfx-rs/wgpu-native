@@ -48,10 +48,6 @@ jobs:
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
-      - name: Setup caching
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: |
@@ -94,10 +90,6 @@ jobs:
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
-      - name: Setup caching
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
       # prepare qemu for cross-compilation
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
