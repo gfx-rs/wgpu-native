@@ -73,6 +73,53 @@ jobs:
           name: dist
 
   # -----
+  linux-aarch64:
+    # Config
+    name: release - linux-aarch64
+    runs-on: ubuntu-latest
+    env:
+      TARGET: aarch64-unknown-linux-gnu
+      ARCHIVE_NAME: wgpu-linux-aarch64
+      TOOLCHAIN: stable-aarch64-unknown-linux-gnu
+      IMAGE: manylinux_2_28_aarch64
+    steps:
+      # Common part (same for nearly each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      # prepare qemu for cross-compilation
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      # Build
+      - name: Build
+        run: |
+          CID=$(docker create --platform linux/arm64 -t -w /tmp/wgpu-native -v $PWD:/tmp/src:ro -e TARGET -e ARCHIVE_NAME -e WGPU_NATIVE_VERSION quay.io/pypa/$IMAGE bash -c "\
+            cp -r /tmp/src/. . && \
+            rm -rf ./dist && \
+            export PATH=/root/.cargo/bin:\$PATH && \
+            export USER=root && \
+            curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
+            rustup toolchain install --no-self-update $TOOLCHAIN && \
+            rustup default $TOOLCHAIN && \
+            dnf install clang-devel zip -y && \
+            make package")
+          docker start -ai $CID
+          mkdir -p dist
+          docker cp $CID:/tmp/wgpu-native/dist/. dist/.
+          docker rm $CID
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
+
+  # -----
   windows-x86_64:
     # Config
     name: release - windows-x86_64
@@ -192,13 +239,13 @@ jobs:
           name: dist
 
   # -----
-  macos-arm64:
+  macos-aarch64:
     # Config
-    name: release - macos-arm64
+    name: release - macos-aarch64
     runs-on: macos-latest
     env:
       TARGET: aarch64-apple-darwin
-      ARCHIVE_NAME: wgpu-macos-arm64
+      ARCHIVE_NAME: wgpu-macos-aarch64
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       # Common part (same for each build)
@@ -232,7 +279,7 @@ jobs:
   publish:
     name: Publish Github release
     needs:
-      [linux-x86_64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+      [linux-x86_64, linux-aarch64, windows-x86_64, windows-i686, macos-x86_64, macos-aarch64]
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
