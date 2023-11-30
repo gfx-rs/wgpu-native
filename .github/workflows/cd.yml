@@ -239,13 +239,13 @@ jobs:
           name: dist
 
   # -----
-  macos-arm64:
+  macos-aarch64:
     # Config
-    name: release - macos-arm64
+    name: release - macos-aarch64
     runs-on: macos-latest
     env:
       TARGET: aarch64-apple-darwin
-      ARCHIVE_NAME: wgpu-macos-arm64
+      ARCHIVE_NAME: wgpu-macos-aarch64
       MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       # Common part (same for each build)
@@ -279,7 +279,7 @@ jobs:
   publish:
     name: Publish Github release
     needs:
-      [linux-x86_64, linux-aarch64, windows-x86_64, windows-i686, macos-x86_64, macos-arm64]
+      [linux-x86_64, linux-aarch64, windows-x86_64, windows-i686, macos-x86_64, macos-aarch64]
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
