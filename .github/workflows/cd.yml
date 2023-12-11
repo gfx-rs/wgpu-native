@@ -212,6 +212,7 @@ jobs:
       TARGET: x86_64-apple-darwin
       ARCHIVE_NAME: wgpu-macos-x86_64
       MACOSX_DEPLOYMENT_TARGET: "10.13"
+      RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
       - uses: actions/checkout@v3
@@ -247,6 +248,7 @@ jobs:
       TARGET: aarch64-apple-darwin
       ARCHIVE_NAME: wgpu-macos-aarch64
       MACOSX_DEPLOYMENT_TARGET: "11.0"
+      RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
       - uses: actions/checkout@v3
@@ -279,7 +281,12 @@ jobs:
   publish:
     name: Publish Github release
     needs:
-      [linux-x86_64, linux-aarch64, windows-x86_64, windows-i686, macos-x86_64, macos-aarch64]
+      - linux-x86_64
+      - linux-aarch64
+      - windows-x86_64
+      - windows-i686
+      - macos-x86_64
+      - macos-aarch64
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
