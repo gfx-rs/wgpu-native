@@ -161,6 +161,7 @@ impl Drop for WGPUComputePipelineImpl {
 pub struct WGPUDeviceImpl {
     context: Arc<Context>,
     id: id::DeviceId,
+    queue_id: id::QueueId,
     error_sink: ErrorSink,
 }
 impl Drop for WGPUDeviceImpl {
@@ -217,6 +218,14 @@ pub struct WGPUQueueImpl {
     context: Arc<Context>,
     id: id::QueueId,
     error_sink: ErrorSink,
+}
+impl Drop for WGPUQueueImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.queue_drop(self.id));
+        }
+    }
 }
 
 pub struct WGPURenderBundleImpl {
@@ -679,7 +688,6 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
                     wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
                     wgt::Backend::Metal => native::WGPUBackendType_Metal,
                     wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
-                    wgt::Backend::Dx11 => native::WGPUBackendType_D3D11,
                     wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
                     wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
                 },
@@ -765,7 +773,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         }
         None => (
             wgt::DeviceDescriptor {
-                limits: base_limits,
+                required_limits: base_limits,
                 ..Default::default()
             },
             std::ptr::null(),
@@ -773,11 +781,12 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         ),
     };
 
-    let (device_id, err) = gfx_select!(adapter_id =>
+    let (device_id, queue_id, err) = gfx_select!(adapter_id =>
         context.adapter_request_device(
             adapter_id,
             &desc,
             ptr_into_path(trace_str),
+            (),
             ()
         )
     );
@@ -788,6 +797,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 Arc::into_raw(Arc::new(WGPUDeviceImpl {
                     context: context.clone(),
                     id: device_id,
+                    queue_id,
                     error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new(device_lost_handler))),
                 })),
                 std::ptr::null(),
@@ -948,7 +958,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
             _ => panic!("invalid map mode"),
         },
-        callback: wgc::resource::BufferMapCallback::from_rust(Box::new(
+        callback: Some(wgc::resource::BufferMapCallback::from_rust(Box::new(
             move |result: resource::BufferAccessResult| {
                 let status = match result {
                     Ok(()) => native::WGPUBufferMapAsyncStatus_Success,
@@ -969,7 +979,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
 
                 callback(status, userdata.as_ptr());
             },
-        )),
+        ))),
     };
 
     if let Err(cause) = gfx_select!(buffer_id => context.buffer_map_async(buffer_id, offset as u64 .. (offset + size) as u64, operation))
@@ -1174,7 +1184,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
         match size {
             0 => panic!("invalid size"),
             conv::WGPU_WHOLE_SIZE => None,
-            _ => Some(NonZeroU64::new_unchecked(size)),
+            _ => Some(size),
         }
     )) {
         handle_error(
@@ -2476,14 +2486,14 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> native::WGPUQueue {
-    let (device_id, context, error_sink) = {
+    let (queue_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
-        (device.id, &device.context, &device.error_sink)
+        (device.queue_id, &device.context, &device.error_sink)
     };
 
     Arc::into_raw(Arc::new(WGPUQueueImpl {
         context: context.clone(),
-        id: device_id,
+        id: queue_id,
         error_sink: error_sink.clone(),
     }))
 }
@@ -2645,7 +2655,6 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 match options.backendType {
                     native::WGPUBackendType_Undefined => wgt::Backends::all(),
                     native::WGPUBackendType_WebGPU => wgt::Backends::BROWSER_WEBGPU,
-                    native::WGPUBackendType_D3D11 => wgt::Backends::DX11,
                     native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
                     native::WGPUBackendType_Metal => wgt::Backends::METAL,
                     native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,

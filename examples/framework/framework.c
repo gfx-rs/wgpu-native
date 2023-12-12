@@ -117,36 +117,36 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   return buffer;
 }
 
-#define print_storage_report(report, prefix)                                   \
-  printf("%snumOccupied=%zu\n", prefix, report.numOccupied);                   \
-  printf("%snumVacant=%zu\n", prefix, report.numVacant);                       \
+#define print_registry_report(report, prefix)                                  \
+  printf("%snumAllocated=%zu\n", prefix, report.numAllocated);                 \
+  printf("%snumKeptFromUser=%zu\n", prefix, report.numKeptFromUser);           \
+  printf("%snumReleasedFromUser=%zu\n", prefix, report.numReleasedFromUser);   \
+  printf("%snumDestroyedFromUser=%zu\n", prefix, report.numDestroyedFromUser); \
   printf("%snumError=%zu\n", prefix, report.numError);                         \
   printf("%selementSize=%zu\n", prefix, report.elementSize)
 
 #define print_hub_report(report, prefix)                                       \
-  print_storage_report(report.adapters, prefix "adapter.");                    \
-  print_storage_report(report.devices, prefix "devices.");                     \
-  print_storage_report(report.pipelineLayouts, prefix "pipelineLayouts.");     \
-  print_storage_report(report.shaderModules, prefix "shaderModules.");         \
-  print_storage_report(report.bindGroupLayouts, prefix "bindGroupLayouts.");   \
-  print_storage_report(report.bindGroups, prefix "bindGroups.");               \
-  print_storage_report(report.commandBuffers, prefix "commandBuffers.");       \
-  print_storage_report(report.renderBundles, prefix "renderBundles.");         \
-  print_storage_report(report.renderPipelines, prefix "renderPipelines.");     \
-  print_storage_report(report.computePipelines, prefix "computePipelines.");   \
-  print_storage_report(report.querySets, prefix "querySets.");                 \
-  print_storage_report(report.textures, prefix "textures.");                   \
-  print_storage_report(report.textureViews, prefix "textureViews.");           \
-  print_storage_report(report.samplers, prefix "samplers.")
+  print_registry_report(report.adapters, prefix "adapter.");                   \
+  print_registry_report(report.devices, prefix "devices.");                    \
+  print_registry_report(report.queues, prefix "queues.");                      \
+  print_registry_report(report.pipelineLayouts, prefix "pipelineLayouts.");    \
+  print_registry_report(report.shaderModules, prefix "shaderModules.");        \
+  print_registry_report(report.bindGroupLayouts, prefix "bindGroupLayouts.");  \
+  print_registry_report(report.bindGroups, prefix "bindGroups.");              \
+  print_registry_report(report.commandBuffers, prefix "commandBuffers.");      \
+  print_registry_report(report.renderBundles, prefix "renderBundles.");        \
+  print_registry_report(report.renderPipelines, prefix "renderPipelines.");    \
+  print_registry_report(report.computePipelines, prefix "computePipelines.");  \
+  print_registry_report(report.querySets, prefix "querySets.");                \
+  print_registry_report(report.textures, prefix "textures.");                  \
+  print_registry_report(report.textureViews, prefix "textureViews.");          \
+  print_registry_report(report.samplers, prefix "samplers.")
 
 void frmwrk_print_global_report(WGPUGlobalReport report) {
   printf("struct WGPUGlobalReport {\n");
-  print_storage_report(report.surfaces, "\tsurfaces.");
+  print_registry_report(report.surfaces, "\tsurfaces.");
 
   switch (report.backendType) {
-  case WGPUBackendType_D3D11:
-    print_hub_report(report.dx11, "\tdx11.");
-    break;
   case WGPUBackendType_D3D12:
     print_hub_report(report.dx12, "\tdx12.");
     break;

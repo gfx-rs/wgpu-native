@@ -250,9 +250,6 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
     if (flags & native::WGPUInstanceBackend_DX12) != 0 {
         result |= wgt::Backends::DX12;
     }
-    if (flags & native::WGPUInstanceBackend_DX11) != 0 {
-        result |= wgt::Backends::DX11;
-    }
     result
 }
 
@@ -315,8 +312,11 @@ pub fn map_device_descriptor<'a>(
     (
         wgt::DeviceDescriptor {
             label: ptr_into_label(des.label),
-            features: map_features(make_slice(des.requiredFeatures, des.requiredFeatureCount)),
-            limits: match unsafe { des.requiredLimits.as_ref() } {
+            required_features: map_features(make_slice(
+                des.requiredFeatures,
+                des.requiredFeatureCount,
+            )),
+            required_limits: match unsafe { des.requiredLimits.as_ref() } {
                 Some(required_limits) => unsafe {
                     follow_chain!(
                         map_required_limits((required_limits, base_limits),
@@ -836,6 +836,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rg16Snorm => None,
         wgt::TextureFormat::Rgba16Unorm => None,
         wgt::TextureFormat::Rgba16Snorm => None,
+        wgt::TextureFormat::NV12 => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -966,10 +967,12 @@ pub fn map_primitive_state(
 }
 
 #[inline]
-pub fn map_storage_report(report: wgc::storage::StorageReport) -> native::WGPUStorageReport {
-    native::WGPUStorageReport {
-        numOccupied: report.num_occupied,
-        numVacant: report.num_error,
+pub fn map_storage_report(report: wgc::registry::RegistryReport) -> native::WGPURegistryReport {
+    native::WGPURegistryReport {
+        numAllocated: report.num_allocated,
+        numKeptFromUser: report.num_kept_from_user,
+        numReleasedFromUser: report.num_released_from_user,
+        numDestroyedFromUser: report.num_destroyed_from_user,
         numError: report.num_error,
         elementSize: report.element_size,
     }
@@ -980,6 +983,7 @@ pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
     native::WGPUHubReport {
         adapters: map_storage_report(report.adapters),
         devices: map_storage_report(report.devices),
+        queues: map_storage_report(report.queues),
         pipelineLayouts: map_storage_report(report.pipeline_layouts),
         shaderModules: map_storage_report(report.shader_modules),
         bindGroupLayouts: map_storage_report(report.bind_group_layouts),
@@ -1024,15 +1028,9 @@ pub fn write_global_report(
     }
 
     #[cfg(windows)]
-    {
-        if let Some(dx12) = report.dx12 {
-            native_report.dx12 = map_hub_report(dx12);
-            native_report.backendType = native::WGPUBackendType_D3D12;
-        }
-        if let Some(dx11) = report.dx11 {
-            native_report.dx11 = map_hub_report(dx11);
-            native_report.backendType = native::WGPUBackendType_D3D11;
-        }
+    if let Some(dx12) = report.dx12 {
+        native_report.dx12 = map_hub_report(dx12);
+        native_report.backendType = native::WGPUBackendType_D3D12;
     }
 
     #[cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))]
