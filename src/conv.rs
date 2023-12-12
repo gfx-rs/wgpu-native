@@ -1440,15 +1440,14 @@ pub enum CreateSurfaceParams {
 
 pub unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
-    _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    _xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
-    _xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
-    _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
-    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
-    _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
+    win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
+    xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
+    xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
+    wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
+    metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
 ) -> CreateSurfaceParams {
-    #[cfg(windows)]
-    if let Some(win) = _win {
+    if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
         let mut window_handle =
             raw_window_handle::Win32WindowHandle::new(NonZeroIsize::new_unchecked(win.hwnd as _));
@@ -1460,56 +1459,47 @@ pub unsafe fn map_surface(
         ));
     }
 
-    #[cfg(all(
-        unix,
-        not(target_os = "android"),
-        not(target_os = "ios"),
-        not(target_os = "macos")
-    ))]
-    {
-        if let Some(xcb) = _xcb {
-            let connection = NonNull::<std::ffi::c_void>::new_unchecked(xcb.connection);
-            let display_handle = raw_window_handle::XcbDisplayHandle::new(Some(connection), 0);
-            let window_handle =
-                raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
+    if let Some(xcb) = xcb {
+        let connection = NonNull::<std::ffi::c_void>::new_unchecked(xcb.connection);
+        let display_handle = raw_window_handle::XcbDisplayHandle::new(Some(connection), 0);
+        let window_handle =
+            raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
 
-            return CreateSurfaceParams::Raw((
-                raw_window_handle::RawDisplayHandle::Xcb(display_handle),
-                raw_window_handle::RawWindowHandle::Xcb(window_handle),
-            ));
-        }
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Xcb(display_handle),
+            raw_window_handle::RawWindowHandle::Xcb(window_handle),
+        ));
+    }
 
-        if let Some(xlib) = _xlib {
-            let display = NonNull::<std::ffi::c_void>::new_unchecked(xlib.display);
-            let display_handle = raw_window_handle::XlibDisplayHandle::new(Some(display), 0);
-            let window_handle = raw_window_handle::XlibWindowHandle::new(xlib.window as _);
+    if let Some(xlib) = xlib {
+        let display = NonNull::<std::ffi::c_void>::new_unchecked(xlib.display);
+        let display_handle = raw_window_handle::XlibDisplayHandle::new(Some(display), 0);
+        let window_handle = raw_window_handle::XlibWindowHandle::new(xlib.window as _);
 
-            return CreateSurfaceParams::Raw((
-                raw_window_handle::RawDisplayHandle::Xlib(display_handle),
-                raw_window_handle::RawWindowHandle::Xlib(window_handle),
-            ));
-        }
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Xlib(display_handle),
+            raw_window_handle::RawWindowHandle::Xlib(window_handle),
+        ));
+    }
 
-        if let Some(wl) = _wl {
-            let display = NonNull::<std::ffi::c_void>::new_unchecked(wl.display);
-            let surface = NonNull::<std::ffi::c_void>::new_unchecked(wl.surface);
-            let display_handle = raw_window_handle::WaylandDisplayHandle::new(display);
-            let window_handle = raw_window_handle::WaylandWindowHandle::new(surface);
+    if let Some(wl) = wl {
+        let display = NonNull::<std::ffi::c_void>::new_unchecked(wl.display);
+        let surface = NonNull::<std::ffi::c_void>::new_unchecked(wl.surface);
+        let display_handle = raw_window_handle::WaylandDisplayHandle::new(display);
+        let window_handle = raw_window_handle::WaylandWindowHandle::new(surface);
 
-            return CreateSurfaceParams::Raw((
-                raw_window_handle::RawDisplayHandle::Wayland(display_handle),
-                raw_window_handle::RawWindowHandle::Wayland(window_handle),
-            ));
-        }
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Wayland(display_handle),
+            raw_window_handle::RawWindowHandle::Wayland(window_handle),
+        ));
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
-    if let Some(metal) = _metal {
+    if let Some(metal) = metal {
         return CreateSurfaceParams::Metal(metal.layer);
     }
 
-    #[cfg(target_os = "android")]
-    if let Some(android) = _android {
+    if let Some(android) = android {
         let display_handle = raw_window_handle::AndroidDisplayHandle::new();
         let window_handle =
             raw_window_handle::AndroidNdkWindowHandle::new(NonNull::new_unchecked(android.window));
