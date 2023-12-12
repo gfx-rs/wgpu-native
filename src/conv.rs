@@ -1087,9 +1087,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::BGRA8UNORM_STORAGE) {
         temp.push(native::WGPUFeatureName_BGRA8UnormStorage);
     }
-    //if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
-    //    temp.push(native::WGPUFeatureName_Float32Filterable);
-    //} -> not yet available in wgpu-core
+    if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
+        temp.push(native::WGPUFeatureName_Float32Filterable);
+    }
 
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
@@ -1138,7 +1138,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
         native::WGPUFeatureName_RG11B10UfloatRenderable => Some(Features::RG11B10UFLOAT_RENDERABLE),
         native::WGPUFeatureName_BGRA8UnormStorage => Some(Features::BGRA8UNORM_STORAGE),
-        //native::WGPUFeatureName_Float32Filterable => Some(Features::FLOAT32_FILTERABLE),
+        native::WGPUFeatureName_Float32Filterable => Some(Features::FLOAT32_FILTERABLE),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
