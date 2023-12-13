@@ -250,9 +250,6 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
     if (flags & native::WGPUInstanceBackend_DX12) != 0 {
         result |= wgt::Backends::DX12;
     }
-    if (flags & native::WGPUInstanceBackend_DX11) != 0 {
-        result |= wgt::Backends::DX11;
-    }
     result
 }
 
@@ -315,8 +312,11 @@ pub fn map_device_descriptor<'a>(
     (
         wgt::DeviceDescriptor {
             label: ptr_into_label(des.label),
-            features: map_features(make_slice(des.requiredFeatures, des.requiredFeatureCount)),
-            limits: match unsafe { des.requiredLimits.as_ref() } {
+            required_features: map_features(make_slice(
+                des.requiredFeatures,
+                des.requiredFeatureCount,
+            )),
+            required_limits: match unsafe { des.requiredLimits.as_ref() } {
                 Some(required_limits) => unsafe {
                     follow_chain!(
                         map_required_limits((required_limits, base_limits),
@@ -836,6 +836,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rg16Snorm => None,
         wgt::TextureFormat::Rgba16Unorm => None,
         wgt::TextureFormat::Rgba16Snorm => None,
+        wgt::TextureFormat::NV12 => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -966,10 +967,12 @@ pub fn map_primitive_state(
 }
 
 #[inline]
-pub fn map_storage_report(report: wgc::storage::StorageReport) -> native::WGPUStorageReport {
-    native::WGPUStorageReport {
-        numOccupied: report.num_occupied,
-        numVacant: report.num_error,
+pub fn map_storage_report(report: wgc::registry::RegistryReport) -> native::WGPURegistryReport {
+    native::WGPURegistryReport {
+        numAllocated: report.num_allocated,
+        numKeptFromUser: report.num_kept_from_user,
+        numReleasedFromUser: report.num_released_from_user,
+        numDestroyedFromUser: report.num_destroyed_from_user,
         numError: report.num_error,
         elementSize: report.element_size,
     }
@@ -980,6 +983,7 @@ pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
     native::WGPUHubReport {
         adapters: map_storage_report(report.adapters),
         devices: map_storage_report(report.devices),
+        queues: map_storage_report(report.queues),
         pipelineLayouts: map_storage_report(report.pipeline_layouts),
         shaderModules: map_storage_report(report.shader_modules),
         bindGroupLayouts: map_storage_report(report.bind_group_layouts),
@@ -1024,15 +1028,9 @@ pub fn write_global_report(
     }
 
     #[cfg(windows)]
-    {
-        if let Some(dx12) = report.dx12 {
-            native_report.dx12 = map_hub_report(dx12);
-            native_report.backendType = native::WGPUBackendType_D3D12;
-        }
-        if let Some(dx11) = report.dx11 {
-            native_report.dx11 = map_hub_report(dx11);
-            native_report.backendType = native::WGPUBackendType_D3D11;
-        }
+    if let Some(dx12) = report.dx12 {
+        native_report.dx12 = map_hub_report(dx12);
+        native_report.backendType = native::WGPUBackendType_D3D12;
     }
 
     #[cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))]
@@ -1089,9 +1087,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::BGRA8UNORM_STORAGE) {
         temp.push(native::WGPUFeatureName_BGRA8UnormStorage);
     }
-    //if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
-    //    temp.push(native::WGPUFeatureName_Float32Filterable);
-    //} -> not yet available in wgpu-core
+    if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
+        temp.push(native::WGPUFeatureName_Float32Filterable);
+    }
 
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
@@ -1140,7 +1138,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
         native::WGPUFeatureName_RG11B10UfloatRenderable => Some(Features::RG11B10UFLOAT_RENDERABLE),
         native::WGPUFeatureName_BGRA8UnormStorage => Some(Features::BGRA8UNORM_STORAGE),
-        //native::WGPUFeatureName_Float32Filterable => Some(Features::FLOAT32_FILTERABLE),
+        native::WGPUFeatureName_Float32Filterable => Some(Features::FLOAT32_FILTERABLE),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
@@ -1442,15 +1440,14 @@ pub enum CreateSurfaceParams {
 
 pub unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
-    _win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    _xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
-    _xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
-    _wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
-    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
-    _android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
+    win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
+    xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
+    xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
+    wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
+    metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
 ) -> CreateSurfaceParams {
-    #[cfg(windows)]
-    if let Some(win) = _win {
+    if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
         let mut window_handle =
             raw_window_handle::Win32WindowHandle::new(NonZeroIsize::new_unchecked(win.hwnd as _));
@@ -1462,56 +1459,47 @@ pub unsafe fn map_surface(
         ));
     }
 
-    #[cfg(all(
-        unix,
-        not(target_os = "android"),
-        not(target_os = "ios"),
-        not(target_os = "macos")
-    ))]
-    {
-        if let Some(xcb) = _xcb {
-            let connection = NonNull::<std::ffi::c_void>::new_unchecked(xcb.connection);
-            let display_handle = raw_window_handle::XcbDisplayHandle::new(Some(connection), 0);
-            let window_handle =
-                raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
+    if let Some(xcb) = xcb {
+        let connection = NonNull::<std::ffi::c_void>::new_unchecked(xcb.connection);
+        let display_handle = raw_window_handle::XcbDisplayHandle::new(Some(connection), 0);
+        let window_handle =
+            raw_window_handle::XcbWindowHandle::new(NonZeroU32::new_unchecked(xcb.window));
 
-            return CreateSurfaceParams::Raw((
-                raw_window_handle::RawDisplayHandle::Xcb(display_handle),
-                raw_window_handle::RawWindowHandle::Xcb(window_handle),
-            ));
-        }
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Xcb(display_handle),
+            raw_window_handle::RawWindowHandle::Xcb(window_handle),
+        ));
+    }
 
-        if let Some(xlib) = _xlib {
-            let display = NonNull::<std::ffi::c_void>::new_unchecked(xlib.display);
-            let display_handle = raw_window_handle::XlibDisplayHandle::new(Some(display), 0);
-            let window_handle = raw_window_handle::XlibWindowHandle::new(xlib.window as _);
+    if let Some(xlib) = xlib {
+        let display = NonNull::<std::ffi::c_void>::new_unchecked(xlib.display);
+        let display_handle = raw_window_handle::XlibDisplayHandle::new(Some(display), 0);
+        let window_handle = raw_window_handle::XlibWindowHandle::new(xlib.window as _);
 
-            return CreateSurfaceParams::Raw((
-                raw_window_handle::RawDisplayHandle::Xlib(display_handle),
-                raw_window_handle::RawWindowHandle::Xlib(window_handle),
-            ));
-        }
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Xlib(display_handle),
+            raw_window_handle::RawWindowHandle::Xlib(window_handle),
+        ));
+    }
 
-        if let Some(wl) = _wl {
-            let display = NonNull::<std::ffi::c_void>::new_unchecked(wl.display);
-            let surface = NonNull::<std::ffi::c_void>::new_unchecked(wl.surface);
-            let display_handle = raw_window_handle::WaylandDisplayHandle::new(display);
-            let window_handle = raw_window_handle::WaylandWindowHandle::new(surface);
+    if let Some(wl) = wl {
+        let display = NonNull::<std::ffi::c_void>::new_unchecked(wl.display);
+        let surface = NonNull::<std::ffi::c_void>::new_unchecked(wl.surface);
+        let display_handle = raw_window_handle::WaylandDisplayHandle::new(display);
+        let window_handle = raw_window_handle::WaylandWindowHandle::new(surface);
 
-            return CreateSurfaceParams::Raw((
-                raw_window_handle::RawDisplayHandle::Wayland(display_handle),
-                raw_window_handle::RawWindowHandle::Wayland(window_handle),
-            ));
-        }
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Wayland(display_handle),
+            raw_window_handle::RawWindowHandle::Wayland(window_handle),
+        ));
     }
 
     #[cfg(any(target_os = "ios", target_os = "macos"))]
-    if let Some(metal) = _metal {
+    if let Some(metal) = metal {
         return CreateSurfaceParams::Metal(metal.layer);
     }
 
-    #[cfg(target_os = "android")]
-    if let Some(android) = _android {
+    if let Some(android) = android {
         let display_handle = raw_window_handle::AndroidDisplayHandle::new();
         let window_handle =
             raw_window_handle::AndroidNdkWindowHandle::new(NonNull::new_unchecked(android.window));

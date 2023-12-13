@@ -155,38 +155,40 @@ typedef struct WGPUShaderModuleGLSLDescriptor {
     WGPUShaderDefine * defines;
 } WGPUShaderModuleGLSLDescriptor;
 
-typedef struct WGPUStorageReport {
-    size_t numOccupied;
-    size_t numVacant;
-    size_t numError;
-    size_t elementSize;
-} WGPUStorageReport;
+typedef struct WGPURegistryReport {
+   size_t numAllocated;
+   size_t numKeptFromUser;
+   size_t numReleasedFromUser;
+   size_t numDestroyedFromUser;
+   size_t numError;
+   size_t elementSize;
+} WGPURegistryReport;
 
 typedef struct WGPUHubReport {
-    WGPUStorageReport adapters;
-    WGPUStorageReport devices;
-    WGPUStorageReport pipelineLayouts;
-    WGPUStorageReport shaderModules;
-    WGPUStorageReport bindGroupLayouts;
-    WGPUStorageReport bindGroups;
-    WGPUStorageReport commandBuffers;
-    WGPUStorageReport renderBundles;
-    WGPUStorageReport renderPipelines;
-    WGPUStorageReport computePipelines;
-    WGPUStorageReport querySets;
-    WGPUStorageReport buffers;
-    WGPUStorageReport textures;
-    WGPUStorageReport textureViews;
-    WGPUStorageReport samplers;
+    WGPURegistryReport adapters;
+    WGPURegistryReport devices;
+    WGPURegistryReport queues;
+    WGPURegistryReport pipelineLayouts;
+    WGPURegistryReport shaderModules;
+    WGPURegistryReport bindGroupLayouts;
+    WGPURegistryReport bindGroups;
+    WGPURegistryReport commandBuffers;
+    WGPURegistryReport renderBundles;
+    WGPURegistryReport renderPipelines;
+    WGPURegistryReport computePipelines;
+    WGPURegistryReport querySets;
+    WGPURegistryReport buffers;
+    WGPURegistryReport textures;
+    WGPURegistryReport textureViews;
+    WGPURegistryReport samplers;
 } WGPUHubReport;
 
 typedef struct WGPUGlobalReport {
-    WGPUStorageReport surfaces;
+    WGPURegistryReport surfaces;
     WGPUBackendType backendType;
     WGPUHubReport vulkan;
     WGPUHubReport metal;
     WGPUHubReport dx12;
-    WGPUHubReport dx11;
     WGPUHubReport gl;
 } WGPUGlobalReport;
 

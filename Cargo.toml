@@ -33,7 +33,7 @@ trace = ["wgc/trace"]
 [dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.18"
 features = ["raw-window-handle"]
 
@@ -41,7 +41,7 @@ features = ["raw-window-handle"]
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.18"
 features = ["metal"]
 
@@ -49,15 +49,15 @@ features = ["metal"]
 [target.'cfg(windows)'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.18"
-features = ["dx11", "dx12", "gles"]
+features = ["dx12", "gles"]
 
 # We want the wgpu-core Vulkan backend on Unix (but not emscripten, macOS, iOS) and Windows.
 [target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.18"
 features = ["vulkan"]
 
@@ -65,19 +65,19 @@ features = ["vulkan"]
 [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.18"
 features = ["gles"]
 
 [dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.18"
 
 [dependencies.naga]
 git = "https://github.com/gfx-rs/wgpu"
-rev = "2e7fd75712bfaacdaaa5538204cfe8b9360f82ca"
+rev = "6dc9ccab8592645fda3204be1cfb5929fd7f924d"
 version = "0.14"
 
 [dependencies]
