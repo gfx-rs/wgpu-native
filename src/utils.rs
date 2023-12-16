@@ -100,8 +100,8 @@ pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) 
 ///
 /// # Notes
 ///
-/// Given two or more extension structs of the same SType in the same chain, this macro will favor the latter most. There should
-/// not be more than one extension struct with the same SType in a chain anyway, so this behavior should be unproblematic.
+/// Given two or more extension structs of the same `SType` in the same chain, this macro will favor the latter most. There should
+/// not be more than one extension struct with the same `SType` in a chain anyway, so this behavior should be unproblematic.
 
 #[macro_export]
 macro_rules! follow_chain {
