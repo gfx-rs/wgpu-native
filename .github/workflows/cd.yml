@@ -42,7 +42,7 @@ jobs:
       IMAGE: manylinux_2_28_x86_64
     steps:
       # Common part (same for nearly each build)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -84,7 +84,7 @@ jobs:
       IMAGE: manylinux_2_28_aarch64
     steps:
       # Common part (same for nearly each build)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -129,7 +129,7 @@ jobs:
       ARCHIVE_NAME: wgpu-windows-x86_64
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -171,7 +171,7 @@ jobs:
       ARCHIVE_NAME: wgpu-windows-i686
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -215,7 +215,7 @@ jobs:
       RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -251,7 +251,7 @@ jobs:
       RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -290,7 +290,7 @@ jobs:
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: set version (which gets used as release name)
         run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
