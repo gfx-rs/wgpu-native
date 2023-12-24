@@ -4,7 +4,7 @@ project('wgpu-native', 'c', version : '0.0.0', license : 'MIT OR Apache-2.0')
 inc_dirs = [include_directories('ffi', is_system: true)]
 
 cargo = find_program('cargo')
-#determin which dir contain platform library
+#determine which dir contain platform library
 if ['linux','android','darwin','cygwin','freebsd','netbsd','openbsd'].contains(host_machine.system())
     lib_path='target/release/libwgpu_native.a'
 else

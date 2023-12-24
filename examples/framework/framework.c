@@ -160,7 +160,7 @@ void frmwrk_print_global_report(WGPUGlobalReport report) {
     print_hub_report(report.gl, "\tgl.");
     break;
   default:
-    printf("[framework] frmwrk_print_global_report: invalid backened type: %d",
+    printf("[framework] frmwrk_print_global_report: invalid backend type: %d",
            report.backendType);
   }
   printf("}\n");
