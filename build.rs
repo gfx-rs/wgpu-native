@@ -34,7 +34,7 @@ fn main() {
     let mut builder = bindgen::Builder::default()
         .header("ffi/webgpu-headers/webgpu.h")
         .header("ffi/wgpu.h")
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .blocklist_function("wgpuGetProcAddress")
         .prepend_enum_name(false)
         .size_t_is_usize(true)
