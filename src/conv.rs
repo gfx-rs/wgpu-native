@@ -234,6 +234,10 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
 
 #[inline]
 pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Backends {
+    if flags == native::WGPUInstanceBackend_All {
+        return wgt::Backends::all();
+    }
+
     let mut result = wgt::Backends::empty();
     if (flags & native::WGPUInstanceBackend_BrowserWebGPU) != 0 {
         result |= wgt::Backends::BROWSER_WEBGPU;
@@ -284,10 +288,7 @@ pub fn map_instance_descriptor(
         };
 
         wgt::InstanceDescriptor {
-            backends: match extras.backends as native::WGPUInstanceBackend {
-                native::WGPUInstanceBackend_All => wgt::Backends::all(),
-                backends => map_instance_backend_flags(backends),
-            },
+            backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
             gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
             flags: match extras.flags as native::WGPUInstanceFlag {
