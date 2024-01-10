@@ -131,8 +131,8 @@ typedef struct WGPUPushConstantRange {
 
 typedef struct WGPUPipelineLayoutExtras {
     WGPUChainedStruct chain;
-    uint32_t pushConstantRangeCount;
-    WGPUPushConstantRange* pushConstantRanges;
+    size_t pushConstantRangeCount;
+    WGPUPushConstantRange const * pushConstantRanges;
 } WGPUPipelineLayoutExtras;
 
 typedef uint64_t WGPUSubmissionIndex;
@@ -238,7 +238,7 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
-void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void* const data);
+void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void const * data);
 
 void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
 void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);

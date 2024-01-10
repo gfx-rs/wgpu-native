@@ -4100,7 +4100,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     stages: native::WGPUShaderStageFlags,
     offset: u32,
     size_bytes: u32,
-    size: *const u8,
+    data: *const u8,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let mut encoder = pass.encoder.write();
@@ -4110,7 +4110,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
         wgt::ShaderStages::from_bits(stages).expect("invalid shader stage"),
         offset,
         size_bytes,
-        size,
+        data,
     );
 }
 
