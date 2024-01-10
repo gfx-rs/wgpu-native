@@ -350,17 +350,14 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         .collect::<Vec<_>>();
 
     let push_constant_ranges = extras.map_or(Vec::new(), |extras| {
-        make_slice(
-            extras.pushConstantRanges,
-            extras.pushConstantRangeCount as usize,
-        )
-        .iter()
-        .map(|range| wgt::PushConstantRange {
-            stages: wgt::ShaderStages::from_bits(range.stages)
-                .expect("invalid shader stage for push constant range"),
-            range: range.start..range.end,
-        })
-        .collect()
+        make_slice(extras.pushConstantRanges, extras.pushConstantRangeCount)
+            .iter()
+            .map(|range| wgt::PushConstantRange {
+                stages: wgt::ShaderStages::from_bits(range.stages)
+                    .expect("invalid shader stage for push constant range"),
+                range: range.start..range.end,
+            })
+            .collect()
     });
 
     return wgc::binding_model::PipelineLayoutDescriptor {
