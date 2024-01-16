@@ -792,6 +792,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     );
     match err {
         None => {
+            let message = CString::default();
             callback(
                 native::WGPURequestDeviceStatus_Success,
                 Arc::into_raw(Arc::new(WGPUDeviceImpl {
@@ -800,13 +801,12 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                     queue_id,
                     error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new(device_lost_handler))),
                 })),
-                std::ptr::null(),
+                message.as_ptr(),
                 userdata,
             );
         }
         Some(err) => {
             let message = CString::new(format_error(context, &err)).unwrap();
-
             callback(
                 native::WGPURequestDeviceStatus_Error,
                 std::ptr::null_mut(),
@@ -2547,8 +2547,9 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
             };
         }
         None => {
+            let msg = CString::default();
             unsafe {
-                callback(native::WGPUErrorType_NoError, std::ptr::null(), userdata);
+                callback(native::WGPUErrorType_NoError, msg.as_ptr(), userdata);
             };
         }
     };
@@ -2676,6 +2677,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
 
     match context.request_adapter(&desc, inputs) {
         Ok(adapter_id) => {
+            let message = CString::default();
             callback(
                 native::WGPURequestAdapterStatus_Success,
                 Arc::into_raw(Arc::new(WGPUAdapterImpl {
@@ -2683,13 +2685,12 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                     id: adapter_id,
                     properties: OnceCell::default(),
                 })),
-                std::ptr::null(),
+                message.as_ptr(),
                 userdata,
             );
         }
         Err(err) => {
             let message = CString::new(format_error(context, &err)).unwrap();
-
             callback(
                 match err {
                     wgc::instance::RequestAdapterError::NotFound => {
