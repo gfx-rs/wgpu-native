@@ -3,6 +3,16 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
+    cfg_aliases::cfg_aliases! {
+        apple: { any(target_os = "ios", target_os = "macos") },
+        unix_wo_apple: { all(unix, not(apple)) },
+
+        dx12: { all(windows, feature = "dx12") },
+        metal: { all(apple, feature = "metal") },
+        vulkan: { any(windows, unix_wo_apple, feature = "vulkan-portability") },
+        gles: { any(windows, unix_wo_apple, feature = "angle") },
+    }
+
     println!("cargo:rerun-if-changed=ffi/webgpu-headers/webgpu.h");
     println!("cargo:rerun-if-changed=ffi/wgpu.h");
 

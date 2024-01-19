@@ -2,7 +2,7 @@ use conv::{
     map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
     map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
     map_primitive_state, map_query_set_descriptor, map_query_set_index, map_shader_module,
-    map_surface, CreateSurfaceParams,
+    map_surface, map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::{Mutex, RwLock};
 use smallvec::SmallVec;
@@ -2615,8 +2615,13 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
     );
 
     let surface_id = match create_surface_params {
-        CreateSurfaceParams::Raw((rdh, rwh)) => context.instance_create_surface(rdh, rwh, ()),
-        #[cfg(any(target_os = "ios", target_os = "macos"))]
+        CreateSurfaceParams::Raw((rdh, rwh)) => {
+            match context.instance_create_surface(rdh, rwh, ()) {
+                Ok(surface_id) => surface_id,
+                Err(cause) => handle_error_fatal(context, cause, "wgpuInstanceCreateSurface"),
+            }
+        }
+        #[cfg(metal)]
         CreateSurfaceParams::Metal(layer) => context.instance_create_surface_metal(layer, ()),
     };
 
@@ -3599,22 +3604,10 @@ pub unsafe extern "C" fn wgpuSurfaceConfigure(
         .expect("invalid device for surface configuration");
     let context = &device.context;
 
-    let surface_config = wgt::SurfaceConfiguration {
-        usage: conv::map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
-        format: conv::map_texture_format(config.format)
-            .expect("invalid format for surface configuration"),
-        width: config.width,
-        height: config.height,
-        present_mode: conv::map_present_mode(config.presentMode),
-        alpha_mode: conv::map_composite_alpha_mode(config.alphaMode)
-            .expect("invalid alpha mode for surface configuration"),
-        view_formats: make_slice(config.viewFormats, config.viewFormatCount)
-            .iter()
-            .map(|f| {
-                conv::map_texture_format(*f).expect("invalid view format for surface configuration")
-            })
-            .collect(),
-    };
+    let surface_config = follow_chain!(map_surface_configuration(
+        (config),
+        WGPUSType_SurfaceConfigurationExtras => native::WGPUSurfaceConfigurationExtras
+    ));
 
     match wgc::gfx_select!(device.id => context.surface_configure(surface.id, device.id, &surface_config))
     {
@@ -4030,7 +4023,7 @@ pub unsafe extern "C" fn wgpuGenerateReport(
 ) {
     let context = &instance.as_ref().expect("invalid instance").context;
     let native_report = native_report.expect("invalid return pointer \"native_report\"");
-    conv::write_global_report(native_report, context.generate_report());
+    conv::write_global_report(native_report, &context.generate_report());
 }
 
 #[no_mangle]
