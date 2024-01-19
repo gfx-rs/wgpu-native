@@ -14,6 +14,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_BindGroupEntryExtras = 0x00030007,
     WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
     WGPUSType_QuerySetDescriptorExtras = 0x00030009,
+    WGPUSType_SurfaceConfigurationExtras = 0x0003000A,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -159,7 +160,6 @@ typedef struct WGPURegistryReport {
    size_t numAllocated;
    size_t numKeptFromUser;
    size_t numReleasedFromUser;
-   size_t numDestroyedFromUser;
    size_t numError;
    size_t elementSize;
 } WGPURegistryReport;
@@ -217,6 +217,11 @@ typedef struct WGPUQuerySetDescriptorExtras {
     WGPUPipelineStatisticName const * pipelineStatistics;
     size_t pipelineStatisticCount;
 } WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUSurfaceConfigurationExtras {
+    WGPUChainedStruct chain;
+    WGPUBool desiredMaximumFrameLatency;
+} WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 

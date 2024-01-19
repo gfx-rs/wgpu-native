@@ -555,8 +555,10 @@ pub fn map_required_limits(
 
 #[derive(Debug, thiserror::Error)]
 pub enum ShaderParseError {
+    #[cfg(feature = "spirv")]
     #[error(transparent)]
     Spirv(#[from] naga::front::spv::Error),
+    #[cfg(feature = "glsl")]
     #[error("GLSL Parse Error: {0:?}")]
     Glsl(Vec<naga::front::glsl::Error>),
 }
@@ -965,74 +967,65 @@ pub fn map_primitive_state(
 }
 
 #[inline]
-pub fn map_storage_report(report: wgc::registry::RegistryReport) -> native::WGPURegistryReport {
+pub fn map_storage_report(report: &wgc::registry::RegistryReport) -> native::WGPURegistryReport {
     native::WGPURegistryReport {
         numAllocated: report.num_allocated,
         numKeptFromUser: report.num_kept_from_user,
         numReleasedFromUser: report.num_released_from_user,
-        numDestroyedFromUser: report.num_destroyed_from_user,
         numError: report.num_error,
         elementSize: report.element_size,
     }
 }
 
 #[inline]
-pub fn map_hub_report(report: wgc::hub::HubReport) -> native::WGPUHubReport {
+pub fn map_hub_report(report: &wgc::hub::HubReport) -> native::WGPUHubReport {
     native::WGPUHubReport {
-        adapters: map_storage_report(report.adapters),
-        devices: map_storage_report(report.devices),
-        queues: map_storage_report(report.queues),
-        pipelineLayouts: map_storage_report(report.pipeline_layouts),
-        shaderModules: map_storage_report(report.shader_modules),
-        bindGroupLayouts: map_storage_report(report.bind_group_layouts),
-        bindGroups: map_storage_report(report.bind_groups),
-        commandBuffers: map_storage_report(report.command_buffers),
-        renderBundles: map_storage_report(report.render_bundles),
-        renderPipelines: map_storage_report(report.render_pipelines),
-        computePipelines: map_storage_report(report.compute_pipelines),
-        querySets: map_storage_report(report.query_sets),
-        buffers: map_storage_report(report.buffers),
-        textures: map_storage_report(report.textures),
-        textureViews: map_storage_report(report.texture_views),
-        samplers: map_storage_report(report.samplers),
+        adapters: map_storage_report(&report.adapters),
+        devices: map_storage_report(&report.devices),
+        queues: map_storage_report(&report.queues),
+        pipelineLayouts: map_storage_report(&report.pipeline_layouts),
+        shaderModules: map_storage_report(&report.shader_modules),
+        bindGroupLayouts: map_storage_report(&report.bind_group_layouts),
+        bindGroups: map_storage_report(&report.bind_groups),
+        commandBuffers: map_storage_report(&report.command_buffers),
+        renderBundles: map_storage_report(&report.render_bundles),
+        renderPipelines: map_storage_report(&report.render_pipelines),
+        computePipelines: map_storage_report(&report.compute_pipelines),
+        querySets: map_storage_report(&report.query_sets),
+        buffers: map_storage_report(&report.buffers),
+        textures: map_storage_report(&report.textures),
+        textureViews: map_storage_report(&report.texture_views),
+        samplers: map_storage_report(&report.samplers),
     }
 }
 
 #[inline]
 pub fn write_global_report(
     native_report: &mut native::WGPUGlobalReport,
-    report: wgc::global::GlobalReport,
+    report: &wgc::global::GlobalReport,
 ) {
-    native_report.surfaces = map_storage_report(report.surfaces);
+    native_report.surfaces = map_storage_report(&report.surfaces);
 
-    #[cfg(any(
-        windows,
-        all(
-            unix,
-            not(target_os = "emscripten"),
-            not(target_os = "ios"),
-            not(target_os = "macos")
-        )
-    ))]
-    if let Some(vulkan) = report.vulkan {
+    #[cfg(vulkan)]
+    if let Some(ref vulkan) = report.vulkan {
         native_report.vulkan = map_hub_report(vulkan);
         native_report.backendType = native::WGPUBackendType_Vulkan;
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
-    if let Some(metal) = report.metal {
+    #[cfg(metal)]
+    if let Some(ref metal) = report.metal {
         native_report.metal = map_hub_report(metal);
         native_report.backendType = native::WGPUBackendType_Metal;
     }
 
-    #[cfg(windows)]
-    if let Some(dx12) = report.dx12 {
+    #[cfg(dx12)]
+    if let Some(ref dx12) = report.dx12 {
         native_report.dx12 = map_hub_report(dx12);
         native_report.backendType = native::WGPUBackendType_D3D12;
     }
 
-    #[cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))]
-    if let Some(gl) = report.gl {
+    #[cfg(gles)]
+    if let Some(ref gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;
     }
@@ -1432,7 +1425,7 @@ pub enum CreateSurfaceParams {
             raw_window_handle::RawWindowHandle,
         ),
     ),
-    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    #[cfg(metal)]
     Metal(*mut std::ffi::c_void),
 }
 
@@ -1492,7 +1485,7 @@ pub unsafe fn map_surface(
         ));
     }
 
-    #[cfg(any(target_os = "ios", target_os = "macos"))]
+    #[cfg(metal)]
     if let Some(metal) = metal {
         return CreateSurfaceParams::Metal(metal.layer);
     }
@@ -1509,4 +1502,29 @@ pub unsafe fn map_surface(
     }
 
     panic!("Error: Unsupported Surface");
+}
+
+pub fn map_surface_configuration(
+    config: &native::WGPUSurfaceConfiguration,
+    extras: Option<&native::WGPUSurfaceConfigurationExtras>,
+) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
+    wgt::SurfaceConfiguration {
+        usage: map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
+        format: map_texture_format(config.format)
+            .expect("invalid format for surface configuration"),
+        width: config.width,
+        height: config.height,
+        present_mode: map_present_mode(config.presentMode),
+        alpha_mode: map_composite_alpha_mode(config.alphaMode)
+            .expect("invalid alpha mode for surface configuration"),
+        view_formats: make_slice(config.viewFormats, config.viewFormatCount)
+            .iter()
+            .map(|f| map_texture_format(*f).expect("invalid view format for surface configuration"))
+            .collect(),
+        desired_maximum_frame_latency: match extras {
+            Some(extras) => extras.desiredMaximumFrameLatency,
+            // Default is 2, https://github.com/gfx-rs/wgpu/blob/484457d95993b00b91905fae0e539a093423cc28/wgpu/src/lib.rs#L4796
+            None => 2,
+        },
+    }
 }

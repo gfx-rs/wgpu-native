@@ -121,7 +121,6 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   printf("%snumAllocated=%zu\n", prefix, report.numAllocated);                 \
   printf("%snumKeptFromUser=%zu\n", prefix, report.numKeptFromUser);           \
   printf("%snumReleasedFromUser=%zu\n", prefix, report.numReleasedFromUser);   \
-  printf("%snumDestroyedFromUser=%zu\n", prefix, report.numDestroyedFromUser); \
   printf("%snumError=%zu\n", prefix, report.numError);                         \
   printf("%selementSize=%zu\n", prefix, report.elementSize)
 
