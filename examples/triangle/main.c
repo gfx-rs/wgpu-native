@@ -89,40 +89,21 @@ static void handle_glfw_framebuffer_size(GLFWwindow *window, int width,
 int main(int argc, char *argv[]) {
   UNUSED(argc)
   UNUSED(argv)
-  struct demo demo = {0};
-  GLFWwindow *window = NULL;
-  WGPUQueue queue = NULL;
-  WGPUShaderModule shader_module = NULL;
-  WGPUPipelineLayout pipeline_layout = NULL;
-  WGPURenderPipeline render_pipeline = NULL;
-  WGPUSurfaceCapabilities surface_capabilities = {0};
-  int ret = EXIT_SUCCESS;
-
-#define ASSERT_CHECK(expr)                                                     \
-  do {                                                                         \
-    if (!(expr)) {                                                             \
-      int ret = EXIT_SUCCESS;                                                  \
-      printf(LOG_PREFIX " assert failed %s: %s:%d\n", #expr, __FILE__,         \
-             __LINE__);                                                        \
-      goto cleanup_and_exit;                                                   \
-    }                                                                          \
-  } while (0)
-
   frmwrk_setup_logging(WGPULogLevel_Warn);
 
 #if defined(WGPU_TARGET_LINUX_WAYLAND)
   glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
 #endif
+  assert(glfwInit());
 
-  ASSERT_CHECK(glfwInit());
-
+  struct demo demo = {0};
   demo.instance = wgpuCreateInstance(NULL);
-  ASSERT_CHECK(demo.instance);
+  assert(demo.instance);
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  window =
+  GLFWwindow *window =
       glfwCreateWindow(640, 480, "triangle [wgpu-native + glfw]", NULL, NULL);
-  ASSERT_CHECK(window);
+  assert(window);
 
   glfwSetWindowUserPointer(window, (void *)&demo);
   glfwSetKeyCallback(window, handle_glfw_key);
@@ -148,7 +129,7 @@ int main(int argc, char *argv[]) {
                     .layer = metal_layer,
                 },
         });
-    ASSERT_CHECK(demo.surface);
+    assert(demo.surface);
   }
 #elif defined(WGPU_TARGET_LINUX_X11)
   {
@@ -168,7 +149,7 @@ int main(int argc, char *argv[]) {
                     .window = x11_window,
                 },
         });
-    ASSERT_CHECK(demo.surface);
+    assert(demo.surface);
   }
 #elif defined(WGPU_TARGET_LINUX_WAYLAND)
   {
@@ -189,7 +170,7 @@ int main(int argc, char *argv[]) {
                     .surface = wayland_surface,
                 },
         });
-    ASSERT_CHECK(demo.surface);
+    assert(demo.surface);
   }
 #elif defined(WGPU_TARGET_WINDOWS)
   {
@@ -209,7 +190,7 @@ int main(int argc, char *argv[]) {
                     .hwnd = hwnd,
                 },
         });
-    ASSERT_CHECK(demo.surface);
+    assert(demo.surface);
   }
 #else
 #error "Unsupported WGPU_TARGET"
@@ -220,26 +201,28 @@ int main(int argc, char *argv[]) {
                                  .compatibleSurface = demo.surface,
                              },
                              handle_request_adapter, &demo);
-  ASSERT_CHECK(demo.adapter);
+  assert(demo.adapter);
 
   wgpuAdapterRequestDevice(demo.adapter, NULL, handle_request_device, &demo);
-  ASSERT_CHECK(demo.device);
+  assert(demo.device);
 
-  queue = wgpuDeviceGetQueue(demo.device);
-  ASSERT_CHECK(queue);
+  WGPUQueue queue = wgpuDeviceGetQueue(demo.device);
+  assert(queue);
 
-  shader_module = frmwrk_load_shader_module(demo.device, "shader.wgsl");
-  ASSERT_CHECK(shader_module);
+  WGPUShaderModule shader_module =
+      frmwrk_load_shader_module(demo.device, "shader.wgsl");
+  assert(shader_module);
 
-  pipeline_layout = wgpuDeviceCreatePipelineLayout(
+  WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
       demo.device, &(const WGPUPipelineLayoutDescriptor){
                        .label = "pipeline_layout",
                    });
-  ASSERT_CHECK(pipeline_layout);
+  assert(pipeline_layout);
 
+  WGPUSurfaceCapabilities surface_capabilities = {0};
   wgpuSurfaceGetCapabilities(demo.surface, demo.adapter, &surface_capabilities);
 
-  render_pipeline = wgpuDeviceCreateRenderPipeline(
+  WGPURenderPipeline render_pipeline = wgpuDeviceCreateRenderPipeline(
       demo.device,
       &(const WGPURenderPipelineDescriptor){
           .label = "render_pipeline",
@@ -272,7 +255,7 @@ int main(int argc, char *argv[]) {
                   .mask = 0xFFFFFFFF,
               },
       });
-  ASSERT_CHECK(render_pipeline);
+  assert(render_pipeline);
 
   demo.config = (const WGPUSurfaceConfiguration){
       .device = demo.device,
@@ -379,27 +362,16 @@ int main(int argc, char *argv[]) {
     wgpuTextureRelease(surface_texture.texture);
   }
 
-cleanup_and_exit:
-  if (render_pipeline)
-    wgpuRenderPipelineRelease(render_pipeline);
-  if (pipeline_layout)
-    wgpuPipelineLayoutRelease(pipeline_layout);
-  if (shader_module)
-    wgpuShaderModuleRelease(shader_module);
+  wgpuRenderPipelineRelease(render_pipeline);
+  wgpuPipelineLayoutRelease(pipeline_layout);
+  wgpuShaderModuleRelease(shader_module);
   wgpuSurfaceCapabilitiesFreeMembers(surface_capabilities);
-  if (queue)
-    wgpuQueueRelease(queue);
-  if (demo.device)
-    wgpuDeviceRelease(demo.device);
-  if (demo.adapter)
-    wgpuAdapterRelease(demo.adapter);
-  if (demo.surface)
-    wgpuSurfaceRelease(demo.surface);
-  if (window)
-    glfwDestroyWindow(window);
-  if (demo.instance)
-    wgpuInstanceRelease(demo.instance);
-
+  wgpuQueueRelease(queue);
+  wgpuDeviceRelease(demo.device);
+  wgpuAdapterRelease(demo.adapter);
+  wgpuSurfaceRelease(demo.surface);
+  glfwDestroyWindow(window);
+  wgpuInstanceRelease(demo.instance);
   glfwTerminate();
   return 0;
 }

@@ -9,7 +9,9 @@
 
 #define LOG_PREFIX "[capture]"
 
-#define COPY_BYTES_PER_ROW_ALIGNMENT 256
+const size_t IMAGE_WIDTH = 100;
+const size_t IMAGE_HEIGHT = 200;
+const size_t COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
                                    WGPUAdapter adapter, char const *message,
@@ -43,9 +45,10 @@ static void buffer_dimensions_init(BufferDimensions *r, size_t width,
 
   const size_t bytes_per_pixel = sizeof(uint32_t);
   const size_t unpadded_bytes_per_row = width * bytes_per_pixel;
-  const size_t align = COPY_BYTES_PER_ROW_ALIGNMENT;
   const size_t padded_bytes_per_row_padding =
-      (align - unpadded_bytes_per_row % align) % align;
+      (COPY_BYTES_PER_ROW_ALIGNMENT -
+       unpadded_bytes_per_row % COPY_BYTES_PER_ROW_ALIGNMENT) %
+      COPY_BYTES_PER_ROW_ALIGNMENT;
   const size_t padded_bytes_per_row =
       unpadded_bytes_per_row + padded_bytes_per_row_padding;
 
@@ -58,61 +61,37 @@ static void buffer_dimensions_init(BufferDimensions *r, size_t width,
 int main(int argc, char *argv[]) {
   UNUSED(argc)
   UNUSED(argv)
-  WGPUInstance instance = NULL;
-  WGPUAdapter adapter = NULL;
-  WGPUDevice device = NULL;
-  WGPUQueue queue = NULL;
-  WGPUBuffer output_buffer = NULL;
-  WGPUTexture texture = NULL;
-  WGPUTextureView texture_view = NULL;
-  WGPUCommandEncoder command_encoder = NULL;
-  WGPURenderPassEncoder render_pass_encoder = NULL;
-  WGPUCommandBuffer command_buffer = NULL;
-  uint8_t *buf = NULL;
-  int ret = EXIT_SUCCESS;
-
-#define ASSERT_CHECK(expr)                                                     \
-  do {                                                                         \
-    if (!(expr)) {                                                             \
-      ret = EXIT_FAILURE;                                                      \
-      printf(LOG_PREFIX " assert failed (%s): %s:%d\n", #expr, __FILE__,       \
-             __LINE__);                                                        \
-      goto cleanup_and_exit;                                                   \
-    }                                                                          \
-  } while (0)
-
-  const size_t width = 100;
-  const size_t height = 200;
-
   frmwrk_setup_logging(WGPULogLevel_Warn);
 
-  instance = wgpuCreateInstance(NULL);
-  ASSERT_CHECK(instance);
+  WGPUInstance instance = wgpuCreateInstance(NULL);
+  assert(instance);
 
+  WGPUAdapter adapter = NULL;
   wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,
                              (void *)&adapter);
-  ASSERT_CHECK(adapter);
+  assert(adapter);
 
+  WGPUDevice device = NULL;
   wgpuAdapterRequestDevice(adapter, NULL, handle_request_device,
                            (void *)&device);
-  ASSERT_CHECK(device);
-  queue = wgpuDeviceGetQueue(device);
-  ASSERT_CHECK(queue);
+  assert(device);
+  WGPUQueue queue = wgpuDeviceGetQueue(device);
+  assert(queue);
 
   BufferDimensions buffer_dimensions = {0};
-  buffer_dimensions_init(&buffer_dimensions, width, height);
+  buffer_dimensions_init(&buffer_dimensions, IMAGE_WIDTH, IMAGE_HEIGHT);
 
   const size_t buffer_size =
       (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height);
 
-  output_buffer = wgpuDeviceCreateBuffer(
+  WGPUBuffer output_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
                   .label = "output_buffer",
                   .size = buffer_size,
                   .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
                   .mappedAtCreation = false,
               });
-  ASSERT_CHECK(output_buffer);
+  assert(output_buffer);
 
   const WGPUExtent3D texture_extent = (const WGPUExtent3D){
       .width = buffer_dimensions.width,
@@ -120,7 +99,7 @@ int main(int argc, char *argv[]) {
       .depthOrArrayLayers = 1,
   };
 
-  texture = wgpuDeviceCreateTexture(
+  WGPUTexture texture = wgpuDeviceCreateTexture(
       device,
       &(const WGPUTextureDescriptor){
           .label = "texture",
@@ -131,18 +110,17 @@ int main(int argc, char *argv[]) {
           .format = WGPUTextureFormat_RGBA8UnormSrgb,
           .usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_CopySrc,
       });
-  ASSERT_CHECK(texture);
+  assert(texture);
+  WGPUTextureView texture_view = wgpuTextureCreateView(texture, NULL);
+  assert(texture_view);
 
-  texture_view = wgpuTextureCreateView(texture, NULL);
-  ASSERT_CHECK(texture_view);
-
-  command_encoder = wgpuDeviceCreateCommandEncoder(
+  WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
       device, &(const WGPUCommandEncoderDescriptor){
                   .label = "command_encoder",
               });
-  ASSERT_CHECK(command_encoder);
+  assert(command_encoder);
 
-  render_pass_encoder = wgpuCommandEncoderBeginRenderPass(
+  WGPURenderPassEncoder render_pass_encoder = wgpuCommandEncoderBeginRenderPass(
       command_encoder, &(const WGPURenderPassDescriptor){
                            .label = "rende_pass_encoder",
                            .colorAttachmentCount = 1,
@@ -162,7 +140,7 @@ int main(int argc, char *argv[]) {
                                    },
                                },
                        });
-  ASSERT_CHECK(render_pass_encoder);
+  assert(render_pass_encoder);
 
   wgpuRenderPassEncoderEnd(render_pass_encoder);
 
@@ -185,11 +163,11 @@ int main(int argc, char *argv[]) {
       },
       &texture_extent);
 
-  command_buffer = wgpuCommandEncoderFinish(
+  WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
       command_encoder, &(const WGPUCommandBufferDescriptor){
                            .label = "command_buffer",
                        });
-  ASSERT_CHECK(command_buffer);
+  assert(command_buffer);
 
   wgpuQueueSubmit(queue, 1, (const WGPUCommandBuffer[]){command_buffer});
 
@@ -197,39 +175,24 @@ int main(int argc, char *argv[]) {
                      handle_buffer_map, NULL);
   wgpuDevicePoll(device, true, NULL);
 
-  buf = (uint8_t *)wgpuBufferGetConstMappedRange(output_buffer, 0, buffer_size);
-  ASSERT_CHECK(buf);
+  uint8_t *buf =
+      (uint8_t *)wgpuBufferGetConstMappedRange(output_buffer, 0, buffer_size);
+  assert(buf);
 
-  ASSERT_CHECK(stbi_write_png("red.png", buffer_dimensions.width,
-                              buffer_dimensions.height, 4, buf,
-                              buffer_dimensions.padded_bytes_per_row));
+  assert(stbi_write_png("red.png", buffer_dimensions.width,
+                        buffer_dimensions.height, 4, buf,
+                        buffer_dimensions.padded_bytes_per_row));
 
-cleanup_and_exit:
-  if (buf) {
-    wgpuBufferUnmap(output_buffer);
-    // mapped buf is unusable after wgpuBufferUnmap()
-    buf = NULL;
-  }
-  if (command_buffer)
-    wgpuCommandBufferRelease(command_buffer);
-  if (render_pass_encoder)
-    wgpuRenderPassEncoderRelease(render_pass_encoder);
-  if (command_encoder)
-    wgpuCommandEncoderRelease(command_encoder);
-  if (texture_view)
-    wgpuTextureViewRelease(texture_view);
-  if (texture)
-    wgpuTextureRelease(texture);
-  if (output_buffer)
-    wgpuBufferRelease(output_buffer);
-  if (queue)
-    wgpuQueueRelease(queue);
-  if (device)
-    wgpuDeviceRelease(device);
-  if (adapter)
-    wgpuAdapterRelease(adapter);
-  if (instance)
-    wgpuInstanceRelease(instance);
-
-  return ret;
+  wgpuBufferUnmap(output_buffer);
+  wgpuCommandBufferRelease(command_buffer);
+  wgpuRenderPassEncoderRelease(render_pass_encoder);
+  wgpuCommandEncoderRelease(command_encoder);
+  wgpuTextureViewRelease(texture_view);
+  wgpuTextureRelease(texture);
+  wgpuBufferRelease(output_buffer);
+  wgpuQueueRelease(queue);
+  wgpuDeviceRelease(device);
+  wgpuAdapterRelease(adapter);
+  wgpuInstanceRelease(instance);
+  return EXIT_SUCCESS;
 }
