@@ -24,7 +24,6 @@
 #include <GLFW/glfw3native.h>
 
 #define LOG_PREFIX "[texture_arrays]"
-#define MAX_FEATURE_ARRAY_LENGTH 64
 
 struct demo {
   WGPUInstance instance;
@@ -243,10 +242,12 @@ int main(int argc, char *argv[]) {
   WGPUSurfaceCapabilities surface_capabilities = {0};
   wgpuSurfaceGetCapabilities(demo.surface, demo.adapter, &surface_capabilities);
 
-  WGPUFeatureName adapter_features[MAX_FEATURE_ARRAY_LENGTH] = {0};
   size_t adapter_feature_count =
-      wgpuAdapterEnumerateFeatures(demo.adapter, adapter_features);
-  assert(adapter_feature_count <= MAX_FEATURE_ARRAY_LENGTH);
+      wgpuAdapterEnumerateFeatures(demo.adapter, NULL);
+  WGPUFeatureName *adapter_features = (WGPUFeatureName *)malloc(
+      sizeof(WGPUFeatureName) * adapter_feature_count);
+  wgpuAdapterEnumerateFeatures(demo.adapter, adapter_features);
+
   bool adapter_has_required_features = false;
   bool adapter_has_optional_features = false;
   for (size_t i = 0; i < adapter_feature_count; i++) {
@@ -261,6 +262,7 @@ int main(int argc, char *argv[]) {
   }
   assert(
           adapter_has_required_features /* Adapter must support WGPUNativeFeature_TextureBindingArray feature for this example */);
+  free(adapter_features);
 
   WGPUFeatureName required_device_features[2] = {
       (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray,
@@ -344,14 +346,14 @@ int main(int argc, char *argv[]) {
                    });
   assert(index_buffer);
 
-  uint32_t texture_index_buffer_contents[128] = {
+  const uint32_t texture_index_buffer_contents[128] = {
       [0] = 0,
       [64] = 1,
   };
   WGPUBuffer texture_index_buffer = frmwrk_device_create_buffer_init(
       demo.device, &(const frmwrk_buffer_init_descriptor){
                        .label = "Texture Index Buffer",
-                       .content = texture_index_buffer_contents,
+                       .content = (void *)texture_index_buffer_contents,
                        .content_size = sizeof(texture_index_buffer_contents),
                        .usage = WGPUBufferUsage_Uniform,
                    });
@@ -365,7 +367,7 @@ int main(int argc, char *argv[]) {
 
 #define COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS                                 \
   /* clang-format off */                                                       \
-  .size = extent_3d_default,                                                \
+  .size = extent_3d_default,                                                   \
   .mipLevelCount = 1,                                                          \
   .sampleCount = 1,                                                            \
   .dimension = WGPUTextureDimension_2D,                                        \
