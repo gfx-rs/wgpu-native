@@ -171,10 +171,23 @@ impl Drop for WGPUComputePipelineImpl {
     }
 }
 
+struct QueueId {
+    context: Arc<Context>,
+    id: id::QueueId,
+}
+impl Drop for QueueId {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            let context = &self.context;
+            gfx_select!(self.id => context.queue_drop(self.id));
+        }
+    }
+}
+
 pub struct WGPUDeviceImpl {
     context: Arc<Context>,
     id: id::DeviceId,
-    queue_id: id::QueueId,
+    queue: Arc<QueueId>,
     error_sink: ErrorSink,
 }
 impl Drop for WGPUDeviceImpl {
@@ -228,17 +241,8 @@ impl Drop for WGPUQuerySetImpl {
 }
 
 pub struct WGPUQueueImpl {
-    context: Arc<Context>,
-    id: id::QueueId,
+    queue: Arc<QueueId>,
     error_sink: ErrorSink,
-}
-impl Drop for WGPUQueueImpl {
-    fn drop(&mut self) {
-        if !thread::panicking() {
-            let context = &self.context;
-            gfx_select!(self.id => context.queue_drop(self.id));
-        }
-    }
 }
 
 pub struct WGPURenderBundleImpl {
@@ -834,7 +838,10 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 Arc::into_raw(Arc::new(WGPUDeviceImpl {
                     context: context.clone(),
                     id: device_id,
-                    queue_id,
+                    queue: Arc::new(QueueId {
+                        context: context.clone(),
+                        id: queue_id,
+                    }),
                     error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new(device_lost_handler))),
                 })),
                 message.as_ptr(),
@@ -2529,14 +2536,13 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> native::WGPUQueue {
-    let (queue_id, context, error_sink) = {
+    let (queue, error_sink) = {
         let device = device.as_ref().expect("invalid device");
-        (device.queue_id, &device.context, &device.error_sink)
+        (&device.queue, &device.error_sink)
     };
 
     Arc::into_raw(Arc::new(WGPUQueueImpl {
-        context: context.clone(),
-        id: queue_id,
+        queue: queue.clone(),
         error_sink: error_sink.clone(),
     }))
 }
@@ -2867,7 +2873,7 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
 ) {
     let (queue_id, context) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.id, &queue.context)
+        (queue.queue.id, &queue.queue.context)
     };
     let callback = callback.expect("invalid callback");
     let userdata = utils::Userdata::new(userdata);
@@ -2891,7 +2897,7 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
 ) {
     let (queue_id, context) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.id, &queue.context)
+        (queue.queue.id, &queue.queue.context)
     };
 
     let command_buffers = make_slice(commands, command_count)
@@ -2918,7 +2924,7 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 ) {
     let (queue_id, context, error_sink) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.id, &queue.context, &queue.error_sink)
+        (queue.queue.id, &queue.queue.context, &queue.error_sink)
     };
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
 
@@ -2943,7 +2949,7 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
 ) {
     let (queue_id, context, error_sink) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.id, &queue.context, &queue.error_sink)
+        (queue.queue.id, &queue.queue.context, &queue.error_sink)
     };
 
     if let Err(cause) = gfx_select!(queue_id => context.queue_write_texture(
@@ -4095,7 +4101,7 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
 ) -> native::WGPUSubmissionIndex {
     let (queue_id, context) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.id, &queue.context)
+        (queue.queue.id, &queue.queue.context)
     };
 
     let command_buffers = make_slice(commands, command_count)
@@ -4132,6 +4138,7 @@ pub unsafe extern "C" fn wgpuDevicePoll(
                         .queue
                         .as_ref()
                         .expect("invalid queue for wrapped submission index")
+                        .queue
                         .id,
                     index: index.submissionIndex,
                 })
