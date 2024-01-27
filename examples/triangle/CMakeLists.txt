@@ -11,7 +11,6 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/../ffi)
 include_directories(${CMAKE_SOURCE_DIR}/framework)
-include_directories(${DEP_GLFW_DIR}/include)
 
 if (WIN32)
     add_definitions(-DWGPU_TARGET_WINDOWS)
