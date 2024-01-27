@@ -42,8 +42,8 @@ fn main() {
         ("WGPUTextureView", "WGPUTextureViewImpl"),
     ];
     let mut builder = bindgen::Builder::default()
-        .header("ffi/webgpu-headers/webgpu.h")
         .header("ffi/wgpu.h")
+        .clang_arg("-Iffi/webgpu-headers")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .blocklist_function("wgpuGetProcAddress")
         .prepend_enum_name(false)

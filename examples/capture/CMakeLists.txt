@@ -12,6 +12,7 @@ endif()
 add_definitions(-DSTB_IMAGE_WRITE_IMPLEMENTATION)
 
 include_directories(${CMAKE_SOURCE_DIR}/../ffi)
+include_directories(${CMAKE_SOURCE_DIR}/../ffi/webgpu-headers)
 include_directories(${CMAKE_SOURCE_DIR}/framework)
 
 if (WIN32)
