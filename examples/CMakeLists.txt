@@ -37,5 +37,4 @@ add_subdirectory(triangle)
 
 set(GLFW_BUILD_DOCS OFF)
 set(GLFW_USE_WAYLAND ON)
-set(DEP_GLFW_DIR ${CMAKE_SOURCE_DIR}/vendor/glfw)
-add_subdirectory(${DEP_GLFW_DIR})
+add_subdirectory(vendor/glfw)
