@@ -10,6 +10,7 @@ else()
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/../ffi)
+include_directories(${CMAKE_SOURCE_DIR}/../ffi/webgpu-headers)
 include_directories(${CMAKE_SOURCE_DIR}/framework)
 
 if (WIN32)

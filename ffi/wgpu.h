@@ -1,7 +1,7 @@
 #ifndef WGPU_H_
 #define WGPU_H_
 
-#include "webgpu-headers/webgpu.h"
+#include "webgpu.h"
 
 typedef enum WGPUNativeSType {
     // Start at 0003 since that's allocated range for wgpu-native
