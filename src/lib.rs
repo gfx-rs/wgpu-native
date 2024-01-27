@@ -523,7 +523,7 @@ impl ErrorSinkRaw {
                             native::WGPUDeviceLostReason_Destroyed,
                             msg.as_ptr(),
                             userdata,
-                        )
+                        );
                     };
                 }
                 return;
@@ -1027,7 +1027,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
 
     if let Err(cause) = gfx_select!(buffer_id => context.buffer_map_async(buffer_id, offset as u64 .. (offset + size) as u64, operation))
     {
-        handle_error(context, error_sink, cause, "", None, "wgpuBufferMapAsync")
+        handle_error(context, error_sink, cause, "", None, "wgpuBufferMapAsync");
     };
 }
 
@@ -1039,7 +1039,7 @@ pub unsafe extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
     };
 
     if let Err(cause) = gfx_select!(buffer_id => context.buffer_unmap(buffer_id)) {
-        handle_error(context, error_sink, cause, "", None, "wgpuBufferUnmap")
+        handle_error(context, error_sink, cause, "", None, "wgpuBufferUnmap");
     }
 }
 
@@ -1469,7 +1469,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderPopDebugGroup(
             "",
             None,
             "wgpuCommandEncoderPopDebugGroup",
-        )
+        );
     }
 }
 
@@ -1496,7 +1496,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
             "",
             None,
             "wgpuCommandEncoderPushDebugGroup",
-        )
+        );
     }
 }
 
@@ -1535,7 +1535,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderResolveQuerySet(
             "",
             None,
             "wgpuCommandEncoderResolveQuerySet",
-        )
+        );
     }
 }
 
@@ -1567,7 +1567,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderWriteTimestamp(
             "",
             None,
             "wgpuCommandEncoderWriteTimestamp",
-        )
+        );
     }
 }
 
@@ -1640,7 +1640,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePass
             "encoder",
             Some(Cow::Borrowed(&name)),
             "wgpuComputePassEncoderEnd",
-        )
+        );
     }
 }
 
@@ -1753,7 +1753,7 @@ pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
             "",
             None,
             "wgpuComputePipelineGetBindGroupLayout",
-        )
+        );
     }
 
     Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
@@ -3610,7 +3610,7 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
             "",
             None,
             "wgpuRenderPipelineGetBindGroupLayout",
-        )
+        );
     }
 
     Arc::into_raw(Arc::new(WGPUBindGroupLayoutImpl {
