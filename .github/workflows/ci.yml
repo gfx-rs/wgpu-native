@@ -151,7 +151,6 @@ jobs:
           - name: Ubuntu
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            run_examples: true
             shell: bash
             setup_env: |
               set -x;
@@ -163,18 +162,15 @@ jobs:
           - name: Macos
             os: macos-latest
             target: x86_64-apple-darwin
-            run_examples: false # macos vm doesn't have software metal api
             shell: bash
             setup_env: brew install cmake ninja
           - name: Windows gnu
             os: windows-latest
             target: x86_64-pc-windows-gnu
-            run_examples: true
             shell: msys2 {0}
           - name: Windows msvc
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            run_examples: true
             shell: cmd
             setup_env: choco install -y make
     steps:
@@ -219,8 +215,7 @@ jobs:
           make example-triangle
           make example-enumerate_adapters
           make example-texture_arrays
-      - if: ${{ matrix.run_examples }}
-        name: Run examples debug
+      - name: Run examples debug
         run: |
           make run-example-capture
           make run-example-compute
@@ -232,8 +227,7 @@ jobs:
           make example-triangle-release
           make example-enumerate_adapters-release
           make example-texture_arrays-release
-      - if: ${{ matrix.run_examples }}
-        name: Run examples release
+      - name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
