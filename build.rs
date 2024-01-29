@@ -45,6 +45,8 @@ fn main() {
         .header("ffi/wgpu.h")
         .clang_arg("-Iffi/webgpu-headers")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .allowlist_item("WGPU.*")
+        .allowlist_item("wgpu.*")
         .blocklist_function("wgpuGetProcAddress")
         .prepend_enum_name(false)
         .size_t_is_usize(true)
