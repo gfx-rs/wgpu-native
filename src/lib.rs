@@ -2693,8 +2693,12 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     let context = &instance.context;
     let callback = callback.expect("invalid callback");
 
-    let (desc, inputs) = match options {
-        Some(options) => (
+    let desc = match options {
+        Some(options) => {
+            if options.backendType != native::WGPUBackendType_Undefined {
+                eprintln!("WARN: [wgpu-native]: WGPURequestAdapterOptions.backendType is unsupported, use WGPUInstanceExtras.backends extension for WGPUInstanceDescriptor instead")
+            }
+
             wgt::RequestAdapterOptions {
                 power_preference: match options.powerPreference {
                     native::WGPUPowerPreference_LowPower => wgt::PowerPreference::LowPower,
@@ -2705,31 +2709,15 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 },
                 force_fallback_adapter: options.forceFallbackAdapter != 0,
                 compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
-            },
-            wgc::instance::AdapterInputs::Mask(
-                match options.backendType {
-                    native::WGPUBackendType_Undefined => wgt::Backends::all(),
-                    native::WGPUBackendType_WebGPU => wgt::Backends::BROWSER_WEBGPU,
-                    native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
-                    native::WGPUBackendType_Metal => wgt::Backends::METAL,
-                    native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
-                    native::WGPUBackendType_OpenGL => wgt::Backends::GL,
-                    // TODO
-                    native::WGPUBackendType_Null | native::WGPUBackendType_OpenGLES => {
-                        panic!("unsupported backend type for adapter options")
-                    }
-                    _ => panic!("invalid backend type for adapter options"),
-                },
-                |_| (),
-            ),
-        ),
-        None => (
-            wgt::RequestAdapterOptions::default(),
-            wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
-        ),
+            }
+        }
+        None => wgt::RequestAdapterOptions::default(),
     };
 
-    match context.request_adapter(&desc, inputs) {
+    match context.request_adapter(
+        &desc,
+        wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| ()),
+    ) {
         Ok(adapter_id) => {
             let message = CString::default();
             callback(
