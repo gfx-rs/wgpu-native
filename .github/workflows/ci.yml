@@ -61,10 +61,10 @@ jobs:
             target: x86_64-unknown-linux-gnu
             # Macos
           - name: Macos x86_64
-            os: macos-latest
+            os: macos-14
             target: x86_64-apple-darwin
           - name: Macos aarch64
-            os: macos-latest
+            os: macos-14
             target: aarch64-apple-darwin
             # Windows
           - name: Windows gnu x86_64
@@ -114,7 +114,7 @@ jobs:
               echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
           # iOS
           - name: iOS stable
-            os: macos-latest
+            os: macos-14
             target: aarch64-apple-ios
     steps:
       - name: Checkout
@@ -160,8 +160,8 @@ jobs:
                 xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols \
                 libegl1-mesa-dev mesa-vulkan-drivers
           - name: Macos
-            os: macos-latest
-            target: x86_64-apple-darwin
+            os: macos-14
+            target: aarch64-apple-darwin
             shell: bash
             setup_env: brew install cmake ninja
           - name: Windows gnu
