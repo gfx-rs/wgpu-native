@@ -1,265 +1,356 @@
+/**
+ * Copyright 2021 The gfx-rs developers
+ * 
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
+ */
+
 #ifndef WGPU_H_
 #define WGPU_H_
 
+#if defined(WGPU_SHARED_LIBRARY)
+#    if defined(_WIN32)
+#        if defined(WGPU_IMPLEMENTATION)
+#            define WGPU_EXPORT __declspec(dllexport)
+#        else
+#            define WGPU_EXPORT __declspec(dllimport)
+#        endif
+#    else  // defined(_WIN32)
+#        if defined(WGPU_IMPLEMENTATION)
+#            define WGPU_EXPORT __attribute__((visibility("default")))
+#        else
+#            define WGPU_EXPORT
+#        endif
+#    endif  // defined(_WIN32)
+#else       // defined(WGPU_SHARED_LIBRARY)
+#    define WGPU_EXPORT
+#endif  // defined(WGPU_SHARED_LIBRARY)
+
+#if !defined(WGPU_OBJECT_ATTRIBUTE)
+#define WGPU_OBJECT_ATTRIBUTE
+#endif
+#if !defined(WGPU_ENUM_ATTRIBUTE)
+#define WGPU_ENUM_ATTRIBUTE
+#endif
+#if !defined(WGPU_STRUCTURE_ATTRIBUTE)
+#define WGPU_STRUCTURE_ATTRIBUTE
+#endif
+#if !defined(WGPU_FUNCTION_ATTRIBUTE)
+#define WGPU_FUNCTION_ATTRIBUTE
+#endif
+#if !defined(WGPU_NULLABLE)
+#define WGPU_NULLABLE
+#endif
+
+#if !defined(__WGPU_EXTEND_ENUM)
+#ifdef __cplusplus
+#define __WGPU_EXTEND_ENUM(E, N, V) static const E N = E(V)
+#else
+#define __WGPU_EXTEND_ENUM(E, N, V) static const E N = (E)(V)
+#endif
+#endif // !defined(__WGPU_EXTEND_ENUM)
+
 #include "webgpu.h"
 
-typedef enum WGPUNativeSType {
-    // Start at 0003 since that's allocated range for wgpu-native
-    WGPUSType_DeviceExtras = 0x00030001,
-    WGPUSType_RequiredLimitsExtras = 0x00030002,
-    WGPUSType_PipelineLayoutExtras = 0x00030003,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
-    WGPUSType_SupportedLimitsExtras = 0x00030005,
-    WGPUSType_InstanceExtras = 0x00030006,
-    WGPUSType_BindGroupEntryExtras = 0x00030007,
-    WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
-    WGPUSType_QuerySetDescriptorExtras = 0x00030009,
-    WGPUSType_SurfaceConfigurationExtras = 0x0003000A,
-    WGPUNativeSType_Force32 = 0x7FFFFFFF
-} WGPUNativeSType;
+typedef uint64_t WGPUSubmissionIndexWGPU;
 
-typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_PushConstants = 0x00030001,
-    WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x00030002,
-    WGPUNativeFeature_MultiDrawIndirect = 0x00030003,
-    WGPUNativeFeature_MultiDrawIndirectCount = 0x00030004,
-    WGPUNativeFeature_VertexWritableStorage = 0x00030005,
-    WGPUNativeFeature_TextureBindingArray = 0x00030006,
-    WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x00030007,
-    WGPUNativeFeature_PipelineStatisticsQuery = 0x00030008,
-    WGPUNativeFeature_StorageResourceBindingArray = 0x00030009,
-    WGPUNativeFeature_PartiallyBoundBindingArray = 0x0003000A,
-    WGPUNativeFeature_Force32 = 0x7FFFFFFF
-} WGPUNativeFeature;
+typedef struct WGPUComputePassEncoderWGPUImpl* WGPUComputePassEncoderWGPU WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUDeviceWGPUImpl* WGPUDeviceWGPU WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUInstanceWGPUImpl* WGPUInstanceWGPU WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUQueueWGPUImpl* WGPUQueueWGPU WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPURenderPassEncoderWGPUImpl* WGPURenderPassEncoderWGPU WGPU_OBJECT_ATTRIBUTE;
 
-typedef enum WGPULogLevel {
-    WGPULogLevel_Off = 0x00000000,
-    WGPULogLevel_Error = 0x00000001,
-    WGPULogLevel_Warn = 0x00000002,
-    WGPULogLevel_Info = 0x00000003,
-    WGPULogLevel_Debug = 0x00000004,
-    WGPULogLevel_Trace = 0x00000005,
-    WGPULogLevel_Force32 = 0x7FFFFFFF
-} WGPULogLevel;
+// Structure forward declarations
+struct WGPUBindGroupEntryExtrasWGPU;
+struct WGPUBindGroupLayoutEntryExtrasWGPU;
+struct WGPUDeviceExtrasWGPU;
+struct WGPUInstanceEnumerateAdaptersResultWGPU;
+struct WGPUInstanceExtrasWGPU;
+struct WGPULimitExtrasWGPU;
+struct WGPUPushConstantRangeWGPU;
+struct WGPUQuerySetDescriptorExtrasWGPU;
+struct WGPURegistryReportWGPU;
+struct WGPUShaderDefineWGPU;
+struct WGPUSurfaceConfigurationExtrasWGPU;
+struct WGPUWrappedSubmissionIndexWGPU;
+struct WGPUHubReportWGPU;
+struct WGPURequiredLimitsExtrasWGPU;
+struct WGPUShaderModuleGLSLDescriptorWGPU;
+struct WGPUSupportedLimitsExtrasWGPU;
+struct WGPUGlobalReportWGPU;
 
-typedef enum WGPUInstanceBackend {
-    WGPUInstanceBackend_All = 0x00000000,
-    WGPUInstanceBackend_Vulkan = 1 << 0,
-    WGPUInstanceBackend_GL = 1 << 1,
-    WGPUInstanceBackend_Metal = 1 << 2,
-    WGPUInstanceBackend_DX12 = 1 << 3,
-    WGPUInstanceBackend_DX11 = 1 << 4,
-    WGPUInstanceBackend_BrowserWebGPU = 1 << 5,
-    WGPUInstanceBackend_Primary = WGPUInstanceBackend_Vulkan | WGPUInstanceBackend_Metal |
-        WGPUInstanceBackend_DX12 |
-        WGPUInstanceBackend_BrowserWebGPU,
-    WGPUInstanceBackend_Secondary = WGPUInstanceBackend_GL | WGPUInstanceBackend_DX11,
-    WGPUInstanceBackend_Force32 = 0x7FFFFFFF
-} WGPUInstanceBackend;
-typedef WGPUFlags WGPUInstanceBackendFlags;
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PushConstants_WGPU, 0x00030000);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureAdapterSpecificFormatFeatures_WGPU, 0x00030001);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MultiDrawIndirect_WGPU, 0x00030002);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MultiDrawIndirectCount_WGPU, 0x00030003);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_VertexWritableStorage_WGPU, 0x00030004);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureBindingArray_WGPU, 0x00030005);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SampledTextureAndStorageBufferArrayNonUniformIndexing_WGPU, 0x00030006);
+__WGPU_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PipelineStatisticsQuery_WGPU, 0x00030007);
 
-typedef enum WGPUInstanceFlag {
-    WGPUInstanceFlag_Default = 0x00000000,
-    WGPUInstanceFlag_Debug = 1 << 0,
-    WGPUInstanceFlag_Validation = 1 << 1,
-    WGPUInstanceFlag_DiscardHalLabels = 1 << 2,
-    WGPUInstanceFlag_Force32 = 0x7FFFFFFF
-} WGPUInstanceFlag;
-typedef WGPUFlags WGPUInstanceFlags;
+__WGPU_EXTEND_ENUM(WGPUQueryType, WGPUQueryType_PipelineStatistics_WGPU, 0x00030000);
 
-typedef enum WGPUDx12Compiler {
-    WGPUDx12Compiler_Undefined = 0x00000000,
-    WGPUDx12Compiler_Fxc = 0x00000001,
-    WGPUDx12Compiler_Dxc = 0x00000002,
-    WGPUDx12Compiler_Force32 = 0x7FFFFFFF
-} WGPUDx12Compiler;
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_DeviceExtras_WGPU, 0x00030000);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_RequiredLimitsExtras_WGPU, 0x00030001);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_PipelineLayoutExtras_WGPU, 0x00030002);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_ShaderModuleGLSLDescriptor_WGPU, 0x00030003);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_SupportedLimitsExtras_WGPU, 0x00030004);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_InstanceExtras_WGPU, 0x00030005);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_BindGroupEntryExtras_WGPU, 0x00030006);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_BindGroupLayoutEntryExtras_WGPU, 0x00030007);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_QuerySetDescriptorExtras_WGPU, 0x00030008);
+__WGPU_EXTEND_ENUM(WGPUSType, WGPUSType_SurfaceConfigurationExtras_WGPU, 0x00030009);
 
-typedef enum WGPUGles3MinorVersion {
-    WGPUGles3MinorVersion_Automatic = 0x00000000,
-    WGPUGles3MinorVersion_Version0 = 0x00000001,
-    WGPUGles3MinorVersion_Version1 = 0x00000002,
-    WGPUGles3MinorVersion_Version2 = 0x00000003,
-    WGPUGles3MinorVersion_Force32 = 0x7FFFFFFF
-} WGPUGles3MinorVersion;
+typedef enum WGPUDx12CompilerWGPU {
+    WGPUDx12Compiler_Undefined_WGPU = 0x00030000,
+    WGPUDx12Compiler_Fxc_WGPU = 0x00030001,
+    WGPUDx12Compiler_Dxc_WGPU = 0x00030002,
+    WGPUDx12Compiler_Force32_WGPU = 0x7FFFFFFF
+} WGPUDx12CompilerWGPU WGPU_ENUM_ATTRIBUTE;
 
-typedef enum WGPUPipelineStatisticName {
-    WGPUPipelineStatisticName_VertexShaderInvocations = 0x00000000,
-    WGPUPipelineStatisticName_ClipperInvocations = 0x00000001,
-    WGPUPipelineStatisticName_ClipperPrimitivesOut = 0x00000002,
-    WGPUPipelineStatisticName_FragmentShaderInvocations = 0x00000003,
-    WGPUPipelineStatisticName_ComputeShaderInvocations = 0x00000004,
-    WGPUPipelineStatisticName_Force32 = 0x7FFFFFFF
-} WGPUPipelineStatisticName WGPU_ENUM_ATTRIBUTE;
+typedef enum WGPUGles3MinorVersionWGPU {
+    WGPUGles3MinorVersion_Automatic_WGPU = 0x00030000,
+    WGPUGles3MinorVersion_Version0_WGPU = 0x00030001,
+    WGPUGles3MinorVersion_Version1_WGPU = 0x00030002,
+    WGPUGles3MinorVersion_Version2_WGPU = 0x00030003,
+    WGPUGles3MinorVersion_Force32_WGPU = 0x7FFFFFFF
+} WGPUGles3MinorVersionWGPU WGPU_ENUM_ATTRIBUTE;
 
-typedef enum WGPUNativeQueryType {
-    WGPUNativeQueryType_PipelineStatistics = 0x00030000,
-    WGPUNativeQueryType_Force32 = 0x7FFFFFFF
-} WGPUNativeQueryType WGPU_ENUM_ATTRIBUTE;
+typedef enum WGPULogLevelWGPU {
+    WGPULogLevel_Off_WGPU = 0x00030000,
+    WGPULogLevel_Error_WGPU = 0x00030001,
+    WGPULogLevel_Warn_WGPU = 0x00030002,
+    WGPULogLevel_Info_WGPU = 0x00030003,
+    WGPULogLevel_Debug_WGPU = 0x00030004,
+    WGPULogLevel_Trace_WGPU = 0x00030005,
+    WGPULogLevel_Force32_WGPU = 0x7FFFFFFF
+} WGPULogLevelWGPU WGPU_ENUM_ATTRIBUTE;
 
-typedef struct WGPUInstanceExtras {
+typedef enum WGPUPipelineStatisticsNameWGPU {
+    WGPUPipelineStatisticsName_VertexShaderInvocations_WGPU = 0x00030000,
+    WGPUPipelineStatisticsName_ClipperInvocations_WGPU = 0x00030001,
+    WGPUPipelineStatisticsName_ClipperPrimitivesOut_WGPU = 0x00030002,
+    WGPUPipelineStatisticsName_FragmentShaderInvocations_WGPU = 0x00030003,
+    WGPUPipelineStatisticsName_ComputeShaderInvocations_WGPU = 0x00030004,
+    WGPUPipelineStatisticsName_Force32_WGPU = 0x7FFFFFFF
+} WGPUPipelineStatisticsNameWGPU WGPU_ENUM_ATTRIBUTE;
+
+typedef enum WGPUBackendsWGPU {
+    WGPUBackends_Vulkan_WGPU = 0x00000000,
+    WGPUBackends_GL_WGPU = 0x00000001,
+    WGPUBackends_Metal_WGPU = 0x00000002,
+    WGPUBackends_DX12_WGPU = 0x00000004,
+    WGPUBackends_BrowserWebGPU_WGPU = 0x00000008,
+    WGPUBackends_Primary_WGPU = WGPUBackends_Vulkan_WGPU | WGPUBackends_Metal_WGPU | WGPUBackends_DX12_WGPU | WGPUBackends_BrowserWebGPU_WGPU,
+    WGPUBackends_Secondary_WGPU = WGPUBackends_GL_WGPU,
+    WGPUBackends_Force32_WGPU = 0x7FFFFFFF
+} WGPUBackendsWGPU WGPU_ENUM_ATTRIBUTE;
+typedef WGPUFlags WGPUBackendsFlagsWGPU WGPU_ENUM_ATTRIBUTE;
+
+typedef enum WGPUInstanceFlagsWGPU {
+    WGPUInstanceFlags_Debug_WGPU = 0x00000000,
+    WGPUInstanceFlags_Validation_WGPU = 0x00000001,
+    WGPUInstanceFlags_DiscardHalLabels_WGPU = 0x00000002,
+    WGPUInstanceFlags_AllowUnderlyingNoncompliantAdapter_WGPU = 0x00000004,
+    WGPUInstanceFlags_Force32_WGPU = 0x7FFFFFFF
+} WGPUInstanceFlagsWGPU WGPU_ENUM_ATTRIBUTE;
+typedef WGPUFlags WGPUInstanceFlagsFlagsWGPU WGPU_ENUM_ATTRIBUTE;
+
+typedef void (*WGPULogCallbackWGPU)(WGPULogLevelWGPU level, char const * message) WGPU_FUNCTION_ATTRIBUTE;
+
+
+typedef struct WGPUBindGroupEntryExtrasWGPU {
     WGPUChainedStruct chain;
-    WGPUInstanceBackendFlags backends;
-    WGPUInstanceFlags flags;
-    WGPUDx12Compiler dx12ShaderCompiler;
-    WGPUGles3MinorVersion gles3MinorVersion;
-    const char * dxilPath;
-    const char * dxcPath;
-} WGPUInstanceExtras;
+    size_t bufferCount;
+    WGPUBuffer buffers;
+    size_t samplerCount;
+    WGPUSampler samplers;
+    size_t textureViewCount;
+    WGPUTextureView textureViews;
+} WGPUBindGroupEntryExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPUDeviceExtras {
+typedef struct WGPUBindGroupLayoutEntryExtrasWGPU {
     WGPUChainedStruct chain;
-    const char * tracePath;
-} WGPUDeviceExtras;
+    uint32_t count;
+} WGPUBindGroupLayoutEntryExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPUNativeLimits {
+typedef struct WGPUDeviceExtrasWGPU {
+    WGPUChainedStruct chain;
+    char const * tracePath;
+} WGPUDeviceExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUInstanceEnumerateAdaptersResultWGPU {
+    size_t adapterCount;
+    WGPUAdapter adapters;
+} WGPUInstanceEnumerateAdaptersResultWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUInstanceExtrasWGPU {
+    WGPUChainedStruct chain;
+    WGPUBackendsFlagsWGPU backends;
+    WGPUInstanceFlagsFlagsWGPU flags;
+    WGPUDx12CompilerWGPU dx12ShaderCompiler;
+    WGPUGles3MinorVersionWGPU gles3MinorVersion;
+    char const * dxilPath;
+    char const * dxcPath;
+} WGPUInstanceExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPULimitExtrasWGPU {
     uint32_t maxPushConstantSize;
     uint32_t maxNonSamplerBindings;
-} WGPUNativeLimits;
+} WGPULimitExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPURequiredLimitsExtras {
-    WGPUChainedStruct chain;
-    WGPUNativeLimits limits;
-} WGPURequiredLimitsExtras;
-
-typedef struct WGPUSupportedLimitsExtras {
-    WGPUChainedStructOut chain;
-    WGPUNativeLimits limits;
-} WGPUSupportedLimitsExtras;
-
-typedef struct WGPUPushConstantRange {
+typedef struct WGPUPushConstantRangeWGPU {
     WGPUShaderStageFlags stages;
     uint32_t start;
     uint32_t end;
-} WGPUPushConstantRange;
+} WGPUPushConstantRangeWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPUPipelineLayoutExtras {
+typedef struct WGPUQuerySetDescriptorExtrasWGPU {
     WGPUChainedStruct chain;
-    size_t pushConstantRangeCount;
-    WGPUPushConstantRange const * pushConstantRanges;
-} WGPUPipelineLayoutExtras;
+    size_t pipelineStatisticCount;
+    WGPUPipelineStatisticsNameWGPU pipelineStatistics;
+} WGPUQuerySetDescriptorExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef uint64_t WGPUSubmissionIndex;
+typedef struct WGPURegistryReportWGPU {
+    size_t numAllocated;
+    size_t numKeptFromUser;
+    size_t numReleasedFromUser;
+    size_t numError;
+    size_t elementSize;
+} WGPURegistryReportWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPUWrappedSubmissionIndex {
-    WGPUQueue queue;
-    WGPUSubmissionIndex submissionIndex;
-} WGPUWrappedSubmissionIndex;
-
-typedef struct WGPUShaderDefine {
+typedef struct WGPUShaderDefineWGPU {
     char const * name;
     char const * value;
-} WGPUShaderDefine;
+} WGPUShaderDefineWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPUShaderModuleGLSLDescriptor {
-    WGPUChainedStruct chain;
-    WGPUShaderStage stage;
-    char const * code;
-    uint32_t defineCount;
-    WGPUShaderDefine * defines;
-} WGPUShaderModuleGLSLDescriptor;
-
-typedef struct WGPURegistryReport {
-   size_t numAllocated;
-   size_t numKeptFromUser;
-   size_t numReleasedFromUser;
-   size_t numError;
-   size_t elementSize;
-} WGPURegistryReport;
-
-typedef struct WGPUHubReport {
-    WGPURegistryReport adapters;
-    WGPURegistryReport devices;
-    WGPURegistryReport queues;
-    WGPURegistryReport pipelineLayouts;
-    WGPURegistryReport shaderModules;
-    WGPURegistryReport bindGroupLayouts;
-    WGPURegistryReport bindGroups;
-    WGPURegistryReport commandBuffers;
-    WGPURegistryReport renderBundles;
-    WGPURegistryReport renderPipelines;
-    WGPURegistryReport computePipelines;
-    WGPURegistryReport querySets;
-    WGPURegistryReport buffers;
-    WGPURegistryReport textures;
-    WGPURegistryReport textureViews;
-    WGPURegistryReport samplers;
-} WGPUHubReport;
-
-typedef struct WGPUGlobalReport {
-    WGPURegistryReport surfaces;
-    WGPUBackendType backendType;
-    WGPUHubReport vulkan;
-    WGPUHubReport metal;
-    WGPUHubReport dx12;
-    WGPUHubReport gl;
-} WGPUGlobalReport;
-
-typedef struct WGPUInstanceEnumerateAdapterOptions {
-    WGPUChainedStruct const * nextInChain;
-    WGPUInstanceBackendFlags backends;
-} WGPUInstanceEnumerateAdapterOptions;
-
-typedef struct WGPUBindGroupEntryExtras {
-    WGPUChainedStruct chain;
-    WGPUBuffer const * buffers;
-    size_t bufferCount;
-    WGPUSampler const * samplers;
-    size_t samplerCount;
-    WGPUTextureView const * textureViews;
-    size_t textureViewCount;
-} WGPUBindGroupEntryExtras;
-
-typedef struct WGPUBindGroupLayoutEntryExtras {
-    WGPUChainedStruct chain;
-    uint32_t count;
-} WGPUBindGroupLayoutEntryExtras;
-
-typedef struct WGPUQuerySetDescriptorExtras {
-    WGPUChainedStruct chain;
-    WGPUPipelineStatisticName const * pipelineStatistics;
-    size_t pipelineStatisticCount;
-} WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
-
-typedef struct WGPUSurfaceConfigurationExtras {
+typedef struct WGPUSurfaceConfigurationExtrasWGPU {
     WGPUChainedStruct chain;
     WGPUBool desiredMaximumFrameLatency;
-} WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
+} WGPUSurfaceConfigurationExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
+typedef struct WGPUWrappedSubmissionIndexWGPU {
+    WGPUQueue queue;
+    WGPUSubmissionIndexWGPU submissionIndex;
+} WGPUWrappedSubmissionIndexWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUHubReportWGPU {
+    WGPURegistryReportWGPU adapters;
+    WGPURegistryReportWGPU devices;
+    WGPURegistryReportWGPU queues;
+    WGPURegistryReportWGPU pipelineLayouts;
+    WGPURegistryReportWGPU shaderModules;
+    WGPURegistryReportWGPU bindGroupLayouts;
+    WGPURegistryReportWGPU bindGroups;
+    WGPURegistryReportWGPU commandBuffers;
+    WGPURegistryReportWGPU renderBundles;
+    WGPURegistryReportWGPU renderPipelines;
+    WGPURegistryReportWGPU computePipelines;
+    WGPURegistryReportWGPU querySets;
+    WGPURegistryReportWGPU buffers;
+    WGPURegistryReportWGPU textures;
+    WGPURegistryReportWGPU textureViews;
+    WGPURegistryReportWGPU samplers;
+} WGPUHubReportWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPURequiredLimitsExtrasWGPU {
+    WGPUChainedStruct chain;
+    WGPULimitExtrasWGPU limits;
+} WGPURequiredLimitsExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUShaderModuleGLSLDescriptorWGPU {
+    WGPUChainedStruct chain;
+    WGPUShaderStageFlags stage;
+    char const * code;
+    size_t defineCount;
+    WGPUShaderDefineWGPU defines;
+} WGPUShaderModuleGLSLDescriptorWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUSupportedLimitsExtrasWGPU {
+    WGPUChainedStruct chain;
+    WGPULimitExtrasWGPU limits;
+} WGPUSupportedLimitsExtrasWGPU WGPU_STRUCTURE_ATTRIBUTE;
+
+typedef struct WGPUGlobalReportWGPU {
+    WGPURegistryReportWGPU surfaces;
+    WGPUBackendType backendType;
+    WGPUHubReportWGPU vulkan;
+    WGPUHubReportWGPU metal;
+    WGPUHubReportWGPU dx12;
+    WGPUHubReportWGPU gl;
+} WGPUGlobalReportWGPU WGPU_STRUCTURE_ATTRIBUTE;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
-size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
+#if !defined(WGPU_SKIP_PROCS)
 
-WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
+typedef void (*WGPUProcSetLogCallbackWGPU)(WGPULogCallbackWGPU callback, void * userdata) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcSetLogLevelWGPU)(WGPULogLevelWGPU level) WGPU_FUNCTION_ATTRIBUTE;
+typedef uint32_t (*WGPUProcGetVersionWGPU)() WGPU_FUNCTION_ATTRIBUTE;
+// Procs of ComputePassEncoder
+typedef void (*WGPUProcComputePassEncoderBeginPipelineStatisticsQueryWGPU)(WGPUComputePassEncoderWGPU computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcComputePassEncoderEndPipelineStatisticsQueryWGPU)(WGPUComputePassEncoderWGPU computePassEncoder) WGPU_FUNCTION_ATTRIBUTE;
 
-// Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
+// Procs of Device
+typedef WGPUBool (*WGPUProcDevicePollWGPU)(WGPUDeviceWGPU device, WGPUBool wait, WGPUWrappedSubmissionIndexWGPU const * wrappedSubmissionIndex) WGPU_FUNCTION_ATTRIBUTE;
 
-void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
+// Procs of Instance
+typedef void (*WGPUProcInstanceEnumerateAdaptersWGPU)(WGPUInstanceWGPU instance, WGPUBackendsFlagsWGPU backends, WGPUInstanceEnumerateAdaptersResultWGPU result) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcInstanceGenerateReportWGPU)(WGPUInstanceWGPU instance, WGPUGlobalReportWGPU * report) WGPU_FUNCTION_ATTRIBUTE;
 
-void wgpuSetLogLevel(WGPULogLevel level);
+// Procs of InstanceEnumerateAdaptersResult
+typedef void (*WGPUProcInstanceEnumerateAdaptersResultFreeMembersWGPU)(WGPUInstanceEnumerateAdaptersResultWGPU instanceEnumerateAdaptersResult) WGPU_FUNCTION_ATTRIBUTE;
 
-uint32_t wgpuGetVersion(void);
+// Procs of Queue
+typedef uint64_t (*WGPUProcQueueSubmitForIndexWGPU)(WGPUQueueWGPU queue, size_t commandCount, WGPUCommandBuffer commands) WGPU_FUNCTION_ATTRIBUTE;
 
-void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void const * data);
+// Procs of RenderPassEncoder
+typedef void (*WGPUProcRenderPassEncoderBeginPipelineStatisticsQueryWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcRenderPassEncoderEndPipelineStatisticsQueryWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcRenderPassEncoderMultiDrawIndexedIndirectWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint32_t indirectOffset, size_t count) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcRenderPassEncoderMultiDrawIndexedIndirectCountWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, WGPUBuffer countBuffer, uint64_t countOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcRenderPassEncoderMultiDrawIndirectWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint32_t indirectOffset, size_t count) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcRenderPassEncoderMultiDrawIndirectCountWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, WGPUBuffer countBuffer, uint64_t countOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPUProcRenderPassEncoderSetPushConstantsWGPU)(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUShaderStageFlags stages, uint32_t offset, size_t size, void const * data) WGPU_FUNCTION_ATTRIBUTE;
 
-void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
-void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
+#endif  // !defined(WGPU_SKIP_PROCS)
 
-void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
-void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
+#if !defined(WGPU_SKIP_DECLARATIONS)
 
-void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
-void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
-void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
-void wgpuRenderPassEncoderEndPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder);
+WGPU_EXPORT void wgpuSetLogCallbackWGPU(WGPULogCallbackWGPU callback, void * userdata) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuSetLogLevelWGPU(WGPULogLevelWGPU level) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT uint32_t wgpuGetVersionWGPU() WGPU_FUNCTION_ATTRIBUTE;
+// Methods of ComputePassEncoder
+WGPU_EXPORT void wgpuComputePassEncoderBeginPipelineStatisticsQueryWGPU(WGPUComputePassEncoderWGPU computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuComputePassEncoderEndPipelineStatisticsQueryWGPU(WGPUComputePassEncoderWGPU computePassEncoder) WGPU_FUNCTION_ATTRIBUTE;
+
+// Methods of Device
+WGPU_EXPORT WGPUBool wgpuDevicePollWGPU(WGPUDeviceWGPU device, WGPUBool wait, WGPUWrappedSubmissionIndexWGPU const * wrappedSubmissionIndex) WGPU_FUNCTION_ATTRIBUTE;
+
+// Methods of Instance
+WGPU_EXPORT void wgpuInstanceEnumerateAdaptersWGPU(WGPUInstanceWGPU instance, WGPUBackendsFlagsWGPU backends, WGPUInstanceEnumerateAdaptersResultWGPU result) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuInstanceGenerateReportWGPU(WGPUInstanceWGPU instance, WGPUGlobalReportWGPU * report) WGPU_FUNCTION_ATTRIBUTE;
+
+// Methods of InstanceEnumerateAdaptersResult
+WGPU_EXPORT void wgpuInstanceEnumerateAdaptersResultFreeMembersWGPU(WGPUInstanceEnumerateAdaptersResultWGPU instanceEnumerateAdaptersResult) WGPU_FUNCTION_ATTRIBUTE;
+
+// Methods of Queue
+WGPU_EXPORT uint64_t wgpuQueueSubmitForIndexWGPU(WGPUQueueWGPU queue, size_t commandCount, WGPUCommandBuffer commands) WGPU_FUNCTION_ATTRIBUTE;
+
+// Methods of RenderPassEncoder
+WGPU_EXPORT void wgpuRenderPassEncoderBeginPipelineStatisticsQueryWGPU(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderEndPipelineStatisticsQueryWGPU(WGPURenderPassEncoderWGPU renderPassEncoder) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawIndexedIndirectWGPU(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint32_t indirectOffset, size_t count) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawIndexedIndirectCountWGPU(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, WGPUBuffer countBuffer, uint64_t countOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawIndirectWGPU(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint32_t indirectOffset, size_t count) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderMultiDrawIndirectCountWGPU(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUBuffer indirectBuffer, uint64_t indirectOffset, WGPUBuffer countBuffer, uint64_t countOffset, uint32_t maxCount) WGPU_FUNCTION_ATTRIBUTE;
+WGPU_EXPORT void wgpuRenderPassEncoderSetPushConstantsWGPU(WGPURenderPassEncoderWGPU renderPassEncoder, WGPUShaderStageFlags stages, uint32_t offset, size_t size, void const * data) WGPU_FUNCTION_ATTRIBUTE;
+
+#endif  // !defined(WGPU_SKIP_DECLARATIONS)
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif
+#endif // WGPU_H_
