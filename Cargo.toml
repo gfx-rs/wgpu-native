@@ -16,24 +16,26 @@ keywords = ["graphics"]
 license = "MIT OR Apache-2.0"
 
 [workspace]
+members = ["."]
+default-members = ["."]
 resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "b8a8ff6e44162a41b8d54184a88613794dd3d2e4"
+rev = "9f505e730fa4ef62c040aa3f67e730ab2059a1cf"
 version = "0.19"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "b8a8ff6e44162a41b8d54184a88613794dd3d2e4"
+rev = "9f505e730fa4ef62c040aa3f67e730ab2059a1cf"
 version = "0.19"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "b8a8ff6e44162a41b8d54184a88613794dd3d2e4"
+rev = "9f505e730fa4ef62c040aa3f67e730ab2059a1cf"
 version = "0.19"
 
 [lib]
