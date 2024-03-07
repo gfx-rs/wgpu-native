@@ -27,7 +27,8 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_TextureBindingArray = 0x00030006,
     WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing = 0x00030007,
     WGPUNativeFeature_PipelineStatisticsQuery = 0x00030008,
-    WGPUNativeFeature_PartiallyBoundBindingArray = 0x00030009,
+    WGPUNativeFeature_StorageResourceBindingArray = 0x00030009,
+    WGPUNativeFeature_PartiallyBoundBindingArray = 0x0003000A,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 

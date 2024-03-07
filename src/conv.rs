@@ -1109,6 +1109,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::PIPELINE_STATISTICS_QUERY) {
         temp.push(native::WGPUNativeFeature_PipelineStatisticsQuery);
     }
+    if features.contains(wgt::Features::STORAGE_RESOURCE_BINDING_ARRAY) {
+        temp.push(native::WGPUNativeFeature_StorageResourceBindingArray);
+    }
     if features.contains(wgt::Features::PARTIALLY_BOUND_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_PartiallyBoundBindingArray);
     }
@@ -1143,6 +1146,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_TextureBindingArray => Some(Features::TEXTURE_BINDING_ARRAY),
         native::WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing => Some(Features::SAMPLED_TEXTURE_AND_STORAGE_BUFFER_ARRAY_NON_UNIFORM_INDEXING),
         native::WGPUNativeFeature_PipelineStatisticsQuery => Some(Features::PIPELINE_STATISTICS_QUERY),
+        native::WGPUNativeFeature_StorageResourceBindingArray => Some(Features::STORAGE_RESOURCE_BINDING_ARRAY),
         native::WGPUNativeFeature_PartiallyBoundBindingArray => Some(Features::PARTIALLY_BOUND_BINDING_ARRAY),
         // fallback, probably not available in wgpu-core
         _ => None,
