@@ -8,24 +8,13 @@ if(APPLE)
 endif()
 
 cmake_path(GET CMAKE_SOURCE_DIR PARENT_PATH PROJECT_ROOT_DIR)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(WGPU_NATIVE_LIB_TYPE debug)
-else()
-    set(WGPU_NATIVE_LIB_TYPE release)
-endif()
-
-if(DEFINED ENV{CARGO_BUILD_TARGET})
-    set(WGPU_NATIVE_LIB_DIR ${PROJECT_ROOT_DIR}/target/$ENV{CARGO_BUILD_TARGET}/${WGPU_NATIVE_LIB_TYPE})
-else()
-    set(WGPU_NATIVE_LIB_DIR ${PROJECT_ROOT_DIR}/target/${WGPU_NATIVE_LIB_TYPE})
-endif()
-
-find_library(
-    WGPU_LIBRARY NAMES libwgpu_native.a wgpu_native.lib wgpu_native
-    HINTS ${WGPU_NATIVE_LIB_DIR}
-    REQUIRED
+include(FetchContent)
+FetchContent_Declare(
+    wgpu_native
+    SOURCE_DIR ${PROJECT_ROOT_DIR}
 )
+FetchContent_MakeAvailable(wgpu_native)
+set(WGPU_LIBRARY wgpu::wgpu)
 
 add_subdirectory(framework)
 
