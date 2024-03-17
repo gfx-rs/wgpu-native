@@ -7,20 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(WGPU_TARGET_MACOS)
+#if defined(GLFW_EXPOSE_NATIVE_COCOA)
+#include <Foundation/Foundation.h>
 #include <QuartzCore/CAMetalLayer.h>
 #endif
 
 #include <GLFW/glfw3.h>
-#if defined(WGPU_TARGET_MACOS)
-#define GLFW_EXPOSE_NATIVE_COCOA
-#elif defined(WGPU_TARGET_LINUX_X11)
-#define GLFW_EXPOSE_NATIVE_X11
-#elif defined(WGPU_TARGET_LINUX_WAYLAND)
-#define GLFW_EXPOSE_NATIVE_WAYLAND
-#elif defined(WGPU_TARGET_WINDOWS)
-#define GLFW_EXPOSE_NATIVE_WIN32
-#endif
 #include <GLFW/glfw3native.h>
 
 #define LOG_PREFIX "[texture_arrays]"
@@ -129,10 +121,8 @@ int main(int argc, char *argv[]) {
   UNUSED(argv)
   frmwrk_setup_logging(WGPULogLevel_Warn);
 
-#if defined(WGPU_TARGET_LINUX_WAYLAND)
-  glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
-#endif
-  assert(glfwInit());
+  if (!glfwInit())
+    exit(EXIT_FAILURE);
 
   struct demo demo = {0};
   demo.instance = wgpuCreateInstance(NULL);
@@ -145,7 +135,7 @@ int main(int argc, char *argv[]) {
   glfwSetWindowUserPointer(window, (void *)&demo);
   glfwSetFramebufferSizeCallback(window, handle_glfw_framebuffer_size);
 
-#if defined(WGPU_TARGET_MACOS)
+#if defined(GLFW_EXPOSE_NATIVE_COCOA)
   {
     id metal_layer = NULL;
     NSWindow *ns_window = glfwGetCocoaWindow(window);
@@ -165,10 +155,9 @@ int main(int argc, char *argv[]) {
                     .layer = metal_layer,
                 },
         });
-    assert(demo.surface);
   }
-#elif defined(WGPU_TARGET_LINUX_X11)
-  {
+#elif defined(GLFW_EXPOSE_NATIVE_WAYLAND) && defined(GLFW_EXPOSE_NATIVE_X11)
+  if (glfwGetPlatform() == GLFW_PLATFORM_X11) {
     Display *x11_display = glfwGetX11Display();
     Window x11_window = glfwGetX11Window(window);
     demo.surface = wgpuInstanceCreateSurface(
@@ -185,10 +174,8 @@ int main(int argc, char *argv[]) {
                     .window = x11_window,
                 },
         });
-    assert(demo.surface);
   }
-#elif defined(WGPU_TARGET_LINUX_WAYLAND)
-  {
+  if (glfwGetPlatform() == GLFW_PLATFORM_WAYLAND) {
     struct wl_display *wayland_display = glfwGetWaylandDisplay();
     struct wl_surface *wayland_surface = glfwGetWaylandWindow(window);
     demo.surface = wgpuInstanceCreateSurface(
@@ -206,9 +193,8 @@ int main(int argc, char *argv[]) {
                     .surface = wayland_surface,
                 },
         });
-    assert(demo.surface);
   }
-#elif defined(WGPU_TARGET_WINDOWS)
+#elif defined(GLFW_EXPOSE_NATIVE_WIN32)
   {
     HWND hwnd = glfwGetWin32Window(window);
     HINSTANCE hinstance = GetModuleHandle(NULL);
@@ -226,11 +212,11 @@ int main(int argc, char *argv[]) {
                     .hwnd = hwnd,
                 },
         });
-    assert(demo.surface);
   }
 #else
-#error "Unsupported WGPU_TARGET"
+#error "Unsupported GLFW native platform"
 #endif
+  assert(demo.surface);
 
   wgpuInstanceRequestAdapter(demo.instance,
                              &(const WGPURequestAdapterOptions){

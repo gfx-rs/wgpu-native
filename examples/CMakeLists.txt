@@ -36,5 +36,4 @@ add_subdirectory(texture_arrays)
 add_subdirectory(triangle)
 
 set(GLFW_BUILD_DOCS OFF)
-set(GLFW_USE_WAYLAND ON)
 add_subdirectory(vendor/glfw)
