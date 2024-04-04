@@ -794,10 +794,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             return;
         }
     };
-    let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits)
-        // make sure we use the texture resolution limits from the adapter,
-        // so we can support images the size of the surface.
-        .using_resolution(adapter_limits);
+    let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits);
 
     let (desc, trace_str, device_lost_handler) = match descriptor {
         Some(descriptor) => {
