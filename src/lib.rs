@@ -794,7 +794,26 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             return;
         }
     };
-    let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits);
+
+    let default_limits = wgt::Limits::default();
+    let dim_1d = std::cmp::min(
+        adapter_limits.max_texture_dimension_1d,
+        default_limits.max_texture_dimension_1d,
+    );
+    let dim_2d = std::cmp::min(
+        adapter_limits.max_texture_dimension_2d,
+        default_limits.max_texture_dimension_2d,
+    );
+    let dim_3d = std::cmp::min(
+        adapter_limits.max_texture_dimension_2d,
+        default_limits.max_texture_dimension_3d,
+    );
+    let base_limits = wgt::Limits {
+        max_texture_dimension_1d: dim_1d,
+        max_texture_dimension_2d: dim_2d,
+        max_texture_dimension_3d: dim_3d,
+        ..get_base_device_limits_from_adapter_limits(&adapter_limits)
+    };
 
     let (desc, trace_str, device_lost_handler) = match descriptor {
         Some(descriptor) => {
