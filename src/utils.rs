@@ -55,26 +55,6 @@ pub(crate) fn make_slice<'a, T: 'a>(ptr: *const T, len: usize) -> &'a [T] {
 }
 
 #[inline]
-fn limits_gteq_default(limits: &wgt::Limits) -> bool {
-    wgt::Limits::check_limits(&wgt::Limits::default(), limits)
-}
-#[inline]
-fn limits_gteq_downlevel_defaults(limits: &wgt::Limits) -> bool {
-    wgt::Limits::check_limits(&wgt::Limits::downlevel_defaults(), limits)
-}
-#[inline]
-pub fn get_base_device_limits_from_adapter_limits_inner(
-    adapter_limits: &wgt::Limits,
-) -> wgt::Limits {
-    if limits_gteq_default(adapter_limits) {
-        return wgt::Limits::default();
-    }
-    if limits_gteq_downlevel_defaults(adapter_limits) {
-        return wgt::Limits::downlevel_defaults();
-    }
-    wgt::Limits::downlevel_webgl2_defaults()
-}
-#[inline]
 pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) -> wgt::Limits {
     let default_limits = wgt::Limits::default();
     let dim_1d = std::cmp::min(
@@ -86,15 +66,35 @@ pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) 
         default_limits.max_texture_dimension_2d,
     );
     let dim_3d = std::cmp::min(
-        adapter_limits.max_texture_dimension_2d,
+        adapter_limits.max_texture_dimension_3d,
         default_limits.max_texture_dimension_3d,
     );
+
+    let default_limits_with_resolution = wgt::Limits {
+        max_texture_dimension_1d: dim_1d,
+        max_texture_dimension_2d: dim_2d,
+        max_texture_dimension_3d: dim_3d,
+        ..default_limits
+    };
+    if wgt::Limits::check_limits(&default_limits_with_resolution, adapter_limits) {
+        return default_limits_with_resolution;
+    }
+
+    let downlevel_defaults_limits_with_resolution = wgt::Limits {
+        max_texture_dimension_1d: dim_1d,
+        max_texture_dimension_2d: dim_2d,
+        max_texture_dimension_3d: dim_3d,
+        ..wgt::Limits::downlevel_defaults()
+    };
+    if wgt::Limits::check_limits(&downlevel_defaults_limits_with_resolution, adapter_limits) {
+        return downlevel_defaults_limits_with_resolution;
+    }
 
     wgt::Limits {
         max_texture_dimension_1d: dim_1d,
         max_texture_dimension_2d: dim_2d,
         max_texture_dimension_3d: dim_3d,
-        ..get_base_device_limits_from_adapter_limits_inner(&adapter_limits)
+        ..wgt::Limits::downlevel_webgl2_defaults()
     }
 }
 
@@ -274,18 +274,18 @@ pub fn test_get_base_device_limits_from_adapter_limits() {
         adapter_limits: wgt::Limits,
         expected: wgt::Limits,
     ) -> wgt::Limits {
-        let default = wgt::Limits::default();
+        let default_limits = wgt::Limits::default();
         let dim_1d = std::cmp::min(
             adapter_limits.max_texture_dimension_1d,
-            default.max_texture_dimension_1d,
+            default_limits.max_texture_dimension_1d,
         );
         let dim_2d = std::cmp::min(
             adapter_limits.max_texture_dimension_2d,
-            default.max_texture_dimension_2d,
+            default_limits.max_texture_dimension_2d,
         );
         let dim_3d = std::cmp::min(
-            adapter_limits.max_texture_dimension_2d,
-            default.max_texture_dimension_3d,
+            adapter_limits.max_texture_dimension_3d,
+            default_limits.max_texture_dimension_3d,
         );
         wgt::Limits {
             max_texture_dimension_1d: dim_1d,
@@ -437,6 +437,26 @@ pub fn test_get_base_device_limits_from_adapter_limits() {
                 max_texture_dimension_2d: 2 << 10,
                 max_texture_dimension_3d: 2 << 10,
                 ..wgt::Limits::downlevel_defaults()
+            },
+        );
+    }
+    {
+        // Ensure that texture resolution limits of an adapter lower than
+        // the default does not lead to the selection of downlevel limits
+        // as the base limits.
+        let adapter_limits = wgt::Limits {
+            max_texture_dimension_1d: 16 << 10,
+            max_texture_dimension_2d: 16 << 10,
+            max_texture_dimension_3d: 2 << 10,
+            ..wgt::Limits::default()
+        };
+        assert_eq!(
+            get_base_device_limits_from_adapter_limits(&adapter_limits),
+            wgt::Limits {
+                max_texture_dimension_1d: 8 << 10,
+                max_texture_dimension_2d: 8 << 10,
+                max_texture_dimension_3d: 2 << 10,
+                ..wgt::Limits::default()
             },
         );
     }
