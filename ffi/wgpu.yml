@@ -1,0 +1,835 @@
+copyright: |
+  Copyright 2021 The gfx-rs developers
+
+  SPDX-License-Identifier: Apache-2.0 OR MIT
+
+name: wgpu
+enum_prefix: "0x0003"
+
+constants: []
+
+typedefs:
+  - name: submission_index
+    doc: |
+      TODO
+    type: uint64
+
+enums:
+  - name: s_type
+    doc: |
+      TODO
+    extended: true
+    entries:
+      - name: device_extras
+        doc: |
+          TODO
+      - name: required_limits_extras
+        doc: |
+          TODO
+      - name: pipeline_layout_extras
+        doc: |
+          TODO
+      - name: shader_module_GLSL_descriptor
+        doc: |
+          TODO
+      - name: supported_limits_extras
+        doc: |
+          TODO
+      - name: instance_extras
+        doc: |
+          TODO
+      - name: bind_group_entry_extras
+        doc: |
+          TODO
+      - name: bind_group_layout_entry_extras
+        doc: |
+          TODO
+      - name: query_set_descriptor_extras
+        doc: |
+          TODO
+      - name: surface_configuration_extras
+        doc: |
+          TODO
+
+  - name: feature_name
+    doc: |
+      TODO
+    extended: true
+    entries:
+      - name: push_constants
+        doc: |
+          TODO
+      - name: texture_adapter_specific_format_features
+        doc: |
+          TODO
+      - name: multi_draw_indirect
+        doc: |
+          TODO
+      - name: multi_draw_indirect_count
+        doc: |
+          TODO
+      - name: vertex_writable_storage
+        doc: |
+          TODO
+      - name: texture_binding_array
+        doc: |
+          TODO
+      - name: sampled_texture_and_storage_buffer_array_non_uniform_indexing
+        doc: |
+          TODO
+      - name: pipeline_statistics_query
+        doc: |
+          TODO
+
+  - name: log_level
+    doc: |
+      TODO
+    entries:
+      - name: off
+        doc: |
+          TODO
+      - name: error
+        doc: |
+          TODO
+      - name: warn
+        doc: |
+          TODO
+      - name: info
+        doc: |
+          TODO
+      - name: debug
+        doc: |
+          TODO
+      - name: trace
+        doc: |
+          TODO
+
+  - name: dx12_compiler
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: |
+          TODO
+      - name: fxc
+        doc: |
+          TODO
+      - name: dxc
+        doc: |
+          TODO
+
+  - name: gles3_minor_version
+    doc: |
+      TODO
+    entries:
+      - name: automatic
+        doc: |
+          TODO
+      - name: version0
+        doc: |
+          TODO
+      - name: version1
+        doc: |
+          TODO
+      - name: version2
+        doc: |
+          TODO
+
+  - name: pipeline_statistics_name
+    doc: |
+      TODO
+    entries:
+      - name: vertex_shader_invocations
+        doc: |
+          TODO
+      - name: clipper_invocations
+        doc: |
+          TODO
+      - name: clipper_primitives_out
+        doc: |
+          TODO
+      - name: fragment_shader_invocations
+        doc: |
+          TODO
+      - name: compute_shader_invocations
+        doc: |
+          TODO
+
+  - name: query_type
+    doc: |
+      TODO
+    extended: true
+    entries:
+      - name: pipeline_statistics
+        doc: |
+          TODO
+
+bitflags:
+  - name: backends
+    doc: |
+      TODO
+    entries:
+      - name: vulkan
+        doc: |
+          TODO
+      - name: GL
+        doc: |
+          TODO
+      - name: metal
+        doc: |
+          TODO
+      - name: DX12
+        doc: |
+          TODO
+      - name: browser_WebGPU
+        doc: |
+          TODO
+      - name: primary
+        doc: |
+          TODO
+        value_combination:
+          - vulkan
+          - metal
+          - DX12
+          - browser_WebGPU
+      - name: secondary
+        doc: |
+          TODO
+        value_combination:
+          - GL
+
+  - name: instance_flags
+    doc: |
+      TODO
+    entries:
+      - name: debug
+        doc: |
+          TODO
+      - name: validation
+        doc: |
+          TODO
+      - name: discard_hal_labels
+        doc: |
+          TODO
+      - name: allow_underlying_noncompliant_adapter
+        doc: |
+          TODO
+
+function_types:
+  - name: log_callback
+    doc: |
+      TODO
+    args:
+      - name: level
+        doc: |
+          TODO
+        type: enum.log_level
+      - name: message
+        doc: |
+          TODO
+        type: string
+
+structs:
+  - name: instance_extras
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - instance_descriptor
+    members:
+      - name: backends
+        doc: |
+          TODO
+        type: bitflag.backends
+      - name: flags
+        doc: |
+          TODO
+        type: bitflag.instance_flags
+      - name: dx12_shader_compiler
+        doc: |
+          TODO
+        type: enum.dx12_compiler
+      - name: gles3_minor_version
+        doc: |
+          TODO
+        type: enum.gles3_minor_version
+      - name: dxil_path
+        doc: |
+          TODO
+        type: string
+      - name: dxc_path
+        doc: |
+          TODO
+        type: string
+
+  - name: device_extras
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - device_descriptor
+    members:
+      - name: trace_path
+        doc: |
+          TODO
+        type: string
+
+  - name: limit_extras
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: max_push_constant_size
+        doc: |
+          TODO
+        type: uint32
+      - name: max_non_sampler_bindings
+        doc: |
+          TODO
+        type: uint32
+
+  - name: required_limits_extras
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - required_limits
+    members:
+      - name: limits
+        doc: |
+          TODO
+        type: struct.limit_extras
+
+  - name: supported_limits_extras
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - supported_limits
+    members:
+      - name: limits
+        doc: |
+          TODO
+        type: struct.limit_extras
+
+  - name: push_constant_range
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: stages
+        doc: |
+          TODO
+        namespace: webgpu
+        type: bitflag.shader_stage
+      - name: start
+        doc: |
+          TODO
+        type: uint32
+      - name: end
+        doc: |
+          TODO
+        type: uint32
+
+  - name: wrapped_submission_index
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: queue
+        doc: |
+          TODO
+        namespace: webgpu
+        type: object.queue
+      - name: submission_index
+        doc: |
+          TODO
+        type: typedef.submission_index
+
+  - name: shader_define
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: name
+        doc: |
+          TODO
+        type: string
+      - name: value
+        doc: |
+          TODO
+        type: string
+
+  - name: shader_module_GLSL_descriptor
+    doc: |
+      TODO
+    type: extension_in
+    extends:
+      - shader_module_descriptor
+    members:
+      - name: stage
+        doc: |
+          TODO
+        namespace: webgpu
+        type: bitflag.shader_stage
+      - name: code
+        doc: |
+          TODO
+        type: string
+      - name: defines
+        doc: |
+          TODO
+        type: array<struct.shader_define>
+
+  - name: registry_report
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: num_allocated
+        doc: |
+          TODO
+        type: usize
+      - name: num_kept_from_user
+        doc: |
+          TODO
+        type: usize
+      - name: num_released_from_user
+        doc: |
+          TODO
+        type: usize
+      - name: num_error
+        doc: |
+          TODO
+        type: usize
+      - name: element_size
+        doc: |
+          TODO
+        type: usize
+
+  - name: hub_report
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: adapters
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: devices
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: queues
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: pipeline_layouts
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: shader_modules
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: bind_group_layouts
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: bind_groups
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: command_buffers
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: render_bundles
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: render_pipelines
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: compute_pipelines
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: query_sets
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: buffers
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: textures
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: texture_views
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: samplers
+        doc: |
+          TODO
+        type: struct.registry_report
+
+  - name: global_report
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: surfaces
+        doc: |
+          TODO
+        type: struct.registry_report
+      - name: backend_type
+        doc: |
+          TODO
+        namespace: webgpu
+        type: struct.backend_type
+      - name: vulkan
+        doc: |
+          TODO
+        type: struct.hub_report
+      - name: metal
+        doc: |
+          TODO
+        type: struct.hub_report
+      - name: dx12
+        doc: |
+          TODO
+        type: struct.hub_report
+      - name: gl
+        doc: |
+          TODO
+        type: struct.hub_report
+
+  - name: bind_group_entry_extras
+    doc: |
+      TODO
+    type: extension_in
+    members:
+      - name: buffers
+        doc: |
+          TODO
+        namespace: webgpu
+        type: array<object.buffer>
+      - name: samplers
+        doc: |
+          TODO
+        namespace: webgpu
+        type: array<object.sampler>
+      - name: texture_views
+        doc: |
+          TODO
+        namespace: webgpu
+        type: array<object.texture_view>
+
+  - name: bind_group_layout_entry_extras
+    doc: |
+      TODO
+    type: extension_in
+    members:
+      - name: count
+        doc: |
+          TODO
+        type: uint32
+
+  - name: query_set_descriptor_extras
+    doc: |
+      TODO
+    type: extension_in
+    members:
+      - name: pipeline_statistics
+        doc: |
+          TODO
+        type: array<enum.pipeline_statistics_name>
+
+  - name: surface_configuration_extras
+    doc: |
+      TODO
+    type: extension_in
+    members:
+      - name: desired_maximum_frame_latency
+        doc: |
+          TODO
+        type: bool
+
+  - name: instance_enumerate_adapters_result
+    doc: |
+        TODO
+    type: standalone
+    free_members: true
+    members:
+      - name: adapters
+        doc: |
+          TODO
+        namespace: webgpu
+        type: array<object.adapter>
+
+functions:
+  - name: set_log_callback
+    doc: |
+      TODO
+    args:
+      - name: callback
+        doc: |
+          TODO
+        type: function_type.log_callback
+      - name: userdata
+        doc: |
+          TODO
+        type: c_void
+        pointer: mutable
+
+  - name: set_log_level
+    doc: |
+      TODO
+    args:
+      - name: level
+        doc: |
+          TODO
+        type: enum.log_level
+
+  - name: get_version
+    doc: |
+      TODO
+    returns:
+      doc: |
+        TODO
+      type: uint32
+
+objects:
+  - name: instance
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: generate_report
+        doc: |
+          TODO
+        args:
+          - name: report
+            doc: |
+              TODO
+            type: struct.global_report
+            pointer: mutable
+
+      - name: enumerate_adapters
+        doc: |
+          TODO
+        args:
+          - name: backends
+            doc: |
+              TODO
+            type: bitflag.backends
+          - name: result
+            doc: |
+              TODO
+            type: struct.instance_enumerate_adapters_result
+
+  - name: queue
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: submit_for_index
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint64
+        args:
+          - name: commands
+            doc: |
+              TODO
+            namespace: webgpu
+            type: array<object.command_buffer>
+
+  - name: device
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: poll
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bool
+        args:
+          - name: wait
+            doc: |
+              TODO
+            type: bool
+          - name: wrapped_submission_index
+            doc: |
+              TODO
+            type: struct.wrapped_submission_index
+            pointer: immutable
+
+  - name: render_pass_encoder
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: set_push_constants
+        doc: |
+          TODO
+        args:
+          - name: stages
+            doc: |
+              TODO
+            namespace: webgpu
+            type: bitflag.shader_stage
+          - name: offset
+            doc: |
+              TODO
+            type: uint32
+          - name: size
+            doc: |
+              TODO
+            type: usize
+          - name: data
+            doc: |
+              TODO
+            pointer: immutable
+            type: c_void
+
+      - name: multi_draw_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint32
+          - name: count
+            doc: |
+              TODO
+            type: usize
+
+      - name: multi_draw_indexed_indirect
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint32
+          - name: count
+            doc: |
+              TODO
+            type: usize
+
+      - name: multi_draw_indirect_count
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: count_buffer
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.buffer
+          - name: count_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: max_count
+            doc: |
+              TODO
+            type: uint32
+
+      - name: multi_draw_indexed_indirect_count
+        doc: |
+          TODO
+        args:
+          - name: indirect_buffer
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.buffer
+          - name: indirect_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: count_buffer
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.buffer
+          - name: count_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: max_count
+            doc: |
+              TODO
+            type: uint32
+
+      - name: begin_pipeline_statistics_query
+        doc: |
+          TODO
+        args:
+          - name: query_set
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+
+      - name: end_pipeline_statistics_query
+        doc: |
+          TODO
+
+  - name: compute_pass_encoder
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: begin_pipeline_statistics_query
+        doc: |
+          TODO
+        args:
+          - name: query_set
+            doc: |
+              TODO
+            namespace: webgpu
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+
+      - name: end_pipeline_statistics_query
+        doc: |
+          TODO
+
