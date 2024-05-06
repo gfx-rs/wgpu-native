@@ -1121,9 +1121,10 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC_HDR) {
         temp.push(native::WGPUNativeFeature_TextureCompressionAstcHdr);
     }
-    if features.contains(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES) {
-        temp.push(native::WGPUNativeFeature_TimestampQueryInsidePasses);
-    }
+    // TODO: requires wgpu.h api change
+    // if features.contains(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES) {
+    //     temp.push(native::WGPUNativeFeature_TimestampQueryInsidePasses);
+    // }
     if features.contains(wgt::Features::MAPPABLE_PRIMARY_BUFFERS) {
         temp.push(native::WGPUNativeFeature_MappablePrimaryBuffers);
     }
@@ -1135,30 +1136,31 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     {
         temp.push(native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing);
     }
-    if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
-        temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
-    }
-    if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
-        temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
-    }
-    if features.contains(wgt::Features::POLYGON_MODE_LINE) {
-        temp.push(native::WGPUNativeFeature_PolygonModeLine);
-    }
-    if features.contains(wgt::Features::POLYGON_MODE_POINT) {
-        temp.push(native::WGPUNativeFeature_PolygonModePoint);
-    }
-    if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
-        temp.push(native::WGPUNativeFeature_ConservativeRasterization);
-    }
-    if features.contains(wgt::Features::CLEAR_TEXTURE) {
-        temp.push(native::WGPUNativeFeature_ClearTexture);
-    }
-    if features.contains(wgt::Features::SPIRV_SHADER_PASSTHROUGH) {
-        temp.push(native::WGPUNativeFeature_SpirvShaderPassthrough);
-    }
-    if features.contains(wgt::Features::MULTIVIEW) {
-        temp.push(native::WGPUNativeFeature_Multiview);
-    }
+    // TODO: requires wgpu.h api change
+    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
+    //     temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
+    // }
+    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
+    //     temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
+    // }
+    // if features.contains(wgt::Features::POLYGON_MODE_LINE) {
+    //     temp.push(native::WGPUNativeFeature_PolygonModeLine);
+    // }
+    // if features.contains(wgt::Features::POLYGON_MODE_POINT) {
+    //     temp.push(native::WGPUNativeFeature_PolygonModePoint);
+    // }
+    // if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
+    //     temp.push(native::WGPUNativeFeature_ConservativeRasterization);
+    // }
+    // if features.contains(wgt::Features::CLEAR_TEXTURE) {
+    //     temp.push(native::WGPUNativeFeature_ClearTexture);
+    // }
+    // if features.contains(wgt::Features::SPIRV_SHADER_PASSTHROUGH) {
+    //     temp.push(native::WGPUNativeFeature_SpirvShaderPassthrough);
+    // }
+    // if features.contains(wgt::Features::MULTIVIEW) {
+    //     temp.push(native::WGPUNativeFeature_Multiview);
+    // }
     if features.contains(wgt::Features::VERTEX_ATTRIBUTE_64BIT) {
         temp.push(native::WGPUNativeFeature_VertexAttribute64bit);
     }
@@ -1221,18 +1223,20 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_PartiallyBoundBindingArray => Some(Features::PARTIALLY_BOUND_BINDING_ARRAY),
         native::WGPUNativeFeature_TextureFormat16bitNorm => Some(Features::TEXTURE_FORMAT_16BIT_NORM),
         native::WGPUNativeFeature_TextureCompressionAstcHdr => Some(Features::TEXTURE_COMPRESSION_ASTC_HDR),
-        native::WGPUNativeFeature_TimestampQueryInsidePasses => Some(Features::TIMESTAMP_QUERY_INSIDE_PASSES),
+        // TODO: requires wgpu.h api change
+        // native::WGPUNativeFeature_TimestampQueryInsidePasses => Some(Features::TIMESTAMP_QUERY_INSIDE_PASSES),
         native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
         native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
         native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing => Some(Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
-        native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
-        native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
-        native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
-        native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
-        native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
-        native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
-        native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
-        native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
+        // TODO: requires wgpu.h api change
+        // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
+        // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
+        // native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
+        // native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
+        // native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
+        // native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
+        // native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
+        // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
         native::WGPUNativeFeature_ShaderUnusedVertexOutput => Some(Features::SHADER_UNUSED_VERTEX_OUTPUT),
         native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
