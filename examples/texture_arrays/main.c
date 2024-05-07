@@ -698,6 +698,7 @@ int main(int argc, char *argv[]) {
                                              .view = frame,
                                              .loadOp = WGPULoadOp_Clear,
                                              .storeOp = WGPUStoreOp_Store,
+                                             .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
                                              .clearValue =
                                                  (const WGPUColor){
                                                      .r = 0.0,

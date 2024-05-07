@@ -772,7 +772,7 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     adapter: native::WGPUAdapter,
     descriptor: Option<&native::WGPUDeviceDescriptor>,
-    callback: native::WGPURequestDeviceCallback,
+    callback: native::WGPUAdapterRequestDeviceCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
     let (adapter_id, context) = {
@@ -982,7 +982,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     mode: native::WGPUMapModeFlags,
     offset: usize,
     size: usize,
-    callback: native::WGPUBufferMapCallback,
+    callback: native::WGPUBufferMapAsyncCallback,
     userdata: *mut std::ffi::c_void,
 ) {
     let (buffer_id, context, error_sink) = {
@@ -1172,6 +1172,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
             make_slice(descriptor.colorAttachments, descriptor.colorAttachmentCount)
                 .iter()
                 .map(|color_attachment| {
+                    if color_attachment.depthSlice != native::WGPU_DEPTH_SLICE_UNDEFINED {
+                        log::warn!("Depth slice on color attachments is not implemented");
+                    }
+
                     color_attachment.view.as_ref().map(|view| {
                         wgc::command::RenderPassColorAttachment {
                             view: view.id,
@@ -2683,7 +2687,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
 pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     instance: native::WGPUInstance,
     options: Option<&native::WGPURequestAdapterOptions>,
-    callback: native::WGPURequestAdapterCallback,
+    callback: native::WGPUInstanceRequestAdapterCallback,
     userdata: *mut std::os::raw::c_void,
 ) {
     let instance = instance.as_ref().expect("invalid instance");
@@ -2853,7 +2857,7 @@ pub unsafe extern "C" fn wgpuQuerySetRelease(query_set: native::WGPUQuerySet) {
 #[no_mangle]
 pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     queue: native::WGPUQueue,
-    callback: native::WGPUQueueWorkDoneCallback,
+    callback: native::WGPUQueueOnSubmittedWorkDoneCallback,
     userdata: *mut ::std::os::raw::c_void,
 ) {
     let (queue_id, context) = {
@@ -3901,21 +3905,21 @@ pub unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(
 ) {
     if !capabilities.formats.is_null() && capabilities.formatCount > 0 {
         drop(Vec::from_raw_parts(
-            capabilities.formats,
+            capabilities.formats as *mut native::WGPUTextureFormat,
             capabilities.formatCount,
             capabilities.formatCount,
         ));
     }
     if !capabilities.presentModes.is_null() && capabilities.presentModeCount > 0 {
         drop(Vec::from_raw_parts(
-            capabilities.presentModes,
+            capabilities.presentModes as *mut native::WGPUPresentMode,
             capabilities.presentModeCount,
             capabilities.presentModeCount,
         ));
     }
     if !capabilities.alphaModes.is_null() && capabilities.alphaModeCount > 0 {
         drop(Vec::from_raw_parts(
-            capabilities.alphaModes,
+            capabilities.alphaModes as *mut native::WGPUCompositeAlphaMode,
             capabilities.alphaModeCount,
             capabilities.alphaModeCount,
         ));
