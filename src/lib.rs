@@ -1173,7 +1173,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .iter()
                 .map(|color_attachment| {
                     if color_attachment.depthSlice != native::WGPU_DEPTH_SLICE_UNDEFINED {
-                        unimplemented!("Depth slice on color attachments is not implemented");
+                        log::warn!("Depth slice on color attachments is not implemented");
                     }
 
                     color_attachment.view.as_ref().map(|view| {
