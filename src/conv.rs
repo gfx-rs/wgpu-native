@@ -1115,6 +1115,79 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::PARTIALLY_BOUND_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_PartiallyBoundBindingArray);
     }
+    if features.contains(wgt::Features::TEXTURE_FORMAT_16BIT_NORM) {
+        temp.push(native::WGPUNativeFeature_TextureFormat16bitNorm);
+    }
+    if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC_HDR) {
+        temp.push(native::WGPUNativeFeature_TextureCompressionAstcHdr);
+    }
+    // TODO: requires wgpu.h api change
+    // if features.contains(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES) {
+    //     temp.push(native::WGPUNativeFeature_TimestampQueryInsidePasses);
+    // }
+    if features.contains(wgt::Features::MAPPABLE_PRIMARY_BUFFERS) {
+        temp.push(native::WGPUNativeFeature_MappablePrimaryBuffers);
+    }
+    if features.contains(wgt::Features::BUFFER_BINDING_ARRAY) {
+        temp.push(native::WGPUNativeFeature_BufferBindingArray);
+    }
+    if features
+        .contains(wgt::Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING)
+    {
+        temp.push(native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing);
+    }
+    // TODO: requires wgpu.h api change
+    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
+    //     temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
+    // }
+    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
+    //     temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
+    // }
+    // if features.contains(wgt::Features::POLYGON_MODE_LINE) {
+    //     temp.push(native::WGPUNativeFeature_PolygonModeLine);
+    // }
+    // if features.contains(wgt::Features::POLYGON_MODE_POINT) {
+    //     temp.push(native::WGPUNativeFeature_PolygonModePoint);
+    // }
+    // if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
+    //     temp.push(native::WGPUNativeFeature_ConservativeRasterization);
+    // }
+    // if features.contains(wgt::Features::CLEAR_TEXTURE) {
+    //     temp.push(native::WGPUNativeFeature_ClearTexture);
+    // }
+    // if features.contains(wgt::Features::SPIRV_SHADER_PASSTHROUGH) {
+    //     temp.push(native::WGPUNativeFeature_SpirvShaderPassthrough);
+    // }
+    // if features.contains(wgt::Features::MULTIVIEW) {
+    //     temp.push(native::WGPUNativeFeature_Multiview);
+    // }
+    if features.contains(wgt::Features::VERTEX_ATTRIBUTE_64BIT) {
+        temp.push(native::WGPUNativeFeature_VertexAttribute64bit);
+    }
+    if features.contains(wgt::Features::SHADER_UNUSED_VERTEX_OUTPUT) {
+        temp.push(native::WGPUNativeFeature_ShaderUnusedVertexOutput);
+    }
+    if features.contains(wgt::Features::TEXTURE_FORMAT_NV12) {
+        temp.push(native::WGPUNativeFeature_TextureFormatNv12);
+    }
+    if features.contains(wgt::Features::RAY_TRACING_ACCELERATION_STRUCTURE) {
+        temp.push(native::WGPUNativeFeature_RayTracingAccelerationStructure);
+    }
+    if features.contains(wgt::Features::RAY_QUERY) {
+        temp.push(native::WGPUNativeFeature_RayQuery);
+    }
+    if features.contains(wgt::Features::SHADER_F64) {
+        temp.push(native::WGPUNativeFeature_ShaderF64);
+    }
+    if features.contains(wgt::Features::SHADER_I16) {
+        temp.push(native::WGPUNativeFeature_ShaderI16);
+    }
+    if features.contains(wgt::Features::SHADER_PRIMITIVE_INDEX) {
+        temp.push(native::WGPUNativeFeature_ShaderPrimitiveIndex);
+    }
+    if features.contains(wgt::Features::SHADER_EARLY_DEPTH_TEST) {
+        temp.push(native::WGPUNativeFeature_ShaderEarlyDepthTest);
+    }
 
     temp
 }
@@ -1148,6 +1221,30 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_PipelineStatisticsQuery => Some(Features::PIPELINE_STATISTICS_QUERY),
         native::WGPUNativeFeature_StorageResourceBindingArray => Some(Features::STORAGE_RESOURCE_BINDING_ARRAY),
         native::WGPUNativeFeature_PartiallyBoundBindingArray => Some(Features::PARTIALLY_BOUND_BINDING_ARRAY),
+        native::WGPUNativeFeature_TextureFormat16bitNorm => Some(Features::TEXTURE_FORMAT_16BIT_NORM),
+        native::WGPUNativeFeature_TextureCompressionAstcHdr => Some(Features::TEXTURE_COMPRESSION_ASTC_HDR),
+        // TODO: requires wgpu.h api change
+        // native::WGPUNativeFeature_TimestampQueryInsidePasses => Some(Features::TIMESTAMP_QUERY_INSIDE_PASSES),
+        native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
+        native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
+        native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing => Some(Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
+        // TODO: requires wgpu.h api change
+        // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
+        // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
+        // native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
+        // native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
+        // native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
+        // native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
+        // native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
+        // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
+        native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
+        native::WGPUNativeFeature_ShaderUnusedVertexOutput => Some(Features::SHADER_UNUSED_VERTEX_OUTPUT),
+        native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
+        native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::RAY_TRACING_ACCELERATION_STRUCTURE),
+        native::WGPUNativeFeature_RayQuery => Some(Features::RAY_QUERY),
+        native::WGPUNativeFeature_ShaderF64 => Some(Features::SHADER_F64),
+        native::WGPUNativeFeature_ShaderPrimitiveIndex => Some(Features::SHADER_PRIMITIVE_INDEX),
+        native::WGPUNativeFeature_ShaderEarlyDepthTest => Some(Features::SHADER_EARLY_DEPTH_TEST),
         // fallback, probably not available in wgpu-core
         _ => None,
     }
