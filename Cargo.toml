@@ -23,20 +23,20 @@ resolver = "2"
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "87576b72b37c6b78b41104eb25fc31893af94092"
-version = "0.19"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "87576b72b37c6b78b41104eb25fc31893af94092"
-version = "0.19"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "87576b72b37c6b78b41104eb25fc31893af94092"
-version = "0.19"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
