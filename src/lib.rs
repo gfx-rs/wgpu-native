@@ -1,8 +1,9 @@
 use conv::{
-    map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
-    map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
-    map_primitive_state, map_query_set_descriptor, map_query_set_index, map_shader_module,
-    map_surface, map_surface_configuration, CreateSurfaceParams,
+    map_adapter_type, map_backend_type, map_bind_group_entry, map_bind_group_layout_entry,
+    map_device_descriptor, map_instance_backend_flags, map_instance_descriptor,
+    map_pipeline_layout_descriptor, map_primitive_state, map_query_set_descriptor,
+    map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
+    CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -698,6 +699,34 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetInfo(
+    adapter: native::WGPUAdapter,
+    info: Option<&mut native::WGPUAdapterInfo>,
+) {
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    let info = info.expect("invalid return pointer \"info\"");
+    let context = adapter.context.as_ref();
+    let adapter_id = adapter.id;
+
+    let result = gfx_select!(adapter_id => context.adapter_get_info(adapter_id));
+    let result = match result {
+        Ok(info) => info,
+        Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetInfo"),
+    };
+
+    info.vendor = CString::new(result.driver).unwrap().into_raw();
+    info.architecture = CString::default().into_raw();
+    info.device = CString::new(format!("{:#x}", result.device))
+        .unwrap()
+        .into_raw();
+    info.description = CString::new(result.name).unwrap().into_raw();
+    info.backendType = map_backend_type(result.backend);
+    info.adapterType = map_adapter_type(result.device_type);
+    info.vendorID = result.vendor;
+    info.deviceID = result.device;
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetProperties(
     adapter: native::WGPUAdapter,
     properties: Option<&mut native::WGPUAdapterProperties>,
@@ -716,21 +745,8 @@ pub unsafe extern "C" fn wgpuAdapterGetProperties(
                 device_id: info.device,
                 name: CString::new(info.name).unwrap(),
                 driver_description: CString::new(info.driver_info).unwrap(),
-                adapter_type: match info.device_type {
-                    wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
-                    wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
-                    wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
-                    wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
-                    wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
-                },
-                backend_type: match info.backend {
-                    wgt::Backend::Empty => native::WGPUBackendType_Null,
-                    wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
-                    wgt::Backend::Metal => native::WGPUBackendType_Metal,
-                    wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
-                    wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
-                    wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
-                },
+                adapter_type: map_adapter_type(info.device_type),
+                backend_type: map_backend_type(info.backend),
             },
             Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetProperties"),
         }
@@ -769,6 +785,22 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAdapterInfo) {
+    drop(CString::from_raw(
+        adapter_info.vendor as *mut std::ffi::c_char,
+    ));
+    drop(CString::from_raw(
+        adapter_info.architecture as *mut std::ffi::c_char,
+    ));
+    drop(CString::from_raw(
+        adapter_info.device as *mut std::ffi::c_char,
+    ));
+    drop(CString::from_raw(
+        adapter_info.description as *mut std::ffi::c_char,
+    ));
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     adapter: native::WGPUAdapter,
     descriptor: Option<&native::WGPUDeviceDescriptor>,
@@ -796,9 +828,9 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
     let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits);
 
-    let (desc, trace_str, device_lost_handler) = match descriptor {
+    let (desc, trace_str, device_lost_handler, error_callback) = match descriptor {
         Some(descriptor) => {
-            let (desc, trace_str) = follow_chain!(
+            let (desc, trace_str, error_callback) = follow_chain!(
                 map_device_descriptor((descriptor, base_limits),
                 WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
             );
@@ -806,7 +838,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 callback: descriptor.deviceLostCallback,
                 userdata: descriptor.deviceLostUserdata,
             };
-            (desc, trace_str, device_lost_handler)
+            (desc, trace_str, device_lost_handler, error_callback)
         }
         None => (
             wgt::DeviceDescriptor {
@@ -815,6 +847,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
             },
             std::ptr::null(),
             DEFAULT_DEVICE_LOST_HANDLER,
+            None,
         ),
     };
 
@@ -830,6 +863,11 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     match err {
         None => {
             let message = CString::default();
+            let mut error_sink = ErrorSinkRaw::new(device_lost_handler);
+            if let Some(error_callback) = error_callback {
+                error_sink.uncaptured_handler = error_callback;
+            }
+
             callback(
                 native::WGPURequestDeviceStatus_Success,
                 Arc::into_raw(Arc::new(WGPUDeviceImpl {
@@ -839,7 +877,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                         context: context.clone(),
                         id: queue_id,
                     }),
-                    error_sink: Arc::new(Mutex::new(ErrorSinkRaw::new(device_lost_handler))),
+                    error_sink: Arc::new(Mutex::new(error_sink)),
                 })),
                 message.as_ptr(),
                 userdata,
@@ -2623,17 +2661,6 @@ pub unsafe extern "C" fn wgpuDevicePushErrorScope(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceSetUncapturedErrorCallback(
-    device: native::WGPUDevice,
-    callback: native::WGPUErrorCallback,
-    userdata: *mut std::os::raw::c_void,
-) {
-    let device = device.as_ref().expect("invalid device");
-    let mut error_sink = device.error_sink.lock();
-    error_sink.uncaptured_handler = UncapturedErrorCallback { callback, userdata };
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceReference(device: native::WGPUDevice) {
     assert!(!device.is_null(), "invalid device");
     Arc::increment_strong_count(device);
@@ -3715,6 +3742,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCapabilities"),
     };
 
+    capabilities.usages = caps.usages.bits();
+
     let formats = caps
         .formats
         .iter()
@@ -3819,39 +3848,6 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
         }
         Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCurrentTexture"),
     };
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceGetPreferredFormat(
-    surface: native::WGPUSurface,
-    adapter: native::WGPUAdapter,
-) -> native::WGPUTextureFormat {
-    let (adapter_id, context) = {
-        let adapter = adapter.as_ref().expect("invalid adapter");
-        (adapter.id, &adapter.context)
-    };
-    let surface_id = surface.as_ref().expect("invalid surface").id;
-
-    let caps = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
-    {
-        Ok(caps) => caps,
-        Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
-            wgt::SurfaceCapabilities::default()
-        }
-        Err(err) => handle_error_fatal(context, err, "wgpuSurfaceGetPreferredFormat"),
-    };
-
-    match caps
-        .formats
-        .first()
-        .and_then(|f| conv::to_native_texture_format(*f))
-    {
-        Some(format) => format,
-        None => panic!(
-            "Error in wgpuSurfaceGetPreferredFormat: unsupported format.\n\
-            Please report it to https://github.com/gfx-rs/wgpu-native"
-        ),
-    }
 }
 
 #[no_mangle]
