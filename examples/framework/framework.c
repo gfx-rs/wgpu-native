@@ -165,7 +165,7 @@ void frmwrk_print_global_report(WGPUGlobalReport report) {
   printf("}\n");
 }
 
-void frmwrk_print_adapter_info(WGPUAdapter *adapter) {
+void frmwrk_print_adapter_info(WGPUAdapter adapter) {
   struct WGPUAdapterInfo info = {0};
   wgpuAdapterGetInfo(adapter, &info);
   printf("description: %s\n", info.description);

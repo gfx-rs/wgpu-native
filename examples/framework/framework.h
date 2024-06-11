@@ -22,6 +22,6 @@ WGPUShaderModule frmwrk_load_shader_module(WGPUDevice device, const char *name);
 void frmwrk_print_global_report(WGPUGlobalReport report);
 WGPUBuffer frmwrk_device_create_buffer_init(
     WGPUDevice device, const frmwrk_buffer_init_descriptor *descriptor);
-void frmwrk_print_adapter_info(WGPUAdapter *adapter);
+void frmwrk_print_adapter_info(WGPUAdapter adapter);
 
 #endif // FRAMEWORK_H
