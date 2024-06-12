@@ -14,8 +14,8 @@ use std::{
     fmt::Display,
     mem,
     num::NonZeroU64,
+    sync::atomic,
     sync::Arc,
-    sync::{atomic, OnceLock},
     thread,
 };
 use utils::{
@@ -43,21 +43,9 @@ const LABEL: &str = "label";
 
 pub type Context = wgc::global::Global<wgc::identity::IdentityManagerFactory>;
 
-struct AdapterProperties {
-    vendor_id: u32,
-    vendor_name: CString,
-    architecture: CString,
-    device_id: u32,
-    name: CString,
-    driver_description: CString,
-    adapter_type: native::WGPUAdapterType,
-    backend_type: native::WGPUBackendType,
-}
-
 pub struct WGPUAdapterImpl {
     context: Arc<Context>,
     id: id::AdapterId,
-    properties: OnceLock<AdapterProperties>,
 }
 impl Drop for WGPUAdapterImpl {
     fn drop(&mut self) {
@@ -726,42 +714,6 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.adapterType = map_adapter_type(result.device_type);
     info.vendorID = result.vendor;
     info.deviceID = result.device;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn wgpuAdapterGetProperties(
-    adapter: native::WGPUAdapter,
-    properties: Option<&mut native::WGPUAdapterProperties>,
-) {
-    let adapter = adapter.as_ref().expect("invalid adapter");
-    let properties = properties.expect("invalid return pointer \"properties\"");
-    let context = adapter.context.as_ref();
-    let adapter_id = adapter.id;
-
-    let props = adapter.properties.get_or_init(|| {
-        match gfx_select!(adapter_id => context.adapter_get_info(adapter_id)) {
-            Ok(info) => AdapterProperties {
-                vendor_id: info.vendor,
-                vendor_name: CString::new(info.driver).unwrap(),
-                architecture: CString::default(), // TODO
-                device_id: info.device,
-                name: CString::new(info.name).unwrap(),
-                driver_description: CString::new(info.driver_info).unwrap(),
-                adapter_type: map_adapter_type(info.device_type),
-                backend_type: map_backend_type(info.backend),
-            },
-            Err(err) => handle_error_fatal(context, err, "wgpuAdapterGetProperties"),
-        }
-    });
-
-    properties.vendorID = props.vendor_id;
-    properties.vendorName = props.vendor_name.as_ptr();
-    properties.architecture = props.architecture.as_ptr();
-    properties.deviceID = props.device_id;
-    properties.name = props.name.as_ptr();
-    properties.driverDescription = props.driver_description.as_ptr();
-    properties.adapterType = props.adapter_type;
-    properties.backendType = props.backend_type;
 }
 
 #[no_mangle]
@@ -2755,7 +2707,6 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 Arc::into_raw(Arc::new(WGPUAdapterImpl {
                     context: context.clone(),
                     id: adapter_id,
-                    properties: OnceLock::default(),
                 })),
                 message.as_ptr(),
                 userdata,
@@ -2811,7 +2762,6 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
             temp[i] = Arc::into_raw(Arc::new(WGPUAdapterImpl {
                 context: context.clone(),
                 id: *id,
-                properties: OnceLock::default(),
             }));
         });
     } else {
