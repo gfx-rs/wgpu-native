@@ -252,6 +252,18 @@ typedef struct WGPUSurfaceConfigurationExtras {
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
 
+typedef enum WGPUTextureFormatExtras {
+    // From Features::TEXTURE_FORMAT_16BIT_NORM 
+    WGPUTextureFormatExtras_R16Unorm = 0x00030001,
+    WGPUTextureFormatExtras_R16Snorm = 0x00030002,
+    WGPUTextureFormatExtras_Rg16Unorm = 0x00030003,
+    WGPUTextureFormatExtras_Rg16Snorm = 0x00030004,
+    WGPUTextureFormatExtras_Rgba16Unorm = 0x00030005,
+    WGPUTextureFormatExtras_Rgba16Snorm = 0x00030006,
+    // From Features::TEXTURE_FORMAT_NV12
+    WGPUTextureFormatExtras_NV12 = 0x00030007,
+} WGPUTextureFormatExtras;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

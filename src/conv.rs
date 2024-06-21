@@ -819,6 +819,13 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_ASTC12x10UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb }),
         native::WGPUTextureFormat_ASTC12x12Unorm => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm }),
         native::WGPUTextureFormat_ASTC12x12UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb }),
+        native::WGPUTextureFormatExtras_R16Unorm => Some(wgt::TextureFormat::R16Unorm),
+        native::WGPUTextureFormatExtras_R16Snorm => Some(wgt::TextureFormat::R16Snorm),
+        native::WGPUTextureFormatExtras_Rg16Unorm => Some(wgt::TextureFormat::Rg16Unorm),
+        native::WGPUTextureFormatExtras_Rg16Snorm => Some(wgt::TextureFormat::Rg16Snorm),
+        native::WGPUTextureFormatExtras_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
+        native::WGPUTextureFormatExtras_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
+        native::WGPUTextureFormatExtras_NV12  => Some(wgt::TextureFormat::NV12),
         _ => None,
     }
 }
