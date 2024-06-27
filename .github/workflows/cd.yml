@@ -204,6 +204,41 @@ jobs:
           name: dist
 
   # -----
+  windows-aarch64:
+    # Config
+    name: release - windows-aarch64
+    runs-on: windows-latest
+    env:
+      TARGET: aarch64-pc-windows-msvc
+      ARCHIVE_NAME: wgpu-windows-aarch64
+    steps:
+      # Common part (same for each build)
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
+      # Build
+      - name: Build
+        run: make package
+        shell: bash
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
+
+  # -----
   macos-x86_64:
     # Config
     name: release - macos-x86_64
@@ -285,6 +320,7 @@ jobs:
       - linux-aarch64
       - windows-x86_64
       - windows-i686
+      - windows-aarch64
       - macos-x86_64
       - macos-aarch64
     runs-on: ubuntu-latest
