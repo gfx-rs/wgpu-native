@@ -1,6 +1,6 @@
-use crate::native;
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
+use crate::{native, UncapturedErrorCallback};
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
 use std::ptr::NonNull;
 use std::{borrow::Cow, ffi::CStr};
@@ -302,13 +302,14 @@ pub fn map_instance_descriptor(
 }
 
 #[inline]
-pub fn map_device_descriptor<'a>(
+pub(crate) fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     *const std::ffi::c_char,
+    Option<UncapturedErrorCallback>,
 ) {
     (
         wgt::DeviceDescriptor {
@@ -330,6 +331,13 @@ pub fn map_device_descriptor<'a>(
         match extras {
             Some(extras) => extras.tracePath,
             None => std::ptr::null(),
+        },
+        match des.uncapturedErrorCallbackInfo.callback {
+            None => None,
+            callback => Some(UncapturedErrorCallback {
+                callback,
+                userdata: des.uncapturedErrorCallbackInfo.userdata,
+            }),
         },
     )
 }
@@ -1523,6 +1531,24 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     temp
 }
 
+#[inline]
+pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUTextureUsage {
+    let mut flag = 0;
+    if flags.contains(wgt::TextureUsages::COPY_SRC) {
+        flag |= native::WGPUTextureUsage_CopySrc;
+    }
+    if flags.contains(wgt::TextureUsages::COPY_DST) {
+        flag |= native::WGPUTextureUsage_CopySrc;
+    }
+    if flags.contains(wgt::TextureUsages::TEXTURE_BINDING) {
+        flag |= native::WGPUTextureUsage_TextureBinding;
+    }
+    if flags.contains(wgt::TextureUsages::RENDER_ATTACHMENT) {
+        flag |= native::WGPUTextureUsage_RenderAttachment;
+    }
+    flag
+}
+
 pub enum CreateSurfaceParams {
     Raw(
         (
@@ -1631,5 +1657,26 @@ pub fn map_surface_configuration(
             // Default is 2, https://github.com/gfx-rs/wgpu/blob/484457d95993b00b91905fae0e539a093423cc28/wgpu/src/lib.rs#L4796
             None => 2,
         },
+    }
+}
+
+pub fn map_backend_type(backend: wgt::Backend) -> native::WGPUBackendType {
+    match backend {
+        wgt::Backend::Empty => native::WGPUBackendType_Null,
+        wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+        wgt::Backend::Metal => native::WGPUBackendType_Metal,
+        wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+        wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+        wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
+    }
+}
+
+pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType {
+    match device_type {
+        wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+        wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+        wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+        wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+        wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
     }
 }

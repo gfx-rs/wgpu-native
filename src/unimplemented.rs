@@ -1,15 +1,6 @@
 use crate::native;
 
 #[no_mangle]
-pub extern "C" fn wgpuAdapterRequestAdapterInfo(
-    _adapter: native::WGPUAdapter,
-    _callback: native::WGPUAdapterRequestAdapterInfoCallback,
-    _userdata: *mut ::std::os::raw::c_void,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuGetProcAddress(
     _device: native::WGPUDevice,
     _proc_name: *const ::std::os::raw::c_char,

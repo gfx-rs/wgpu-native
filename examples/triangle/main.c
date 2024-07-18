@@ -188,6 +188,8 @@ int main(int argc, char *argv[]) {
                              handle_request_adapter, &demo);
   assert(demo.adapter);
 
+  frmwrk_print_adapter_info(demo.adapter);
+
   wgpuAdapterRequestDevice(demo.adapter, NULL, handle_request_device, &demo);
   assert(demo.device);
 

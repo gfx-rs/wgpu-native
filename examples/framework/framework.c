@@ -164,3 +164,17 @@ void frmwrk_print_global_report(WGPUGlobalReport report) {
   }
   printf("}\n");
 }
+
+void frmwrk_print_adapter_info(WGPUAdapter adapter) {
+  struct WGPUAdapterInfo info = {0};
+  wgpuAdapterGetInfo(adapter, &info);
+  printf("description: %s\n", info.description);
+  printf("vendor: %s\n", info.vendor);
+  printf("architecture: %s\n", info.architecture);
+  printf("device: %s\n", info.device);
+  printf("backend type: %u\n", info.backendType);
+  printf("adapter type: %u\n", info.adapterType);
+  printf("vendorID: %x\n", info.vendorID);
+  printf("deviceID: %x\n", info.deviceID);
+  wgpuAdapterInfoFreeMembers(info);
+}
