@@ -827,6 +827,15 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_ASTC12x10UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb }),
         native::WGPUTextureFormat_ASTC12x12Unorm => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm }),
         native::WGPUTextureFormat_ASTC12x12UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb }),
+
+        // wgpu.h extended
+        native::WGPUNativeTextureFormat_R16Unorm => Some(wgt::TextureFormat::R16Unorm),
+        native::WGPUNativeTextureFormat_R16Snorm => Some(wgt::TextureFormat::R16Snorm),
+        native::WGPUNativeTextureFormat_Rg16Unorm => Some(wgt::TextureFormat::Rg16Unorm),
+        native::WGPUNativeTextureFormat_Rg16Snorm => Some(wgt::TextureFormat::Rg16Snorm),
+        native::WGPUNativeTextureFormat_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
+        native::WGPUNativeTextureFormat_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
+        native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
         _ => None,
     }
 }
@@ -838,13 +847,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
 
     match rs_type {
         // unimplemented in webgpu.h
-        wgt::TextureFormat::R16Unorm => None,
-        wgt::TextureFormat::R16Snorm => None,
-        wgt::TextureFormat::Rg16Unorm => None,
-        wgt::TextureFormat::Rg16Snorm => None,
-        wgt::TextureFormat::Rgba16Unorm => None,
-        wgt::TextureFormat::Rgba16Snorm => None,
-        wgt::TextureFormat::NV12 => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -942,6 +944,15 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x10UnormSrgb),
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC12x12Unorm),
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x12UnormSrgb),
+
+        // wgpu.h extended
+        wgt::TextureFormat::R16Unorm => Some(native::WGPUNativeTextureFormat_R16Unorm),
+        wgt::TextureFormat::R16Snorm => Some(native::WGPUNativeTextureFormat_R16Snorm),
+        wgt::TextureFormat::Rg16Unorm => Some(native::WGPUNativeTextureFormat_Rg16Unorm),
+        wgt::TextureFormat::Rg16Snorm => Some(native::WGPUNativeTextureFormat_Rg16Snorm),
+        wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUNativeTextureFormat_Rgba16Unorm),
+        wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUNativeTextureFormat_Rgba16Snorm),
+        wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
     }
 }
 
