@@ -1532,7 +1532,7 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
 }
 
 #[inline]
-pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUTextureUsageFlags {
+pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUTextureUsage {
     let mut flag = 0;
     if flags.contains(wgt::TextureUsages::COPY_SRC) {
         flag |= native::WGPUTextureUsage_CopySrc;

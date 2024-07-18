@@ -3694,7 +3694,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         Err(cause) => handle_error_fatal(context, cause, "wgpuSurfaceGetCapabilities"),
     };
 
-    capabilities.usages = conv::to_native_texture_usage_flags(caps.usages);
+    capabilities.usages =
+        conv::to_native_texture_usage_flags(caps.usages) as native::WGPUTextureUsageFlags;
 
     let formats = caps
         .formats
