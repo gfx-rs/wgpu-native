@@ -1531,6 +1531,24 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     temp
 }
 
+#[inline]
+pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUTextureUsageFlags {
+    let mut flag = 0;
+    if flags.contains(wgt::TextureUsages::COPY_SRC) {
+        flag |= native::WGPUTextureUsage_CopySrc;
+    }
+    if flags.contains(wgt::TextureUsages::COPY_DST) {
+        flag |= native::WGPUTextureUsage_CopySrc;
+    }
+    if flags.contains(wgt::TextureUsages::TEXTURE_BINDING) {
+        flag |= native::WGPUTextureUsage_TextureBinding;
+    }
+    if flags.contains(wgt::TextureUsages::RENDER_ATTACHMENT) {
+        flag |= native::WGPUTextureUsage_RenderAttachment;
+    }
+    flag
+}
+
 pub enum CreateSurfaceParams {
     Raw(
         (
