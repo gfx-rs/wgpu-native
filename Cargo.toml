@@ -23,32 +23,32 @@ resolver = "2"
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "4521502da69bcf4f92c8350042c268573ef216d4"
-version = "0.20"
+rev = "5c5c8b1d4d2d965fbd10b290ee26f4e7eb158d7c"
+version = "22.0.0"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "4521502da69bcf4f92c8350042c268573ef216d4"
-version = "0.20"
+rev = "5c5c8b1d4d2d965fbd10b290ee26f4e7eb158d7c"
+version = "22.0.0"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "4521502da69bcf4f92c8350042c268573ef216d4"
-version = "0.20"
+rev = "5c5c8b1d4d2d965fbd10b290ee26f4e7eb158d7c"
+version = "22.0.0"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "4521502da69bcf4f92c8350042c268573ef216d4"
-version = "0.20"
+rev = "5c5c8b1d4d2d965fbd10b290ee26f4e7eb158d7c"
+version = "22.0.0"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
 [features]
-default = ["wgsl", "spirv", "glsl", "dx12", "metal", "trace"]
+default = ["wgsl", "spirv", "glsl", "dx12", "metal"]
 
 #! ### Backends
 # --------------------------------------------------------------------
@@ -68,6 +68,10 @@ angle = ["wgc/gles"]
 ## Enables the Vulkan backend on macOS & iOS.
 vulkan-portability = ["wgc/vulkan"]
 
+#! **Note:** In the documentation, if you see that an item depends on a backend,
+#! it means that the item is only available when that backend is enabled _and_ the backend
+#! is supported on the current platform.
+
 #! ### Shading language support
 # --------------------------------------------------------------------
 
@@ -79,10 +83,6 @@ glsl = ["naga/glsl-in", "wgc/glsl"]
 
 ## Enable accepting WGSL shaders as input.
 wgsl = ["wgc/wgsl"]
-
-# TODO: needs to be exposed in wgpu.h
-# ## Enable accepting naga IR shaders as input.
-# naga-ir = ["naga"]
 
 #! ### Logging & Tracing
 # --------------------------------------------------------------------
@@ -98,8 +98,9 @@ api_log_info = ["wgc/api_log_info"]
 ## Enables serialization via `serde` on common wgpu types.
 serde = ["dep:serde", "wgc/serde"]
 
-## Allow writing of trace capture files. See [`Adapter::request_device`].
-trace = ["serde", "wgc/trace"]
+# Uncomment once upstream adds it again — https://github.com/gfx-rs/wgpu/issues/5974
+# ## Allow writing of trace capture files. See [`Adapter::request_device`].
+# trace = ["serde", "wgc/trace"]
 
 ## Allow deserializing of trace capture files that were written with the `trace` feature.
 ## To replay a trace file use the [wgpu player](https://github.com/gfx-rs/wgpu/tree/trunk/player).
