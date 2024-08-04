@@ -23,31 +23,37 @@ resolver = "2"
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "87576b72b37c6b78b41104eb25fc31893af94092"
-version = "0.19"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "87576b72b37c6b78b41104eb25fc31893af94092"
-version = "0.19"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
+
+[workspace.dependencies.hal]
+package = "wgpu-hal"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu"
-rev = "87576b72b37c6b78b41104eb25fc31893af94092"
-version = "0.19"
+rev = "4521502da69bcf4f92c8350042c268573ef216d4"
+version = "0.20"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
 [features]
-default = ["wgsl", "spirv", "glsl", "dx12", "metal"]
+default = ["wgsl", "spirv", "glsl", "dx12", "metal", "trace"]
 
 #! ### Backends
 # --------------------------------------------------------------------
 #! ⚠️ WIP: Not all backends can be manually configured today.
-#! On Windows & Linux the Vulkan & GLES backends are always enabled.
+#! On Windows, Linux & Android the Vulkan & GLES backends are always enabled.
 #! See [#3514](https://github.com/gfx-rs/wgpu/issues/3514) for more details.
 
 ## Enables the DX12 backend on Windows.
@@ -66,13 +72,17 @@ vulkan-portability = ["wgc/vulkan"]
 # --------------------------------------------------------------------
 
 ## Enable accepting SPIR-V shaders as input.
-spirv = ["naga/spv-in"]
+spirv = ["naga/spv-in", "wgc/spirv"]
 
 ## Enable accepting GLSL shaders as input.
-glsl = ["naga/glsl-in"]
+glsl = ["naga/glsl-in", "wgc/glsl"]
 
 ## Enable accepting WGSL shaders as input.
 wgsl = ["wgc/wgsl"]
+
+# TODO: needs to be exposed in wgpu.h
+# ## Enable accepting naga IR shaders as input.
+# naga-ir = ["naga"]
 
 #! ### Logging & Tracing
 # --------------------------------------------------------------------
@@ -85,8 +95,10 @@ strict_asserts = ["wgc/strict_asserts", "wgt/strict_asserts"]
 ## Log all API entry points at info instead of trace level.
 api_log_info = ["wgc/api_log_info"]
 
-## Allow writing of trace capture files.
-## See [`Adapter::request_device`].
+## Enables serialization via `serde` on common wgpu types.
+serde = ["dep:serde", "wgc/serde"]
+
+## Allow writing of trace capture files. See [`Adapter::request_device`].
 trace = ["serde", "wgc/trace"]
 
 ## Allow deserializing of trace capture files that were written with the `trace` feature.
@@ -107,8 +119,8 @@ workspace = true
 workspace = true
 features = ["gles"]
 
-# We want the wgpu-core Vulkan backend on Unix (but not emscripten, macOS, iOS) and Windows.
-[target.'cfg(any(windows, all(unix, not(target_os = "emscripten"), not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
+# We want the wgpu-core Vulkan backend on Unix (but not macOS, iOS) and Windows.
+[target.'cfg(any(windows, all(unix, not(target_os = "ios"), not(target_os = "macos"))))'.dependencies.wgc]
 workspace = true
 features = ["vulkan"]
 
@@ -117,11 +129,25 @@ features = ["vulkan"]
 workspace = true
 features = ["gles"]
 
+[dependencies.hal]
+workspace = true
+
+[target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
+hal = { workspace = true, features = ["renderdoc"] }
+
+[target.'cfg(windows)'.dependencies]
+hal = { workspace = true, features = [
+	"dxc_shader_compiler",
+	"renderdoc",
+	"windows_rs",
+] }
+
 [dependencies.wgt]
 workspace = true
 
 [dependencies.naga]
 workspace = true
+optional = true
 
 [dependencies.serde]
 version = "1"

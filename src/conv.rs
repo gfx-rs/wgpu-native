@@ -567,8 +567,8 @@ pub enum ShaderParseError {
     #[error(transparent)]
     Spirv(#[from] naga::front::spv::Error),
     #[cfg(feature = "glsl")]
-    #[error("GLSL Parse Error: {0:?}")]
-    Glsl(Vec<naga::front::glsl::Error>),
+    #[error(transparent)]
+    Glsl(#[from] naga::front::glsl::ParseError),
 }
 
 #[inline]
@@ -1646,6 +1646,7 @@ pub unsafe fn map_surface(
     panic!("Error: Unsupported Surface");
 }
 
+#[inline]
 pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
     extras: Option<&native::WGPUSurfaceConfigurationExtras>,
