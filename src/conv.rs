@@ -1665,7 +1665,7 @@ pub fn map_surface_configuration(
             .collect(),
         desired_maximum_frame_latency: match extras {
             Some(extras) => extras.desiredMaximumFrameLatency,
-            // Default is 2, https://github.com/gfx-rs/wgpu/blob/484457d95993b00b91905fae0e539a093423cc28/wgpu/src/lib.rs#L4796
+            // Default is 2, https://github.com/gfx-rs/wgpu/blob/7b4cbc26192d6d56a31f8e67769e656a6627b222/wgpu/src/api/surface.rs#L87
             None => 2,
         },
     }
