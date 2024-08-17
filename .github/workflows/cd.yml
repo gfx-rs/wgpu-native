@@ -304,7 +304,7 @@ jobs:
             archive-name: macos-x86_64
           - name:  macos-aarch64
             target: aarch64-apple-darwin
-            archive-name: aarch64-i686
+            archive-name: macos-aarch64
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.archive-name }}
