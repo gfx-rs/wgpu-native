@@ -46,7 +46,6 @@ endif
 package: lib-native lib-native-release
 	mkdir -p dist
 	echo "$(GIT_TAG_FULL)" > dist/commit-sha
-	echo "taget : $(TARGET)"
 	for RELEASE in debug release; do \
 		ARCHIVE=$(ARCHIVE_NAME)-$$RELEASE.zip; \
 		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
