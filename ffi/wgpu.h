@@ -247,7 +247,7 @@ typedef struct WGPUQuerySetDescriptorExtras {
 
 typedef struct WGPUSurfaceConfigurationExtras {
     WGPUChainedStruct chain;
-    WGPUBool desiredMaximumFrameLatency;
+    uint32_t desiredMaximumFrameLatency;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
