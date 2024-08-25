@@ -19,8 +19,6 @@ jobs:
   integrity-build:
     name: Code integrity checks
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
     steps:
       - uses: actions/checkout@v4
         with:
