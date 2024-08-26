@@ -144,6 +144,7 @@ int main(int argc, char *argv[]) {
   assert(render_pass_encoder);
 
   wgpuRenderPassEncoderEnd(render_pass_encoder);
+  wgpuRenderPassEncoderRelease(render_pass_encoder);
 
   wgpuCommandEncoderCopyTextureToBuffer(
       command_encoder,
@@ -186,7 +187,6 @@ int main(int argc, char *argv[]) {
 
   wgpuBufferUnmap(output_buffer);
   wgpuCommandBufferRelease(command_buffer);
-  wgpuRenderPassEncoderRelease(render_pass_encoder);
   wgpuCommandEncoderRelease(command_encoder);
   wgpuTextureViewRelease(texture_view);
   wgpuTextureRelease(texture);

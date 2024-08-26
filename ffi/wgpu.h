@@ -46,14 +46,13 @@ typedef enum WGPUNativeFeature {
     // WGPUNativeFeature_SpirvShaderPassthrough = 0x00030017,
     // WGPUNativeFeature_Multiview = 0x00030018,
     WGPUNativeFeature_VertexAttribute64bit = 0x00030019,
-    WGPUNativeFeature_ShaderUnusedVertexOutput = 0x0003001A,
-    WGPUNativeFeature_TextureFormatNv12 = 0x0003001B,
-    WGPUNativeFeature_RayTracingAccelerationStructure = 0x0003001C,
-    WGPUNativeFeature_RayQuery = 0x0003001D,
-    WGPUNativeFeature_ShaderF64 = 0x0003001E,
-    WGPUNativeFeature_ShaderI16 = 0x0003001F,
-    WGPUNativeFeature_ShaderPrimitiveIndex = 0x00030020,
-    WGPUNativeFeature_ShaderEarlyDepthTest = 0x00030021,
+    WGPUNativeFeature_TextureFormatNv12 = 0x0003001A,
+    WGPUNativeFeature_RayTracingAccelerationStructure = 0x0003001B,
+    WGPUNativeFeature_RayQuery = 0x0003001C,
+    WGPUNativeFeature_ShaderF64 = 0x0003001D,
+    WGPUNativeFeature_ShaderI16 = 0x0003001E,
+    WGPUNativeFeature_ShaderPrimitiveIndex = 0x0003001F,
+    WGPUNativeFeature_ShaderEarlyDepthTest = 0x00030020,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
@@ -247,7 +246,7 @@ typedef struct WGPUQuerySetDescriptorExtras {
 
 typedef struct WGPUSurfaceConfigurationExtras {
     WGPUChainedStruct chain;
-    WGPUBool desiredMaximumFrameLatency;
+    uint32_t desiredMaximumFrameLatency;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);

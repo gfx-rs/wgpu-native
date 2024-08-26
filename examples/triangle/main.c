@@ -308,31 +308,33 @@ int main(int argc, char *argv[]) {
 
     WGPURenderPassEncoder render_pass_encoder =
         wgpuCommandEncoderBeginRenderPass(
-            command_encoder, &(const WGPURenderPassDescriptor){
-                                 .label = "render_pass_encoder",
-                                 .colorAttachmentCount = 1,
-                                 .colorAttachments =
-                                     (const WGPURenderPassColorAttachment[]){
-                                         (const WGPURenderPassColorAttachment){
-                                             .view = frame,
-                                             .loadOp = WGPULoadOp_Clear,
-                                             .storeOp = WGPUStoreOp_Store,
-                                             .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
-                                             .clearValue =
-                                                 (const WGPUColor){
-                                                     .r = 0.0,
-                                                     .g = 1.0,
-                                                     .b = 0.0,
-                                                     .a = 1.0,
-                                                 },
-                                         },
-                                     },
-                             });
+            command_encoder,
+            &(const WGPURenderPassDescriptor){
+                .label = "render_pass_encoder",
+                .colorAttachmentCount = 1,
+                .colorAttachments =
+                    (const WGPURenderPassColorAttachment[]){
+                        (const WGPURenderPassColorAttachment){
+                            .view = frame,
+                            .loadOp = WGPULoadOp_Clear,
+                            .storeOp = WGPUStoreOp_Store,
+                            .depthSlice = WGPU_DEPTH_SLICE_UNDEFINED,
+                            .clearValue =
+                                (const WGPUColor){
+                                    .r = 0.0,
+                                    .g = 1.0,
+                                    .b = 0.0,
+                                    .a = 1.0,
+                                },
+                        },
+                    },
+            });
     assert(render_pass_encoder);
 
     wgpuRenderPassEncoderSetPipeline(render_pass_encoder, render_pipeline);
     wgpuRenderPassEncoderDraw(render_pass_encoder, 3, 1, 0, 0);
     wgpuRenderPassEncoderEnd(render_pass_encoder);
+    wgpuRenderPassEncoderRelease(render_pass_encoder);
 
     WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
         command_encoder, &(const WGPUCommandBufferDescriptor){
@@ -344,7 +346,6 @@ int main(int argc, char *argv[]) {
     wgpuSurfacePresent(demo.surface);
 
     wgpuCommandBufferRelease(command_buffer);
-    wgpuRenderPassEncoderRelease(render_pass_encoder);
     wgpuCommandEncoderRelease(command_encoder);
     wgpuTextureViewRelease(frame);
     wgpuTextureRelease(surface_texture.texture);
