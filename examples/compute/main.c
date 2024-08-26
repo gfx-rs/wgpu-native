@@ -124,6 +124,7 @@ int main(int argc, char *argv[]) {
   wgpuComputePassEncoderDispatchWorkgroups(compute_pass_encoder, numbers_length,
                                            1, 1);
   wgpuComputePassEncoderEnd(compute_pass_encoder);
+  wgpuComputePassEncoderRelease(compute_pass_encoder);
 
   wgpuCommandEncoderCopyBufferToBuffer(command_encoder, storage_buffer, 0,
                                        staging_buffer, 0, numbers_size);
@@ -149,7 +150,6 @@ int main(int argc, char *argv[]) {
 
   wgpuBufferUnmap(staging_buffer);
   wgpuCommandBufferRelease(command_buffer);
-  wgpuComputePassEncoderRelease(compute_pass_encoder);
   wgpuCommandEncoderRelease(command_encoder);
   wgpuBindGroupRelease(bind_group);
   wgpuBindGroupLayoutRelease(bind_group_layout);

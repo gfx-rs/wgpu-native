@@ -327,6 +327,8 @@ pub(crate) fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
+            // TODO(wgpu.h)
+            memory_hints: Default::default(),
         },
         match extras {
             Some(extras) => extras.tracePath,
@@ -567,8 +569,8 @@ pub enum ShaderParseError {
     #[error(transparent)]
     Spirv(#[from] naga::front::spv::Error),
     #[cfg(feature = "glsl")]
-    #[error("GLSL Parse Error: {0:?}")]
-    Glsl(Vec<naga::front::glsl::Error>),
+    #[error(transparent)]
+    Glsl(#[from] naga::front::glsl::ParseErrors),
 }
 
 #[inline]
@@ -1183,9 +1185,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::VERTEX_ATTRIBUTE_64BIT) {
         temp.push(native::WGPUNativeFeature_VertexAttribute64bit);
     }
-    if features.contains(wgt::Features::SHADER_UNUSED_VERTEX_OUTPUT) {
-        temp.push(native::WGPUNativeFeature_ShaderUnusedVertexOutput);
-    }
     if features.contains(wgt::Features::TEXTURE_FORMAT_NV12) {
         temp.push(native::WGPUNativeFeature_TextureFormatNv12);
     }
@@ -1257,7 +1256,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
         // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
-        native::WGPUNativeFeature_ShaderUnusedVertexOutput => Some(Features::SHADER_UNUSED_VERTEX_OUTPUT),
         native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
         native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::RAY_TRACING_ACCELERATION_STRUCTURE),
         native::WGPUNativeFeature_RayQuery => Some(Features::RAY_QUERY),
@@ -1646,6 +1644,7 @@ pub unsafe fn map_surface(
     panic!("Error: Unsupported Surface");
 }
 
+#[inline]
 pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
     extras: Option<&native::WGPUSurfaceConfigurationExtras>,
