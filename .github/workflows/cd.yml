@@ -7,9 +7,7 @@
 # libraries, and thus works on as many linuxes as possible. It's a thing from the
 # Python world, but generally useful.
 #
-# Each target (os + architecture) is build in a seperate job. This is kinda verbose,
-# resulting in some duplication, but at least its easy to read and maintain.
-# Don't forget to add new jobs to the needs of the publish job.
+# Each target (operating system + architecture) is built in grouped jobs by operating system.
 #
 # Each job should specify at least these env vars:
 # * TARGET: used in makefile to do cargo build --target $TARGET
