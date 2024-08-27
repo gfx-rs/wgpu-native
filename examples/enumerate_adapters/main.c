@@ -22,23 +22,23 @@ int main(int argc, char *argv[]) {
     WGPUAdapter adapter = adapters[i];
     assert(adapter);
 
-    WGPUAdapterProperties props;
-    wgpuAdapterGetProperties(adapter, &props);
+    WGPUAdapterInfo info = {0};
+    wgpuAdapterGetInfo(adapter, &info);
     printf("WGPUAdapter: %d\n", i);
-    printf("WGPUAdapterProperties {\n"
-           "\tvendorID: %" PRIu32 "\n"
-           "\tvendorName: %s\n"
+    printf("WGPUAdapterInfo {\n"
+           "\tvendor: %s\n"
            "\tarchitecture: %s\n"
-           "\tdeviceID: %" PRIu32 "\n"
-           "\tname: %s\n"
-           "\tdriverDescription: %s\n"
-           "\tadapterType: %#.8x\n"
+           "\tdevice: %s\n"
+           "\tdescription: %s\n"
            "\tbackendType: %#.8x\n"
+           "\tadapterType: %#.8x\n"
+           "\tvendorID: %" PRIu32 "\n"
+           "\tdeviceID: %" PRIu32 "\n"
            "}\n",
-           props.vendorID, props.vendorName, props.architecture, props.deviceID,
-           props.name, props.driverDescription, props.adapterType,
-           props.backendType);
+           info.vendor, info.architecture, info.device, info.description,
+           info.backendType, info.adapterType, info.vendorID, info.deviceID);
 
+    wgpuAdapterInfoFreeMembers(info);
     wgpuAdapterRelease(adapter);
   }
 

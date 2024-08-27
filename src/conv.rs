@@ -1,6 +1,6 @@
-use crate::native;
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
 use crate::{follow_chain, map_enum};
+use crate::{native, UncapturedErrorCallback};
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
 use std::ptr::NonNull;
 use std::{borrow::Cow, ffi::CStr};
@@ -302,13 +302,14 @@ pub fn map_instance_descriptor(
 }
 
 #[inline]
-pub fn map_device_descriptor<'a>(
+pub(crate) fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     *const std::ffi::c_char,
+    Option<UncapturedErrorCallback>,
 ) {
     (
         wgt::DeviceDescriptor {
@@ -326,10 +327,19 @@ pub fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
+            // TODO(wgpu.h)
+            memory_hints: Default::default(),
         },
         match extras {
             Some(extras) => extras.tracePath,
             None => std::ptr::null(),
+        },
+        match des.uncapturedErrorCallbackInfo.callback {
+            None => None,
+            callback => Some(UncapturedErrorCallback {
+                callback,
+                userdata: des.uncapturedErrorCallbackInfo.userdata,
+            }),
         },
     )
 }
@@ -559,8 +569,8 @@ pub enum ShaderParseError {
     #[error(transparent)]
     Spirv(#[from] naga::front::spv::Error),
     #[cfg(feature = "glsl")]
-    #[error("GLSL Parse Error: {0:?}")]
-    Glsl(Vec<naga::front::glsl::Error>),
+    #[error(transparent)]
+    Glsl(#[from] naga::front::glsl::ParseErrors),
 }
 
 #[inline]
@@ -819,6 +829,15 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_ASTC12x10UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb }),
         native::WGPUTextureFormat_ASTC12x12Unorm => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm }),
         native::WGPUTextureFormat_ASTC12x12UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb }),
+
+        // wgpu.h extended
+        native::WGPUNativeTextureFormat_R16Unorm => Some(wgt::TextureFormat::R16Unorm),
+        native::WGPUNativeTextureFormat_R16Snorm => Some(wgt::TextureFormat::R16Snorm),
+        native::WGPUNativeTextureFormat_Rg16Unorm => Some(wgt::TextureFormat::Rg16Unorm),
+        native::WGPUNativeTextureFormat_Rg16Snorm => Some(wgt::TextureFormat::Rg16Snorm),
+        native::WGPUNativeTextureFormat_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
+        native::WGPUNativeTextureFormat_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
+        native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
         _ => None,
     }
 }
@@ -830,13 +849,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
 
     match rs_type {
         // unimplemented in webgpu.h
-        wgt::TextureFormat::R16Unorm => None,
-        wgt::TextureFormat::R16Snorm => None,
-        wgt::TextureFormat::Rg16Unorm => None,
-        wgt::TextureFormat::Rg16Snorm => None,
-        wgt::TextureFormat::Rgba16Unorm => None,
-        wgt::TextureFormat::Rgba16Snorm => None,
-        wgt::TextureFormat::NV12 => None,
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
@@ -934,6 +946,15 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x10UnormSrgb),
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC12x12Unorm),
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x12UnormSrgb),
+
+        // wgpu.h extended
+        wgt::TextureFormat::R16Unorm => Some(native::WGPUNativeTextureFormat_R16Unorm),
+        wgt::TextureFormat::R16Snorm => Some(native::WGPUNativeTextureFormat_R16Snorm),
+        wgt::TextureFormat::Rg16Unorm => Some(native::WGPUNativeTextureFormat_Rg16Unorm),
+        wgt::TextureFormat::Rg16Snorm => Some(native::WGPUNativeTextureFormat_Rg16Snorm),
+        wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUNativeTextureFormat_Rgba16Unorm),
+        wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUNativeTextureFormat_Rgba16Snorm),
+        wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
     }
 }
 
@@ -1006,25 +1027,36 @@ pub fn write_global_report(
 ) {
     native_report.surfaces = map_storage_report(&report.surfaces);
 
-    #[cfg(vulkan)]
+    #[cfg(any(
+        all(
+            any(target_os = "ios", target_os = "macos"),
+            feature = "vulkan-portability"
+        ),
+        windows,
+        all(unix, not(target_os = "ios"), not(target_os = "macos"))
+    ))]
     if let Some(ref vulkan) = report.vulkan {
         native_report.vulkan = map_hub_report(vulkan);
         native_report.backendType = native::WGPUBackendType_Vulkan;
     }
 
-    #[cfg(metal)]
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     if let Some(ref metal) = report.metal {
         native_report.metal = map_hub_report(metal);
         native_report.backendType = native::WGPUBackendType_Metal;
     }
 
-    #[cfg(dx12)]
+    #[cfg(all(target_os = "windows", feature = "dx12"))]
     if let Some(ref dx12) = report.dx12 {
         native_report.dx12 = map_hub_report(dx12);
         native_report.backendType = native::WGPUBackendType_D3D12;
     }
 
-    #[cfg(gles)]
+    #[cfg(any(
+        feature = "angle",
+        target_os = "windows",
+        all(unix, not(target_os = "ios"), not(target_os = "macos"))
+    ))]
     if let Some(ref gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;
@@ -1164,9 +1196,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::VERTEX_ATTRIBUTE_64BIT) {
         temp.push(native::WGPUNativeFeature_VertexAttribute64bit);
     }
-    if features.contains(wgt::Features::SHADER_UNUSED_VERTEX_OUTPUT) {
-        temp.push(native::WGPUNativeFeature_ShaderUnusedVertexOutput);
-    }
     if features.contains(wgt::Features::TEXTURE_FORMAT_NV12) {
         temp.push(native::WGPUNativeFeature_TextureFormatNv12);
     }
@@ -1238,7 +1267,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
         // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
-        native::WGPUNativeFeature_ShaderUnusedVertexOutput => Some(Features::SHADER_UNUSED_VERTEX_OUTPUT),
         native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
         native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::RAY_TRACING_ACCELERATION_STRUCTURE),
         native::WGPUNativeFeature_RayQuery => Some(Features::RAY_QUERY),
@@ -1523,6 +1551,24 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     temp
 }
 
+#[inline]
+pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUTextureUsage {
+    let mut flag = 0;
+    if flags.contains(wgt::TextureUsages::COPY_SRC) {
+        flag |= native::WGPUTextureUsage_CopySrc;
+    }
+    if flags.contains(wgt::TextureUsages::COPY_DST) {
+        flag |= native::WGPUTextureUsage_CopySrc;
+    }
+    if flags.contains(wgt::TextureUsages::TEXTURE_BINDING) {
+        flag |= native::WGPUTextureUsage_TextureBinding;
+    }
+    if flags.contains(wgt::TextureUsages::RENDER_ATTACHMENT) {
+        flag |= native::WGPUTextureUsage_RenderAttachment;
+    }
+    flag
+}
+
 pub enum CreateSurfaceParams {
     Raw(
         (
@@ -1530,7 +1576,7 @@ pub enum CreateSurfaceParams {
             raw_window_handle::RawWindowHandle,
         ),
     ),
-    #[cfg(metal)]
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     Metal(*mut std::ffi::c_void),
 }
 
@@ -1540,7 +1586,7 @@ pub unsafe fn map_surface(
     xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
     xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
     wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
-    metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
@@ -1590,8 +1636,8 @@ pub unsafe fn map_surface(
         ));
     }
 
-    #[cfg(metal)]
-    if let Some(metal) = metal {
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+    if let Some(metal) = _metal {
         return CreateSurfaceParams::Metal(metal.layer);
     }
 
@@ -1609,6 +1655,7 @@ pub unsafe fn map_surface(
     panic!("Error: Unsupported Surface");
 }
 
+#[inline]
 pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
     extras: Option<&native::WGPUSurfaceConfigurationExtras>,
@@ -1628,8 +1675,29 @@ pub fn map_surface_configuration(
             .collect(),
         desired_maximum_frame_latency: match extras {
             Some(extras) => extras.desiredMaximumFrameLatency,
-            // Default is 2, https://github.com/gfx-rs/wgpu/blob/484457d95993b00b91905fae0e539a093423cc28/wgpu/src/lib.rs#L4796
+            // Default is 2, https://github.com/gfx-rs/wgpu/blob/7b4cbc26192d6d56a31f8e67769e656a6627b222/wgpu/src/api/surface.rs#L87
             None => 2,
         },
+    }
+}
+
+pub fn map_backend_type(backend: wgt::Backend) -> native::WGPUBackendType {
+    match backend {
+        wgt::Backend::Empty => native::WGPUBackendType_Null,
+        wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
+        wgt::Backend::Metal => native::WGPUBackendType_Metal,
+        wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
+        wgt::Backend::Gl => native::WGPUBackendType_OpenGL,
+        wgt::Backend::BrowserWebGpu => native::WGPUBackendType_WebGPU,
+    }
+}
+
+pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType {
+    match device_type {
+        wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
+        wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
+        wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
+        wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+        wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
     }
 }
