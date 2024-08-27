@@ -1027,25 +1027,36 @@ pub fn write_global_report(
 ) {
     native_report.surfaces = map_storage_report(&report.surfaces);
 
-    #[cfg(vulkan)]
+    #[cfg(any(
+        all(
+            any(target_os = "ios", target_os = "macos"),
+            feature = "vulkan-portability"
+        ),
+        windows,
+        all(unix, not(target_os = "ios"), not(target_os = "macos"))
+    ))]
     if let Some(ref vulkan) = report.vulkan {
         native_report.vulkan = map_hub_report(vulkan);
         native_report.backendType = native::WGPUBackendType_Vulkan;
     }
 
-    #[cfg(metal)]
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     if let Some(ref metal) = report.metal {
         native_report.metal = map_hub_report(metal);
         native_report.backendType = native::WGPUBackendType_Metal;
     }
 
-    #[cfg(dx12)]
+    #[cfg(all(target_os = "windows", feature = "dx12"))]
     if let Some(ref dx12) = report.dx12 {
         native_report.dx12 = map_hub_report(dx12);
         native_report.backendType = native::WGPUBackendType_D3D12;
     }
 
-    #[cfg(gles)]
+    #[cfg(any(
+        feature = "angle",
+        target_os = "windows",
+        all(unix, not(target_os = "ios"), not(target_os = "macos"))
+    ))]
     if let Some(ref gl) = report.gl {
         native_report.gl = map_hub_report(gl);
         native_report.backendType = native::WGPUBackendType_OpenGL;
@@ -1565,7 +1576,7 @@ pub enum CreateSurfaceParams {
             raw_window_handle::RawWindowHandle,
         ),
     ),
-    #[cfg(metal)]
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     Metal(*mut std::ffi::c_void),
 }
 
@@ -1575,7 +1586,7 @@ pub unsafe fn map_surface(
     xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
     xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
     wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
-    metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
+    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
     android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
@@ -1625,8 +1636,8 @@ pub unsafe fn map_surface(
         ));
     }
 
-    #[cfg(metal)]
-    if let Some(metal) = metal {
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+    if let Some(metal) = _metal {
         return CreateSurfaceParams::Metal(metal.layer);
     }
 
