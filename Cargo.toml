@@ -159,5 +159,4 @@ parking_lot = "0.12"
 smallvec = "1"
 
 [build-dependencies]
-bindgen = "0.69"
-cfg_aliases = "0.1"
+bindgen = "0.70"
