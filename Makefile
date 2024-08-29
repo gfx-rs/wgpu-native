@@ -51,7 +51,11 @@ package: lib-native lib-native-release
 		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
 		rm -f dist/$$ARCHIVE; \
 		if [ $(OS_NAME) = windows ]; then \
-			7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/wgpu_native.dll.lib ./$$LIBDIR/wgpu_native.pdb ./$$LIBDIR/wgpu_native.lib ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
+			if [[ "$(TARGET)" == *"gnu"* ]]; then \
+				7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/libwgpu_native.dll.a ./$$LIBDIR/libwgpu_native.a ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
+			else \
+				7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/wgpu_native.dll.lib ./$$LIBDIR/wgpu_native.pdb ./$$LIBDIR/wgpu_native.lib ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
+			fi; \
 		else \
 			zip -j dist/$$ARCHIVE ./$$LIBDIR/libwgpu_native.so ./$$LIBDIR/libwgpu_native.dylib ./$$LIBDIR/libwgpu_native.a ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
 		fi; \
