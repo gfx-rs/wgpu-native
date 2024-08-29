@@ -1,7 +1,9 @@
 
 project('wgpu-native', 'c', version : '0.0.0', license : 'MIT OR Apache-2.0')
 
-inc_dirs = [include_directories('ffi', is_system: true)]
+inc_dirs = [ ]
+
+subdir('ffi')
 
 cargo = find_program('cargo')
 #determine which dir contain platform library
@@ -12,7 +14,7 @@ else
 endif
 
 #build by cargo
-run_command(cargo,'build','--release')
+run_command(cargo,'build','--release', check: true)
 #mark cargo artifact to static library
 wgpu_native = static_library('wgpu_native', objects : lib_path, install : true)
 
@@ -27,4 +29,3 @@ pkg.generate(name : 'wgpu-native',
              libraries : [wgpu_native],
              version : meson.project_version(),
              )
-install_subdir('include', install_dir : '')
