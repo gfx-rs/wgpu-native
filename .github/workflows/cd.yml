@@ -331,8 +331,7 @@ jobs:
           name: ${{ env.ARCHIVE_NAME }}
 
   # Create a Github release and upload the binary libs that we just built.
-  # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux64),
-  # plus a file containing the commit sha.
+  # There should be a release and debug build for each platform, plus a file containing the commit sha.
   publish:
     name: Publish Github release
     needs:
