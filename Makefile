@@ -45,6 +45,7 @@ endif
 
 package: lib-native lib-native-release
 	mkdir -p dist
+	echo "Zipping the binaries ..."
 	echo "$(GIT_TAG_FULL)" > dist/wgpu-native-git-tag
 	for RELEASE in debug release; do \
 		ARCHIVEDIR=toarchive; \
@@ -66,13 +67,13 @@ package: lib-native lib-native-release
 		cp ./$$LIBDIR/wgpu_native.lib  			dist/$$ARCHIVEDIR/lib | true; \
 		cp ./$$LIBDIR/wgpu_native.dll.lib  		dist/$$ARCHIVEDIR/lib | true; \
 		cp ./$$LIBDIR/wgpu_native.pdb  			dist/$$ARCHIVEDIR/lib | true; \
-		pushd dist/$$ARCHIVEDIR; \
+		cd dist/$$ARCHIVEDIR; \
 		if [ $(OS_NAME) = windows ]; then \
 			7z a -tzip ../$$ARCHIVEFILE *; \
 		else \
 			zip -r ../$$ARCHIVEFILE *; \
 		fi; \
-		popd; \
+		cd ../..; \
 	done
 
 clean:
