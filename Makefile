@@ -74,6 +74,7 @@ package: lib-native lib-native-release
 			zip -r ../$$ARCHIVEFILE *; \
 		fi; \
 		cd ../..; \
+		rm -r -f dist/$$ARCHIVEDIR; \
 	done
 
 clean:
