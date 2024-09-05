@@ -56,17 +56,17 @@ package: lib-native lib-native-release
 		mkdir dist/$$ARCHIVEDIR; \
 		mkdir dist/$$ARCHIVEDIR/include; \
 		mkdir dist/$$ARCHIVEDIR/lib; \
-		cp ./dist/wgpu-native-git-tag  			dist/$$ARCHIVEDIR | true; \
-		cp ./ffi/webgpu-headers/webgpu.h  		dist/$$ARCHIVEDIR/include | true; \
-		cp ./ffi/wgpu.h  						dist/$$ARCHIVEDIR/include | true; \
-		cp ./$$LIBDIR/libwgpu_native.os  		dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/libwgpu_native.dylib  	dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/libwgpu_native.a  		dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/libwgpu_native.dll.a  	dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.dll  			dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.lib  			dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.dll.lib  		dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.pdb  			dist/$$ARCHIVEDIR/lib | true; \
+		cp ./dist/wgpu-native-git-tag         dist/$$ARCHIVEDIR | true; \
+		cp ./ffi/webgpu-headers/webgpu.h      dist/$$ARCHIVEDIR/include | true; \
+		cp ./ffi/wgpu.h                       dist/$$ARCHIVEDIR/include | true; \
+		cp ./$$LIBDIR/libwgpu_native.os       dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/libwgpu_native.dylib    dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/libwgpu_native.a        dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/libwgpu_native.dll.a    dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/wgpu_native.dll         dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/wgpu_native.lib         dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/wgpu_native.dll.lib     dist/$$ARCHIVEDIR/lib | true; \
+		cp ./$$LIBDIR/wgpu_native.pdb         dist/$$ARCHIVEDIR/lib | true; \
 		cd dist/$$ARCHIVEDIR; \
 		if [ $(OS_NAME) = windows ]; then \
 			7z a -tzip ../$$ARCHIVEFILE *; \
