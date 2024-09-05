@@ -30,7 +30,7 @@ on:
 jobs:
 
   # -----
-  iOS:
+  ios:
     # Config
     name: release - ${{ matrix.name }}
     runs-on: macos-latest
@@ -38,11 +38,11 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: iOS-aarch64
+          - name: ios-aarch64
             target: aarch64-apple-ios
-          - name: iOS-aarch64-simulator
+          - name: ios-aarch64-simulator
             target: aarch64-apple-ios-sim
-          - name: iOS-x86_64-simulator
+          - name: ios-x86_64-simulator
             target: x86_64-apple-ios
     env:
       TARGET: ${{ matrix.target }}
@@ -59,7 +59,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Add iOS targets
+      - name: Add ios targets
         run: rustup target add ${{ matrix.TARGET }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
@@ -331,12 +331,11 @@ jobs:
           name: ${{ env.ARCHIVE_NAME }}
 
   # Create a Github release and upload the binary libs that we just built.
-  # There should be a release and debug build for each platform (win32, win64, MacOS64, Linux64),
-  # plus a file containing the commit sha.
+  # There should be a release and debug build for each platform, plus a file containing the commit sha.
   publish:
     name: Publish Github release
     needs:
-      - iOS
+      - ios
       - android
       - linux
       - windows
@@ -359,7 +358,7 @@ jobs:
         run: |
           echo $GITHUB_SHA > dist/commit-sha
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.WGPU_NATIVE_VERSION }}
           name: ${{ env.WGPU_NATIVE_VERSION }}

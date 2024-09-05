@@ -45,20 +45,48 @@ endif
 
 package: lib-native lib-native-release
 	mkdir -p dist
-	echo "$(GIT_TAG_FULL)" > dist/commit-sha
+	echo "Zipping the binaries ..."
+	echo "$(GIT_TAG_FULL)" > dist/wgpu-native-git-tag
 	for RELEASE in debug release; do \
-		ARCHIVE=$(ARCHIVE_NAME)-$$RELEASE.zip; \
+		ARCHIVEDIR=toarchive; \
+		ARCHIVEFILE=$(ARCHIVE_NAME)-$$RELEASE.zip; \
 		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
-		rm -f dist/$$ARCHIVE; \
+		rm -r -f dist/$$ARCHIVEDIR; \
+		rm -f dist/$$ARCHIVEFILE; \
+		mkdir dist/$$ARCHIVEDIR; \
+		mkdir dist/$$ARCHIVEDIR/include; \
+		mkdir dist/$$ARCHIVEDIR/lib; \
+		cp ./dist/wgpu-native-git-tag                 dist/$$ARCHIVEDIR; \
+		cp ./ffi/webgpu-headers/webgpu.h              dist/$$ARCHIVEDIR/include; \
+		cp ./ffi/wgpu.h                               dist/$$ARCHIVEDIR/include; \
+		if [ $(OS_NAME) = linux ]; then \
+			cp ./$$LIBDIR/libwgpu_native.so           dist/$$ARCHIVEDIR/lib; \
+			cp ./$$LIBDIR/libwgpu_native.a            dist/$$ARCHIVEDIR/lib; \
+		fi; \
+		if [ $(OS_NAME) = macos ]; then \
+			cp ./$$LIBDIR/libwgpu_native.dylib        dist/$$ARCHIVEDIR/lib; \
+			cp ./$$LIBDIR/libwgpu_native.a            dist/$$ARCHIVEDIR/lib; \
+		fi; \
 		if [ $(OS_NAME) = windows ]; then \
 			if [[ "$(TARGET)" == *"gnu"* ]]; then \
-				7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/libwgpu_native.dll.a ./$$LIBDIR/libwgpu_native.a ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
+				cp ./$$LIBDIR/wgpu_native.dll         dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/libwgpu_native.a        dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/libwgpu_native.dll.a    dist/$$ARCHIVEDIR/lib; \
 			else \
-				7z a -tzip dist/$$ARCHIVE ./$$LIBDIR/wgpu_native.dll ./$$LIBDIR/wgpu_native.dll.lib ./$$LIBDIR/wgpu_native.pdb ./$$LIBDIR/wgpu_native.lib ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
-			fi; \
-		else \
-			zip -j dist/$$ARCHIVE ./$$LIBDIR/libwgpu_native.so ./$$LIBDIR/libwgpu_native.dylib ./$$LIBDIR/libwgpu_native.a ./ffi/webgpu-headers/*.h ./ffi/wgpu.h ./dist/commit-sha; \
+				cp ./$$LIBDIR/wgpu_native.dll         dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/wgpu_native.lib         dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/wgpu_native.dll.lib     dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/wgpu_native.pdb         dist/$$ARCHIVEDIR/lib; \
+			fi;\
 		fi; \
+		cd dist/$$ARCHIVEDIR; \
+		if [ $(OS_NAME) = windows ]; then \
+			7z a -tzip ../$$ARCHIVEFILE *; \
+		else \
+			zip -r ../$$ARCHIVEFILE *; \
+		fi; \
+		cd ../..; \
+		rm -r -f dist/$$ARCHIVEDIR; \
 	done
 
 clean:
