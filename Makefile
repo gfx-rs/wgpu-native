@@ -56,17 +56,29 @@ package: lib-native lib-native-release
 		mkdir dist/$$ARCHIVEDIR; \
 		mkdir dist/$$ARCHIVEDIR/include; \
 		mkdir dist/$$ARCHIVEDIR/lib; \
-		cp ./dist/wgpu-native-git-tag         dist/$$ARCHIVEDIR | true; \
-		cp ./ffi/webgpu-headers/webgpu.h      dist/$$ARCHIVEDIR/include | true; \
-		cp ./ffi/wgpu.h                       dist/$$ARCHIVEDIR/include | true; \
-		cp ./$$LIBDIR/libwgpu_native.os       dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/libwgpu_native.dylib    dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/libwgpu_native.a        dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/libwgpu_native.dll.a    dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.dll         dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.lib         dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.dll.lib     dist/$$ARCHIVEDIR/lib | true; \
-		cp ./$$LIBDIR/wgpu_native.pdb         dist/$$ARCHIVEDIR/lib | true; \
+		cp ./dist/wgpu-native-git-tag                 dist/$$ARCHIVEDIR; \
+		cp ./ffi/webgpu-headers/webgpu.h              dist/$$ARCHIVEDIR/include; \
+		cp ./ffi/wgpu.h                               dist/$$ARCHIVEDIR/include; \
+		if [ $(OS_NAME) = linux ]; then \
+			cp ./$$LIBDIR/libwgpu_native.so           dist/$$ARCHIVEDIR/lib; \
+			cp ./$$LIBDIR/libwgpu_native.a            dist/$$ARCHIVEDIR/lib; \
+		fi; \
+		if [ $(OS_NAME) = macos ]; then \
+			cp ./$$LIBDIR/libwgpu_native.dylib        dist/$$ARCHIVEDIR/lib; \
+			cp ./$$LIBDIR/libwgpu_native.a            dist/$$ARCHIVEDIR/lib; \
+		fi; \
+		if [ $(OS_NAME) = windows ]; then \
+			if [[ "$(TARGET)" == *"gnu"* ]]; then \
+				cp ./$$LIBDIR/wgpu_native.dll         dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/libwgpu_native.a        dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/libwgpu_native.dll.a    dist/$$ARCHIVEDIR/lib; \
+			else \
+				cp ./$$LIBDIR/wgpu_native.dll         dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/wgpu_native.lib         dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/wgpu_native.dll.lib     dist/$$ARCHIVEDIR/lib; \
+				cp ./$$LIBDIR/wgpu_native.pdb         dist/$$ARCHIVEDIR/lib; \
+			fi;\
+		fi; \
 		cd dist/$$ARCHIVEDIR; \
 		if [ $(OS_NAME) = windows ]; then \
 			7z a -tzip ../$$ARCHIVEFILE *; \
