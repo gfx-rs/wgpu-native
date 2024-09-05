@@ -38,11 +38,11 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: iOS-aarch64
+          - name: ios-aarch64
             target: aarch64-apple-ios
-          - name: iOS-aarch64-simulator
+          - name: ios-aarch64-simulator
             target: aarch64-apple-ios-sim
-          - name: iOS-x86_64-simulator
+          - name: ios-x86_64-simulator
             target: x86_64-apple-ios
     env:
       TARGET: ${{ matrix.target }}
