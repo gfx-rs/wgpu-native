@@ -30,7 +30,7 @@ on:
 jobs:
 
   # -----
-  iOS:
+  ios:
     # Config
     name: release - ${{ matrix.name }}
     runs-on: macos-latest
@@ -59,7 +59,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Add iOS targets
+      - name: Add ios targets
         run: rustup target add ${{ matrix.TARGET }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
@@ -335,7 +335,7 @@ jobs:
   publish:
     name: Publish Github release
     needs:
-      - iOS
+      - ios
       - android
       - linux
       - windows
@@ -358,7 +358,7 @@ jobs:
         run: |
           echo $GITHUB_SHA > dist/commit-sha
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.WGPU_NATIVE_VERSION }}
           name: ${{ env.WGPU_NATIVE_VERSION }}
