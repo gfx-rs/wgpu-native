@@ -700,7 +700,7 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     };
 
     info.vendor = CString::new(result.driver).unwrap().into_raw();
-    info.architecture = CString::default().into_raw();
+    info.architecture = CString::default().into_raw(); // TODO(webgpu.h)
     info.device = CString::new(result.name).unwrap().into_raw();
     info.description = CString::new(result.driver_info).unwrap().into_raw();
     info.backendType = map_backend_type(result.backend);
