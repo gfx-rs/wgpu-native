@@ -699,13 +699,9 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
         Err(err) => handle_error_fatal(err, "wgpuAdapterGetInfo"),
     };
 
-    info.vendor = CString::new(result.driver)
-        .unwrap()
-        .into_raw();
+    info.vendor = CString::new(result.driver).unwrap().into_raw();
     info.architecture = CString::default().into_raw();
-    info.device = CString::new(result.name)
-        .unwrap()
-        .into_raw();
+    info.device = CString::new(result.name).unwrap().into_raw();
     info.description = CString::new(result.driver_info).unwrap().into_raw();
     info.backendType = map_backend_type(result.backend);
     info.adapterType = map_adapter_type(result.device_type);
