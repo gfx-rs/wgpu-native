@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceSourceromMetalLayer){
+                    const WGPUSurfaceSourceMetalLayer){
                     .chain =
                         (const WGPUChainedStruct){
                             .sType = WGPUSType_SurfaceSourceMetalLayer,
