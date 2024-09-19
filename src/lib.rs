@@ -1008,21 +1008,13 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         callback: Some(wgc::resource::BufferMapCallback::from_rust(Box::new(
             move |result: resource::BufferAccessResult| {
                 let (status, message) = match result {
-                    Ok(()) => (native::WGPUBufferMapAsyncStatus_Success, CString::default()),
+                    Ok(()) => (native::WGPUMapAsyncStatus_Success, CString::default()),
                     Err(cause) => {
                         let code = match cause {
-                            resource::BufferAccessError::Device(_) => {
-                                native::WGPUBufferMapAsyncStatus_DeviceLost
+                            resource::BufferAccessError::MapAborted => {
+                                native::WGPUMapAsyncStatus_Aborted
                             }
-                            resource::BufferAccessError::MapAlreadyPending => {
-                                native::WGPUBufferMapAsyncStatus_MappingAlreadyPending
-                            }
-                            resource::BufferAccessError::InvalidBufferId(_)
-                            | resource::BufferAccessError::DestroyedResource(_) => {
-                                native::WGPUBufferMapAsyncStatus_DestroyedBeforeCallback
-                            }
-                            _ => native::WGPUBufferMapAsyncStatus_ValidationError, // TODO: WGPUBufferMapAsyncStatus_OffsetOutOfRange
-                                                                                   // TODO: WGPUBufferMapAsyncStatus_SizeOutOfRange
+                            _ => native::WGPUMapAsyncStatus_Error,
                         };
 
                         (code, CString::new(format_error(&cause)).unwrap())

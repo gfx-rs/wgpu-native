@@ -29,7 +29,7 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   UNUSED(userdata2)
   *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUBufferMapAsyncStatus status, 
+static void handle_buffer_map(WGPUMapAsyncStatus status, 
                               char const *message,
                               void *userdata1, void *userdata2) {
   UNUSED(message)
