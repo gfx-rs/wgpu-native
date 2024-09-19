@@ -15,20 +15,26 @@ const size_t COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
                                    WGPUAdapter adapter, char const *message,
-                                   void *userdata) {
+                                   void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
-  *(WGPUAdapter *)userdata = adapter;
+  UNUSED(userdata2)
+  *(WGPUAdapter *)userdata1 = adapter;
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
                                   WGPUDevice device, char const *message,
-                                  void *userdata) {
+                                  void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
-  *(WGPUDevice *)userdata = device;
+  UNUSED(userdata2)
+  *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUBufferMapAsyncStatus status, void *userdata) {
-  UNUSED(userdata)
+static void handle_buffer_map(WGPUBufferMapAsyncStatus status, 
+                              char const *message,
+                              void *userdata1, void *userdata2) {
+  UNUSED(message)
+  UNUSED(userdata1)
+  UNUSED(userdata2)
   printf(LOG_PREFIX " buffer_map status=%#.8x\n", status);
 }
 
@@ -67,14 +73,21 @@ int main(int argc, char *argv[]) {
   assert(instance);
 
   WGPUAdapter adapter = NULL;
-  wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,
-                             (void *)&adapter);
+  wgpuInstanceRequestAdapter(instance, NULL,
+                             (const WGPURequestAdapterCallbackInfo){
+                                 .callback = handle_request_adapter,
+                                 .userdata1 = &adapter
+                             });
   assert(adapter);
 
   WGPUDevice device = NULL;
-  wgpuAdapterRequestDevice(adapter, NULL, handle_request_device,
-                           (void *)&device);
+  wgpuAdapterRequestDevice(adapter, NULL,
+                           (const WGPURequestDeviceCallbackInfo){ 
+                               .callback = handle_request_device,
+                               .userdata1 = &device
+                           });
   assert(device);
+
   WGPUQueue queue = wgpuDeviceGetQueue(device);
   assert(queue);
 
@@ -174,7 +187,9 @@ int main(int argc, char *argv[]) {
   wgpuQueueSubmit(queue, 1, (const WGPUCommandBuffer[]){command_buffer});
 
   wgpuBufferMapAsync(output_buffer, WGPUMapMode_Read, 0, buffer_size,
-                     handle_buffer_map, NULL);
+                     (const WGPUBufferMapCallbackInfo){
+                         .callback = handle_buffer_map
+                     });
   wgpuDevicePoll(device, true, NULL);
 
   uint8_t *buf =

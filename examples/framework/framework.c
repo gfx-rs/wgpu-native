@@ -67,10 +67,10 @@ WGPUShaderModule frmwrk_load_shader_module(WGPUDevice device,
                   .label = name,
                   .nextInChain =
                       (const WGPUChainedStruct *)&(
-                          const WGPUShaderModuleWGSLDescriptor){
+                          const WGPUShaderSourceWGSL){
                           .chain =
                               (const WGPUChainedStruct){
-                                  .sType = WGPUSType_ShaderModuleWGSLDescriptor,
+                                  .sType = WGPUSType_ShaderSourceWGSL,
                               },
                           .code = buf,
                       },

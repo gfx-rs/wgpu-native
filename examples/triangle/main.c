@@ -27,9 +27,10 @@ struct demo {
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
                                    WGPUAdapter adapter, char const *message,
-                                   void *userdata) {
+                                   void *userdata1, void *userdata2) {
+  UNUSED(userdata2)
   if (status == WGPURequestAdapterStatus_Success) {
-    struct demo *demo = userdata;
+    struct demo *demo = userdata1;
     demo->adapter = adapter;
   } else {
     printf(LOG_PREFIX " request_adapter status=%#.8x message=%s\n", status,
@@ -38,9 +39,10 @@ static void handle_request_adapter(WGPURequestAdapterStatus status,
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
                                   WGPUDevice device, char const *message,
-                                  void *userdata) {
+                                  void *userdata1, void *userdata2) {
+  UNUSED(userdata2)
   if (status == WGPURequestDeviceStatus_Success) {
-    struct demo *demo = userdata;
+    struct demo *demo = userdata1;
     demo->device = device;
   } else {
     printf(LOG_PREFIX " request_device status=%#.8x message=%s\n", status,
@@ -110,10 +112,10 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromMetalLayer){
+                    const WGPUSurfaceSourceromMetalLayer){
                     .chain =
                         (const WGPUChainedStruct){
-                            .sType = WGPUSType_SurfaceDescriptorFromMetalLayer,
+                            .sType = WGPUSType_SurfaceSourceMetalLayer,
                         },
                     .layer = metal_layer,
                 },
@@ -128,10 +130,10 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromXlibWindow){
+                    const WGPUSurfaceSourceXlibWindow){
                     .chain =
                         (const WGPUChainedStruct){
-                            .sType = WGPUSType_SurfaceDescriptorFromXlibWindow,
+                            .sType = WGPUSType_SurfaceSourceXlibWindow,
                         },
                     .display = x11_display,
                     .window = x11_window,
@@ -146,11 +148,11 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromWaylandSurface){
+                    const WGPUSurfaceSourceWaylandSurface){
                     .chain =
                         (const WGPUChainedStruct){
                             .sType =
-                                WGPUSType_SurfaceDescriptorFromWaylandSurface,
+                                WGPUSType_SurfaceSourceWaylandSurface,
                         },
                     .display = wayland_display,
                     .surface = wayland_surface,
@@ -166,10 +168,10 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromWindowsHWND){
+                    const WGPUSurfaceSourceWindowsHWND){
                     .chain =
                         (const WGPUChainedStruct){
-                            .sType = WGPUSType_SurfaceDescriptorFromWindowsHWND,
+                            .sType = WGPUSType_SurfaceSourceWindowsHWND,
                         },
                     .hinstance = hinstance,
                     .hwnd = hwnd,
@@ -185,12 +187,19 @@ int main(int argc, char *argv[]) {
                              &(const WGPURequestAdapterOptions){
                                  .compatibleSurface = demo.surface,
                              },
-                             handle_request_adapter, &demo);
+                             (const WGPURequestAdapterCallbackInfo){
+                                 .callback = handle_request_adapter,
+                                 .userdata1 = &demo
+                             });
   assert(demo.adapter);
 
   frmwrk_print_adapter_info(demo.adapter);
 
-  wgpuAdapterRequestDevice(demo.adapter, NULL, handle_request_device, &demo);
+  wgpuAdapterRequestDevice(demo.adapter, NULL, 
+                           (const WGPURequestDeviceCallbackInfo){ 
+                               .callback = handle_request_device,
+                               .userdata1 = &demo
+                           });
   assert(demo.device);
 
   WGPUQueue queue = wgpuDeviceGetQueue(demo.device);
@@ -267,8 +276,9 @@ int main(int argc, char *argv[]) {
     WGPUSurfaceTexture surface_texture;
     wgpuSurfaceGetCurrentTexture(demo.surface, &surface_texture);
     switch (surface_texture.status) {
-    case WGPUSurfaceGetCurrentTextureStatus_Success:
-      // All good, could check for `surface_texture.suboptimal` here.
+    case WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal:
+    case WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal:
+      // All good, could handle suboptimal here
       break;
     case WGPUSurfaceGetCurrentTextureStatus_Timeout:
     case WGPUSurfaceGetCurrentTextureStatus_Outdated:
