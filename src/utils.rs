@@ -6,18 +6,36 @@ use std::{
 
 // A dummy wrapper that is `Send` + `Sync` to store userdata pointer
 // to be usable across Rust callbacks.
-pub(crate) struct Userdata(*mut std::ffi::c_void);
+pub(crate) struct Userdata(*mut std::ffi::c_void, *mut std::ffi::c_void);
 impl Userdata {
+    pub(crate) const NULL: Userdata = Userdata::new(std::ptr::null_mut(), std::ptr::null_mut());
+
     #[inline]
-    pub(crate) const fn new(userdata: *mut std::ffi::c_void) -> Userdata {
-        Userdata(userdata)
+    pub(crate) const fn new(
+        userdata1: *mut std::ffi::c_void,
+        userdata2: *mut std::ffi::c_void,
+    ) -> Userdata {
+        Userdata(userdata1, userdata2)
     }
 
     #[inline]
-    pub(crate) fn as_ptr(&self) -> *mut std::ffi::c_void {
+    pub(crate) fn get_1(&self) -> *mut std::ffi::c_void {
         self.0
     }
+
+    #[inline]
+    pub(crate) fn get_2(&self) -> *mut std::ffi::c_void {
+        self.1
+    }
 }
+
+#[macro_export]
+macro_rules! new_userdata {
+    ($var:expr) => {
+        crate::utils::Userdata::new($var.userdata1, $var.userdata2)
+    };
+}
+
 unsafe impl Send for Userdata {}
 unsafe impl Sync for Userdata {}
 
@@ -96,6 +114,14 @@ pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) 
         max_texture_dimension_3d: dim_3d,
         ..wgt::Limits::downlevel_webgl2_defaults()
     }
+}
+
+pub fn texture_format_has_depth(format: wgt::TextureFormat) -> bool {
+    return format == wgt::TextureFormat::Depth16Unorm
+        || format == wgt::TextureFormat::Depth24Plus
+        || format == wgt::TextureFormat::Depth24PlusStencil8
+        || format == wgt::TextureFormat::Depth32Float
+        || format == wgt::TextureFormat::Depth32FloatStencil8;
 }
 
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.

@@ -2,7 +2,6 @@ use crate::native;
 
 #[no_mangle]
 pub extern "C" fn wgpuGetProcAddress(
-    _device: native::WGPUDevice,
     _proc_name: *const ::std::os::raw::c_char,
 ) -> native::WGPUProc {
     unimplemented!();
@@ -73,9 +72,8 @@ pub extern "C" fn wgpuComputePipelineSetLabel(
 pub extern "C" fn wgpuDeviceCreateComputePipelineAsync(
     _device: native::WGPUDevice,
     _descriptor: *const native::WGPUComputePipelineDescriptor,
-    _callback: native::WGPUDeviceCreateComputePipelineAsyncCallback,
-    _userdata: *mut ::std::os::raw::c_void,
-) {
+    _callback: native::WGPUCreateComputePipelineAsyncCallbackInfo,
+) -> native::WGPUFuture {
     unimplemented!();
 }
 
@@ -83,9 +81,8 @@ pub extern "C" fn wgpuDeviceCreateComputePipelineAsync(
 pub extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
     _device: native::WGPUDevice,
     _descriptor: *const native::WGPURenderPipelineDescriptor,
-    _callback: native::WGPUDeviceCreateRenderPipelineAsyncCallback,
-    _userdata: *mut ::std::os::raw::c_void,
-) {
+    _callback: native::WGPUCreateRenderPipelineAsyncCallbackInfo,
+) -> native::WGPUFuture {
     unimplemented!();
 }
 
@@ -177,9 +174,8 @@ pub extern "C" fn wgpuSamplerSetLabel(
 #[no_mangle]
 pub extern "C" fn wgpuShaderModuleGetCompilationInfo(
     _shader_module: native::WGPUShaderModule,
-    _callback: native::WGPUShaderModuleGetCompilationInfoCallback,
-    _userdata: *mut ::std::os::raw::c_void,
-) {
+    _callback: native::WGPUCompilationInfoCallbackInfo,
+) -> native::WGPUFuture {
     unimplemented!();
 }
 
@@ -212,5 +208,15 @@ pub extern "C" fn wgpuTextureViewSetLabel(
     _texture_view: native::WGPUTextureView,
     _label: *const ::std::os::raw::c_char,
 ) {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuInstanceWaitAny(
+    _instance: native::WGPUInstance,
+    _future_count: usize,
+    _futures: *mut native::WGPUFutureWaitInfo,
+    _timeout_ns: u64,
+) -> native::WGPUWaitStatus {
     unimplemented!();
 }

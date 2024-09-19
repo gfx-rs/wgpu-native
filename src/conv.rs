@@ -1,5 +1,5 @@
 use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
-use crate::{follow_chain, map_enum};
+use crate::{follow_chain, map_enum, new_userdata};
 use crate::{native, UncapturedErrorCallback};
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
 use std::ptr::NonNull;
@@ -164,7 +164,8 @@ map_enum!(
     Sint32,
     Sint32x2,
     Sint32x3,
-    Sint32x4
+    Sint32x4,
+    Unorm10_10_10_2
 );
 
 #[cfg(feature = "glsl")]
@@ -208,9 +209,10 @@ map_enum!(
     ReadWrite
 );
 
-pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
-pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
-    native::WGPU_LIMIT_U64_UNDEFINED as _;
+// These are defined as UINT64_MAX in the header, but bindgen currently can't process that define.
+// See https://github.com/rust-lang/rust-bindgen/issues/2822
+pub const WGPU_WHOLE_SIZE: u64 = u64::MAX;
+pub const WGPU_LIMIT_U64_UNDEFINED: u64 = u64::MAX;
 // it's SIZE_MAX in headers but it's not available in some compilers
 pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
 
@@ -338,7 +340,7 @@ pub(crate) fn map_device_descriptor<'a>(
             None => None,
             callback => Some(UncapturedErrorCallback {
                 callback,
-                userdata: des.uncapturedErrorCallbackInfo.userdata,
+                userdata: new_userdata!(des.uncapturedErrorCallbackInfo),
             }),
         },
     )
@@ -363,7 +365,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         make_slice(extras.pushConstantRanges, extras.pushConstantRangeCount)
             .iter()
             .map(|range| wgt::PushConstantRange {
-                stages: wgt::ShaderStages::from_bits(range.stages)
+                stages: from_u64_bits(range.stages)
                     .expect("invalid shader stage for push constant range"),
                 range: range.start..range.end,
             })
@@ -408,7 +410,6 @@ pub fn write_limits_struct(
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
     limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
-    limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
     // TODO: not yet in wgt
     // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
     // TODO: not yet in wgt
@@ -494,10 +495,10 @@ pub fn map_required_limits(
     if limits.maxUniformBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_uniform_buffers_per_shader_stage = limits.maxUniformBuffersPerShaderStage;
     }
-    if limits.maxUniformBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+    if limits.maxUniformBufferBindingSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_uniform_buffer_binding_size = limits.maxUniformBufferBindingSize as u32;
     }
-    if limits.maxStorageBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+    if limits.maxStorageBufferBindingSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
     if limits.minUniformBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -509,7 +510,7 @@ pub fn map_required_limits(
     if limits.maxVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
-    if limits.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+    if limits.maxBufferSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_buffer_size = limits.maxBufferSize;
     }
     if limits.maxVertexAttributes != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -517,9 +518,6 @@ pub fn map_required_limits(
     }
     if limits.maxVertexBufferArrayStride != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffer_array_stride = limits.maxVertexBufferArrayStride;
-    }
-    if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
-        wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
     // TODO: not yet in wgt
     // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -576,8 +574,8 @@ pub enum ShaderParseError {
 #[inline]
 pub fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
-    spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
-    wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
+    spirv: Option<&native::WGPUShaderSourceSPIRV>,
+    wgsl: Option<&native::WGPUShaderSourceWGSL>,
     glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>,
 ) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
@@ -976,18 +974,6 @@ pub fn map_stencil_face_state(
 }
 
 #[inline]
-pub fn map_primitive_state(
-    _: &native::WGPUPrimitiveState,
-    depth_clip_control: Option<&native::WGPUPrimitiveDepthClipControl>,
-) -> bool {
-    if let Some(depth_clip_control) = depth_clip_control {
-        return depth_clip_control.unclippedDepth != 0;
-    }
-
-    false
-}
-
-#[inline]
 pub fn map_storage_report(report: &wgc::registry::RegistryReport) -> native::WGPURegistryReport {
     native::WGPURegistryReport {
         numAllocated: report.num_allocated,
@@ -1230,8 +1216,10 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_DepthClipControl => Some(Features::DEPTH_CLIP_CONTROL),
         native::WGPUFeatureName_Depth32FloatStencil8 => Some(Features::DEPTH32FLOAT_STENCIL8),
         native::WGPUFeatureName_TextureCompressionBC => Some(Features::TEXTURE_COMPRESSION_BC),
+        // TODO: WGPUFeatureName_TextureCompressionBCSliced3D
         native::WGPUFeatureName_TextureCompressionETC2 => Some(Features::TEXTURE_COMPRESSION_ETC2),
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC),
+        // TODO: WGPUFeatureName_TextureCompressionASTCSliced3D
         native::WGPUFeatureName_TimestampQuery => Some(Features::TIMESTAMP_QUERY),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
@@ -1476,7 +1464,7 @@ pub fn map_bind_group_layout_entry(
     wgt::BindGroupLayoutEntry {
         ty,
         binding: entry.binding,
-        visibility: wgt::ShaderStages::from_bits(entry.visibility)
+        visibility: from_u64_bits(entry.visibility)
             .expect("invalid visibility for bind group layout entry"),
         count: extras.and_then(|v| NonZeroU32::new(v.count)),
     }
@@ -1582,12 +1570,12 @@ pub enum CreateSurfaceParams {
 
 pub unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
-    win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
-    xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
-    wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
-    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
-    android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
+    win: Option<&native::WGPUSurfaceSourceWindowsHWND>,
+    xcb: Option<&native::WGPUSurfaceSourceXCBWindow>,
+    xlib: Option<&native::WGPUSurfaceSourceXlibWindow>,
+    wl: Option<&native::WGPUSurfaceSourceWaylandSurface>,
+    _metal: Option<&native::WGPUSurfaceSourceMetalLayer>,
+    android: Option<&native::WGPUSurfaceSourceAndroidNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -1660,13 +1648,18 @@ pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
     extras: Option<&native::WGPUSurfaceConfigurationExtras>,
 ) -> wgt::SurfaceConfiguration<Vec<wgt::TextureFormat>> {
+    let present_mode = match config.presentMode {
+        native::WGPUPresentMode_Undefined => wgt::PresentMode::Fifo,
+        _ => map_present_mode(config.presentMode),
+    };
+
     wgt::SurfaceConfiguration {
         usage: map_texture_usage_flags(config.usage as native::WGPUTextureUsage),
         format: map_texture_format(config.format)
             .expect("invalid format for surface configuration"),
         width: config.width,
         height: config.height,
-        present_mode: map_present_mode(config.presentMode),
+        present_mode,
         alpha_mode: map_composite_alpha_mode(config.alphaMode)
             .expect("invalid alpha mode for surface configuration"),
         view_formats: make_slice(config.viewFormats, config.viewFormatCount)
@@ -1700,4 +1693,12 @@ pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType
         wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
         wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
     }
+}
+
+pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
+    if value > u32::MAX.into() {
+        return None;
+    }
+
+    T::from_bits(value as u32)
 }

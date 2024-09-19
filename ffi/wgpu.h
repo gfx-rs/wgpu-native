@@ -151,7 +151,7 @@ typedef struct WGPUSupportedLimitsExtras {
 } WGPUSupportedLimitsExtras;
 
 typedef struct WGPUPushConstantRange {
-    WGPUShaderStageFlags stages;
+    WGPUShaderStage stages;
     uint32_t start;
     uint32_t end;
 } WGPUPushConstantRange;
@@ -281,7 +281,7 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
-void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStageFlags stages, uint32_t offset, uint32_t sizeBytes, void const * data);
+void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void const * data);
 
 void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
 void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
