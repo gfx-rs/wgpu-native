@@ -2662,7 +2662,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
 pub unsafe extern "C" fn wgpuInstanceProcessEvents(instance: native::WGPUInstance) {
     let instance = instance.as_ref().expect("invalid instance");
     let context = &instance.context;
-    
+
     match context.poll_all_devices(false) {
         Ok(_queue_empty) => (),
         Err(cause) => {
