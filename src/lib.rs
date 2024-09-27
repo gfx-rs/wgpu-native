@@ -5,6 +5,7 @@ use conv::{
     map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
     CreateSurfaceParams,
 };
+use core::slice;
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 use std::{
@@ -660,26 +661,33 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 // Adapter methods
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
+pub unsafe extern "C" fn wgpuAdapterGetFeatures(
     adapter: native::WGPUAdapter,
-    features: *mut native::WGPUFeatureName,
-) -> usize {
+    features: Option<&mut native::WGPUSupportedFeatures>,
+) -> native::WGPUStatus {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
     };
+    let features = features.expect("invalid return pointer \"features\"");
+
     let adapter_features = match gfx_select!(adapter_id => context.adapter_features(adapter_id)) {
         Ok(features) => features,
         Err(err) => handle_error_fatal(err, "wgpuAdapterEnumerateFeatures"),
     };
 
     let temp = conv::features_to_native(adapter_features);
+    let mut temp = temp.into_boxed_slice();
 
-    if !features.is_null() {
-        std::ptr::copy_nonoverlapping(temp.as_ptr(), features, temp.len());
-    }
+    *features = native::WGPUSupportedFeatures {
+        nextInChain: std::ptr::null_mut(),
+        featureCount: temp.len(),
+        features: temp.as_mut_ptr(),
+    };
 
-    temp.len()
+    mem::forget(temp);
+
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
@@ -2500,26 +2508,45 @@ pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
+pub unsafe extern "C" fn wgpuDeviceGetFeatures(
     device: native::WGPUDevice,
-    features: *mut native::WGPUFeatureName,
-) -> usize {
+    features: Option<&mut native::WGPUSupportedFeatures>,
+) -> native::WGPUStatus {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
     };
+    let features = features.expect("invalid return pointer \"features\"");
+
     let device_features = match gfx_select!(device_id => context.device_features(device_id)) {
         Ok(features) => features,
         Err(err) => handle_error_fatal(err, "wgpuDeviceEnumerateFeatures"),
     };
 
     let temp = conv::features_to_native(device_features);
+    let mut temp = temp.into_boxed_slice();
 
-    if !features.is_null() {
-        std::ptr::copy_nonoverlapping(temp.as_ptr(), features, temp.len());
+    *features = native::WGPUSupportedFeatures {
+        nextInChain: std::ptr::null_mut(),
+        featureCount: temp.len(),
+        features: temp.as_mut_ptr(),
+    };
+
+    mem::forget(temp);
+
+    native::WGPUStatus_Success
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSupportedFeaturesFreeMembers(
+    supported_features: native::WGPUSupportedFeatures,
+) {
+    if !supported_features.features.is_null() && supported_features.featureCount > 0 {
+        drop(Box::from_raw(slice::from_raw_parts_mut(
+            supported_features.features as *mut native::WGPUFeatureName,
+            supported_features.featureCount,
+        )))
     }
-
-    temp.len()
 }
 
 #[no_mangle]

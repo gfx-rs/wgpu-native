@@ -233,16 +233,13 @@ int main(int argc, char *argv[]) {
   WGPUSurfaceCapabilities surface_capabilities = {0};
   wgpuSurfaceGetCapabilities(demo.surface, demo.adapter, &surface_capabilities);
 
-  size_t adapter_feature_count =
-      wgpuAdapterEnumerateFeatures(demo.adapter, NULL);
-  WGPUFeatureName *adapter_features = (WGPUFeatureName *)malloc(
-      sizeof(WGPUFeatureName) * adapter_feature_count);
-  wgpuAdapterEnumerateFeatures(demo.adapter, adapter_features);
+  WGPUSupportedFeatures adapter_features = {0};
+  wgpuAdapterGetFeatures(demo.adapter, &adapter_features);
 
   bool adapter_has_required_features = false;
   bool adapter_has_optional_features = false;
-  for (size_t i = 0; i < adapter_feature_count; i++) {
-    switch ((uint32_t)adapter_features[i]) {
+  for (size_t i = 0; i < adapter_features.featureCount; i++) {
+    switch ((uint32_t)adapter_features.features[i]) {
     case WGPUNativeFeature_TextureBindingArray:
       adapter_has_required_features = true;
       break;
@@ -253,7 +250,7 @@ int main(int argc, char *argv[]) {
   }
   assert(
           adapter_has_required_features /* Adapter must support WGPUNativeFeature_TextureBindingArray feature for this example */);
-  free(adapter_features);
+  wgpuSupportedFeaturesFreeMembers(adapter_features);
 
   WGPUFeatureName required_device_features[2] = {
       (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray,
