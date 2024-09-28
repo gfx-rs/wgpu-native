@@ -4315,7 +4315,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
     let encoder = pass.encoder.as_mut().unwrap();
 
-    match encoder.multi_draw_indexed_indirect_count(
+    match encoder.multi_draw_indirect_count(
         &pass.context,
         buffer_id,
         offset,
