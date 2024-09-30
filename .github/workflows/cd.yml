@@ -338,6 +338,78 @@ jobs:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
 
+  # -----
+  maccatalyst-x86_64:
+    # Config
+    name: release - maccatalyst-x86_64
+    runs-on: macos-latest
+    env:
+      TARGET: x86_64-apple-ios-macabi
+      ARCHIVE_NAME: wgpu-maccatalyst-x86_64
+      MACOSX_DEPLOYMENT_TARGET: "10.13"
+      RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
+    steps:
+      # Common part (same for each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
+      # Build
+      - name: Build
+        run: make package
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
+
+  # -----
+  maccatalyst-aarch64:
+    # Config
+    name: release - maccatalyst-aarch64
+    runs-on: macos-latest
+    env:
+      TARGET: aarch64-apple-ios-macabi
+      ARCHIVE_NAME: wgpu-maccatalyst-aarch64
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
+      RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
+    steps:
+      # Common part (same for each build)
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set WGPU_NATIVE_VERSION
+        run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
+        shell: bash
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ env.TARGET }}
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
+      # Build
+      - name: Build
+        run: make package
+      # Upload (same for each build)
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: dist
+          name: dist
+
   # Create a Github release and upload the binary libs that we just built.
   # There should be a release and debug build for each platform, plus a file containing the commit sha.
   publish:
