@@ -1,8 +1,6 @@
-use std::{
-    borrow::Cow,
-    ffi::CStr,
-    path::{Path, PathBuf},
-};
+use std::{borrow::Cow, ffi::CStr};
+
+use crate::native;
 
 // A dummy wrapper that is `Send` + `Sync` to store userdata pointer
 // to be usable across Rust callbacks.
@@ -38,28 +36,6 @@ macro_rules! new_userdata {
 
 unsafe impl Send for Userdata {}
 unsafe impl Sync for Userdata {}
-
-#[inline]
-pub(crate) fn ptr_into_label<'a>(ptr: *const std::ffi::c_char) -> wgc::Label<'a> {
-    unsafe { ptr.as_ref() }.and_then(|ptr| {
-        unsafe { CStr::from_ptr(ptr) }
-            .to_str()
-            .ok()
-            .map(Cow::Borrowed)
-    })
-}
-#[inline]
-pub(crate) fn ptr_into_path<'a>(ptr: *const std::ffi::c_char) -> Option<&'a std::path::Path> {
-    unsafe { ptr.as_ref() }
-        .and_then(|v| unsafe { CStr::from_ptr(v) }.to_str().ok())
-        .map(Path::new)
-}
-#[inline]
-pub(crate) fn ptr_into_pathbuf(ptr: *const std::ffi::c_char) -> Option<std::path::PathBuf> {
-    unsafe { ptr.as_ref() }
-        .and_then(|v| unsafe { CStr::from_ptr(v) }.to_str().ok())
-        .map(PathBuf::from)
-}
 
 // Safer wrapper around `slice::from_raw_parts` to handle
 // invalid `ptr` when `len` is zero.
@@ -292,6 +268,71 @@ macro_rules! map_enum {
             map_fn(value).expect($err_msg)
         }
     };
+}
+
+pub unsafe fn string_view_into_str<'a>(string_view: native::WGPUStringView) -> Option<&'a str> {
+    if string_view.data.is_null() {
+        match string_view.length {
+            crate::conv::WGPU_STRLEN => None,
+            0 => Some(""),
+            _ => panic!("Null address to WGPUStringView!"),
+        }
+    } else {
+        unsafe {
+            let bytes = match string_view.length {
+                crate::conv::WGPU_STRLEN => CStr::from_ptr(string_view.data).to_bytes(),
+                _ => make_slice(string_view.data as *const u8, string_view.length),
+            };
+
+            Some(std::str::from_utf8_unchecked(bytes))
+        }
+    }
+}
+
+pub unsafe fn string_view_into_label<'a>(string_view: native::WGPUStringView) -> wgc::Label<'a> {
+    string_view_into_str(string_view).map(Cow::Borrowed)
+}
+
+pub const fn str_into_string_view(str: &str) -> native::WGPUStringView {
+    native::WGPUStringView {
+        data: str.as_ptr() as *const std::os::raw::c_char,
+        length: str.len(),
+    }
+}
+
+/// Create a string view that "owns" its memory, so it can be later dropped with [drop_string_view].
+pub fn str_into_owned_string_view(str: &str) -> native::WGPUStringView {
+    let boxed = String::from(str).into_boxed_str();
+
+    let result = native::WGPUStringView {
+        data: boxed.as_ptr() as *const std::os::raw::c_char,
+        length: boxed.len(),
+    };
+
+    std::mem::forget(boxed);
+
+    result
+}
+
+/// Drop a string view created by [str_into_owned_string_view].
+pub unsafe fn drop_string_view(view: native::WGPUStringView) {
+    if view.data.is_null() {
+        return;
+    }
+
+    drop(Box::from_raw(std::slice::from_raw_parts_mut(
+        view.data as *mut u8,
+        view.length,
+    )))
+}
+
+#[test]
+pub fn test_string_view_into_str() {
+    let str = "Hello, world!";
+    let string_view = str_into_string_view(str);
+    let str_2 = unsafe { string_view_into_str(string_view) }.unwrap();
+
+    assert_eq!(str, str_2)
 }
 
 #[test]

@@ -14,7 +14,7 @@ const size_t IMAGE_HEIGHT = 200;
 const size_t COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
+                                   WGPUAdapter adapter, WGPUStringView message,
                                    void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
@@ -22,7 +22,7 @@ static void handle_request_adapter(WGPURequestAdapterStatus status,
   *(WGPUAdapter *)userdata1 = adapter;
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
+                                  WGPUDevice device, WGPUStringView message,
                                   void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
@@ -30,7 +30,7 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   *(WGPUDevice *)userdata1 = device;
 }
 static void handle_buffer_map(WGPUMapAsyncStatus status, 
-                              char const *message,
+                              WGPUStringView message,
                               void *userdata1, void *userdata2) {
   UNUSED(message)
   UNUSED(userdata1)
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBuffer output_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
-                  .label = "output_buffer",
+                  .label = {"output_buffer", WGPU_STRLEN},
                   .size = buffer_size,
                   .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
                   .mappedAtCreation = false,
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
   WGPUTexture texture = wgpuDeviceCreateTexture(
       device,
       &(const WGPUTextureDescriptor){
-          .label = "texture",
+          .label = {"texture", WGPU_STRLEN},
           .size = texture_extent,
           .mipLevelCount = 1,
           .sampleCount = 1,
@@ -129,13 +129,13 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
       device, &(const WGPUCommandEncoderDescriptor){
-                  .label = "command_encoder",
+                  .label = {"command_encoder", WGPU_STRLEN},
               });
   assert(command_encoder);
 
   WGPURenderPassEncoder render_pass_encoder = wgpuCommandEncoderBeginRenderPass(
       command_encoder, &(const WGPURenderPassDescriptor){
-                           .label = "rende_pass_encoder",
+                           .label = {"rende_pass_encoder", WGPU_STRLEN},
                            .colorAttachmentCount = 1,
                            .colorAttachments =
                                (const WGPURenderPassColorAttachment[]){
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
       command_encoder, &(const WGPUCommandBufferDescriptor){
-                           .label = "command_buffer",
+                           .label = {"command_buffer", WGPU_STRLEN},
                        });
   assert(command_buffer);
 

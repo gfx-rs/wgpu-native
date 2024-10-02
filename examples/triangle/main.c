@@ -26,27 +26,27 @@ struct demo {
 };
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
+                                   WGPUAdapter adapter, WGPUStringView message,
                                    void *userdata1, void *userdata2) {
   UNUSED(userdata2)
   if (status == WGPURequestAdapterStatus_Success) {
     struct demo *demo = userdata1;
     demo->adapter = adapter;
   } else {
-    printf(LOG_PREFIX " request_adapter status=%#.8x message=%s\n", status,
-           message);
+    printf(LOG_PREFIX " request_adapter status=%#.8x message=%.*s\n", status,
+           (int) message.length, message.data);
   }
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
+                                  WGPUDevice device, WGPUStringView message,
                                   void *userdata1, void *userdata2) {
   UNUSED(userdata2)
   if (status == WGPURequestDeviceStatus_Success) {
     struct demo *demo = userdata1;
     demo->device = device;
   } else {
-    printf(LOG_PREFIX " request_device status=%#.8x message=%s\n", status,
-           message);
+    printf(LOG_PREFIX " request_device status=%#.8x message=%.*s\n", status,
+           (int) message.length, message.data);
   }
 }
 static void handle_glfw_key(GLFWwindow *window, int key, int scancode,
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
 
   WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
       demo.device, &(const WGPUPipelineLayoutDescriptor){
-                       .label = "pipeline_layout",
+                       .label = {"pipeline_layout", WGPU_STRLEN},
                    });
   assert(pipeline_layout);
 
@@ -221,17 +221,17 @@ int main(int argc, char *argv[]) {
   WGPURenderPipeline render_pipeline = wgpuDeviceCreateRenderPipeline(
       demo.device,
       &(const WGPURenderPipelineDescriptor){
-          .label = "render_pipeline",
+          .label = {"render_pipeline", WGPU_STRLEN},
           .layout = pipeline_layout,
           .vertex =
               (const WGPUVertexState){
                   .module = shader_module,
-                  .entryPoint = "vs_main",
+                  .entryPoint = {"vs_main", WGPU_STRLEN},
               },
           .fragment =
               &(const WGPUFragmentState){
                   .module = shader_module,
-                  .entryPoint = "fs_main",
+                  .entryPoint = {"fs_main", WGPU_STRLEN},
                   .targetCount = 1,
                   .targets =
                       (const WGPUColorTargetState[]){
@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
 
     WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
         demo.device, &(const WGPUCommandEncoderDescriptor){
-                         .label = "command_encoder",
+                         .label = {"command_encoder", WGPU_STRLEN},
                      });
     assert(command_encoder);
 
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
         wgpuCommandEncoderBeginRenderPass(
             command_encoder,
             &(const WGPURenderPassDescriptor){
-                .label = "render_pass_encoder",
+                .label = {"render_pass_encoder", WGPU_STRLEN},
                 .colorAttachmentCount = 1,
                 .colorAttachments =
                     (const WGPURenderPassColorAttachment[]){
@@ -348,7 +348,7 @@ int main(int argc, char *argv[]) {
 
     WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
         command_encoder, &(const WGPUCommandBufferDescriptor){
-                             .label = "command_buffer",
+                             .label = {"command_buffer", WGPU_STRLEN},
                          });
     assert(command_buffer);
 

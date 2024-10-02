@@ -26,16 +26,17 @@ int main(int argc, char *argv[]) {
     wgpuAdapterGetInfo(adapter, &info);
     printf("WGPUAdapter: %d\n", i);
     printf("WGPUAdapterInfo {\n"
-           "\tvendor: %s\n"
-           "\tarchitecture: %s\n"
-           "\tdevice: %s\n"
-           "\tdescription: %s\n"
+           "\tvendor: %.*s\n"
+           "\tarchitecture: %.*s\n"
+           "\tdevice: %.*s\n"
+           "\tdescription: %.*s\n"
            "\tbackendType: %#.8x\n"
            "\tadapterType: %#.8x\n"
            "\tvendorID: %" PRIu32 "\n"
            "\tdeviceID: %" PRIu32 "\n"
            "}\n",
-           info.vendor, info.architecture, info.device, info.description,
+           (int) info.vendor.length, info.vendor.data, (int) info.architecture.length, info.architecture.data,
+           (int) info.device.length, info.device.data, (int) info.description.length, info.description.data,
            info.backendType, info.adapterType, info.vendorID, info.deviceID);
 
     wgpuAdapterInfoFreeMembers(info);

@@ -122,13 +122,13 @@ typedef struct WGPUInstanceExtras {
     WGPUInstanceFlag flags;
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
-    const char * dxilPath;
-    const char * dxcPath;
+    WGPUStringView dxilPath;
+    WGPUStringView dxcPath;
 } WGPUInstanceExtras;
 
 typedef struct WGPUDeviceExtras {
     WGPUChainedStruct chain;
-    const char * tracePath;
+    WGPUStringView tracePath;
 } WGPUDeviceExtras;
 
 typedef struct WGPUNativeLimits {
@@ -166,14 +166,14 @@ typedef struct WGPUWrappedSubmissionIndex {
 } WGPUWrappedSubmissionIndex;
 
 typedef struct WGPUShaderDefine {
-    char const * name;
-    char const * value;
+    WGPUStringView name;
+    WGPUStringView value;
 } WGPUShaderDefine;
 
 typedef struct WGPUShaderModuleGLSLDescriptor {
     WGPUChainedStruct chain;
     WGPUShaderStage stage;
-    char const * code;
+    WGPUStringView code;
     uint32_t defineCount;
     WGPUShaderDefine * defines;
 } WGPUShaderModuleGLSLDescriptor;
@@ -245,7 +245,7 @@ typedef struct WGPUSurfaceConfigurationExtras {
     uint32_t desiredMaximumFrameLatency;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef void (*WGPULogCallback)(WGPULogLevel level, char const * message, void * userdata);
+typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void * userdata);
 
 typedef enum WGPUNativeTextureFormat {
     // From Features::TEXTURE_FORMAT_16BIT_NORM

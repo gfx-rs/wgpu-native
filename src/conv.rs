@@ -1,9 +1,10 @@
-use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
+use crate::utils::{make_slice, string_view_into_label, string_view_into_str};
 use crate::{follow_chain, map_enum, new_userdata};
 use crate::{native, UncapturedErrorCallback};
+use std::borrow::Cow;
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
+use std::path::PathBuf;
 use std::ptr::NonNull;
-use std::{borrow::Cow, ffi::CStr};
 
 map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp, Clear, Load);
 map_enum!(
@@ -215,6 +216,7 @@ pub const WGPU_WHOLE_SIZE: u64 = u64::MAX;
 pub const WGPU_LIMIT_U64_UNDEFINED: u64 = u64::MAX;
 // it's SIZE_MAX in headers but it's not available in some compilers
 pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
+pub const WGPU_STRLEN: usize = usize::MAX;
 
 #[inline]
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
@@ -275,7 +277,7 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
 }
 
 #[inline]
-pub fn map_instance_descriptor(
+pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
 ) -> wgt::InstanceDescriptor {
@@ -283,8 +285,8 @@ pub fn map_instance_descriptor(
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
-                dxil_path: ptr_into_pathbuf(extras.dxilPath),
-                dxc_path: ptr_into_pathbuf(extras.dxcPath),
+                dxil_path: string_view_into_str(extras.dxilPath).map(PathBuf::from),
+                dxc_path: string_view_into_str(extras.dxcPath).map(PathBuf::from),
             },
             _ => wgt::Dx12Compiler::default(),
         };
@@ -304,18 +306,18 @@ pub fn map_instance_descriptor(
 }
 
 #[inline]
-pub(crate) fn map_device_descriptor<'a>(
+pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
-    *const std::ffi::c_char,
+    Option<&'a str>,
     Option<UncapturedErrorCallback>,
 ) {
     (
         wgt::DeviceDescriptor {
-            label: ptr_into_label(des.label),
+            label: string_view_into_label(des.label),
             required_features: map_features(make_slice(
                 des.requiredFeatures,
                 des.requiredFeatureCount,
@@ -332,10 +334,7 @@ pub(crate) fn map_device_descriptor<'a>(
             // TODO(wgpu.h)
             memory_hints: Default::default(),
         },
-        match extras {
-            Some(extras) => extras.tracePath,
-            None => std::ptr::null(),
-        },
+        extras.and_then(|extras| string_view_into_str(extras.tracePath)),
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
             callback => Some(UncapturedErrorCallback {
@@ -373,7 +372,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     });
 
     return wgc::binding_model::PipelineLayoutDescriptor {
-        label: ptr_into_label(des.label),
+        label: string_view_into_label(des.label),
         bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
@@ -572,7 +571,7 @@ pub enum ShaderParseError {
 }
 
 #[inline]
-pub fn map_shader_module<'a>(
+pub unsafe fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
     spirv: Option<&native::WGPUShaderSourceSPIRV>,
     wgsl: Option<&native::WGPUShaderSourceWGSL>,
@@ -580,8 +579,7 @@ pub fn map_shader_module<'a>(
 ) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
     if let Some(wgsl) = wgsl {
-        let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
-        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        let str_slice: &str = string_view_into_str(wgsl.code).unwrap_or("");
         return Ok(wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(
             str_slice,
         )));
@@ -605,8 +603,7 @@ pub fn map_shader_module<'a>(
 
     #[cfg(feature = "glsl")]
     if let Some(glsl) = glsl {
-        let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
-        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        let str_slice: &str = string_view_into_str(glsl.code).unwrap_or("");
         let mut options = naga::front::glsl::Options::from(
             map_shader_stage(glsl.stage)
                 .expect("invalid shader stage for shader module glsl descriptor"),
@@ -614,11 +611,8 @@ pub fn map_shader_module<'a>(
 
         let raw_defines = make_slice(glsl.defines, glsl.defineCount as usize);
         for define in raw_defines {
-            let name_c_str: &CStr = unsafe { CStr::from_ptr(define.name) };
-            let name_str_slice: &str = name_c_str.to_str().expect("not a valid utf-8 string");
-
-            let value_c_str: &CStr = unsafe { CStr::from_ptr(define.value) };
-            let value_str_slice: &str = value_c_str.to_str().expect("not a valid utf-8 string");
+            let name_str_slice: &str = string_view_into_str(define.name).unwrap_or("");
+            let value_str_slice: &str = string_view_into_str(define.value).unwrap_or("");
 
             options
                 .defines
@@ -1478,12 +1472,12 @@ pub fn map_query_set_index(index: u32) -> Option<u32> {
 }
 
 #[inline]
-pub fn map_query_set_descriptor<'a>(
+pub unsafe fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
     extras: Option<&native::WGPUQuerySetDescriptorExtras>,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
     wgt::QuerySetDescriptor {
-        label: ptr_into_label(desc.label),
+        label: string_view_into_label(desc.label),
         count: desc.count,
         ty: match (desc.type_, extras) {
             (native::WGPUQueryType_Occlusion, _) => wgt::QueryType::Occlusion,

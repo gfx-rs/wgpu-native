@@ -7,7 +7,7 @@
 #define LOG_PREFIX "[compute]"
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
+                                   WGPUAdapter adapter, WGPUStringView message,
                                    void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
@@ -15,7 +15,7 @@ static void handle_request_adapter(WGPURequestAdapterStatus status,
   *(WGPUAdapter *)userdata1 = adapter;
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
+                                  WGPUDevice device, WGPUStringView message,
                                   void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
@@ -23,7 +23,7 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   *(WGPUDevice *)userdata1 = device;
 }
 static void handle_buffer_map(WGPUMapAsyncStatus status,
-                              char const * message,
+                              WGPUStringView message,
                               void *userdata1, void *userdata2) {
   UNUSED(userdata1)
   UNUSED(userdata2)
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBuffer staging_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
-                  .label = "staging_buffer",
+                  .label = {"staging_buffer", WGPU_STRLEN},
                   .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
                   .size = numbers_size,
                   .mappedAtCreation = false,
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBuffer storage_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
-                  .label = "storage_buffer",
+                  .label = {"storage_buffer", WGPU_STRLEN},
                   .usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst |
                            WGPUBufferUsage_CopySrc,
                   .size = numbers_size,
@@ -86,11 +86,11 @@ int main(int argc, char *argv[]) {
 
   WGPUComputePipeline compute_pipeline = wgpuDeviceCreateComputePipeline(
       device, &(const WGPUComputePipelineDescriptor){
-                  .label = "compute_pipeline",
+                  .label = {"compute_pipeline", WGPU_STRLEN},
                   .compute =
                       (const WGPUProgrammableStageDescriptor){
                           .module = shader_module,
-                          .entryPoint = "main",
+                          .entryPoint = {"main", WGPU_STRLEN},
                       },
               });
   assert(compute_pipeline);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
       device, &(const WGPUBindGroupDescriptor){
-                  .label = "bind_group",
+                  .label = {"bind_group", WGPU_STRLEN},
                   .layout = bind_group_layout,
                   .entryCount = 1,
                   .entries =
@@ -118,14 +118,14 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
       device, &(const WGPUCommandEncoderDescriptor){
-                  .label = "command_encoder",
+                  .label = {"command_encoder", WGPU_STRLEN},
               });
   assert(command_encoder);
 
   WGPUComputePassEncoder compute_pass_encoder =
       wgpuCommandEncoderBeginComputePass(command_encoder,
                                          &(const WGPUComputePassDescriptor){
-                                             .label = "compute_pass",
+                                             .label = {"compute_pass", WGPU_STRLEN},
                                          });
   assert(compute_pass_encoder);
 
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
       command_encoder, &(const WGPUCommandBufferDescriptor){
-                           .label = "command_buffer",
+                           .label = {"command_buffer", WGPU_STRLEN},
                        });
   assert(command_buffer);
 

@@ -26,27 +26,27 @@ struct demo {
 };
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
+                                   WGPUAdapter adapter, WGPUStringView message,
                                    void *userdata1, void *userdata2) {
   UNUSED(userdata2)
   if (status == WGPURequestAdapterStatus_Success) {
     struct demo *demo = userdata1;
     demo->adapter = adapter;
   } else {
-    printf(LOG_PREFIX " request_adapter status=%#.8x message=%s\n", status,
-           message);
+    printf(LOG_PREFIX " request_adapter status=%#.8x message=%.*s\n", status,
+           (int) message.length, message.data);
   }
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
+                                  WGPUDevice device, WGPUStringView message,
                                   void *userdata1, void *userdata2) {
   UNUSED(userdata2)
   if (status == WGPURequestDeviceStatus_Success) {
     struct demo *demo = userdata1;
     demo->device = device;
   } else {
-    printf(LOG_PREFIX " request_device status=%#.8x message=%s\n", status,
-           message);
+    printf(LOG_PREFIX " request_device status=%#.8x message=%.*s\n", status,
+           (int) message.length, message.data);
   }
 }
 static void handle_glfw_framebuffer_size(GLFWwindow *window, int width,
@@ -368,25 +368,25 @@ int main(int argc, char *argv[]) {
   WGPUTexture red_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "red",
+                       .label = {"red", WGPU_STRLEN},
                    });
   assert(red_texture);
   WGPUTexture green_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "green",
+                       .label = {"green", WGPU_STRLEN},
                    });
   assert(green_texture);
   WGPUTexture blue_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "blue",
+                       .label = {"blue", WGPU_STRLEN},
                    });
   assert(blue_texture);
   WGPUTexture white_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "white",
+                       .label = {"white", WGPU_STRLEN},
                    });
   assert(white_texture);
 
@@ -516,7 +516,7 @@ int main(int argc, char *argv[]) {
   };
   WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(
       demo.device, &(const WGPUBindGroupLayoutDescriptor){
-                       .label = "bind group layout",
+                       .label = {"bind group layout", WGPU_STRLEN},
                        .entryCount = sizeof(bind_group_layout_entries) /
                                      sizeof(bind_group_layout_entries[0]),
                        .entries = bind_group_layout_entries,
@@ -582,7 +582,7 @@ int main(int argc, char *argv[]) {
   WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
       demo.device, &(const WGPUBindGroupDescriptor){
                        .layout = bind_group_layout,
-                       .label = "bind group",
+                       .label = {"bind group", WGPU_STRLEN},
                        .entryCount = sizeof(bind_group_entries) /
                                      sizeof(bind_group_entries[0]),
                        .entries = bind_group_entries,
@@ -591,7 +591,7 @@ int main(int argc, char *argv[]) {
 
   WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
       demo.device, &(const WGPUPipelineLayoutDescriptor){
-                       .label = "main",
+                       .label = {"main", WGPU_STRLEN},
                        .bindGroupLayoutCount = 1,
                        .bindGroupLayouts =
                            (const WGPUBindGroupLayout[]){
@@ -607,7 +607,7 @@ int main(int argc, char *argv[]) {
           .vertex =
               (const WGPUVertexState){
                   .module = base_shader_module,
-                  .entryPoint = "vert_main",
+                  .entryPoint = {"vert_main", WGPU_STRLEN},
                   .bufferCount = 1,
                   .buffers =
                       (const WGPUVertexBufferLayout[]){
@@ -623,7 +623,7 @@ int main(int argc, char *argv[]) {
           .fragment =
               &(const WGPUFragmentState){
                   .module = fragment_shader_module,
-                  .entryPoint = fragment_entry_point,
+                  .entryPoint = {fragment_entry_point, WGPU_STRLEN},
                   .targetCount = 1,
                   .targets =
                       (const WGPUColorTargetState[]){
@@ -688,7 +688,7 @@ int main(int argc, char *argv[]) {
 
     WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
         demo.device, &(const WGPUCommandEncoderDescriptor){
-                         .label = "command_encoder",
+                         .label = {"command_encoder", WGPU_STRLEN},
                      });
     assert(command_encoder);
 
@@ -696,7 +696,7 @@ int main(int argc, char *argv[]) {
         wgpuCommandEncoderBeginRenderPass(
             command_encoder,
             &(const WGPURenderPassDescriptor){
-                .label = "render_pass_encoder",
+                .label = {"render_pass_encoder", WGPU_STRLEN},
                 .colorAttachmentCount = 1,
                 .colorAttachments =
                     (const WGPURenderPassColorAttachment[]){
@@ -740,7 +740,7 @@ int main(int argc, char *argv[]) {
 
     WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
         command_encoder, &(const WGPUCommandBufferDescriptor){
-                             .label = "command_buffer",
+                             .label = {"command_buffer", WGPU_STRLEN},
                          });
     assert(command_buffer);
 
