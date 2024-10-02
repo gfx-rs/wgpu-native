@@ -278,14 +278,12 @@ pub unsafe fn string_view_into_str<'a>(string_view: native::WGPUStringView) -> O
             _ => panic!("Null address to WGPUStringView!"),
         }
     } else {
-        unsafe {
-            let bytes = match string_view.length {
-                crate::conv::WGPU_STRLEN => CStr::from_ptr(string_view.data).to_bytes(),
-                _ => make_slice(string_view.data as *const u8, string_view.length),
-            };
+        let bytes = match string_view.length {
+            crate::conv::WGPU_STRLEN => CStr::from_ptr(string_view.data).to_bytes(),
+            _ => make_slice(string_view.data as *const u8, string_view.length),
+        };
 
-            Some(std::str::from_utf8_unchecked(bytes))
-        }
+        Some(std::str::from_utf8_unchecked(bytes))
     }
 }
 
