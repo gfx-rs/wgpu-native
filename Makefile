@@ -53,6 +53,7 @@ package: lib-native lib-native-release
 		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
 		rm -r -f dist/$$ARCHIVEDIR; \
 		rm -f dist/$$ARCHIVEFILE; \
+		mkdir -p dist/$$ARCHIVEDIR/specifications; \
 		mkdir -p dist/$$ARCHIVEDIR/include/webgpu; \
 		mkdir -p dist/$$ARCHIVEDIR/lib; \
 		cp ./dist/wgpu-native-git-tag                 dist/$$ARCHIVEDIR; \
