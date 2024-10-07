@@ -4231,6 +4231,42 @@ pub unsafe extern "C" fn wgpuDevicePoll(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUShaderModuleDescriptorSpirV>,
+) -> native::WGPUShaderModule {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid descriptor");
+
+    let desc = wgc::pipeline::ShaderModuleDescriptor {
+        label: ptr_into_label(descriptor.label),
+        shader_bound_checks: unsafe { wgt::ShaderBoundChecks::unchecked() },
+    };
+
+    let source = Cow::Borrowed(make_slice(
+        descriptor.source,
+        descriptor.sourceSize as usize,
+    ));
+    let (shader_module_id, error) = gfx_select!(device_id => context.device_create_shader_module_spirv(device_id, &desc, source, None));
+    if let Some(cause) = error {
+        handle_error(
+            error_sink,
+            cause,
+            desc.label,
+            "wgpuDeviceCreateShaderModuleSpirV",
+        );
+    }
+
+    Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
+        context: context.clone(),
+        id: Some(shader_module_id),
+    }))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     pass: native::WGPURenderPassEncoder,
     stages: native::WGPUShaderStageFlags,

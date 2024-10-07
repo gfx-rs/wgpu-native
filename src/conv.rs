@@ -1187,9 +1187,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     // if features.contains(wgt::Features::CLEAR_TEXTURE) {
     //     temp.push(native::WGPUNativeFeature_ClearTexture);
     // }
-    // if features.contains(wgt::Features::SPIRV_SHADER_PASSTHROUGH) {
-    //     temp.push(native::WGPUNativeFeature_SpirvShaderPassthrough);
-    // }
+    if features.contains(wgt::Features::SPIRV_SHADER_PASSTHROUGH) {
+        temp.push(native::WGPUNativeFeature_SpirvShaderPassthrough);
+    }
     // if features.contains(wgt::Features::MULTIVIEW) {
     //     temp.push(native::WGPUNativeFeature_Multiview);
     // }
@@ -1264,7 +1264,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
         // native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
         // native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
-        // native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
+        native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
         // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
         native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
