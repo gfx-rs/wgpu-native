@@ -53,11 +53,11 @@ package: lib-native lib-native-release
 		LIBDIR=$(TARGET_DIR)/$$RELEASE; \
 		rm -r -f dist/$$ARCHIVEDIR; \
 		rm -f dist/$$ARCHIVEFILE; \
-		mkdir -p dist/$$ARCHIVEDIR/specifications; \
+		mkdir -p dist/$$ARCHIVEDIR/wgpu-native-meta; \
 		mkdir -p dist/$$ARCHIVEDIR/include/webgpu; \
 		mkdir -p dist/$$ARCHIVEDIR/lib; \
-		cp ./dist/wgpu-native-git-tag                 dist/$$ARCHIVEDIR; \
-		cp ./ffi/webgpu-headers/webgpu.yml            dist/$$ARCHIVEDIR/specifications; \
+		cp ./dist/wgpu-native-git-tag                 dist/$$ARCHIVEDIR/wgpu-native-meta; \
+		cp ./ffi/webgpu-headers/webgpu.yml            dist/$$ARCHIVEDIR/wgpu-native-meta; \
 		cp ./ffi/webgpu-headers/webgpu.h              dist/$$ARCHIVEDIR/include/webgpu; \
 		cp ./ffi/wgpu.h                               dist/$$ARCHIVEDIR/include/webgpu; \
 		if [ $(OS_NAME) = linux ]; then \
