@@ -53,6 +53,9 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_ShaderI16 = 0x0003001E,
     WGPUNativeFeature_ShaderPrimitiveIndex = 0x0003001F,
     WGPUNativeFeature_ShaderEarlyDepthTest = 0x00030020,
+    WGPUNativeFeature_Subgroup = 0x00030021,
+    WGPUNativeFeature_SubgroupVertex = 0x00030022,
+    WGPUNativeFeature_SubgroupBarrier = 0x00030023,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
