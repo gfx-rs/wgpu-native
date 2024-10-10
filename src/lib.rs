@@ -4258,6 +4258,27 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
+    pass: native::WGPUComputePassEncoder,
+    offset: u32,
+    size_bytes: u32,
+    data: *const u8,
+) {
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let encoder = pass.encoder.as_mut().unwrap();
+
+    match encoder.set_push_constants(&pass.context, offset, make_slice(data, size_bytes as usize)) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuComputePassEncoderSetPushConstants",
+        ),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
     pass: native::WGPURenderPassEncoder,
     buffer: native::WGPUBuffer,
