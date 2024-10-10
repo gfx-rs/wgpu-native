@@ -4442,3 +4442,45 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
         ),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuComputePassEncoderWriteTimestamp(
+    pass: native::WGPUComputePassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid compute pass");
+    let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let encoder = pass.encoder.as_mut().unwrap();
+
+    match encoder.write_timestamp(&pass.context, query_set_id, query_index) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuComputePassEncoderWriteTimestamp",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderWriteTimestamp(
+    pass: native::WGPURenderPassEncoder,
+    query_set: native::WGPUQuerySet,
+    query_index: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let query_set_id = query_set.as_ref().expect("invalid query set").id;
+    let encoder = pass.encoder.as_mut().unwrap();
+
+    match encoder.write_timestamp(&pass.context, query_set_id, query_index) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuRenderPassEncoderWriteTimestamp",
+        ),
+    }
+}

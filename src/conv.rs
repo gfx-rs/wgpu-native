@@ -1153,10 +1153,12 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_COMPRESSION_ASTC_HDR) {
         temp.push(native::WGPUNativeFeature_TextureCompressionAstcHdr);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES) {
-    //     temp.push(native::WGPUNativeFeature_TimestampQueryInsidePasses);
-    // }
+    if features.contains(wgt::Features::TIMESTAMP_QUERY_INSIDE_PASSES) {
+        temp.push(native::WGPUNativeFeature_TimestampQueryInsidePasses);
+    }
+    if features.contains(wgt::Features::TIMESTAMP_QUERY_INSIDE_ENCODERS) {
+        temp.push(native::WGPUNativeFeature_TimestampQueryInsideEncoders);
+    }
     if features.contains(wgt::Features::MAPPABLE_PRIMARY_BUFFERS) {
         temp.push(native::WGPUNativeFeature_MappablePrimaryBuffers);
     }
@@ -1261,8 +1263,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_PartiallyBoundBindingArray => Some(Features::PARTIALLY_BOUND_BINDING_ARRAY),
         native::WGPUNativeFeature_TextureFormat16bitNorm => Some(Features::TEXTURE_FORMAT_16BIT_NORM),
         native::WGPUNativeFeature_TextureCompressionAstcHdr => Some(Features::TEXTURE_COMPRESSION_ASTC_HDR),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_TimestampQueryInsidePasses => Some(Features::TIMESTAMP_QUERY_INSIDE_PASSES),
+        native::WGPUNativeFeature_TimestampQueryInsidePasses => Some(Features::TIMESTAMP_QUERY_INSIDE_PASSES),
+        native::WGPUNativeFeature_TimestampQueryInsideEncoders => Some(Features::TIMESTAMP_QUERY_INSIDE_ENCODERS),
         native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
         native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
         native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing => Some(Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
