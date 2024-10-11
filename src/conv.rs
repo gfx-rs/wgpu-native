@@ -1217,6 +1217,15 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_EARLY_DEPTH_TEST) {
         temp.push(native::WGPUNativeFeature_ShaderEarlyDepthTest);
     }
+    if features.contains(wgt::Features::SUBGROUP) {
+        temp.push(native::WGPUNativeFeature_Subgroup);
+    }
+    if features.contains(wgt::Features::SUBGROUP_VERTEX) {
+        temp.push(native::WGPUNativeFeature_SubgroupVertex);
+    }
+    if features.contains(wgt::Features::SUBGROUP_BARRIER) {
+        temp.push(native::WGPUNativeFeature_SubgroupBarrier);
+    }
 
     temp
 }
@@ -1273,6 +1282,9 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_ShaderF64 => Some(Features::SHADER_F64),
         native::WGPUNativeFeature_ShaderPrimitiveIndex => Some(Features::SHADER_PRIMITIVE_INDEX),
         native::WGPUNativeFeature_ShaderEarlyDepthTest => Some(Features::SHADER_EARLY_DEPTH_TEST),
+        native::WGPUNativeFeature_Subgroup => Some(Features::SUBGROUP),
+        native::WGPUNativeFeature_SubgroupVertex => Some(Features::SUBGROUP_VERTEX),
+        native::WGPUNativeFeature_SubgroupBarrier => Some(Features::SUBGROUP_BARRIER),
         // fallback, probably not available in wgpu-core
         _ => None,
     }
