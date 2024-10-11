@@ -39,6 +39,8 @@ endif
 .PHONY: check test doc clear \
 	lib-native lib-native-release \
 	example-capture example-compute example-triangle \
+	example-push_constants example-push_constants-release \
+	run-example-push_constants run-example-push_constants-release \
 	example-capture-release example-compute-release example-triangle-release \
 	run-example-capture run-example-compute run-example-triangle \
 	run-example-capture-release run-example-compute-release run-example-triangle-release
@@ -117,6 +119,18 @@ examples-debug: lib-native
 
 examples-release: lib-native-release
 	cd examples && $(MKDIR_CMD) "build/RelWithDebInfo" && cd build/RelWithDebInfo && cmake -GNinja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../..
+
+example-push_constants: examples-debug
+	cd examples/build/Debug && cmake --build . --target push_constants
+
+run-example-push_constants: example-push_constants
+	cd examples/push_constants && "../build/Debug/push_constants/push_constants"
+
+example-push_constants-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target push_constants
+
+run-example-push_constants-release: example-push_constants-release
+	cd examples/push_constants && "../build/RelWithDebInfo/push_constants/push_constants"
 
 example-capture: examples-debug
 	cd examples/build/Debug && cmake --build . --target capture
