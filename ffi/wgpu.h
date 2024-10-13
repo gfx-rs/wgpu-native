@@ -167,11 +167,6 @@ typedef struct WGPUPipelineLayoutExtras {
 
 typedef uint64_t WGPUSubmissionIndex;
 
-typedef struct WGPUWrappedSubmissionIndex {
-    WGPUQueue queue;
-    WGPUSubmissionIndex submissionIndex;
-} WGPUWrappedSubmissionIndex;
-
 typedef struct WGPUShaderDefine {
     char const * name;
     char const * value;
@@ -189,7 +184,6 @@ typedef struct WGPURegistryReport {
    size_t numAllocated;
    size_t numKeptFromUser;
    size_t numReleasedFromUser;
-   size_t numError;
    size_t elementSize;
 } WGPURegistryReport;
 
@@ -205,6 +199,7 @@ typedef struct WGPUHubReport {
     WGPURegistryReport renderBundles;
     WGPURegistryReport renderPipelines;
     WGPURegistryReport computePipelines;
+    WGPURegistryReport pipelineCaches;
     WGPURegistryReport querySets;
     WGPURegistryReport buffers;
     WGPURegistryReport textures;
@@ -214,11 +209,7 @@ typedef struct WGPUHubReport {
 
 typedef struct WGPUGlobalReport {
     WGPURegistryReport surfaces;
-    WGPUBackendType backendType;
-    WGPUHubReport vulkan;
-    WGPUHubReport metal;
-    WGPUHubReport dx12;
-    WGPUHubReport gl;
+    WGPUHubReport hub;
 } WGPUGlobalReport;
 
 typedef struct WGPUInstanceEnumerateAdapterOptions {
@@ -276,7 +267,7 @@ size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUIn
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
+WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * wrappedSubmissionIndex);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
 

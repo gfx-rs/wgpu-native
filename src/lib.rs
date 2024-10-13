@@ -21,8 +21,8 @@ use utils::{
     get_base_device_limits_from_adapter_limits, make_slice, ptr_into_label, ptr_into_path,
 };
 use wgc::{
-    command::{bundle_ffi, DynComputePass, DynRenderPass},
-    gfx_select, id, resource, Label,
+    command::{bundle_ffi, ComputePass, RenderPass},
+    id, resource, Label,
 };
 
 pub mod conv;
@@ -48,7 +48,7 @@ impl Drop for WGPUAdapterImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.adapter_drop(self.id));
+            context.adapter_drop(self.id);
         }
     }
 }
@@ -61,7 +61,7 @@ impl Drop for WGPUBindGroupImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.bind_group_drop(self.id));
+            context.bind_group_drop(self.id);
         }
     }
 }
@@ -74,7 +74,7 @@ impl Drop for WGPUBindGroupLayoutImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.bind_group_layout_drop(self.id));
+            context.bind_group_layout_drop(self.id);
         }
     }
 }
@@ -93,7 +93,7 @@ impl Drop for WGPUBufferImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.buffer_drop(self.id, false));
+            context.buffer_drop(self.id);
         }
     }
 }
@@ -107,7 +107,7 @@ impl Drop for WGPUCommandBufferImpl {
     fn drop(&mut self) {
         if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.command_buffer_drop(self.id));
+            context.command_buffer_drop(self.id);
         }
     }
 }
@@ -122,14 +122,14 @@ impl Drop for WGPUCommandEncoderImpl {
     fn drop(&mut self) {
         if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.command_encoder_drop(self.id));
+            context.command_encoder_drop(self.id);
         }
     }
 }
 
 pub struct WGPUComputePassEncoderImpl {
     context: Arc<Context>,
-    encoder: *mut dyn DynComputePass,
+    encoder: *mut ComputePass,
     error_sink: ErrorSink,
 }
 impl Drop for WGPUComputePassEncoderImpl {
@@ -152,7 +152,7 @@ impl Drop for WGPUComputePipelineImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.compute_pipeline_drop(self.id));
+            context.compute_pipeline_drop(self.id);
         }
     }
 }
@@ -165,7 +165,7 @@ impl Drop for QueueId {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.queue_drop(self.id));
+            context.queue_drop(self.id);
         }
     }
 }
@@ -181,12 +181,12 @@ impl Drop for WGPUDeviceImpl {
         if !thread::panicking() {
             let context = &self.context;
 
-            match gfx_select!(self.id => context.device_poll(self.id, wgt::Maintain::Wait)) {
+            match context.device_poll(self.id, wgt::Maintain::Wait) {
                 Ok(_) => (),
                 Err(err) => handle_error_fatal(err, "WGPUDeviceImpl::drop"),
             }
 
-            gfx_select!(self.id => context.device_drop(self.id));
+            context.device_drop(self.id);
         }
     }
 }
@@ -203,7 +203,7 @@ impl Drop for WGPUPipelineLayoutImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.pipeline_layout_drop(self.id));
+            context.pipeline_layout_drop(self.id);
         }
     }
 }
@@ -221,7 +221,7 @@ impl Drop for WGPUQuerySetImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.query_set_drop(self.id));
+            context.query_set_drop(self.id);
         }
     }
 }
@@ -239,7 +239,7 @@ impl Drop for WGPURenderBundleImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.render_bundle_drop(self.id));
+            context.render_bundle_drop(self.id);
         }
     }
 }
@@ -264,7 +264,7 @@ unsafe impl Sync for WGPURenderBundleEncoderImpl {}
 
 pub struct WGPURenderPassEncoderImpl {
     context: Arc<Context>,
-    encoder: *mut dyn DynRenderPass,
+    encoder: *mut RenderPass,
     error_sink: ErrorSink,
 }
 impl Drop for WGPURenderPassEncoderImpl {
@@ -287,7 +287,7 @@ impl Drop for WGPURenderPipelineImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.render_pipeline_drop(self.id));
+            context.render_pipeline_drop(self.id);
         }
     }
 }
@@ -300,7 +300,7 @@ impl Drop for WGPUSamplerImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            gfx_select!(self.id => context.sampler_drop(self.id));
+            context.sampler_drop(self.id);
         }
     }
 }
@@ -314,14 +314,13 @@ impl Drop for WGPUShaderModuleImpl {
         if let Some(id) = self.id {
             if !thread::panicking() {
                 let context = &self.context;
-                gfx_select!(id => context.shader_module_drop(id));
+                context.shader_module_drop(id);
             }
         }
     }
 }
 
 struct SurfaceData {
-    device_id: id::DeviceId,
     error_sink: ErrorSink,
     texture_data: TextureData,
 }
@@ -369,7 +368,7 @@ impl Drop for WGPUTextureImpl {
             Some(surface_id) => {
                 if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
                     let context = &self.context;
-                    match gfx_select!(self.id => context.surface_texture_discard(surface_id)) {
+                    match context.surface_texture_discard(surface_id) {
                         Ok(_) => (),
                         Err(cause) => handle_error_fatal(cause, "wgpuTextureRelease"),
                     }
@@ -377,7 +376,7 @@ impl Drop for WGPUTextureImpl {
             }
             None => {
                 let context = &self.context;
-                gfx_select!(self.id => context.texture_drop(self.id, false));
+                context.texture_drop(self.id);
             }
         }
     }
@@ -391,7 +390,7 @@ impl Drop for WGPUTextureViewImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            let _ = gfx_select!(self.id => context.texture_view_drop(self.id, false));
+            let _ = context.texture_view_drop(self.id);
         }
     }
 }
@@ -649,10 +648,7 @@ pub unsafe extern "C" fn wgpuAdapterEnumerateFeatures(
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
     };
-    let adapter_features = match gfx_select!(adapter_id => context.adapter_features(adapter_id)) {
-        Ok(features) => features,
-        Err(err) => handle_error_fatal(err, "wgpuAdapterEnumerateFeatures"),
-    };
+    let adapter_features = context.adapter_features(adapter_id);
 
     let temp = conv::features_to_native(adapter_features);
 
@@ -674,11 +670,8 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
     };
     let limits = limits.expect("invalid return pointer \"limits\"");
 
-    let result = gfx_select!(adapter_id => context.adapter_limits(adapter_id));
-    match result {
-        Ok(wgt_limits) => conv::write_limits_struct(wgt_limits, limits),
-        Err(err) => handle_error_fatal(err, "wgpuAdapterGetLimits"),
-    }
+    let wgt_limits = context.adapter_limits(adapter_id);
+    conv::write_limits_struct(wgt_limits, limits);
 
     true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
@@ -693,11 +686,7 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     let context = adapter.context.as_ref();
     let adapter_id = adapter.id;
 
-    let result = gfx_select!(adapter_id => context.adapter_get_info(adapter_id));
-    let result = match result {
-        Ok(info) => info,
-        Err(err) => handle_error_fatal(err, "wgpuAdapterGetInfo"),
-    };
+    let result = context.adapter_get_info(adapter_id);
 
     info.vendor = CString::new(result.driver).unwrap().into_raw();
     info.architecture = CString::default().into_raw(); // TODO(webgpu.h)
@@ -718,10 +707,7 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
     };
-    let adapter_features = match gfx_select!(adapter_id => context.adapter_features(adapter_id)) {
-        Ok(features) => features,
-        Err(err) => handle_error_fatal(err, "wgpuAdapterHasFeature"),
-    };
+    let adapter_features = context.adapter_features(adapter_id);
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
@@ -760,19 +746,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     };
     let callback = callback.expect("invalid callback");
 
-    let adapter_limits = match gfx_select!(adapter_id => context.adapter_limits(adapter_id)) {
-        Ok(adapter_limits) => adapter_limits,
-        Err(cause) => {
-            let msg = CString::new(format_error(&cause)).unwrap();
-            callback(
-                native::WGPURequestDeviceStatus_Error,
-                std::ptr::null(),
-                msg.as_ptr(),
-                userdata,
-            );
-            return;
-        }
-    };
+    let adapter_limits = context.adapter_limits(adapter_id);
     let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits);
 
     let (desc, trace_str, device_lost_handler, error_callback) = match descriptor {
@@ -798,17 +772,10 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         ),
     };
 
-    let (device_id, queue_id, err) = gfx_select!(adapter_id =>
-        context.adapter_request_device(
-            adapter_id,
-            &desc,
-            ptr_into_path(trace_str),
-            None,
-            None
-        )
-    );
-    match err {
-        None => {
+    let result =
+        context.adapter_request_device(adapter_id, &desc, ptr_into_path(trace_str), None, None);
+    match result {
+        Ok((device_id, queue_id)) => {
             let message = CString::default();
             let mut error_sink = ErrorSinkRaw::new(device_lost_handler);
             if let Some(error_callback) = error_callback {
@@ -830,7 +797,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 userdata,
             );
         }
-        Some(err) => {
+        Err(err) => {
             let message = CString::new(format_error(&err)).unwrap();
             callback(
                 native::WGPURequestDeviceStatus_Error,
@@ -892,7 +859,7 @@ pub unsafe extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
         (buffer.id, &buffer.context)
     };
     // Per spec, no error to report. Even calling destroy multiple times is valid.
-    let _ = gfx_select!(buffer_id => context.buffer_destroy(buffer_id));
+    let _ = context.buffer_destroy(buffer_id);
 }
 
 #[no_mangle]
@@ -906,14 +873,14 @@ pub unsafe extern "C" fn wgpuBufferGetConstMappedRange(
         (buffer.id, &buffer.context)
     };
 
-    let buf = match gfx_select!(buffer_id => context.buffer_get_mapped_range(
+    let buf = match context.buffer_get_mapped_range(
         buffer_id,
         offset as wgt::BufferAddress,
         match size {
             conv::WGPU_WHOLE_MAP_SIZE => None,
             _ => Some(size as u64),
-        }
-    )) {
+        },
+    ) {
         Ok((ptr, _)) => ptr,
         Err(err) => handle_error_fatal(err, "wgpuBufferGetConstMappedRange"),
     };
@@ -932,14 +899,14 @@ pub unsafe extern "C" fn wgpuBufferGetMappedRange(
         (buffer.id, &buffer.context)
     };
 
-    let buf = match gfx_select!(buffer_id => context.buffer_get_mapped_range(
+    let buf = match context.buffer_get_mapped_range(
         buffer_id,
         offset as wgt::BufferAddress,
         match size {
             conv::WGPU_WHOLE_MAP_SIZE => None,
             _ => Some(size as u64),
-        }
-    )) {
+        },
+    ) {
         Ok((ptr, _)) => ptr,
         Err(err) => handle_error_fatal(err, "wgpuBufferGetMappedRange"),
     };
@@ -993,7 +960,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
                     Err(resource::BufferAccessError::MapAlreadyPending) => {
                         native::WGPUBufferMapAsyncStatus_MappingAlreadyPending
                     }
-                    Err(resource::BufferAccessError::InvalidBufferId(_))
+                    Err(resource::BufferAccessError::InvalidResource(_))
                     | Err(resource::BufferAccessError::DestroyedResource(_)) => {
                         native::WGPUBufferMapAsyncStatus_DestroyedBeforeCallback
                     }
@@ -1007,12 +974,12 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         ))),
     };
 
-    if let Err(cause) = gfx_select!(buffer_id => context.buffer_map_async(
+    if let Err(cause) = context.buffer_map_async(
         buffer_id,
         offset as wgt::BufferAddress,
         Some(size as wgt::BufferAddress),
         operation,
-    )) {
+    ) {
         handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
     };
 }
@@ -1024,7 +991,7 @@ pub unsafe extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
         (buffer.id, &buffer.context, &buffer.error_sink)
     };
 
-    if let Err(cause) = gfx_select!(buffer_id => context.buffer_unmap(buffer_id)) {
+    if let Err(cause) = context.buffer_unmap(buffer_id) {
         handle_error(error_sink, cause, None, "wgpuBufferUnmap");
     }
 }
@@ -1093,7 +1060,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
         None => wgc::command::ComputePassDescriptor::default(),
     };
 
-    let (pass, err) = gfx_select!(command_encoder_id => context.command_encoder_create_compute_pass_dyn(command_encoder_id, &desc));
+    let (pass, err) = context.command_encoder_create_compute_pass(command_encoder_id, &desc);
     if let Some(cause) = err {
         handle_error(
             error_sink,
@@ -1104,7 +1071,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     }
     Arc::into_raw(Arc::new(WGPUComputePassEncoderImpl {
         context: context.clone(),
-        encoder: Box::into_raw(pass),
+        encoder: Box::into_raw(Box::new(pass)),
         error_sink: error_sink.clone(),
     }))
 }
@@ -1195,7 +1162,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
     };
 
-    let (pass, err) = gfx_select!(command_encoder_id => context.command_encoder_create_render_pass_dyn(command_encoder_id, &desc));
+    let (pass, err) = context.command_encoder_create_render_pass(command_encoder_id, &desc);
     if let Some(cause) = err {
         handle_error(
             error_sink,
@@ -1206,7 +1173,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
     }
     Arc::into_raw(Arc::new(WGPURenderPassEncoderImpl {
         context: context.clone(),
-        encoder: Box::into_raw(pass),
+        encoder: Box::into_raw(Box::new(pass)),
         error_sink: error_sink.clone(),
     }))
 }
@@ -1228,7 +1195,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
     };
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_clear_buffer(
+    if let Err(cause) = context.command_encoder_clear_buffer(
         command_encoder_id,
         buffer_id,
         offset,
@@ -1236,8 +1203,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
             0 => panic!("invalid size"),
             conv::WGPU_WHOLE_SIZE => None,
             _ => Some(size),
-        }
-    )) {
+        },
+    ) {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderClearBuffer");
     }
 }
@@ -1262,14 +1229,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
     let source_buffer_id = source.as_ref().expect("invalid source").id;
     let destination_buffer_id = destination.as_ref().expect("invalid destination").id;
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_copy_buffer_to_buffer(
+    if let Err(cause) = context.command_encoder_copy_buffer_to_buffer(
         command_encoder_id,
         source_buffer_id,
         source_offset,
         destination_buffer_id,
         destination_offset,
-        size
-    )) {
+        size,
+    ) {
         handle_error(
             error_sink,
             cause,
@@ -1295,12 +1262,12 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToTexture(
         )
     };
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_copy_buffer_to_texture(
+    if let Err(cause) = context.command_encoder_copy_buffer_to_texture(
         command_encoder_id,
         &conv::map_image_copy_buffer(source.expect("invalid source")),
         &conv::map_image_copy_texture(destination.expect("invalid destination")),
-        &conv::map_extent3d(copy_size.expect("invalid copy size"))
-    )) {
+        &conv::map_extent3d(copy_size.expect("invalid copy size")),
+    ) {
         handle_error(
             error_sink,
             cause,
@@ -1326,12 +1293,12 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToBuffer(
         )
     };
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_copy_texture_to_buffer(
+    if let Err(cause) = context.command_encoder_copy_texture_to_buffer(
         command_encoder_id,
         &conv::map_image_copy_texture(source.expect("invalid source")),
         &conv::map_image_copy_buffer(destination.expect("invalid destination")),
-        &conv::map_extent3d(copy_size.expect("invalid copy size"))
-    )) {
+        &conv::map_extent3d(copy_size.expect("invalid copy size")),
+    ) {
         handle_error(
             error_sink,
             cause,
@@ -1357,12 +1324,12 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyTextureToTexture(
         )
     };
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_copy_texture_to_texture(
+    if let Err(cause) = context.command_encoder_copy_texture_to_texture(
         command_encoder_id,
         &conv::map_image_copy_texture(source.expect("invalid source")),
         &conv::map_image_copy_texture(destination.expect("invalid destination")),
-        &conv::map_extent3d(copy_size.expect("invalid copy size"))
-    )) {
+        &conv::map_extent3d(copy_size.expect("invalid copy size")),
+    ) {
         handle_error(
             error_sink,
             cause,
@@ -1392,7 +1359,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
         None => wgt::CommandBufferDescriptor::default(),
     };
 
-    let (command_buffer_id, error) = gfx_select!(command_encoder_id => context.command_encoder_finish(command_encoder_id, &desc));
+    let (command_buffer_id, error) = context.command_encoder_finish(command_encoder_id, &desc);
     if let Some(cause) = error {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderFinish");
     }
@@ -1418,8 +1385,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderInsertDebugMarker(
         )
     };
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_insert_debug_marker(command_encoder_id, CStr::from_ptr(marker_label).to_str().unwrap()))
-    {
+    if let Err(cause) = context.command_encoder_insert_debug_marker(
+        command_encoder_id,
+        CStr::from_ptr(marker_label).to_str().unwrap(),
+    ) {
         handle_error(
             error_sink,
             cause,
@@ -1442,8 +1411,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderPopDebugGroup(
         )
     };
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_pop_debug_group(command_encoder_id))
-    {
+    if let Err(cause) = context.command_encoder_pop_debug_group(command_encoder_id) {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderPopDebugGroup");
     }
 }
@@ -1462,8 +1430,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderPushDebugGroup(
         )
     };
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_push_debug_group(command_encoder_id, CStr::from_ptr(group_label).to_str().unwrap()))
-    {
+    if let Err(cause) = context.command_encoder_push_debug_group(
+        command_encoder_id,
+        CStr::from_ptr(group_label).to_str().unwrap(),
+    ) {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderPushDebugGroup");
     }
 }
@@ -1488,14 +1458,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderResolveQuerySet(
     let query_set_id = query_set.as_ref().expect("invalid query set").id;
     let destination_buffer_id = destination.as_ref().expect("invalid destination").id;
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_resolve_query_set(
+    if let Err(cause) = context.command_encoder_resolve_query_set(
         command_encoder_id,
         query_set_id,
         first_query,
         query_count,
         destination_buffer_id,
-        destination_offset
-    )) {
+        destination_offset,
+    ) {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderResolveQuerySet");
     }
 }
@@ -1516,11 +1486,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderWriteTimestamp(
     };
     let query_set_id = query_set.as_ref().expect("invalid query set").id;
 
-    if let Err(cause) = gfx_select!(command_encoder_id => context.command_encoder_write_timestamp(
-        command_encoder_id,
-        query_set_id,
-        query_index
-    )) {
+    if let Err(cause) =
+        context.command_encoder_write_timestamp(command_encoder_id, query_set_id, query_index)
+    {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderWriteTimestamp");
     }
 }
@@ -1546,10 +1514,10 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroups(
     workgroup_count_z: u32,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.dispatch_workgroups(
-        &pass.context,
+    match pass.context.compute_pass_dispatch_workgroups(
+        encoder,
         workgroup_count_x,
         workgroup_count_y,
         workgroup_count_z,
@@ -1576,9 +1544,13 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
         .expect("invalid indirect buffer")
         .id;
 
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.dispatch_workgroups_indirect(&pass.context, indirect_buffer_id, indirect_offset) {
+    match pass.context.compute_pass_dispatch_workgroups_indirect(
+        encoder,
+        indirect_buffer_id,
+        indirect_offset,
+    ) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -1592,9 +1564,9 @@ pub unsafe extern "C" fn wgpuComputePassEncoderDispatchWorkgroupsIndirect(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderEnd(pass: native::WGPUComputePassEncoder) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.end(&pass.context) {
+    match pass.context.compute_pass_end(encoder) {
         Ok(()) => (),
         Err(cause) => handle_error(&pass.error_sink, cause, None, "wgpuComputePassEncoderEnd"),
     }
@@ -1606,10 +1578,10 @@ pub unsafe extern "C" fn wgpuComputePassEncoderInsertDebugMarker(
     marker_label: *const std::ffi::c_char,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.insert_debug_marker(
-        &pass.context,
+    match pass.context.compute_pass_insert_debug_marker(
+        encoder,
         CStr::from_ptr(marker_label).to_str().unwrap(),
         0,
     ) {
@@ -1626,9 +1598,9 @@ pub unsafe extern "C" fn wgpuComputePassEncoderInsertDebugMarker(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuComputePassEncoderPopDebugGroup(pass: native::WGPUComputePassEncoder) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.pop_debug_group(&pass.context) {
+    match pass.context.compute_pass_pop_debug_group(encoder) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -1645,10 +1617,10 @@ pub unsafe extern "C" fn wgpuComputePassEncoderPushDebugGroup(
     group_label: *const std::ffi::c_char,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.push_debug_group(
-        &pass.context,
+    match pass.context.compute_pass_push_debug_group(
+        encoder,
         CStr::from_ptr(group_label).to_str().unwrap(),
         0,
     ) {
@@ -1673,12 +1645,12 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     let pass = pass.as_ref().expect("invalid compute pass");
     //TODO: as per webgpu.h bindgroup is nullable
     let bind_group_id = bind_group.as_ref().expect("invalid bind group").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_bind_group(
-        &pass.context,
+    match pass.context.compute_pass_set_bind_group(
+        encoder,
         group_index,
-        bind_group_id,
+        Some(bind_group_id),
         make_slice(dynamic_offsets, dynamic_offset_count),
     ) {
         Ok(()) => (),
@@ -1701,9 +1673,12 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPipeline(
         .as_ref()
         .expect("invalid compute pipeline")
         .id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_pipeline(&pass.context, compute_pipeline_id) {
+    match pass
+        .context
+        .compute_pass_set_pipeline(encoder, compute_pipeline_id)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -1747,7 +1722,8 @@ pub unsafe extern "C" fn wgpuComputePipelineGetBindGroupLayout(
         (pipeline.id, &pipeline.context, &pipeline.error_sink)
     };
 
-    let (bind_group_layout_id, error) = gfx_select!(pipeline_id => context.compute_pipeline_get_bind_group_layout(pipeline_id, group_index, None));
+    let (bind_group_layout_id, error) =
+        context.compute_pipeline_get_bind_group_layout(pipeline_id, group_index, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -1808,8 +1784,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         layout: bind_group_layout_id,
         entries: Cow::Borrowed(&entries),
     };
-    let (bind_group_id, error) =
-        gfx_select!(device_id => context.device_create_bind_group(device_id, &desc, None));
+    let (bind_group_id, error) = context.device_create_bind_group(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateBindGroup");
     }
@@ -1845,7 +1820,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         entries: Cow::Borrowed(&entries),
     };
     let (bind_group_layout_id, error) =
-        gfx_select!(device_id => context.device_create_bind_group_layout(device_id, &desc, None));
+        context.device_create_bind_group_layout(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -1879,8 +1854,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         mapped_at_creation: descriptor.mappedAtCreation != 0,
     };
 
-    let (buffer_id, error) =
-        gfx_select!(device_id => context.device_create_buffer(device_id, &desc, None));
+    let (buffer_id, error) = context.device_create_buffer(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateBuffer");
     }
@@ -1911,8 +1885,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
         },
         None => wgt::CommandEncoderDescriptor::default(),
     };
-    let (command_encoder_id, error) =
-        gfx_select!(device_id => context.device_create_command_encoder(device_id, &desc, None));
+    let (command_encoder_id, error) = context.device_create_command_encoder(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -1969,19 +1942,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             ),
             // TODO(wgpu.h)
             zero_initialize_workgroup_memory: false,
-            // TODO(wgpu.h)
-            vertex_pulling_transform: false,
         },
         // TODO(wgpu.h)
         cache: None,
     };
 
-    let (compute_pipeline_id, error) = gfx_select!(device_id => context.device_create_compute_pipeline(
-        device_id,
-        &desc,
-        None,
-        None
-    ));
+    let (compute_pipeline_id, error) =
+        context.device_create_compute_pipeline(device_id, &desc, None, None);
     if let Some(cause) = error {
         if let wgc::pipeline::CreateComputePipelineError::Internal(ref error) = cause {
             log::warn!(
@@ -2022,8 +1989,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
             (descriptor),
             WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
     );
-    let (pipeline_layout_id, error) =
-        gfx_select!(device_id => context.device_create_pipeline_layout(device_id, &desc, None));
+    let (pipeline_layout_id, error) = context.device_create_pipeline_layout(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -2056,8 +2022,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
             WGPUSType_QuerySetDescriptorExtras => native::WGPUQuerySetDescriptorExtras)
     );
 
-    let (query_set_id, error) =
-        gfx_select!(device_id => context.device_create_query_set(device_id, &desc, None));
+    let (query_set_id, error) = context.device_create_query_set(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateQuerySet");
     }
@@ -2148,8 +2113,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 ),
                 // TODO(wgpu.h)
                 zero_initialize_workgroup_memory: false,
-                // TODO(wgpu.h)
-                vertex_pulling_transform: false,
             },
             buffers: Cow::Owned(
                 make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
@@ -2250,8 +2213,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     ),
                     // TODO(wgpu.h)
                     zero_initialize_workgroup_memory: false,
-                    // TODO(wgpu.h)
-                    vertex_pulling_transform: false,
                 },
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount)
@@ -2280,7 +2241,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
         cache: None,
     };
 
-    let (render_pipeline_id, error) = gfx_select!(device_id => context.device_create_render_pipeline(device_id, &desc, None, None));
+    let (render_pipeline_id, error) =
+        context.device_create_render_pipeline(device_id, &desc, None, None);
     if let Some(cause) = error {
         if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
             log::error!("Shader translation error for stage {:?}: {}", stage, error);
@@ -2350,8 +2312,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
         },
     };
 
-    let (sampler_id, error) =
-        gfx_select!(device_id => context.device_create_sampler(device_id, &desc, None));
+    let (sampler_id, error) = context.device_create_sampler(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateSampler");
     }
@@ -2400,7 +2361,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         }
     };
 
-    let (shader_module_id, error) = gfx_select!(device_id => context.device_create_shader_module(device_id, &desc, source, None));
+    let (shader_module_id, error) =
+        context.device_create_shader_module(device_id, &desc, source, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -2445,8 +2407,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
             .collect(),
     };
 
-    let (texture_id, error) =
-        gfx_select!(device_id => context.device_create_texture(device_id, &desc, None));
+    let (texture_id, error) = context.device_create_texture(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateTexture");
     }
@@ -2482,10 +2443,7 @@ pub unsafe extern "C" fn wgpuDeviceEnumerateFeatures(
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
     };
-    let device_features = match gfx_select!(device_id => context.device_features(device_id)) {
-        Ok(features) => features,
-        Err(err) => handle_error_fatal(err, "wgpuDeviceEnumerateFeatures"),
-    };
+    let device_features = context.device_features(device_id);
 
     let temp = conv::features_to_native(device_features);
 
@@ -2507,11 +2465,8 @@ pub unsafe extern "C" fn wgpuDeviceGetLimits(
     };
     let limits = limits.expect("invalid return pointer \"limits\"");
 
-    let result = gfx_select!(device_id => context.device_limits(device_id));
-    match result {
-        Ok(wgt_limits) => conv::write_limits_struct(wgt_limits, limits),
-        Err(err) => handle_error_fatal(err, "wgpuDeviceGetLimits"),
-    }
+    let wgt_limits = context.device_limits(device_id);
+    conv::write_limits_struct(wgt_limits, limits);
 
     true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
@@ -2538,10 +2493,7 @@ pub unsafe extern "C" fn wgpuDeviceHasFeature(
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
     };
-    let device_features = match gfx_select!(device_id => context.device_features(device_id)) {
-        Ok(features) => features,
-        Err(err) => handle_error_fatal(err, "wgpuDeviceHasFeature"),
-    };
+    let device_features = context.device_features(device_id);
 
     let feature = match conv::map_feature(feature) {
         Some(feature) => feature,
@@ -2682,37 +2634,31 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 force_fallback_adapter: options.forceFallbackAdapter != 0,
                 compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
             },
-            wgc::instance::AdapterInputs::Mask(
-                match options.backendType {
-                    native::WGPUBackendType_Undefined => wgt::Backends::all(),
-                    native::WGPUBackendType_Null => wgt::Backends::empty(),
-                    native::WGPUBackendType_WebGPU => wgt::Backends::BROWSER_WEBGPU,
-                    native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
-                    native::WGPUBackendType_Metal => wgt::Backends::METAL,
-                    native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
-                    native::WGPUBackendType_OpenGL => wgt::Backends::GL,
-                    native::WGPUBackendType_OpenGLES => wgt::Backends::GL,
-                    native::WGPUBackendType_D3D11 => {
-                        callback(
-                            native::WGPURequestAdapterStatus_Error,
-                            std::ptr::null_mut(),
-                            "unsupported backend type: d3d11".as_ptr() as _,
-                            userdata,
-                        );
-                        return;
-                    }
-                    backend_type => panic!("invalid backend type: 0x{backend_type:08X}"),
-                },
-                |_| None,
-            ),
+            match options.backendType {
+                native::WGPUBackendType_Undefined => wgt::Backends::all(),
+                native::WGPUBackendType_Null => wgt::Backends::empty(),
+                native::WGPUBackendType_WebGPU => wgt::Backends::BROWSER_WEBGPU,
+                native::WGPUBackendType_D3D12 => wgt::Backends::DX12,
+                native::WGPUBackendType_Metal => wgt::Backends::METAL,
+                native::WGPUBackendType_Vulkan => wgt::Backends::VULKAN,
+                native::WGPUBackendType_OpenGL => wgt::Backends::GL,
+                native::WGPUBackendType_OpenGLES => wgt::Backends::GL,
+                native::WGPUBackendType_D3D11 => {
+                    callback(
+                        native::WGPURequestAdapterStatus_Error,
+                        std::ptr::null_mut(),
+                        "unsupported backend type: d3d11".as_ptr() as _,
+                        userdata,
+                    );
+                    return;
+                }
+                backend_type => panic!("invalid backend type: 0x{backend_type:08X}"),
+            },
         ),
-        None => (
-            wgt::RequestAdapterOptions::default(),
-            wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| None),
-        ),
+        None => (wgt::RequestAdapterOptions::default(), wgt::Backends::all()),
     };
 
-    match context.request_adapter(&desc, inputs) {
+    match context.request_adapter(&desc, inputs, None) {
         Ok(adapter_id) => {
             let message = CString::default();
             callback(
@@ -2731,9 +2677,6 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 match err {
                     wgc::instance::RequestAdapterError::NotFound => {
                         native::WGPURequestAdapterStatus_Unavailable
-                    }
-                    wgc::instance::RequestAdapterError::InvalidSurface(_) => {
-                        native::WGPURequestAdapterStatus_Error
                     }
                     _ => native::WGPURequestAdapterStatus_Unknown,
                 },
@@ -2755,11 +2698,10 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
     let context = &instance.context;
 
     let inputs = match options {
-        Some(options) => wgc::instance::AdapterInputs::Mask(
-            map_instance_backend_flags(options.backends as native::WGPUInstanceBackend),
-            |_| None,
-        ),
-        None => wgc::instance::AdapterInputs::Mask(wgt::Backends::all(), |_| None),
+        Some(options) => {
+            map_instance_backend_flags(options.backends as native::WGPUInstanceBackend)
+        }
+        None => wgt::Backends::all(),
     };
 
     let result = context.enumerate_adapters(inputs);
@@ -2780,9 +2722,7 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
     } else {
         // Drop all the adapters when only counting length.
 
-        result
-            .iter()
-            .for_each(|id| gfx_select!(id => context.adapter_drop(*id)));
+        result.iter().for_each(|id| context.adapter_drop(*id));
     }
 
     count
@@ -2863,11 +2803,7 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
         callback(native::WGPUQueueWorkDoneStatus_Success, userdata.as_ptr());
     }));
 
-    if let Err(cause) =
-        gfx_select!(queue_id => context.queue_on_submitted_work_done(queue_id, closure))
-    {
-        handle_error_fatal(cause, "wgpuQueueOnSubmittedWorkDone");
-    };
+    context.queue_on_submitted_work_done(queue_id, closure);
 }
 
 #[no_mangle]
@@ -2890,8 +2826,8 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
         })
         .collect::<SmallVec<[_; 4]>>();
 
-    if let Err(cause) = gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
-        handle_error_fatal(cause, "wgpuQueueSubmit");
+    if let Err(cause) = context.queue_submit(queue_id, &command_buffers) {
+        handle_error_fatal(cause.1, "wgpuQueueSubmit");
     }
 }
 
@@ -2909,12 +2845,12 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
     };
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
 
-    if let Err(cause) = gfx_select!(queue_id => context.queue_write_buffer(
+    if let Err(cause) = context.queue_write_buffer(
         queue_id,
         buffer_id,
         buffer_offset,
-        make_slice(data, data_size)
-    )) {
+        make_slice(data, data_size),
+    ) {
         handle_error(error_sink, cause, None, "wgpuQueueWriteBuffer");
     }
 }
@@ -2933,13 +2869,13 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
         (queue.queue.id, &queue.queue.context, &queue.error_sink)
     };
 
-    if let Err(cause) = gfx_select!(queue_id => context.queue_write_texture(
+    if let Err(cause) = context.queue_write_texture(
         queue_id,
         &conv::map_image_copy_texture(destination.expect("invalid destination")),
         make_slice(data, data_size),
         &conv::map_texture_data_layout(data_layout.expect("invalid data layout")),
-        &conv::map_extent3d(write_size.expect("invalid write size"))
-    )) {
+        &conv::map_extent3d(write_size.expect("invalid write size")),
+    ) {
         handle_error(error_sink, cause, None, "wgpuQueueWriteTexture");
     }
 }
@@ -3074,7 +3010,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
         None => wgt::RenderBundleDescriptor::default(),
     };
 
-    let (render_bundle_id, error) = gfx_select!(encoder.parent() => context.render_bundle_encoder_finish(*encoder, &desc, None));
+    let (render_bundle_id, error) = context.render_bundle_encoder_finish(*encoder, &desc, None);
     if let Some(cause) = error {
         handle_error_fatal(cause, "wgpuRenderBundleEncoderFinish");
     }
@@ -3141,7 +3077,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     bundle_ffi::wgpu_render_bundle_set_bind_group(
         encoder,
         group_index,
-        bind_group_id,
+        Some(bind_group_id),
         dynamic_offsets,
         dynamic_offset_count,
     );
@@ -3245,9 +3181,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderBeginOcclusionQuery(
     query_index: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.begin_occlusion_query(&pass.context, query_index) {
+    match pass
+        .context
+        .render_pass_begin_occlusion_query(encoder, query_index)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3267,10 +3206,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDraw(
     first_instance: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.draw(
-        &pass.context,
+    match pass.context.render_pass_draw(
+        encoder,
         vertex_count,
         instance_count,
         first_vertex,
@@ -3291,10 +3230,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexed(
     first_instance: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.draw_indexed(
-        &pass.context,
+    match pass.context.render_pass_draw_indexed(
+        encoder,
         index_count,
         instance_count,
         first_index,
@@ -3322,9 +3261,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndexedIndirect(
         .as_ref()
         .expect("invalid indirect buffer")
         .id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.draw_indexed_indirect(&pass.context, indirect_buffer_id, indirect_offset) {
+    match pass.context.render_pass_draw_indexed_indirect(
+        encoder,
+        indirect_buffer_id,
+        indirect_offset,
+    ) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3346,9 +3289,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
         .as_ref()
         .expect("invalid indirect buffer")
         .id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.draw_indirect(&pass.context, indirect_buffer_id, indirect_offset) {
+    match pass
+        .context
+        .render_pass_draw_indirect(encoder, indirect_buffer_id, indirect_offset)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3362,9 +3308,9 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawIndirect(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderEnd(pass: native::WGPURenderPassEncoder) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.end(&pass.context) {
+    match pass.context.render_pass_end(encoder) {
         Ok(()) => (),
         Err(cause) => handle_error(&pass.error_sink, cause, None, "wgpuRenderPassEncoderEnd"),
     }
@@ -3375,9 +3321,9 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEndOcclusionQuery(
     pass: native::WGPURenderPassEncoder,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.end_occlusion_query(&pass.context) {
+    match pass.context.render_pass_end_occlusion_query(encoder) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3399,9 +3345,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderExecuteBundles(
         .iter()
         .map(|v| v.as_ref().expect("invalid render bundle").id)
         .collect::<SmallVec<[_; 4]>>();
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.execute_bundles(&pass.context, &bundle_ids) {
+    match pass
+        .context
+        .render_pass_execute_bundles(encoder, &bundle_ids)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3418,10 +3367,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarker(
     marker_label: *const std::ffi::c_char,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.insert_debug_marker(
-        &pass.context,
+    match pass.context.render_pass_insert_debug_marker(
+        encoder,
         CStr::from_ptr(marker_label).to_str().unwrap(),
         0,
     ) {
@@ -3438,9 +3387,9 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderInsertDebugMarker(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderPopDebugGroup(pass: native::WGPURenderPassEncoder) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.pop_debug_group(&pass.context) {
+    match pass.context.render_pass_pop_debug_group(encoder) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3457,10 +3406,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderPushDebugGroup(
     group_label: *const std::ffi::c_char,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.push_debug_group(
-        &pass.context,
+    match pass.context.render_pass_push_debug_group(
+        encoder,
         CStr::from_ptr(group_label).to_str().unwrap(),
         0,
     ) {
@@ -3485,12 +3434,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     let pass = pass.as_ref().expect("invalid render pass");
     // TODO: as per webgpu.h bindgroup is nullable
     let bind_group_id = bind_group.as_ref().expect("invalid bind group").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_bind_group(
-        &pass.context,
+    match pass.context.render_pass_set_bind_group(
+        encoder,
         group_index,
-        bind_group_id,
+        Some(bind_group_id),
         make_slice(dynamic_offsets, dynamic_offset_count),
     ) {
         Ok(()) => (),
@@ -3509,12 +3458,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBlendConstant(
     color: Option<&native::WGPUColor>,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_blend_constant(
-        &pass.context,
-        conv::map_color(color.expect("invalid color")),
-    ) {
+    match pass
+        .context
+        .render_pass_set_blend_constant(encoder, conv::map_color(color.expect("invalid color")))
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3535,10 +3484,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetIndexBuffer(
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_index_buffer(
-        &pass.context,
+    match pass.context.render_pass_set_index_buffer(
+        encoder,
         buffer_id,
         conv::map_index_format(index_format).expect("invalid index format"),
         offset,
@@ -3568,9 +3517,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPipeline(
         .as_ref()
         .expect("invalid render pipeline")
         .id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_pipeline(&pass.context, render_pipeline_id) {
+    match pass
+        .context
+        .render_pass_set_pipeline(encoder, render_pipeline_id)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3590,9 +3542,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetScissorRect(
     height: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_scissor_rect(&pass.context, x, y, width, height) {
+    match pass
+        .context
+        .render_pass_set_scissor_rect(encoder, x, y, width, height)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3609,9 +3564,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetStencilReference(
     reference: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_stencil_reference(&pass.context, reference) {
+    match pass
+        .context
+        .render_pass_set_stencil_reference(encoder, reference)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3633,10 +3591,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     let pass = pass.as_ref().expect("invalid render pass");
     // TODO: as per webgpu.h buffer is nullable
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_vertex_buffer(
-        &pass.context,
+    match pass.context.render_pass_set_vertex_buffer(
+        encoder,
         slot,
         buffer_id,
         offset,
@@ -3667,9 +3625,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetViewport(
     max_depth: f32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_viewport(&pass.context, x, y, width, height, min_depth, max_depth) {
+    match pass
+        .context
+        .render_pass_set_viewport(encoder, x, y, width, height, min_depth, max_depth)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -3716,7 +3677,8 @@ pub unsafe extern "C" fn wgpuRenderPipelineGetBindGroupLayout(
             &render_pipeline.error_sink,
         )
     };
-    let (bind_group_layout_id, error) = gfx_select!(render_pipeline_id => context.render_pipeline_get_bind_group_layout(render_pipeline_id, group_index, None));
+    let (bind_group_layout_id, error) =
+        context.render_pipeline_get_bind_group_layout(render_pipeline_id, group_index, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -3789,13 +3751,11 @@ pub unsafe extern "C" fn wgpuSurfaceConfigure(
         WGPUSType_SurfaceConfigurationExtras => native::WGPUSurfaceConfigurationExtras
     ));
 
-    match wgc::gfx_select!(device.id => context.surface_configure(surface.id, device.id, &surface_config))
-    {
+    match context.surface_configure(surface.id, device.id, &surface_config) {
         Some(cause) => handle_error_fatal(cause, "wgpuSurfaceConfigure"),
         None => {
             let mut surface_data_guard = surface.data.lock();
             *surface_data_guard = Some(SurfaceData {
-                device_id: device.id,
                 error_sink: device.error_sink.clone(),
                 texture_data: TextureData {
                     usage: config.usage,
@@ -3830,8 +3790,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     let surface_id = surface.as_ref().expect("invalid surface").id;
     let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
 
-    let caps = match wgc::gfx_select!(adapter_id => context.surface_get_capabilities(surface_id, adapter_id))
-    {
+    let caps = match context.surface_get_capabilities(surface_id, adapter_id) {
         Ok(caps) => caps,
         Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
             wgt::SurfaceCapabilities::default()
@@ -3912,8 +3871,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
         ),
     };
 
-    match wgc::gfx_select!(surface_data.device_id => context.surface_get_current_texture(surface.id, None))
-    {
+    match context.surface_get_current_texture(surface.id, None) {
         Ok(wgc::present::SurfaceOutput { status, texture_id }) => {
             surface
                 .has_surface_presented
@@ -3951,16 +3909,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
 pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) {
     let surface = surface.as_ref().expect("invalid surface");
     let context = &surface.context;
-    let surface_data_guard = surface.data.lock();
-    let surface_data = match surface_data_guard.as_ref() {
-        Some(surface_data) => surface_data,
-        None => handle_error_fatal(
-            wgc::present::SurfaceError::NotConfigured,
-            "wgpuSurfacePresent",
-        ),
-    };
 
-    match wgc::gfx_select!(surface_data.device_id => context.surface_present(surface.id)) {
+    match context.surface_present(surface.id) {
         Ok(_status) => surface
             .has_surface_presented
             .store(true, atomic::Ordering::SeqCst),
@@ -4054,8 +4004,7 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
         None => wgc::resource::TextureViewDescriptor::default(),
     };
 
-    let (texture_view_id, error) =
-        gfx_select!(texture_id => context.texture_create_view(texture_id, &desc, None));
+    let (texture_view_id, error) = context.texture_create_view(texture_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, None, "wgpuTextureCreateView");
     }
@@ -4074,7 +4023,7 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
     };
 
     // Per spec, no error to report. Even calling destroy multiple times is valid.
-    let _ = gfx_select!(texture_id => context.texture_destroy(texture_id));
+    let _ = context.texture_destroy(texture_id);
 }
 
 #[no_mangle]
@@ -4187,9 +4136,9 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
         })
         .collect::<SmallVec<[_; 4]>>();
 
-    match gfx_select!(queue_id => context.queue_submit(queue_id, &command_buffers)) {
-        Ok(submission_index) => submission_index.index,
-        Err(cause) => handle_error_fatal(cause, "wgpuQueueSubmitForIndex"),
+    match context.queue_submit(queue_id, &command_buffers) {
+        Ok(submission_index) => submission_index,
+        Err(cause) => handle_error_fatal(cause.1, "wgpuQueueSubmitForIndex"),
     }
 }
 
@@ -4197,7 +4146,7 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
 pub unsafe extern "C" fn wgpuDevicePoll(
     device: native::WGPUDevice,
     wait: bool,
-    wrapped_submission_index: Option<&native::WGPUWrappedSubmissionIndex>,
+    submission_index: Option<&native::WGPUSubmissionIndex>,
 ) -> bool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
@@ -4205,24 +4154,14 @@ pub unsafe extern "C" fn wgpuDevicePoll(
     };
 
     let maintain = match wait {
-        true => match wrapped_submission_index {
-            Some(index) => {
-                wgt::Maintain::WaitForSubmissionIndex(wgc::device::queue::WrappedSubmissionIndex {
-                    queue_id: index
-                        .queue
-                        .as_ref()
-                        .expect("invalid queue for wrapped submission index")
-                        .queue
-                        .id,
-                    index: index.submissionIndex,
-                })
-            }
+        true => match submission_index {
+            Some(index) => wgt::Maintain::WaitForSubmissionIndex(*index),
             None => wgt::Maintain::Wait,
         },
         false => wgt::Maintain::Poll,
     };
 
-    match gfx_select!(device_id => context.device_poll(device_id, maintain)) {
+    match context.device_poll(device_id, maintain) {
         Ok(queue_empty) => queue_empty,
         Err(cause) => {
             handle_error_fatal(cause, "wgpuDevicePoll");
@@ -4239,10 +4178,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     data: *const u8,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.set_push_constants(
-        &pass.context,
+    match pass.context.render_pass_set_push_constants(
+        encoder,
         wgt::ShaderStages::from_bits(stages).expect("invalid shader stage"),
         offset,
         make_slice(data, size_bytes as usize),
@@ -4266,9 +4205,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.multi_draw_indirect(&pass.context, buffer_id, offset, count) {
+    match pass
+        .context
+        .render_pass_multi_draw_indirect(encoder, buffer_id, offset, count)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -4288,9 +4230,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirect(
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.multi_draw_indexed_indirect(&pass.context, buffer_id, offset, count) {
+    match pass
+        .context
+        .render_pass_multi_draw_indexed_indirect(encoder, buffer_id, offset, count)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -4313,10 +4258,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirectCount(
     let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.multi_draw_indirect_count(
-        &pass.context,
+    match pass.context.render_pass_multi_draw_indirect_count(
+        encoder,
         buffer_id,
         offset,
         count_buffer_id,
@@ -4345,10 +4290,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
     let pass = pass.as_ref().expect("invalid render pass");
     let buffer_id = buffer.as_ref().expect("invalid buffer").id;
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.multi_draw_indexed_indirect_count(
-        &pass.context,
+    match pass.context.render_pass_multi_draw_indexed_indirect_count(
+        encoder,
         buffer_id,
         offset,
         count_buffer_id,
@@ -4373,9 +4318,13 @@ pub unsafe extern "C" fn wgpuComputePassEncoderBeginPipelineStatisticsQuery(
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
     let query_set_id = query_set.as_ref().expect("invalid query set").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.begin_pipeline_statistics_query(&pass.context, query_set_id, query_index) {
+    match pass.context.compute_pass_begin_pipeline_statistics_query(
+        encoder,
+        query_set_id,
+        query_index,
+    ) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -4391,9 +4340,12 @@ pub unsafe extern "C" fn wgpuComputePassEncoderEndPipelineStatisticsQuery(
     pass: native::WGPUComputePassEncoder,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.end_pipeline_statistics_query(&pass.context) {
+    match pass
+        .context
+        .compute_pass_end_pipeline_statistics_query(encoder)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -4412,9 +4364,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderBeginPipelineStatisticsQuery(
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let query_set_id = query_set.as_ref().expect("invalid query set").id;
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.begin_pipeline_statistics_query(&pass.context, query_set_id, query_index) {
+    match pass.context.render_pass_begin_pipeline_statistics_query(
+        encoder,
+        query_set_id,
+        query_index,
+    ) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -4430,9 +4386,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderEndPipelineStatisticsQuery(
     pass: native::WGPURenderPassEncoder,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    let encoder = pass.encoder.as_mut().unwrap();
+    let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match encoder.end_pipeline_statistics_query(&pass.context) {
+    match pass
+        .context
+        .render_pass_end_pipeline_statistics_query(encoder)
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
