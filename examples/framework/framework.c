@@ -121,7 +121,6 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   printf("%snumAllocated=%zu\n", prefix, report.numAllocated);                 \
   printf("%snumKeptFromUser=%zu\n", prefix, report.numKeptFromUser);           \
   printf("%snumReleasedFromUser=%zu\n", prefix, report.numReleasedFromUser);   \
-  printf("%snumError=%zu\n", prefix, report.numError);                         \
   printf("%selementSize=%zu\n", prefix, report.elementSize)
 
 #define print_hub_report(report, prefix)                                       \
@@ -136,6 +135,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   print_registry_report(report.renderBundles, prefix "renderBundles.");        \
   print_registry_report(report.renderPipelines, prefix "renderPipelines.");    \
   print_registry_report(report.computePipelines, prefix "computePipelines.");  \
+  print_registry_report(report.pipelineCaches, prefix "pipelineCaches.");      \
   print_registry_report(report.querySets, prefix "querySets.");                \
   print_registry_report(report.textures, prefix "textures.");                  \
   print_registry_report(report.textureViews, prefix "textureViews.");          \
@@ -144,24 +144,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
 void frmwrk_print_global_report(WGPUGlobalReport report) {
   printf("struct WGPUGlobalReport {\n");
   print_registry_report(report.surfaces, "\tsurfaces.");
-
-  switch (report.backendType) {
-  case WGPUBackendType_D3D12:
-    print_hub_report(report.dx12, "\tdx12.");
-    break;
-  case WGPUBackendType_Metal:
-    print_hub_report(report.metal, "\tmetal.");
-    break;
-  case WGPUBackendType_Vulkan:
-    print_hub_report(report.vulkan, "\tvulkan.");
-    break;
-  case WGPUBackendType_OpenGL:
-    print_hub_report(report.gl, "\tgl.");
-    break;
-  default:
-    printf("[framework] frmwrk_print_global_report: invalid backend type: %d",
-           report.backendType);
-  }
+  print_hub_report(report.hub, "\thub.");
   printf("}\n");
 }
 
