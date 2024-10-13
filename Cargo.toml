@@ -22,23 +22,19 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-git = "https://github.com/gfx-rs/wgpu"
-tag = "v22.1.0"
+path = "../wgpu/wgpu-core"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-git = "https://github.com/gfx-rs/wgpu"
-tag = "v22.1.0"
+path = "../wgpu/wgpu-types"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-git = "https://github.com/gfx-rs/wgpu"
-tag = "v22.1.0"
+path = "../wgpu/wgpu-hal"
 
 [workspace.dependencies.naga]
 package = "naga"
-git = "https://github.com/gfx-rs/wgpu"
-tag = "v22.1.0"
+path = "../wgpu/naga"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
@@ -134,9 +130,8 @@ hal = { workspace = true, features = ["renderdoc"] }
 
 [target.'cfg(windows)'.dependencies]
 hal = { workspace = true, features = [
-	"dxc_shader_compiler",
+	"dx12",
 	"renderdoc",
-	"windows_rs",
 ] }
 
 [dependencies.wgt]

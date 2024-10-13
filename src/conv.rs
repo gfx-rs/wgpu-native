@@ -760,7 +760,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_BGRA8UnormSrgb => Some(wgt::TextureFormat::Bgra8UnormSrgb),
         native::WGPUTextureFormat_RGB10A2Uint => Some(wgt::TextureFormat::Rgb10a2Uint),
         native::WGPUTextureFormat_RGB10A2Unorm => Some(wgt::TextureFormat::Rgb10a2Unorm),
-        native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Float),
+        native::WGPUTextureFormat_RG11B10Ufloat => Some(wgt::TextureFormat::Rg11b10Ufloat),
         native::WGPUTextureFormat_RGB9E5Ufloat => Some(wgt::TextureFormat::Rgb9e5Ufloat),
         native::WGPUTextureFormat_RG32Float => Some(wgt::TextureFormat::Rg32Float),
         native::WGPUTextureFormat_RG32Uint => Some(wgt::TextureFormat::Rg32Uint),
@@ -877,7 +877,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Bgra8UnormSrgb => Some(native::WGPUTextureFormat_BGRA8UnormSrgb),
         wgt::TextureFormat::Rgb10a2Uint => Some(native::WGPUTextureFormat_RGB10A2Uint),
         wgt::TextureFormat::Rgb10a2Unorm => Some(native::WGPUTextureFormat_RGB10A2Unorm),
-        wgt::TextureFormat::Rg11b10Float => Some(native::WGPUTextureFormat_RG11B10Ufloat),
+        wgt::TextureFormat::Rg11b10Ufloat => Some(native::WGPUTextureFormat_RG11B10Ufloat),
         wgt::TextureFormat::Rgb9e5Ufloat => Some(native::WGPUTextureFormat_RGB9E5Ufloat),
         wgt::TextureFormat::Rg32Float => Some(native::WGPUTextureFormat_RG32Float),
         wgt::TextureFormat::Rg32Uint => Some(native::WGPUTextureFormat_RG32Uint),
@@ -993,7 +993,6 @@ pub fn map_storage_report(report: &wgc::registry::RegistryReport) -> native::WGP
         numAllocated: report.num_allocated,
         numKeptFromUser: report.num_kept_from_user,
         numReleasedFromUser: report.num_released_from_user,
-        numError: report.num_error,
         elementSize: report.element_size,
     }
 }
@@ -1012,6 +1011,7 @@ pub fn map_hub_report(report: &wgc::hub::HubReport) -> native::WGPUHubReport {
         renderBundles: map_storage_report(&report.render_bundles),
         renderPipelines: map_storage_report(&report.render_pipelines),
         computePipelines: map_storage_report(&report.compute_pipelines),
+        pipelineCaches: map_storage_report(&report.pipeline_caches),
         querySets: map_storage_report(&report.query_sets),
         buffers: map_storage_report(&report.buffers),
         textures: map_storage_report(&report.textures),
@@ -1026,41 +1026,7 @@ pub fn write_global_report(
     report: &wgc::global::GlobalReport,
 ) {
     native_report.surfaces = map_storage_report(&report.surfaces);
-
-    #[cfg(any(
-        all(
-            any(target_os = "ios", target_os = "macos"),
-            feature = "vulkan-portability"
-        ),
-        windows,
-        all(unix, not(target_os = "ios"), not(target_os = "macos"))
-    ))]
-    if let Some(ref vulkan) = report.vulkan {
-        native_report.vulkan = map_hub_report(vulkan);
-        native_report.backendType = native::WGPUBackendType_Vulkan;
-    }
-
-    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
-    if let Some(ref metal) = report.metal {
-        native_report.metal = map_hub_report(metal);
-        native_report.backendType = native::WGPUBackendType_Metal;
-    }
-
-    #[cfg(all(target_os = "windows", feature = "dx12"))]
-    if let Some(ref dx12) = report.dx12 {
-        native_report.dx12 = map_hub_report(dx12);
-        native_report.backendType = native::WGPUBackendType_D3D12;
-    }
-
-    #[cfg(any(
-        feature = "angle",
-        target_os = "windows",
-        all(unix, not(target_os = "ios"), not(target_os = "macos"))
-    ))]
-    if let Some(ref gl) = report.gl {
-        native_report.gl = map_hub_report(gl);
-        native_report.backendType = native::WGPUBackendType_OpenGL;
-    }
+    native_report.hub = map_hub_report(&report.hub);
 }
 
 #[inline]
