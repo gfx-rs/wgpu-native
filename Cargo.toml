@@ -22,19 +22,23 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-path = "../wgpu/wgpu-core"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-path = "../wgpu/wgpu-types"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-path = "../wgpu/wgpu-hal"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 
 [workspace.dependencies.naga]
 package = "naga"
-path = "../wgpu/naga"
+git = "https://github.com/gfx-rs/wgpu"
+rev = "2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]

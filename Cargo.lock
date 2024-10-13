@@ -129,20 +129,6 @@ name = "bytemuck"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94bbb0ad554ad961ddc5da507a12a29b14e4ae5bda06b19f575a3e6079d2e2ae"
-dependencies = [
- "bytemuck_derive",
-]
-
-[[package]]
-name = "bytemuck_derive"
-version = "1.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcfcc3cd946cb52f0bbfdbbcfa2f4e24f75ebb6c0e1002f7c25904fada18b9ec"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
 
 [[package]]
 name = "cexpr"
@@ -507,6 +493,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "naga"
 version = "22.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2b15a2b24b69e105ebdbb5e8a859e2df75e441c1#2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -904,6 +891,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "22.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2b15a2b24b69e105ebdbb5e8a859e2df75e441c1#2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 dependencies = [
  "arrayvec",
  "bit-vec",
@@ -929,6 +917,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "22.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2b15a2b24b69e105ebdbb5e8a859e2df75e441c1#2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -936,6 +925,7 @@ dependencies = [
  "bit-set",
  "bitflags 2.6.0",
  "block",
+ "bytemuck",
  "cfg_aliases",
  "core-graphics-types",
  "glow",
@@ -989,6 +979,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "22.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=2b15a2b24b69e105ebdbb5e8a859e2df75e441c1#2b15a2b24b69e105ebdbb5e8a859e2df75e441c1"
 dependencies = [
  "bitflags 2.6.0",
  "js-sys",
