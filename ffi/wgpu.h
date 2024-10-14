@@ -31,8 +31,6 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_PartiallyBoundBindingArray = 0x0003000A,
     WGPUNativeFeature_TextureFormat16bitNorm = 0x0003000B,
     WGPUNativeFeature_TextureCompressionAstcHdr = 0x0003000C,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_TimestampQueryInsidePasses = 0x0003000D,
     WGPUNativeFeature_MappablePrimaryBuffers = 0x0003000E,
     WGPUNativeFeature_BufferBindingArray = 0x0003000F,
     WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing = 0x00030010,
@@ -56,6 +54,8 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_Subgroup = 0x00030021,
     WGPUNativeFeature_SubgroupVertex = 0x00030022,
     WGPUNativeFeature_SubgroupBarrier = 0x00030023,
+    WGPUNativeFeature_TimestampQueryInsideEncoders = 0x00030024,
+    WGPUNativeFeature_TimestampQueryInsidePasses = 0x00030025,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
@@ -296,6 +296,9 @@ void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder c
 void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
 void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
 void wgpuRenderPassEncoderEndPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder);
+
+void wgpuComputePassEncoderWriteTimestamp(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+void wgpuRenderPassEncoderWriteTimestamp(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
 
 #ifdef __cplusplus
 } // extern "C"
