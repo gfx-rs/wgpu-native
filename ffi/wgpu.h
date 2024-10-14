@@ -41,7 +41,7 @@ typedef enum WGPUNativeFeature {
     // WGPUNativeFeature_PolygonModePoint = 0x00030014,
     // WGPUNativeFeature_ConservativeRasterization = 0x00030015,
     // WGPUNativeFeature_ClearTexture = 0x00030016,
-    // WGPUNativeFeature_SpirvShaderPassthrough = 0x00030017,
+    WGPUNativeFeature_SpirvShaderPassthrough = 0x00030017,
     // WGPUNativeFeature_Multiview = 0x00030018,
     WGPUNativeFeature_VertexAttribute64bit = 0x00030019,
     WGPUNativeFeature_TextureFormatNv12 = 0x0003001A,
@@ -185,6 +185,12 @@ typedef struct WGPUShaderModuleGLSLDescriptor {
     WGPUShaderDefine * defines;
 } WGPUShaderModuleGLSLDescriptor;
 
+typedef struct WGPUShaderModuleDescriptorSpirV {
+    char const * label;
+    uint32_t sourceSize;
+    uint32_t const * source;
+} WGPUShaderModuleDescriptorSpirV;
+
 typedef struct WGPURegistryReport {
    size_t numAllocated;
    size_t numKeptFromUser;
@@ -277,6 +283,7 @@ WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
 WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUWrappedSubmissionIndex const * wrappedSubmissionIndex);
+WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const * descriptor);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
 
