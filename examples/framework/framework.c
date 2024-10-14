@@ -1,6 +1,6 @@
 #include "framework.h"
 
-static void log_callback(WGPULogLevel level, char const *message,
+static void log_callback(WGPULogLevel level, WGPUStringView message,
                          void *userdata) {
   UNUSED(userdata)
   char *level_str;
@@ -23,7 +23,7 @@ static void log_callback(WGPULogLevel level, char const *message,
   default:
     level_str = "unknown_level";
   }
-  fprintf(stderr, "[wgpu] [%s] %s\n", level_str, message);
+  fprintf(stderr, "[wgpu] [%s] %.*s\n", level_str, (int) message.length, message.data);
 }
 
 void frmwrk_setup_logging(WGPULogLevel level) {
@@ -64,15 +64,15 @@ WGPUShaderModule frmwrk_load_shader_module(WGPUDevice device,
 
   shader_module = wgpuDeviceCreateShaderModule(
       device, &(const WGPUShaderModuleDescriptor){
-                  .label = name,
+                  .label = {name, WGPU_STRLEN},
                   .nextInChain =
                       (const WGPUChainedStruct *)&(
-                          const WGPUShaderModuleWGSLDescriptor){
+                          const WGPUShaderSourceWGSL){
                           .chain =
                               (const WGPUChainedStruct){
-                                  .sType = WGPUSType_ShaderModuleWGSLDescriptor,
+                                  .sType = WGPUSType_ShaderSourceWGSL,
                               },
-                          .code = buf,
+                          .code = {buf, WGPU_STRLEN},
                       },
               });
 
@@ -92,7 +92,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   assert(descriptor);
   if (descriptor->content_size == 0) {
     return wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
-                                              .label = descriptor->label,
+                                              .label = {descriptor->label, WGPU_STRLEN},
                                               .size = 0,
                                               .usage = descriptor->usage,
                                               .mappedAtCreation = false,
@@ -105,7 +105,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
       MAX((unpadded_size + align_mask) & ~align_mask, COPY_BUFFER_ALIGNMENT);
   WGPUBuffer buffer =
       wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
-                                         .label = descriptor->label,
+                                         .label = {descriptor->label, WGPU_STRLEN},
                                          .size = padded_size,
                                          .usage = descriptor->usage,
                                          .mappedAtCreation = true,
@@ -168,10 +168,10 @@ void frmwrk_print_global_report(WGPUGlobalReport report) {
 void frmwrk_print_adapter_info(WGPUAdapter adapter) {
   struct WGPUAdapterInfo info = {0};
   wgpuAdapterGetInfo(adapter, &info);
-  printf("description: %s\n", info.description);
-  printf("vendor: %s\n", info.vendor);
-  printf("architecture: %s\n", info.architecture);
-  printf("device: %s\n", info.device);
+  printf("description: %.*s\n", (int) info.description.length, info.description.data);
+  printf("vendor: %.*s\n", (int) info.vendor.length, info.vendor.data);
+  printf("architecture: %.*s\n", (int) info.architecture.length, info.architecture.data);
+  printf("device: %.*s\n", (int) info.device.length, info.device.data);
   printf("backend type: %u\n", info.backendType);
   printf("adapter type: %u\n", info.adapterType);
   printf("vendorID: %x\n", info.vendorID);

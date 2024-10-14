@@ -1,7 +1,6 @@
-use crate::{map_enum, native};
+use crate::{map_enum, native, utils};
 use log::{Level, LevelFilter, Metadata, Record};
 use parking_lot::RwLock;
-use std::ffi::CString;
 
 #[no_mangle]
 pub extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
@@ -40,7 +39,6 @@ impl log::Log for Logger {
 
         if let Some(callback) = logger.callback {
             let msg = record.args().to_string();
-            let msg_c = CString::new(msg).unwrap();
             let level = match record.level() {
                 Level::Error => native::WGPULogLevel_Error,
                 Level::Warn => native::WGPULogLevel_Warn,
@@ -50,7 +48,7 @@ impl log::Log for Logger {
             };
 
             unsafe {
-                callback(level, msg_c.as_ptr(), logger.userdata);
+                callback(level, utils::str_into_string_view(&msg), logger.userdata);
             }
 
             // We do not use std::mem::forget(msg_c), so Rust will reclaim the memory

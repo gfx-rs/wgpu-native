@@ -26,25 +26,27 @@ struct demo {
 };
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
-                                   void *userdata) {
+                                   WGPUAdapter adapter, WGPUStringView message,
+                                   void *userdata1, void *userdata2) {
+  UNUSED(userdata2)
   if (status == WGPURequestAdapterStatus_Success) {
-    struct demo *demo = userdata;
+    struct demo *demo = userdata1;
     demo->adapter = adapter;
   } else {
-    printf(LOG_PREFIX " request_adapter status=%#.8x message=%s\n", status,
-           message);
+    printf(LOG_PREFIX " request_adapter status=%#.8x message=%.*s\n", status,
+           (int) message.length, message.data);
   }
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
-                                  void *userdata) {
+                                  WGPUDevice device, WGPUStringView message,
+                                  void *userdata1, void *userdata2) {
+  UNUSED(userdata2)
   if (status == WGPURequestDeviceStatus_Success) {
-    struct demo *demo = userdata;
+    struct demo *demo = userdata1;
     demo->device = device;
   } else {
-    printf(LOG_PREFIX " request_device status=%#.8x message=%s\n", status,
-           message);
+    printf(LOG_PREFIX " request_device status=%#.8x message=%.*s\n", status,
+           (int) message.length, message.data);
   }
 }
 static void handle_glfw_framebuffer_size(GLFWwindow *window, int width,
@@ -147,10 +149,10 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromMetalLayer){
+                    const WGPUSurfaceSourceMetalLayer){
                     .chain =
                         (const WGPUChainedStruct){
-                            .sType = WGPUSType_SurfaceDescriptorFromMetalLayer,
+                            .sType = WGPUSType_SurfaceSourceMetalLayer,
                         },
                     .layer = metal_layer,
                 },
@@ -165,10 +167,10 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromXlibWindow){
+                    const WGPUSurfaceSourceXlibWindow){
                     .chain =
                         (const WGPUChainedStruct){
-                            .sType = WGPUSType_SurfaceDescriptorFromXlibWindow,
+                            .sType = WGPUSType_SurfaceSourceXlibWindow,
                         },
                     .display = x11_display,
                     .window = x11_window,
@@ -183,11 +185,11 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromWaylandSurface){
+                    const WGPUSurfaceSourceWaylandSurface){
                     .chain =
                         (const WGPUChainedStruct){
                             .sType =
-                                WGPUSType_SurfaceDescriptorFromWaylandSurface,
+                                WGPUSType_SurfaceSourceWaylandSurface,
                         },
                     .display = wayland_display,
                     .surface = wayland_surface,
@@ -203,10 +205,10 @@ int main(int argc, char *argv[]) {
         &(const WGPUSurfaceDescriptor){
             .nextInChain =
                 (const WGPUChainedStruct *)&(
-                    const WGPUSurfaceDescriptorFromWindowsHWND){
+                    const WGPUSurfaceSourceWindowsHWND){
                     .chain =
                         (const WGPUChainedStruct){
-                            .sType = WGPUSType_SurfaceDescriptorFromWindowsHWND,
+                            .sType = WGPUSType_SurfaceSourceWindowsHWND,
                         },
                     .hinstance = hinstance,
                     .hwnd = hwnd,
@@ -222,22 +224,22 @@ int main(int argc, char *argv[]) {
                              &(const WGPURequestAdapterOptions){
                                  .compatibleSurface = demo.surface,
                              },
-                             handle_request_adapter, &demo);
+                             (const WGPURequestAdapterCallbackInfo){
+                                 .callback = handle_request_adapter,
+                                 .userdata1 = &demo
+                             });
   assert(demo.adapter);
 
   WGPUSurfaceCapabilities surface_capabilities = {0};
   wgpuSurfaceGetCapabilities(demo.surface, demo.adapter, &surface_capabilities);
 
-  size_t adapter_feature_count =
-      wgpuAdapterEnumerateFeatures(demo.adapter, NULL);
-  WGPUFeatureName *adapter_features = (WGPUFeatureName *)malloc(
-      sizeof(WGPUFeatureName) * adapter_feature_count);
-  wgpuAdapterEnumerateFeatures(demo.adapter, adapter_features);
+  WGPUSupportedFeatures adapter_features = {0};
+  wgpuAdapterGetFeatures(demo.adapter, &adapter_features);
 
   bool adapter_has_required_features = false;
   bool adapter_has_optional_features = false;
-  for (size_t i = 0; i < adapter_feature_count; i++) {
-    switch ((uint32_t)adapter_features[i]) {
+  for (size_t i = 0; i < adapter_features.featureCount; i++) {
+    switch ((uint32_t)adapter_features.features[i]) {
     case WGPUNativeFeature_TextureBindingArray:
       adapter_has_required_features = true;
       break;
@@ -248,7 +250,7 @@ int main(int argc, char *argv[]) {
   }
   assert(
           adapter_has_required_features /* Adapter must support WGPUNativeFeature_TextureBindingArray feature for this example */);
-  free(adapter_features);
+  wgpuSupportedFeaturesFreeMembers(adapter_features);
 
   WGPUFeatureName required_device_features[2] = {
       (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray,
@@ -260,13 +262,15 @@ int main(int argc, char *argv[]) {
     required_device_feature_count++;
   }
 
-  wgpuAdapterRequestDevice(
-      demo.adapter,
-      &(const WGPUDeviceDescriptor){
-          .requiredFeatureCount = required_device_feature_count,
-          .requiredFeatures = required_device_features,
-      },
-      handle_request_device, &demo);
+  wgpuAdapterRequestDevice(demo.adapter,
+                           &(const WGPUDeviceDescriptor){
+                               .requiredFeatureCount = required_device_feature_count,
+                               .requiredFeatures = required_device_features,
+                           }, 
+                           (const WGPURequestDeviceCallbackInfo){ 
+                               .callback = handle_request_device,
+                               .userdata1 = &demo
+                           });
   assert(demo.device);
 
   WGPUQueue queue = wgpuDeviceGetQueue(demo.device);
@@ -364,25 +368,25 @@ int main(int argc, char *argv[]) {
   WGPUTexture red_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "red",
+                       .label = {"red", WGPU_STRLEN},
                    });
   assert(red_texture);
   WGPUTexture green_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "green",
+                       .label = {"green", WGPU_STRLEN},
                    });
   assert(green_texture);
   WGPUTexture blue_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "blue",
+                       .label = {"blue", WGPU_STRLEN},
                    });
   assert(blue_texture);
   WGPUTexture white_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
-                       .label = "white",
+                       .label = {"white", WGPU_STRLEN},
                    });
   assert(white_texture);
 
@@ -512,7 +516,7 @@ int main(int argc, char *argv[]) {
   };
   WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(
       demo.device, &(const WGPUBindGroupLayoutDescriptor){
-                       .label = "bind group layout",
+                       .label = {"bind group layout", WGPU_STRLEN},
                        .entryCount = sizeof(bind_group_layout_entries) /
                                      sizeof(bind_group_layout_entries[0]),
                        .entries = bind_group_layout_entries,
@@ -578,7 +582,7 @@ int main(int argc, char *argv[]) {
   WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
       demo.device, &(const WGPUBindGroupDescriptor){
                        .layout = bind_group_layout,
-                       .label = "bind group",
+                       .label = {"bind group", WGPU_STRLEN},
                        .entryCount = sizeof(bind_group_entries) /
                                      sizeof(bind_group_entries[0]),
                        .entries = bind_group_entries,
@@ -587,7 +591,7 @@ int main(int argc, char *argv[]) {
 
   WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
       demo.device, &(const WGPUPipelineLayoutDescriptor){
-                       .label = "main",
+                       .label = {"main", WGPU_STRLEN},
                        .bindGroupLayoutCount = 1,
                        .bindGroupLayouts =
                            (const WGPUBindGroupLayout[]){
@@ -603,7 +607,7 @@ int main(int argc, char *argv[]) {
           .vertex =
               (const WGPUVertexState){
                   .module = base_shader_module,
-                  .entryPoint = "vert_main",
+                  .entryPoint = {"vert_main", WGPU_STRLEN},
                   .bufferCount = 1,
                   .buffers =
                       (const WGPUVertexBufferLayout[]){
@@ -619,7 +623,7 @@ int main(int argc, char *argv[]) {
           .fragment =
               &(const WGPUFragmentState){
                   .module = fragment_shader_module,
-                  .entryPoint = fragment_entry_point,
+                  .entryPoint = {fragment_entry_point, WGPU_STRLEN},
                   .targetCount = 1,
                   .targets =
                       (const WGPUColorTargetState[]){
@@ -648,8 +652,9 @@ int main(int argc, char *argv[]) {
     WGPUSurfaceTexture surface_texture;
     wgpuSurfaceGetCurrentTexture(demo.surface, &surface_texture);
     switch (surface_texture.status) {
-    case WGPUSurfaceGetCurrentTextureStatus_Success:
-      // All good, could check for `surface_texture.suboptimal` here.
+    case WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal:
+    case WGPUSurfaceGetCurrentTextureStatus_SuccessSuboptimal:
+      // All good, could handle suboptimal here
       break;
     case WGPUSurfaceGetCurrentTextureStatus_Timeout:
     case WGPUSurfaceGetCurrentTextureStatus_Outdated:
@@ -683,7 +688,7 @@ int main(int argc, char *argv[]) {
 
     WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
         demo.device, &(const WGPUCommandEncoderDescriptor){
-                         .label = "command_encoder",
+                         .label = {"command_encoder", WGPU_STRLEN},
                      });
     assert(command_encoder);
 
@@ -691,7 +696,7 @@ int main(int argc, char *argv[]) {
         wgpuCommandEncoderBeginRenderPass(
             command_encoder,
             &(const WGPURenderPassDescriptor){
-                .label = "render_pass_encoder",
+                .label = {"render_pass_encoder", WGPU_STRLEN},
                 .colorAttachmentCount = 1,
                 .colorAttachments =
                     (const WGPURenderPassColorAttachment[]){
@@ -735,7 +740,7 @@ int main(int argc, char *argv[]) {
 
     WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
         command_encoder, &(const WGPUCommandBufferDescriptor){
-                             .label = "command_buffer",
+                             .label = {"command_buffer", WGPU_STRLEN},
                          });
     assert(command_buffer);
 

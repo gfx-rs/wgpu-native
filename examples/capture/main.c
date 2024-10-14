@@ -14,21 +14,27 @@ const size_t IMAGE_HEIGHT = 200;
 const size_t COPY_BYTES_PER_ROW_ALIGNMENT = 256;
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
-                                   void *userdata) {
+                                   WGPUAdapter adapter, WGPUStringView message,
+                                   void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
-  *(WGPUAdapter *)userdata = adapter;
+  UNUSED(userdata2)
+  *(WGPUAdapter *)userdata1 = adapter;
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
-                                  void *userdata) {
+                                  WGPUDevice device, WGPUStringView message,
+                                  void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
-  *(WGPUDevice *)userdata = device;
+  UNUSED(userdata2)
+  *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUBufferMapAsyncStatus status, void *userdata) {
-  UNUSED(userdata)
+static void handle_buffer_map(WGPUMapAsyncStatus status, 
+                              WGPUStringView message,
+                              void *userdata1, void *userdata2) {
+  UNUSED(message)
+  UNUSED(userdata1)
+  UNUSED(userdata2)
   printf(LOG_PREFIX " buffer_map status=%#.8x\n", status);
 }
 
@@ -67,14 +73,21 @@ int main(int argc, char *argv[]) {
   assert(instance);
 
   WGPUAdapter adapter = NULL;
-  wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,
-                             (void *)&adapter);
+  wgpuInstanceRequestAdapter(instance, NULL,
+                             (const WGPURequestAdapterCallbackInfo){
+                                 .callback = handle_request_adapter,
+                                 .userdata1 = &adapter
+                             });
   assert(adapter);
 
   WGPUDevice device = NULL;
-  wgpuAdapterRequestDevice(adapter, NULL, handle_request_device,
-                           (void *)&device);
+  wgpuAdapterRequestDevice(adapter, NULL,
+                           (const WGPURequestDeviceCallbackInfo){ 
+                               .callback = handle_request_device,
+                               .userdata1 = &device
+                           });
   assert(device);
+
   WGPUQueue queue = wgpuDeviceGetQueue(device);
   assert(queue);
 
@@ -86,7 +99,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBuffer output_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
-                  .label = "output_buffer",
+                  .label = {"output_buffer", WGPU_STRLEN},
                   .size = buffer_size,
                   .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
                   .mappedAtCreation = false,
@@ -102,7 +115,7 @@ int main(int argc, char *argv[]) {
   WGPUTexture texture = wgpuDeviceCreateTexture(
       device,
       &(const WGPUTextureDescriptor){
-          .label = "texture",
+          .label = {"texture", WGPU_STRLEN},
           .size = texture_extent,
           .mipLevelCount = 1,
           .sampleCount = 1,
@@ -116,13 +129,13 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
       device, &(const WGPUCommandEncoderDescriptor){
-                  .label = "command_encoder",
+                  .label = {"command_encoder", WGPU_STRLEN},
               });
   assert(command_encoder);
 
   WGPURenderPassEncoder render_pass_encoder = wgpuCommandEncoderBeginRenderPass(
       command_encoder, &(const WGPURenderPassDescriptor){
-                           .label = "rende_pass_encoder",
+                           .label = {"rende_pass_encoder", WGPU_STRLEN},
                            .colorAttachmentCount = 1,
                            .colorAttachments =
                                (const WGPURenderPassColorAttachment[]){
@@ -167,14 +180,16 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
       command_encoder, &(const WGPUCommandBufferDescriptor){
-                           .label = "command_buffer",
+                           .label = {"command_buffer", WGPU_STRLEN},
                        });
   assert(command_buffer);
 
   wgpuQueueSubmit(queue, 1, (const WGPUCommandBuffer[]){command_buffer});
 
   wgpuBufferMapAsync(output_buffer, WGPUMapMode_Read, 0, buffer_size,
-                     handle_buffer_map, NULL);
+                     (const WGPUBufferMapCallbackInfo){
+                         .callback = handle_buffer_map
+                     });
   wgpuDevicePoll(device, true, NULL);
 
   uint8_t *buf =

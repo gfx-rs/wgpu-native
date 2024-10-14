@@ -12,7 +12,7 @@
 
 typedef struct frmwrk_buffer_init_descriptor {
   WGPU_NULLABLE char const *label;
-  WGPUBufferUsageFlags usage;
+  WGPUBufferUsage usage;
   void *content;
   size_t content_size;
 } frmwrk_buffer_init_descriptor;
