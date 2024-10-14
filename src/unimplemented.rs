@@ -106,11 +106,6 @@ pub extern "C" fn wgpuInstanceHasWGSLLanguageFeature(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuInstanceProcessEvents(_instance: native::WGPUInstance) {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuPipelineLayoutSetLabel(
     _pipeline_layout: native::WGPUPipelineLayout,
     _label: *const ::std::os::raw::c_char,
