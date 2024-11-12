@@ -1,9 +1,10 @@
-use crate::utils::{make_slice, ptr_into_label, ptr_into_pathbuf};
-use crate::{follow_chain, map_enum};
+use crate::utils::{make_slice, string_view_into_label, string_view_into_str};
+use crate::{follow_chain, map_enum, map_enum_with_undefined, new_userdata};
 use crate::{native, UncapturedErrorCallback};
+use std::borrow::Cow;
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
+use std::path::PathBuf;
 use std::ptr::NonNull;
-use std::{borrow::Cow, ffi::CStr};
 
 map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp, Clear, Load);
 map_enum!(
@@ -13,7 +14,7 @@ map_enum!(
     Discard,
     Store
 );
-map_enum!(
+map_enum_with_undefined!(
     map_address_mode,
     WGPUAddressMode,
     wgt::AddressMode,
@@ -22,7 +23,7 @@ map_enum!(
     Repeat,
     MirrorRepeat
 );
-map_enum!(
+map_enum_with_undefined!(
     map_filter_mode,
     WGPUFilterMode,
     wgt::FilterMode,
@@ -30,7 +31,7 @@ map_enum!(
     Nearest,
     Linear
 );
-map_enum!(
+map_enum_with_undefined!(
     map_mipmap_filter_mode,
     WGPUMipmapFilterMode,
     wgt::FilterMode,
@@ -38,7 +39,7 @@ map_enum!(
     Nearest,
     Linear
 );
-map_enum!(
+map_enum_with_undefined!(
     map_compare_function,
     WGPUCompareFunction,
     wgt::CompareFunction,
@@ -51,7 +52,7 @@ map_enum!(
     GreaterEqual,
     Always
 );
-map_enum!(
+map_enum_with_undefined!(
     map_texture_aspect,
     WGPUTextureAspect,
     wgt::TextureAspect,
@@ -60,7 +61,7 @@ map_enum!(
     StencilOnly,
     DepthOnly
 );
-map_enum!(
+map_enum_with_undefined!(
     map_present_mode,
     WGPUPresentMode,
     wgt::PresentMode,
@@ -70,7 +71,7 @@ map_enum!(
     Fifo,
     FifoRelaxed
 );
-map_enum!(
+map_enum_with_undefined!(
     map_primitive_topology,
     WGPUPrimitiveTopology,
     wgt::PrimitiveTopology,
@@ -88,26 +89,30 @@ map_enum!(
     Uint16,
     Uint32
 );
-map_enum!(
+map_enum_with_undefined!(
     map_blend_factor,
     WGPUBlendFactor,
     wgt::BlendFactor,
     "Unknown blend factor",
-    Zero: Zero,
-    One: One,
-    Src: Src,
-    OneMinusSrc: OneMinusSrc,
-    SrcAlpha: SrcAlpha,
-    OneMinusSrcAlpha: OneMinusSrcAlpha,
-    Dst: Dst,
-    OneMinusDst: OneMinusDst,
-    DstAlpha: DstAlpha,
-    OneMinusDstAlpha: OneMinusDstAlpha,
-    SrcAlphaSaturated: SrcAlphaSaturated,
-    Constant: Constant,
-    OneMinusConstant: OneMinusConstant
+    Zero,
+    One,
+    Src,
+    OneMinusSrc,
+    SrcAlpha,
+    OneMinusSrcAlpha,
+    Dst,
+    OneMinusDst,
+    DstAlpha,
+    OneMinusDstAlpha,
+    SrcAlphaSaturated,
+    Constant,
+    OneMinusConstant,
+    Src1,
+    OneMinusSrc1,
+    Src1Alpha,
+    OneMinusSrc1Alpha
 );
-map_enum!(
+map_enum_with_undefined!(
     map_blend_operation,
     WGPUBlendOperation,
     wgt::BlendOperation,
@@ -118,10 +123,11 @@ map_enum!(
     Min,
     Max
 );
-map_enum!(
+map_enum_with_undefined!(
     map_stencil_operation,
     WGPUStencilOperation,
     wgt::StencilOperation,
+    "Unknown stencil operation",
     Keep,
     Zero,
     Replace,
@@ -164,7 +170,8 @@ map_enum!(
     Sint32,
     Sint32x2,
     Sint32x3,
-    Sint32x4
+    Sint32x4,
+    Unorm10_10_10_2
 );
 
 #[cfg(feature = "glsl")]
@@ -199,20 +206,23 @@ map_enum!(
     Version2
 );
 
-map_enum!(
+map_enum_with_undefined!(
     map_storage_texture_access,
     WGPUStorageTextureAccess,
     wgt::StorageTextureAccess,
+    "Unknown storage texture access",
     WriteOnly,
     ReadOnly,
     ReadWrite
 );
 
-pub const WGPU_WHOLE_SIZE: ::std::os::raw::c_ulonglong = native::WGPU_WHOLE_SIZE as _;
-pub const WGPU_LIMIT_U64_UNDEFINED: ::std::os::raw::c_ulonglong =
-    native::WGPU_LIMIT_U64_UNDEFINED as _;
+// These are defined as UINT64_MAX in the header, but bindgen currently can't process that define.
+// See https://github.com/rust-lang/rust-bindgen/issues/2822
+pub const WGPU_WHOLE_SIZE: u64 = u64::MAX;
+pub const WGPU_LIMIT_U64_UNDEFINED: u64 = u64::MAX;
 // it's SIZE_MAX in headers but it's not available in some compilers
 pub const WGPU_WHOLE_MAP_SIZE: usize = usize::MAX;
+pub const WGPU_STRLEN: usize = usize::MAX;
 
 #[inline]
 pub fn map_extent3d(native: &native::WGPUExtent3D) -> wgt::Extent3d {
@@ -273,7 +283,7 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
 }
 
 #[inline]
-pub fn map_instance_descriptor(
+pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
     extras: Option<&native::WGPUInstanceExtras>,
 ) -> wgt::InstanceDescriptor {
@@ -281,8 +291,8 @@ pub fn map_instance_descriptor(
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
-                dxil_path: ptr_into_pathbuf(extras.dxilPath),
-                dxc_path: ptr_into_pathbuf(extras.dxcPath),
+                dxil_path: string_view_into_str(extras.dxilPath).map(PathBuf::from),
+                dxc_path: string_view_into_str(extras.dxcPath).map(PathBuf::from),
             },
             _ => wgt::Dx12Compiler::default(),
         };
@@ -291,7 +301,7 @@ pub fn map_instance_descriptor(
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             dx12_shader_compiler,
             gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
-            flags: match extras.flags as native::WGPUInstanceFlag {
+            flags: match extras.flags {
                 native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
                 flags => map_instance_flags(flags),
             },
@@ -302,18 +312,18 @@ pub fn map_instance_descriptor(
 }
 
 #[inline]
-pub(crate) fn map_device_descriptor<'a>(
+pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
-    *const std::ffi::c_char,
+    Option<&'a str>,
     Option<UncapturedErrorCallback>,
 ) {
     (
         wgt::DeviceDescriptor {
-            label: ptr_into_label(des.label),
+            label: string_view_into_label(des.label),
             required_features: map_features(make_slice(
                 des.requiredFeatures,
                 des.requiredFeatureCount,
@@ -322,7 +332,7 @@ pub(crate) fn map_device_descriptor<'a>(
                 Some(required_limits) => unsafe {
                     follow_chain!(
                         map_required_limits((required_limits, base_limits),
-                        WGPUSType_RequiredLimitsExtras => native::WGPURequiredLimitsExtras)
+                        WGPUSType_NativeLimits => native::WGPUNativeLimits)
                     )
                 },
                 None => base_limits,
@@ -330,15 +340,12 @@ pub(crate) fn map_device_descriptor<'a>(
             // TODO(wgpu.h)
             memory_hints: Default::default(),
         },
-        match extras {
-            Some(extras) => extras.tracePath,
-            None => std::ptr::null(),
-        },
+        extras.and_then(|extras| string_view_into_str(extras.tracePath)),
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
             callback => Some(UncapturedErrorCallback {
                 callback,
-                userdata: des.uncapturedErrorCallbackInfo.userdata,
+                userdata: new_userdata!(des.uncapturedErrorCallbackInfo),
             }),
         },
     )
@@ -363,7 +370,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         make_slice(extras.pushConstantRanges, extras.pushConstantRangeCount)
             .iter()
             .map(|range| wgt::PushConstantRange {
-                stages: wgt::ShaderStages::from_bits(range.stages)
+                stages: from_u64_bits(range.stages)
                     .expect("invalid shader stage for push constant range"),
                 range: range.start..range.end,
             })
@@ -371,18 +378,14 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
     });
 
     return wgc::binding_model::PipelineLayoutDescriptor {
-        label: ptr_into_label(des.label),
+        label: string_view_into_label(des.label),
         bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
     };
 }
 
 #[inline]
-pub fn write_limits_struct(
-    wgt_limits: wgt::Limits,
-    supported_limits: &mut native::WGPUSupportedLimits,
-) {
-    let mut limits = supported_limits.limits;
+pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULimits) {
     limits.maxTextureDimension1D = wgt_limits.max_texture_dimension_1d;
     limits.maxTextureDimension2D = wgt_limits.max_texture_dimension_2d;
     limits.maxTextureDimension3D = wgt_limits.max_texture_dimension_3d;
@@ -408,7 +411,6 @@ pub fn write_limits_struct(
     limits.maxVertexBufferArrayStride = wgt_limits.max_vertex_buffer_array_stride;
     limits.minUniformBufferOffsetAlignment = wgt_limits.min_uniform_buffer_offset_alignment;
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
-    limits.maxInterStageShaderComponents = wgt_limits.max_inter_stage_shader_components;
     // TODO: not yet in wgt
     // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
     // TODO: not yet in wgt
@@ -421,33 +423,29 @@ pub fn write_limits_struct(
     limits.maxComputeWorkgroupSizeY = wgt_limits.max_compute_workgroup_size_y;
     limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
-    supported_limits.limits = limits;
 
     if let Some(native::WGPUChainedStructOut {
-        sType: native::WGPUSType_SupportedLimitsExtras,
+        sType: native::WGPUSType_NativeLimits,
         ..
-    }) = unsafe { supported_limits.nextInChain.as_ref() }
+    }) = unsafe { limits.nextInChain.as_ref() }
     {
         unsafe {
-            let extras = std::mem::transmute::<
+            let native_limits = std::mem::transmute::<
                 *mut native::WGPUChainedStructOut,
-                *mut native::WGPUSupportedLimitsExtras,
-            >(supported_limits.nextInChain);
-            (*extras).limits = native::WGPUNativeLimits {
-                maxPushConstantSize: wgt_limits.max_push_constant_size,
-                maxNonSamplerBindings: wgt_limits.max_non_sampler_bindings,
-            };
+                *mut native::WGPUNativeLimits,
+            >(limits.nextInChain);
+            (*native_limits).maxPushConstantSize = wgt_limits.max_push_constant_size;
+            (*native_limits).maxNonSamplerBindings = wgt_limits.max_non_sampler_bindings;
         }
     };
 }
 
 #[inline]
 pub fn map_required_limits(
-    required_limits: &native::WGPURequiredLimits,
+    limits: &native::WGPULimits,
     base_limits: wgt::Limits,
-    extras: Option<&native::WGPURequiredLimitsExtras>,
+    extras: Option<&native::WGPUNativeLimits>,
 ) -> wgt::Limits {
-    let limits = required_limits.limits;
     let mut wgt_limits = base_limits;
     if limits.maxTextureDimension1D != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_texture_dimension_1d = limits.maxTextureDimension1D;
@@ -494,10 +492,10 @@ pub fn map_required_limits(
     if limits.maxUniformBuffersPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_uniform_buffers_per_shader_stage = limits.maxUniformBuffersPerShaderStage;
     }
-    if limits.maxUniformBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+    if limits.maxUniformBufferBindingSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_uniform_buffer_binding_size = limits.maxUniformBufferBindingSize as u32;
     }
-    if limits.maxStorageBufferBindingSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+    if limits.maxStorageBufferBindingSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_storage_buffer_binding_size = limits.maxStorageBufferBindingSize as u32;
     }
     if limits.minUniformBufferOffsetAlignment != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -509,7 +507,7 @@ pub fn map_required_limits(
     if limits.maxVertexBuffers != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffers = limits.maxVertexBuffers;
     }
-    if limits.maxBufferSize != native::WGPU_LIMIT_U64_UNDEFINED as u64 {
+    if limits.maxBufferSize != WGPU_LIMIT_U64_UNDEFINED {
         wgt_limits.max_buffer_size = limits.maxBufferSize;
     }
     if limits.maxVertexAttributes != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -517,9 +515,6 @@ pub fn map_required_limits(
     }
     if limits.maxVertexBufferArrayStride != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_vertex_buffer_array_stride = limits.maxVertexBufferArrayStride;
-    }
-    if limits.maxInterStageShaderComponents != native::WGPU_LIMIT_U32_UNDEFINED {
-        wgt_limits.max_inter_stage_shader_components = limits.maxInterStageShaderComponents;
     }
     // TODO: not yet in wgt
     // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
@@ -551,8 +546,7 @@ pub fn map_required_limits(
     if limits.maxComputeWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroups_per_dimension = limits.maxComputeWorkgroupsPerDimension;
     }
-    if let Some(extras) = extras {
-        let limits = extras.limits;
+    if let Some(limits) = extras {
         if limits.maxPushConstantSize != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_push_constant_size = limits.maxPushConstantSize;
         }
@@ -574,16 +568,15 @@ pub enum ShaderParseError {
 }
 
 #[inline]
-pub fn map_shader_module<'a>(
+pub unsafe fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
-    spirv: Option<&native::WGPUShaderModuleSPIRVDescriptor>,
-    wgsl: Option<&native::WGPUShaderModuleWGSLDescriptor>,
+    spirv: Option<&native::WGPUShaderSourceSPIRV>,
+    wgsl: Option<&native::WGPUShaderSourceWGSL>,
     glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>,
 ) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
     if let Some(wgsl) = wgsl {
-        let c_str: &CStr = unsafe { CStr::from_ptr(wgsl.code) };
-        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        let str_slice: &str = string_view_into_str(wgsl.code).unwrap_or("");
         return Ok(wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(
             str_slice,
         )));
@@ -607,8 +600,7 @@ pub fn map_shader_module<'a>(
 
     #[cfg(feature = "glsl")]
     if let Some(glsl) = glsl {
-        let c_str: &CStr = unsafe { CStr::from_ptr(glsl.code) };
-        let str_slice: &str = c_str.to_str().expect("not a valid utf-8 string");
+        let str_slice: &str = string_view_into_str(glsl.code).unwrap_or("");
         let mut options = naga::front::glsl::Options::from(
             map_shader_stage(glsl.stage)
                 .expect("invalid shader stage for shader module glsl descriptor"),
@@ -616,11 +608,8 @@ pub fn map_shader_module<'a>(
 
         let raw_defines = make_slice(glsl.defines, glsl.defineCount as usize);
         for define in raw_defines {
-            let name_c_str: &CStr = unsafe { CStr::from_ptr(define.name) };
-            let name_str_slice: &str = name_c_str.to_str().expect("not a valid utf-8 string");
-
-            let value_c_str: &CStr = unsafe { CStr::from_ptr(define.value) };
-            let value_str_slice: &str = value_c_str.to_str().expect("not a valid utf-8 string");
+            let name_str_slice: &str = string_view_into_str(define.name).unwrap_or("");
+            let value_str_slice: &str = string_view_into_str(define.value).unwrap_or("");
 
             options
                 .defines
@@ -639,7 +628,7 @@ pub fn map_shader_module<'a>(
 
 #[inline]
 pub unsafe fn map_image_copy_texture(
-    native: &native::WGPUImageCopyTexture,
+    native: &native::WGPUTexelCopyTextureInfo,
 ) -> wgc::command::ImageCopyTexture {
     wgt::ImageCopyTexture {
         texture: native
@@ -649,13 +638,13 @@ pub unsafe fn map_image_copy_texture(
             .id,
         mip_level: native.mipLevel,
         origin: map_origin3d(&native.origin),
-        aspect: map_texture_aspect(native.aspect),
+        aspect: map_texture_aspect(native.aspect).unwrap_or(wgt::TextureAspect::All),
     }
 }
 
 #[inline]
 pub unsafe fn map_image_copy_buffer(
-    native: &native::WGPUImageCopyBuffer,
+    native: &native::WGPUTexelCopyBufferInfo,
 ) -> wgc::command::ImageCopyBuffer {
     wgt::ImageCopyBuffer {
         buffer: native
@@ -668,7 +657,7 @@ pub unsafe fn map_image_copy_buffer(
 }
 
 #[inline]
-pub fn map_texture_data_layout(native: &native::WGPUTextureDataLayout) -> wgt::ImageDataLayout {
+pub fn map_texture_data_layout(native: &native::WGPUTexelCopyBufferLayout) -> wgt::ImageDataLayout {
     wgt::ImageDataLayout {
         offset: native.offset,
         bytes_per_row: match native.bytesPerRow {
@@ -697,9 +686,9 @@ pub fn map_color(native: &native::WGPUColor) -> wgt::Color {
 #[inline]
 pub fn map_blend_component(native: native::WGPUBlendComponent) -> wgt::BlendComponent {
     wgt::BlendComponent {
-        src_factor: map_blend_factor(native.srcFactor),
-        dst_factor: map_blend_factor(native.dstFactor),
-        operation: map_blend_operation(native.operation),
+        src_factor: map_blend_factor(native.srcFactor).unwrap_or(wgt::BlendFactor::One),
+        dst_factor: map_blend_factor(native.dstFactor).unwrap_or(wgt::BlendFactor::Zero),
+        operation: map_blend_operation(native.operation).unwrap_or(wgt::BlendOperation::Add),
     }
 }
 
@@ -707,6 +696,8 @@ pub fn map_blend_component(native: native::WGPUBlendComponent) -> wgt::BlendComp
 pub fn map_texture_view_dimension(
     value: native::WGPUTextureViewDimension,
 ) -> Option<wgt::TextureViewDimension> {
+    // This doesn't use map_enum_with_undefined! because the enum name after the _
+    // isn't a valid ident on its own for the macro.
     match value {
         native::WGPUTextureViewDimension_1D => Some(wgt::TextureViewDimension::D1),
         native::WGPUTextureViewDimension_2D => Some(wgt::TextureViewDimension::D2),
@@ -714,16 +705,20 @@ pub fn map_texture_view_dimension(
         native::WGPUTextureViewDimension_Cube => Some(wgt::TextureViewDimension::Cube),
         native::WGPUTextureViewDimension_CubeArray => Some(wgt::TextureViewDimension::CubeArray),
         native::WGPUTextureViewDimension_3D => Some(wgt::TextureViewDimension::D3),
-        _ => None,
+        native::WGPUTextureDimension_Undefined => None,
+        _ => panic!("Unknown texture view dimension"),
     }
 }
 
 #[inline]
-pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> wgt::TextureDimension {
+pub fn map_texture_dimension(value: native::WGPUTextureDimension) -> Option<wgt::TextureDimension> {
+    // This doesn't use map_enum_with_undefined! because the enum name after the _
+    // isn't a valid ident on its own for the macro.
     match value {
-        native::WGPUTextureDimension_1D => wgt::TextureDimension::D1,
-        native::WGPUTextureDimension_2D => wgt::TextureDimension::D2,
-        native::WGPUTextureDimension_3D => wgt::TextureDimension::D3,
+        native::WGPUTextureDimension_1D => Some(wgt::TextureDimension::D1),
+        native::WGPUTextureDimension_2D => Some(wgt::TextureDimension::D2),
+        native::WGPUTextureDimension_3D => Some(wgt::TextureDimension::D3),
+        native::WGPUTextureDimension_Undefined => None,
         x => panic!("Unknown texture dimension: {x}"),
     }
 }
@@ -734,6 +729,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
     use wgt::{AstcBlock, AstcChannel};
 
     match value {
+        native::WGPUTextureFormat_Undefined => None,
         native::WGPUTextureFormat_R8Unorm => Some(wgt::TextureFormat::R8Unorm),
         native::WGPUTextureFormat_R8Snorm => Some(wgt::TextureFormat::R8Snorm),
         native::WGPUTextureFormat_R8Uint => Some(wgt::TextureFormat::R8Uint),
@@ -838,7 +834,7 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUNativeTextureFormat_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
         native::WGPUNativeTextureFormat_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
-        _ => None,
+        _ => panic!("Unknown texture format"),
     }
 }
 
@@ -965,26 +961,13 @@ pub fn map_stencil_face_state(
 ) -> wgt::StencilFaceState {
     wgt::StencilFaceState {
         compare: map_compare_function(value.compare)
-            .unwrap_or_else(|_| panic!("invalid compare function for {mode} stencil face state")),
-        fail_op: map_stencil_operation(value.failOp)
-            .unwrap_or_else(|_| panic!("invalid fail op for {mode} stencil face state")),
+            .unwrap_or_else(|_| panic!("invalid compare function for {mode} stencil face state"))
+            .unwrap_or(wgt::CompareFunction::Always),
+        fail_op: map_stencil_operation(value.failOp).unwrap_or(wgt::StencilOperation::Keep),
         depth_fail_op: map_stencil_operation(value.depthFailOp)
-            .unwrap_or_else(|_| panic!("invalid depth fail op for {mode} stencil face state")),
-        pass_op: map_stencil_operation(value.passOp)
-            .unwrap_or_else(|_| panic!("invalid pass op for {mode} stencil face state")),
+            .unwrap_or(wgt::StencilOperation::Keep),
+        pass_op: map_stencil_operation(value.passOp).unwrap_or(wgt::StencilOperation::Keep),
     }
-}
-
-#[inline]
-pub fn map_primitive_state(
-    _: &native::WGPUPrimitiveState,
-    depth_clip_control: Option<&native::WGPUPrimitiveDepthClipControl>,
-) -> bool {
-    if let Some(depth_clip_control) = depth_clip_control {
-        return depth_clip_control.unclippedDepth != 0;
-    }
-
-    false
 }
 
 #[inline]
@@ -1079,7 +1062,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::FLOAT32_FILTERABLE) {
         temp.push(native::WGPUFeatureName_Float32Filterable);
     }
-
+    if features.contains(wgt::Features::DUAL_SOURCE_BLENDING) {
+        temp.push(native::WGPUFeatureName_DualSourceBlending);
+    }
     // wgpu-rs only features
     if features.contains(wgt::Features::PUSH_CONSTANTS) {
         temp.push(native::WGPUNativeFeature_PushConstants);
@@ -1207,14 +1192,19 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUFeatureName_DepthClipControl => Some(Features::DEPTH_CLIP_CONTROL),
         native::WGPUFeatureName_Depth32FloatStencil8 => Some(Features::DEPTH32FLOAT_STENCIL8),
         native::WGPUFeatureName_TextureCompressionBC => Some(Features::TEXTURE_COMPRESSION_BC),
+        // TODO: WGPUFeatureName_TextureCompressionBCSliced3D
         native::WGPUFeatureName_TextureCompressionETC2 => Some(Features::TEXTURE_COMPRESSION_ETC2),
         native::WGPUFeatureName_TextureCompressionASTC => Some(Features::TEXTURE_COMPRESSION_ASTC),
+        // TODO: WGPUFeatureName_TextureCompressionASTCSliced3D
         native::WGPUFeatureName_TimestampQuery => Some(Features::TIMESTAMP_QUERY),
         native::WGPUFeatureName_IndirectFirstInstance => Some(Features::INDIRECT_FIRST_INSTANCE),
         native::WGPUFeatureName_ShaderF16 => Some(Features::SHADER_F16),
         native::WGPUFeatureName_RG11B10UfloatRenderable => Some(Features::RG11B10UFLOAT_RENDERABLE),
         native::WGPUFeatureName_BGRA8UnormStorage => Some(Features::BGRA8UNORM_STORAGE),
+        // TODO: WGPUFeatureName_ClipDistances
+        // TODO: WGPUFeatureName_Float32Blendable
         native::WGPUFeatureName_Float32Filterable => Some(Features::FLOAT32_FILTERABLE),
+        native::WGPUFeatureName_DualSourceBlending => Some(Features::DUAL_SOURCE_BLENDING),
 
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
@@ -1365,16 +1355,16 @@ pub fn map_bind_group_layout_entry(
     entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
 ) -> wgt::BindGroupLayoutEntry {
-    let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_Undefined;
-    let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_Undefined;
-    let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_Undefined;
+    let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_BindingNotUsed;
+    let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_BindingNotUsed;
+    let is_texture = entry.texture.sampleType != native::WGPUTextureSampleType_BindingNotUsed;
     let is_storage_texture =
-        entry.storageTexture.access != native::WGPUStorageTextureAccess_Undefined;
+        entry.storageTexture.access != native::WGPUStorageTextureAccess_BindingNotUsed;
 
     let ty = if is_texture {
         wgt::BindingType::Texture {
             sample_type: match entry.texture.sampleType {
-                native::WGPUTextureSampleType_Float => {
+                native::WGPUTextureSampleType_Float | native::WGPUTextureSampleType_Undefined => {
                     wgt::TextureSampleType::Float { filterable: true }
                 }
                 native::WGPUTextureSampleType_UnfilterableFloat => {
@@ -1398,7 +1388,7 @@ pub fn map_bind_group_layout_entry(
         }
     } else if is_sampler {
         match entry.sampler.type_ {
-            native::WGPUSamplerBindingType_Filtering => {
+            native::WGPUSamplerBindingType_Filtering | native::WGPUSamplerBindingType_Undefined => {
                 wgt::BindingType::Sampler(wgt::SamplerBindingType::Filtering)
             }
             native::WGPUSamplerBindingType_NonFiltering => {
@@ -1412,7 +1402,7 @@ pub fn map_bind_group_layout_entry(
     } else if is_storage_texture {
         wgt::BindingType::StorageTexture {
             access: map_storage_texture_access(entry.storageTexture.access)
-                .expect("invalid storage texture access for storage texture binding layout"),
+                .unwrap_or(wgt::StorageTextureAccess::WriteOnly),
             format: map_texture_format(entry.storageTexture.format)
                 .expect("invalid texture format for storage texture binding layout"),
             view_dimension: match entry.storageTexture.viewDimension {
@@ -1430,7 +1420,9 @@ pub fn map_bind_group_layout_entry(
     } else if is_buffer {
         wgt::BindingType::Buffer {
             ty: match entry.buffer.type_ {
-                native::WGPUBufferBindingType_Uniform => wgt::BufferBindingType::Uniform,
+                native::WGPUBufferBindingType_Uniform | native::WGPUBufferBindingType_Undefined => {
+                    wgt::BufferBindingType::Uniform
+                }
                 native::WGPUBufferBindingType_Storage => {
                     wgt::BufferBindingType::Storage { read_only: false }
                 }
@@ -1456,7 +1448,7 @@ pub fn map_bind_group_layout_entry(
     wgt::BindGroupLayoutEntry {
         ty,
         binding: entry.binding,
-        visibility: wgt::ShaderStages::from_bits(entry.visibility)
+        visibility: from_u64_bits(entry.visibility)
             .expect("invalid visibility for bind group layout entry"),
         count: extras.and_then(|v| NonZeroU32::new(v.count)),
     }
@@ -1470,12 +1462,12 @@ pub fn map_query_set_index(index: u32) -> Option<u32> {
 }
 
 #[inline]
-pub fn map_query_set_descriptor<'a>(
+pub unsafe fn map_query_set_descriptor<'a>(
     desc: &native::WGPUQuerySetDescriptor,
     extras: Option<&native::WGPUQuerySetDescriptorExtras>,
 ) -> wgt::QuerySetDescriptor<wgc::Label<'a>> {
     wgt::QuerySetDescriptor {
-        label: ptr_into_label(desc.label),
+        label: string_view_into_label(desc.label),
         count: desc.count,
         ty: match (desc.type_, extras) {
             (native::WGPUQueryType_Occlusion, _) => wgt::QueryType::Occlusion,
@@ -1562,12 +1554,12 @@ pub enum CreateSurfaceParams {
 
 pub unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
-    win: Option<&native::WGPUSurfaceDescriptorFromWindowsHWND>,
-    xcb: Option<&native::WGPUSurfaceDescriptorFromXcbWindow>,
-    xlib: Option<&native::WGPUSurfaceDescriptorFromXlibWindow>,
-    wl: Option<&native::WGPUSurfaceDescriptorFromWaylandSurface>,
-    _metal: Option<&native::WGPUSurfaceDescriptorFromMetalLayer>,
-    android: Option<&native::WGPUSurfaceDescriptorFromAndroidNativeWindow>,
+    win: Option<&native::WGPUSurfaceSourceWindowsHWND>,
+    xcb: Option<&native::WGPUSurfaceSourceXCBWindow>,
+    xlib: Option<&native::WGPUSurfaceSourceXlibWindow>,
+    wl: Option<&native::WGPUSurfaceSourceWaylandSurface>,
+    _metal: Option<&native::WGPUSurfaceSourceMetalLayer>,
+    android: Option<&native::WGPUSurfaceSourceAndroidNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -1646,7 +1638,7 @@ pub fn map_surface_configuration(
             .expect("invalid format for surface configuration"),
         width: config.width,
         height: config.height,
-        present_mode: map_present_mode(config.presentMode),
+        present_mode: map_present_mode(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),
         alpha_mode: map_composite_alpha_mode(config.alphaMode)
             .expect("invalid alpha mode for surface configuration"),
         view_formats: make_slice(config.viewFormats, config.viewFormatCount)
@@ -1680,4 +1672,12 @@ pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType
         wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
         wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
     }
+}
+
+pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
+    if value > u32::MAX.into() {
+        return None;
+    }
+
+    T::from_bits(value as u32)
 }
