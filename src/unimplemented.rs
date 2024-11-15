@@ -82,7 +82,25 @@ pub extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
 }
 
 #[no_mangle]
+pub extern "C" fn wgpuDeviceGetAdapterInfo(_device: native::WGPUDevice) -> native::WGPUAdapterInfo {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuDeviceGetLostFuture(_device: native::WGPUDevice) -> native::WGPUFuture {
+    unimplemented!();
+}
+
+#[no_mangle]
 pub extern "C" fn wgpuDeviceSetLabel(_device: native::WGPUDevice, _label: native::WGPUStringView) {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuInstanceGetWGSLLanguageFeatures(
+    _instance: native::WGPUInstance,
+    _features: *mut native::WGPUSupportedWGSLLanguageFeatures,
+) -> native::WGPUStatus {
     unimplemented!();
 }
 
@@ -172,6 +190,13 @@ pub extern "C" fn wgpuShaderModuleGetCompilationInfo(
 pub extern "C" fn wgpuShaderModuleSetLabel(
     _shader_module: native::WGPUShaderModule,
     _label: native::WGPUStringView,
+) {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
+    _supported_wgsl_language_features: native::WGPUSupportedWGSLLanguageFeatures,
 ) {
     unimplemented!();
 }
