@@ -2696,7 +2696,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                         callback(
                             native::WGPURequestAdapterStatus_Error,
                             std::ptr::null_mut(),
-                            "unsupported backend type: d3d11\0".as_ptr() as _,
+                            c"unsupported backend type: d3d11".as_ptr() as _,
                             userdata,
                         );
                         return;
