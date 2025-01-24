@@ -23,22 +23,22 @@ resolver = "2"
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v23.0.0"
+tag = "v24.0.0"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v23.0.0"
+tag = "v24.0.0"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v23.0.0"
+tag = "v24.0.0"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v23.0.0"
+tag = "v24.0.0"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
@@ -157,6 +157,9 @@ thiserror = "1"
 parking_lot = "0.12"
 smallvec = "1"
 bitflags = "2"
+
+# This is required to compile but not sure why because we are not targeting JS
+js-sys = "0.3.77"
 
 [build-dependencies]
 bindgen = "0.70"
