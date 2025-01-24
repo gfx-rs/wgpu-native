@@ -2402,7 +2402,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: string_view_into_label(descriptor.label),
-        shader_bound_checks: wgt::ShaderBoundChecks::default(),
+        runtime_checks: wgt::ShaderRuntimeChecks::default(),
     };
 
     let source = match follow_chain!(
