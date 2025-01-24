@@ -4301,7 +4301,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: string_view_into_label(descriptor.label),
-        shader_bound_checks: unsafe { wgt::ShaderBoundChecks::unchecked() },
+        runtime_checks: wgt::ShaderRuntimeChecks::unchecked(),
     };
 
     let source = Cow::Borrowed(make_slice(
