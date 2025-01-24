@@ -290,9 +290,9 @@ pub unsafe fn map_instance_descriptor(
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             // TODO add specific value to cover dynamic and static Dxc
             native::WGPUDx12Compiler_Dxc => match (string_view_into_str(extras.dxilPath), string_view_into_str(extras.dxcPath)) {
-                (Some(dxilPath), Some(dxcPath)) => wgt::Dx12Compiler::DynamicDxc {
-                    dxil_path: dxilPath.to_string(),
-                    dxc_path: dxcPath.to_string(),
+                (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
+                    dxil_path: dxil_path.to_string(),
+                    dxc_path: dxc_path.to_string(),
                 },
                 _ => wgt::Dx12Compiler::StaticDxc
             }

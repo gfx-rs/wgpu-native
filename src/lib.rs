@@ -997,7 +997,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
             _ => panic!("invalid map mode"),
         },
-        callback: Some(wgc::resource::BufferMapCallback::from_rust(Box::new(
+        callback: Some(Box::new(
             move |result: resource::BufferAccessResult| {
                 let (status, message) = match result {
                     Ok(()) => (native::WGPUMapAsyncStatus_Success, String::default()),
@@ -1020,7 +1020,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
                     userdata.get_2(),
                 );
             },
-        ))),
+        )),
     };
 
     if let Err(cause) = context.buffer_map_async(
@@ -2881,13 +2881,13 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    let closure = wgc::device::queue::SubmittedWorkDoneClosure::from_rust(Box::new(move || {
+    let closure:wgc::device::queue::SubmittedWorkDoneClosure = Box::new(move || {
         callback(
             native::WGPUQueueWorkDoneStatus_Success,
             userdata.get_1(),
             userdata.get_2(),
         );
-    }));
+    });
 
     context.queue_on_submitted_work_done(queue_id, closure);
 
