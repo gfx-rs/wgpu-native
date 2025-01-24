@@ -4093,11 +4093,6 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
 
     let desc = match descriptor {
         Some(descriptor) => {
-            // TODO: Pass usage to texture view creation when wgpu-core supports it.
-            if descriptor.usage != 0 && (descriptor.usage & texture_usage) != descriptor.usage {
-                panic!("Texture view usage must be subset of texture's usage")
-            }
-
             wgc::resource::TextureViewDescriptor {
                 usage:  Some(conv::map_texture_usage_flags(descriptor.usage)),
                 label: string_view_into_label(descriptor.label),
