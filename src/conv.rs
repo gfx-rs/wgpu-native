@@ -292,7 +292,7 @@ pub unsafe fn map_instance_descriptor(
             native::WGPUDx12Compiler_Dxc => match (string_view_into_str(extras.dxilPath), string_view_into_str(extras.dxcPath)) {
                 (Some(dxilPath), Some(dxcPath)) => wgt::Dx12Compiler::DynamicDxc {
                     dxil_path: dxilPath.to_string(),
-                    dxc_path: dxilPath.to_string(),
+                    dxc_path: dxcPath.to_string(),
                 },
                 _ => wgt::Dx12Compiler::StaticDxc
             }
@@ -301,8 +301,14 @@ pub unsafe fn map_instance_descriptor(
 
         wgt::InstanceDescriptor {
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
-            dx12_shader_compiler,
-            gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
+            backend_options: wgt::BackendOptions {
+                gl: wgt::GlBackendOptions {
+                    gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion)
+                },
+                dx12: wgt::Dx12BackendOptions {
+                    shader_compiler: dx12_shader_compiler
+                }
+            },
             flags: match extras.flags {
                 native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
                 flags => map_instance_flags(flags),
