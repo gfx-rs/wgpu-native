@@ -6,7 +6,7 @@ use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
 use std::path::PathBuf;
 use std::ptr::NonNull;
 
-map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp, Clear, Load);
+map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp<f64>, Clear, Load);
 map_enum!(
     map_store_op,
     WGPUStoreOp,
@@ -629,8 +629,8 @@ pub unsafe fn map_shader_module<'a>(
 #[inline]
 pub unsafe fn map_image_copy_texture(
     native: &native::WGPUTexelCopyTextureInfo,
-) -> wgc::command::ImageCopyTexture {
-    wgt::ImageCopyTexture {
+) -> wgc::command::TexelCopyTextureInfo {
+    wgt::TexelCopyTextureInfo {
         texture: native
             .texture
             .as_ref()
@@ -645,8 +645,8 @@ pub unsafe fn map_image_copy_texture(
 #[inline]
 pub unsafe fn map_image_copy_buffer(
     native: &native::WGPUTexelCopyBufferInfo,
-) -> wgc::command::ImageCopyBuffer {
-    wgt::ImageCopyBuffer {
+) -> wgc::command::TexelCopyBufferInfo {
+    wgt::TexelCopyBufferInfo {
         buffer: native
             .buffer
             .as_ref()
@@ -657,8 +657,8 @@ pub unsafe fn map_image_copy_buffer(
 }
 
 #[inline]
-pub fn map_texture_data_layout(native: &native::WGPUTexelCopyBufferLayout) -> wgt::ImageDataLayout {
-    wgt::ImageDataLayout {
+pub fn map_texture_data_layout(native: &native::WGPUTexelCopyBufferLayout) -> wgt::TexelCopyBufferLayout {
+    wgt::TexelCopyBufferLayout {
         offset: native.offset,
         bytes_per_row: match native.bytesPerRow {
             0 => panic!("invalid bytesPerRow"),
@@ -1153,10 +1153,10 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_FORMAT_NV12) {
         temp.push(native::WGPUNativeFeature_TextureFormatNv12);
     }
-    if features.contains(wgt::Features::RAY_TRACING_ACCELERATION_STRUCTURE) {
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE) {
         temp.push(native::WGPUNativeFeature_RayTracingAccelerationStructure);
     }
-    if features.contains(wgt::Features::RAY_QUERY) {
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_QUERY) {
         temp.push(native::WGPUNativeFeature_RayQuery);
     }
     if features.contains(wgt::Features::SHADER_F64) {
@@ -1236,8 +1236,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
         native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
-        native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::RAY_TRACING_ACCELERATION_STRUCTURE),
-        native::WGPUNativeFeature_RayQuery => Some(Features::RAY_QUERY),
+        native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE),
+        native::WGPUNativeFeature_RayQuery => Some(Features::EXPERIMENTAL_RAY_QUERY),
         native::WGPUNativeFeature_ShaderF64 => Some(Features::SHADER_F64),
         native::WGPUNativeFeature_ShaderPrimitiveIndex => Some(Features::SHADER_PRIMITIVE_INDEX),
         native::WGPUNativeFeature_ShaderEarlyDepthTest => Some(Features::SHADER_EARLY_DEPTH_TEST),
