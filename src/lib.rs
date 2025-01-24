@@ -3898,7 +3898,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
 
     let caps = match context.surface_get_capabilities(surface_id, adapter_id) {
         Ok(caps) => caps,
-        Err(wgc::instance::GetSurfaceSupportError::Unsupported) => {
+        Err(wgc::instance::GetSurfaceSupportError::FailedToRetrieveSurfaceCapabilitiesForAdapter) => {
             wgt::SurfaceCapabilities::default()
         }
         Err(cause) => handle_error_fatal(cause, "wgpuSurfaceGetCapabilities"),
