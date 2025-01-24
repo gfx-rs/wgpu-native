@@ -858,7 +858,7 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         }
     };
 
-    return NULL_FUTURE;
+    NULL_FUTURE
 }
 
 #[no_mangle]
