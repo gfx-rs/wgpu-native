@@ -4081,13 +4081,12 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
     texture: native::WGPUTexture,
     descriptor: Option<&native::WGPUTextureViewDescriptor>,
 ) -> native::WGPUTextureView {
-    let (texture_id, context, error_sink, texture_usage) = {
+    let (texture_id, context, error_sink) = {
         let texture = texture.as_ref().expect("invalid texture");
         (
             texture.id,
             &texture.context,
             &texture.error_sink,
-            texture.data.usage,
         )
     };
 
