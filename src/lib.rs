@@ -3992,6 +3992,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
                 wgt::SurfaceStatus::Timeout => native::WGPUSurfaceGetCurrentTextureStatus_Timeout,
                 wgt::SurfaceStatus::Outdated => native::WGPUSurfaceGetCurrentTextureStatus_Outdated,
                 wgt::SurfaceStatus::Lost => native::WGPUSurfaceGetCurrentTextureStatus_Lost,
+                // TODO add some logs to provide more context
+                wgt::SurfaceStatus::Unknown => native::WGPUSurfaceGetCurrentTextureStatus_Error,
             };
             surface_texture.texture = match texture_id {
                 Some(texture_id) => Arc::into_raw(Arc::new(WGPUTextureImpl {
