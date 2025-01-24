@@ -4099,6 +4099,7 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
             }
 
             wgc::resource::TextureViewDescriptor {
+                usage:  Some(conv::map_texture_usage_flags(descriptor.usage)),
                 label: string_view_into_label(descriptor.label),
                 format: conv::map_texture_format(descriptor.format),
                 dimension: conv::map_texture_view_dimension(descriptor.dimension),
