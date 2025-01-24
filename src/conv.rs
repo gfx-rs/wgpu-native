@@ -846,6 +846,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
     match rs_type {
         // unimplemented in webgpu.h
         wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
+        wgt::TextureFormat::R64Uint => None,
 
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
         wgt::TextureFormat::R8Snorm => Some(native::WGPUTextureFormat_R8Snorm),
