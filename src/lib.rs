@@ -664,7 +664,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
     };
 
     Arc::into_raw(Arc::new(WGPUInstanceImpl {
-        context: Arc::new(Context::new("wgpu", instance_desc)),
+        context: Arc::new(Context::new("wgpu", &instance_desc)),
     }))
 }
 
@@ -1151,18 +1151,14 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .expect("invalid texture view for depth stencil attachment")
                 .id,
             depth: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.depthLoadOp).unwrap_or(wgc::command::LoadOp::Load),
-                store_op: conv::map_store_op(desc.depthStoreOp)
-                    .unwrap_or(wgc::command::StoreOp::Store),
-                clear_value: desc.depthClearValue,
+                load_op: conv::map_load_op(desc.depthLoadOp, Some(desc.depthClearValue)).or(Some(wgc::command::LoadOp::Load)),
+                store_op: Some(conv::map_store_op(desc.depthStoreOp).unwrap_or(wgc::command::StoreOp::Store)),
                 read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.stencilLoadOp)
-                    .unwrap_or(wgc::command::LoadOp::Load),
-                store_op: conv::map_store_op(desc.stencilStoreOp)
-                    .unwrap_or(wgc::command::StoreOp::Store),
-                clear_value: desc.stencilClearValue,
+                load_op: conv::map_load_op(desc.stencilLoadOp, Some(desc.stencilClearValue))
+                    .or(Some(wgc::command::LoadOp::Load)),
+                store_op: Some(conv::map_store_op(desc.stencilStoreOp).unwrap_or(wgc::command::StoreOp::Store)),
                 read_only: desc.stencilReadOnly != 0,
             },
         }
@@ -1196,14 +1192,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                         wgc::command::RenderPassColorAttachment {
                             view: view.id,
                             resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
-                            channel: wgc::command::PassChannel {
-                                load_op: conv::map_load_op(color_attachment.loadOp)
-                                    .expect("invalid load op for render pass color attachment"),
-                                store_op: conv::map_store_op(color_attachment.storeOp)
-                                    .expect("invalid store op for render pass color attachment"),
-                                clear_value: conv::map_color(&color_attachment.clearValue),
-                                read_only: false,
-                            },
+                            load_op: conv::map_load_op_and_color(color_attachment.loadOp, &color_attachment.clearValue)
+                                .expect("invalid load op for render pass color attachment"),
+                            store_op: conv::map_store_op(color_attachment.storeOp)
+                                .expect("invalid store op for render pass color attachment"),
                         }
                     })
                 })

@@ -3,10 +3,8 @@ use crate::{follow_chain, map_enum, map_enum_with_undefined, new_userdata};
 use crate::{native, UncapturedErrorCallback};
 use std::borrow::Cow;
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
-use std::path::PathBuf;
 use std::ptr::NonNull;
 
-map_enum!(map_load_op, WGPULoadOp, wgc::command::LoadOp<f64>, Clear, Load);
 map_enum!(
     map_store_op,
     WGPUStoreOp,
@@ -290,10 +288,14 @@ pub unsafe fn map_instance_descriptor(
     if let Some(extras) = extras {
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
-            native::WGPUDx12Compiler_Dxc => wgt::Dx12Compiler::Dxc {
-                dxil_path: string_view_into_str(extras.dxilPath).map(PathBuf::from),
-                dxc_path: string_view_into_str(extras.dxcPath).map(PathBuf::from),
-            },
+            // TODO add specific value to cover dynamic and static Dxc
+            native::WGPUDx12Compiler_Dxc => match (string_view_into_str(extras.dxilPath), string_view_into_str(extras.dxcPath)) {
+                (Some(dxilPath), Some(dxcPath)) => wgt::Dx12Compiler::DynamicDxc {
+                    dxil_path: dxilPath.to_string(),
+                    dxc_path: dxilPath.to_string(),
+                },
+                _ => wgt::Dx12Compiler::StaticDxc
+            }
             _ => wgt::Dx12Compiler::default(),
         };
 
@@ -670,6 +672,24 @@ pub fn map_texture_data_layout(native: &native::WGPUTexelCopyBufferLayout) -> wg
             native::WGPU_COPY_STRIDE_UNDEFINED => None,
             _ => Some(native.rowsPerImage),
         },
+    }
+}
+
+#[inline]
+pub fn map_load_op_and_color(command: native::WGPULoadOp, clear_value: &native::WGPUColor) -> Option<wgc::command::LoadOp<wgt::Color>> {
+    match command {
+        native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
+        native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(map_color(&clear_value))),
+        _ => None
+    }
+}
+
+#[inline]
+pub fn map_load_op<T>(command: native::WGPULoadOp, clear_value: T) -> Option<wgc::command::LoadOp<T>> {
+    match command {
+        native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
+        native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(clear_value)),
+        _ => None,
     }
 }
 
