@@ -1033,7 +1033,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     };
 
     // TODO: Properly handle futures.
-    return NULL_FUTURE;
+    NULL_FUTURE
 }
 
 #[no_mangle]
@@ -2615,7 +2615,7 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
         }
     };
 
-    return NULL_FUTURE;
+    NULL_FUTURE
 }
 
 #[no_mangle]
@@ -2768,7 +2768,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         }
     };
 
-    return NULL_FUTURE;
+    NULL_FUTURE
 }
 
 #[no_mangle]
