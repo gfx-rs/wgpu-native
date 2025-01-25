@@ -991,30 +991,28 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             native::WGPUMapMode_Read => wgc::device::HostMap::Read,
             _ => panic!("invalid map mode"),
         },
-        callback: Some(Box::new(
-            move |result: resource::BufferAccessResult| {
-                let (status, message) = match result {
-                    Ok(()) => (native::WGPUMapAsyncStatus_Success, String::default()),
-                    Err(cause) => {
-                        let code = match cause {
-                            resource::BufferAccessError::MapAborted => {
-                                native::WGPUMapAsyncStatus_Aborted
-                            }
-                            _ => native::WGPUMapAsyncStatus_Error,
-                        };
+        callback: Some(Box::new(move |result: resource::BufferAccessResult| {
+            let (status, message) = match result {
+                Ok(()) => (native::WGPUMapAsyncStatus_Success, String::default()),
+                Err(cause) => {
+                    let code = match cause {
+                        resource::BufferAccessError::MapAborted => {
+                            native::WGPUMapAsyncStatus_Aborted
+                        }
+                        _ => native::WGPUMapAsyncStatus_Error,
+                    };
 
-                        (code, format_error(&cause))
-                    }
-                };
+                    (code, format_error(&cause))
+                }
+            };
 
-                callback(
-                    status,
-                    str_into_string_view(&message),
-                    userdata.get_1(),
-                    userdata.get_2(),
-                );
-            },
-        )),
+            callback(
+                status,
+                str_into_string_view(&message),
+                userdata.get_1(),
+                userdata.get_2(),
+            );
+        })),
     };
 
     if let Err(cause) = context.buffer_map_async(
@@ -1145,14 +1143,19 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .expect("invalid texture view for depth stencil attachment")
                 .id,
             depth: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.depthLoadOp, Some(desc.depthClearValue)).or(Some(wgc::command::LoadOp::Load)),
-                store_op: Some(conv::map_store_op(desc.depthStoreOp).unwrap_or(wgc::command::StoreOp::Store)),
+                load_op: conv::map_load_op(desc.depthLoadOp, Some(desc.depthClearValue))
+                    .or(Some(wgc::command::LoadOp::Load)),
+                store_op: Some(
+                    conv::map_store_op(desc.depthStoreOp).unwrap_or(wgc::command::StoreOp::Store),
+                ),
                 read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
                 load_op: conv::map_load_op(desc.stencilLoadOp, Some(desc.stencilClearValue))
                     .or(Some(wgc::command::LoadOp::Load)),
-                store_op: Some(conv::map_store_op(desc.stencilStoreOp).unwrap_or(wgc::command::StoreOp::Store)),
+                store_op: Some(
+                    conv::map_store_op(desc.stencilStoreOp).unwrap_or(wgc::command::StoreOp::Store),
+                ),
                 read_only: desc.stencilReadOnly != 0,
             },
         }
@@ -1186,8 +1189,11 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                         wgc::command::RenderPassColorAttachment {
                             view: view.id,
                             resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
-                            load_op: conv::map_load_op_and_color(color_attachment.loadOp, &color_attachment.clearValue)
-                                .expect("invalid load op for render pass color attachment"),
+                            load_op: conv::map_load_op_and_color(
+                                color_attachment.loadOp,
+                                &color_attachment.clearValue,
+                            )
+                            .expect("invalid load op for render pass color attachment"),
                             store_op: conv::map_store_op(color_attachment.storeOp)
                                 .expect("invalid store op for render pass color attachment"),
                         }
@@ -2875,7 +2881,7 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    let closure:wgc::device::queue::SubmittedWorkDoneClosure = Box::new(move || {
+    let closure: wgc::device::queue::SubmittedWorkDoneClosure = Box::new(move || {
         callback(
             native::WGPUQueueWorkDoneStatus_Success,
             userdata.get_1(),
@@ -3884,9 +3890,9 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
 
     let caps = match context.surface_get_capabilities(surface_id, adapter_id) {
         Ok(caps) => caps,
-        Err(wgc::instance::GetSurfaceSupportError::FailedToRetrieveSurfaceCapabilitiesForAdapter) => {
-            wgt::SurfaceCapabilities::default()
-        }
+        Err(
+            wgc::instance::GetSurfaceSupportError::FailedToRetrieveSurfaceCapabilitiesForAdapter,
+        ) => wgt::SurfaceCapabilities::default(),
         Err(cause) => handle_error_fatal(cause, "wgpuSurfaceGetCapabilities"),
     };
 
@@ -4069,38 +4075,32 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
 ) -> native::WGPUTextureView {
     let (texture_id, context, error_sink) = {
         let texture = texture.as_ref().expect("invalid texture");
-        (
-            texture.id,
-            &texture.context,
-            &texture.error_sink,
-        )
+        (texture.id, &texture.context, &texture.error_sink)
     };
 
     let desc = match descriptor {
-        Some(descriptor) => {
-            wgc::resource::TextureViewDescriptor {
-                usage:  Some(conv::map_texture_usage_flags(descriptor.usage)),
-                label: string_view_into_label(descriptor.label),
-                format: conv::map_texture_format(descriptor.format),
-                dimension: conv::map_texture_view_dimension(descriptor.dimension),
-                range: wgt::ImageSubresourceRange {
-                    aspect: conv::map_texture_aspect(descriptor.aspect)
-                        .unwrap_or(wgt::TextureAspect::All),
-                    base_mip_level: descriptor.baseMipLevel,
-                    mip_level_count: match descriptor.mipLevelCount {
-                        0 => panic!("invalid mipLevelCount"),
-                        native::WGPU_MIP_LEVEL_COUNT_UNDEFINED => None,
-                        _ => Some(descriptor.mipLevelCount),
-                    },
-                    base_array_layer: descriptor.baseArrayLayer,
-                    array_layer_count: match descriptor.arrayLayerCount {
-                        0 => panic!("invalid arrayLayerCount"),
-                        native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED => None,
-                        _ => Some(descriptor.arrayLayerCount),
-                    },
+        Some(descriptor) => wgc::resource::TextureViewDescriptor {
+            usage: Some(conv::map_texture_usage_flags(descriptor.usage)),
+            label: string_view_into_label(descriptor.label),
+            format: conv::map_texture_format(descriptor.format),
+            dimension: conv::map_texture_view_dimension(descriptor.dimension),
+            range: wgt::ImageSubresourceRange {
+                aspect: conv::map_texture_aspect(descriptor.aspect)
+                    .unwrap_or(wgt::TextureAspect::All),
+                base_mip_level: descriptor.baseMipLevel,
+                mip_level_count: match descriptor.mipLevelCount {
+                    0 => panic!("invalid mipLevelCount"),
+                    native::WGPU_MIP_LEVEL_COUNT_UNDEFINED => None,
+                    _ => Some(descriptor.mipLevelCount),
                 },
-            }
-        }
+                base_array_layer: descriptor.baseArrayLayer,
+                array_layer_count: match descriptor.arrayLayerCount {
+                    0 => panic!("invalid arrayLayerCount"),
+                    native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED => None,
+                    _ => Some(descriptor.arrayLayerCount),
+                },
+            },
+        },
         None => wgc::resource::TextureViewDescriptor::default(),
     };
 

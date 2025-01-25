@@ -289,13 +289,16 @@ pub unsafe fn map_instance_descriptor(
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
             // TODO add specific value to cover dynamic and static Dxc
-            native::WGPUDx12Compiler_Dxc => match (string_view_into_str(extras.dxilPath), string_view_into_str(extras.dxcPath)) {
+            native::WGPUDx12Compiler_Dxc => match (
+                string_view_into_str(extras.dxilPath),
+                string_view_into_str(extras.dxcPath),
+            ) {
                 (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
                     dxil_path: dxil_path.to_string(),
                     dxc_path: dxc_path.to_string(),
                 },
-                _ => wgt::Dx12Compiler::StaticDxc
-            }
+                _ => wgt::Dx12Compiler::StaticDxc,
+            },
             _ => wgt::Dx12Compiler::default(),
         };
 
@@ -303,11 +306,11 @@ pub unsafe fn map_instance_descriptor(
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
             backend_options: wgt::BackendOptions {
                 gl: wgt::GlBackendOptions {
-                    gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion)
+                    gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
                 },
                 dx12: wgt::Dx12BackendOptions {
-                    shader_compiler: dx12_shader_compiler
-                }
+                    shader_compiler: dx12_shader_compiler,
+                },
             },
             flags: match extras.flags {
                 native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
@@ -665,7 +668,9 @@ pub unsafe fn map_image_copy_buffer(
 }
 
 #[inline]
-pub fn map_texture_data_layout(native: &native::WGPUTexelCopyBufferLayout) -> wgt::TexelCopyBufferLayout {
+pub fn map_texture_data_layout(
+    native: &native::WGPUTexelCopyBufferLayout,
+) -> wgt::TexelCopyBufferLayout {
     wgt::TexelCopyBufferLayout {
         offset: native.offset,
         bytes_per_row: match native.bytesPerRow {
@@ -682,16 +687,22 @@ pub fn map_texture_data_layout(native: &native::WGPUTexelCopyBufferLayout) -> wg
 }
 
 #[inline]
-pub fn map_load_op_and_color(command: native::WGPULoadOp, clear_value: &native::WGPUColor) -> Option<wgc::command::LoadOp<wgt::Color>> {
+pub fn map_load_op_and_color(
+    command: native::WGPULoadOp,
+    clear_value: &native::WGPUColor,
+) -> Option<wgc::command::LoadOp<wgt::Color>> {
     match command {
         native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
         native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(map_color(&clear_value))),
-        _ => None
+        _ => None,
     }
 }
 
 #[inline]
-pub fn map_load_op<T>(command: native::WGPULoadOp, clear_value: T) -> Option<wgc::command::LoadOp<T>> {
+pub fn map_load_op<T>(
+    command: native::WGPULoadOp,
+    clear_value: T,
+) -> Option<wgc::command::LoadOp<T>> {
     match command {
         native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
         native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(clear_value)),
