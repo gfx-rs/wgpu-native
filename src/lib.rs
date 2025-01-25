@@ -4359,6 +4359,28 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPushConstants(
+    bundle: native::WGPURenderBundleEncoder,
+    stages: native::WGPUShaderStageFlags,
+    offset: u32,
+    size_bytes: u32,
+    data: *const u8,
+) {
+    let bundle = bundle.as_ref().expect("invalid render bundle");
+    let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
+    let encoder = encoder.expect("invalid render bundle");
+    let encoder = encoder.as_mut().unwrap();
+
+    bundle_ffi::wgpu_render_bundle_set_push_constants(
+        encoder,
+        wgt::ShaderStages::from_bits(stages).expect("invalid shader stage"),
+        offset,
+        size_bytes,
+        data,
+    );
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndirect(
     pass: native::WGPURenderPassEncoder,
     buffer: native::WGPUBuffer,
