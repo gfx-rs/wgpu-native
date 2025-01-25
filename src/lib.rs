@@ -365,21 +365,15 @@ impl Drop for WGPUTextureImpl {
         if thread::panicking() {
             return;
         }
-        match self.surface_id {
-            Some(surface_id) => {
-                if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
-                    let context = &self.context;
-                    match context.surface_texture_discard(surface_id) {
-                        Ok(_) => (),
-                        Err(cause) => handle_error_fatal(cause, "wgpuTextureRelease"),
-                    }
+        if let Some(surface_id) = self.surface_id {
+            if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
+                match self.context.surface_texture_discard(surface_id) {
+                    Ok(_) => (),
+                    Err(cause) => handle_error_fatal(cause, "wgpuTextureRelease"),
                 }
             }
-            None => {
-                let context = &self.context;
-                context.texture_drop(self.id);
-            }
         }
+        self.context.texture_drop(self.id);
     }
 }
 
