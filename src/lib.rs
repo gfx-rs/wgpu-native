@@ -4361,7 +4361,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPushConstants(
     bundle: native::WGPURenderBundleEncoder,
-    stages: native::WGPUShaderStageFlags,
+    stages: native::WGPUShaderStage,
     offset: u32,
     size_bytes: u32,
     data: *const u8,
@@ -4373,7 +4373,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPushConstants(
 
     bundle_ffi::wgpu_render_bundle_set_push_constants(
         encoder,
-        wgt::ShaderStages::from_bits(stages).expect("invalid shader stage"),
+        wgt::ShaderStages::from_bits(stages.try_into().unwrap()).expect("invalid shader stage"),
         offset,
         size_bytes,
         data,
