@@ -687,18 +687,6 @@ pub fn map_texture_data_layout(
 }
 
 #[inline]
-pub fn map_load_op_and_color(
-    command: native::WGPULoadOp,
-    clear_value: &native::WGPUColor,
-) -> Option<wgc::command::LoadOp<wgt::Color>> {
-    match command {
-        native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
-        native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(map_color(&clear_value))),
-        _ => None,
-    }
-}
-
-#[inline]
 pub fn map_load_op<T>(
     command: native::WGPULoadOp,
     clear_value: T,

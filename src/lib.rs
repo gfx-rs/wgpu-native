@@ -1189,9 +1189,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                         wgc::command::RenderPassColorAttachment {
                             view: view.id,
                             resolve_target: color_attachment.resolveTarget.as_ref().map(|v| v.id),
-                            load_op: conv::map_load_op_and_color(
+                            load_op: conv::map_load_op(
                                 color_attachment.loadOp,
-                                &color_attachment.clearValue,
+                                conv::map_color(&color_attachment.clearValue),
                             )
                             .expect("invalid load op for render pass color attachment"),
                             store_op: conv::map_store_op(color_attachment.storeOp)
