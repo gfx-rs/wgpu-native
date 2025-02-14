@@ -15,7 +15,7 @@ include_directories(${CMAKE_SOURCE_DIR}/framework)
 
 if (WIN32)
     add_definitions(-DGLFW_EXPOSE_NATIVE_WIN32)
-    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt ntdll opengl32)
+    set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt ntdll opengl32 Propsys RuntimeObject)
 elseif(UNIX AND NOT APPLE)
     add_definitions(-DGLFW_EXPOSE_NATIVE_X11)
     add_definitions(-DGLFW_EXPOSE_NATIVE_WAYLAND)

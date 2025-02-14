@@ -8,21 +8,26 @@
 #define LOG_PREFIX "[push_constants]"
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
-                                   WGPUAdapter adapter, char const *message,
-                                   void *userdata) {
+                                   WGPUAdapter adapter, WGPUStringView message,
+                                   void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
-  *(WGPUAdapter *)userdata = adapter;
+  UNUSED(userdata2)
+  *(WGPUAdapter *)userdata1 = adapter;
 }
 static void handle_request_device(WGPURequestDeviceStatus status,
-                                  WGPUDevice device, char const *message,
-                                  void *userdata) {
+                                  WGPUDevice device, WGPUStringView message,
+                                  void *userdata1, void *userdata2) {
   UNUSED(status)
   UNUSED(message)
-  *(WGPUDevice *)userdata = device;
+  UNUSED(userdata2)
+  *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUBufferMapAsyncStatus status, void *userdata) {
-  UNUSED(userdata)
+static void handle_buffer_map(WGPUMapAsyncStatus status, 
+                              WGPUStringView message,
+                              void *userdata1, void *userdata2) {
+  UNUSED(userdata1)
+  UNUSED(userdata2)
   printf(LOG_PREFIX " buffer_map status=%#.8x\n", status);
 }
 
@@ -39,50 +44,41 @@ int main(int argc, char *argv[]) {
   assert(instance);
 
   WGPUAdapter adapter = NULL;
-  wgpuInstanceRequestAdapter(instance, NULL, handle_request_adapter,
-                             (void *)&adapter);
+  wgpuInstanceRequestAdapter(instance, NULL,
+                             (const WGPURequestAdapterCallbackInfo){
+                                 .callback = handle_request_adapter,
+                                 .userdata1 = &adapter
+                             });
   assert(adapter);
 
-  WGPUSupportedLimitsExtras supported_limits_extras = {
+  WGPUNativeLimits supported_limits_extras = {
       .chain =
           {
-              .sType = WGPUSType_SupportedLimitsExtras,
+              .sType = WGPUSType_NativeLimits,
           },
-      .limits =
-          {
-              .maxPushConstantSize = 0,
-          },
+      .maxPushConstantSize = 0,
   };
-  WGPUSupportedLimits supported_limits = {
+  WGPULimits supported_limits = {
       .nextInChain = &supported_limits_extras.chain,
   };
   wgpuAdapterGetLimits(adapter, &supported_limits);
-
-  WGPURequiredLimitsExtras required_limits_extras = {
-      .chain =
-          {
-              .sType = WGPUSType_RequiredLimitsExtras,
-          },
-      .limits = supported_limits_extras.limits,
-  };
-  WGPURequiredLimits required_limits = {
-      .nextInChain = &required_limits_extras.chain,
-      .limits = supported_limits.limits,
-  };
 
   WGPUFeatureName requiredFeatures[] = {
       WGPUNativeFeature_PushConstants,
   };
   WGPUDeviceDescriptor device_desc = {
-      .label = "compute_device",
+      .label = {"compute_device", WGPU_STRLEN},
       .requiredFeatures = requiredFeatures,
       .requiredFeatureCount = 1,
-      .requiredLimits = &required_limits,
+      .requiredLimits = &supported_limits,
   };
 
   WGPUDevice device = NULL;
-  wgpuAdapterRequestDevice(adapter, &device_desc, handle_request_device,
-                           (void *)&device);
+  wgpuAdapterRequestDevice(adapter, &device_desc, 
+                           (const WGPURequestDeviceCallbackInfo){ 
+                               .callback = handle_request_device,
+                               .userdata1 = &device
+                           });
   assert(device);
 
   WGPUQueue queue = wgpuDeviceGetQueue(device);
@@ -94,7 +90,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBuffer storage_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
-                  .label = "storage_buffer",
+                  .label = {"storage_buffer", WGPU_STRLEN},
                   .usage = WGPUBufferUsage_Storage | WGPUBufferUsage_CopyDst |
                            WGPUBufferUsage_CopySrc,
                   .size = numbers_size,
@@ -104,7 +100,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBuffer staging_buffer = wgpuDeviceCreateBuffer(
       device, &(const WGPUBufferDescriptor){
-                  .label = "staging_buffer",
+                  .label = {"staging_buffer", WGPU_STRLEN},
                   .usage = WGPUBufferUsage_MapRead | WGPUBufferUsage_CopyDst,
                   .size = numbers_size,
                   .mappedAtCreation = false,
@@ -137,7 +133,7 @@ int main(int argc, char *argv[]) {
       },
   };
   WGPUBindGroupLayoutDescriptor bind_group_layout_desc = {
-      .label = "bind_group_layout",
+      .label = {"bind_group_layout", WGPU_STRLEN},
       .nextInChain = NULL,
       .entryCount = 1,
       .entries = bind_group_layout_entries,
@@ -147,7 +143,7 @@ int main(int argc, char *argv[]) {
   assert(bind_group_layout);
 
   WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
-      .label = "pipeline_layout",
+      .label = {"pipeline_layout", WGPU_STRLEN},
       .nextInChain = &pipeline_layout_extras.chain,
       .bindGroupLayouts = &bind_group_layout,
       .bindGroupLayoutCount = 1,
@@ -158,11 +154,11 @@ int main(int argc, char *argv[]) {
 
   WGPUComputePipeline compute_pipeline = wgpuDeviceCreateComputePipeline(
       device, &(const WGPUComputePipelineDescriptor){
-                  .label = "compute_pipeline",
+                  .label = {"compute_pipeline", WGPU_STRLEN},
                   .compute =
                       (const WGPUProgrammableStageDescriptor){
                           .module = shader_module,
-                          .entryPoint = "main",
+                          .entryPoint = {"main", WGPU_STRLEN},
                       },
                   .layout = pipeline_layout,
               });
@@ -170,7 +166,7 @@ int main(int argc, char *argv[]) {
 
   WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
       device, &(const WGPUBindGroupDescriptor){
-                  .label = "bind_group",
+                  .label = {"bind_group", WGPU_STRLEN},
                   .layout = bind_group_layout,
                   .entryCount = 1,
                   .entries =
@@ -187,14 +183,14 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandEncoder command_encoder = wgpuDeviceCreateCommandEncoder(
       device, &(const WGPUCommandEncoderDescriptor){
-                  .label = "command_encoder",
+                  .label = {"command_encoder", WGPU_STRLEN},
               });
   assert(command_encoder);
 
   WGPUComputePassEncoder compute_pass_encoder =
       wgpuCommandEncoderBeginComputePass(command_encoder,
                                          &(const WGPUComputePassDescriptor){
-                                             .label = "compute_pass",
+                                             .label = {"compute_pass", WGPU_STRLEN},
                                          });
   assert(compute_pass_encoder);
 
@@ -219,7 +215,7 @@ int main(int argc, char *argv[]) {
 
   WGPUCommandBuffer command_buffer = wgpuCommandEncoderFinish(
       command_encoder, &(const WGPUCommandBufferDescriptor){
-                           .label = "command_buffer",
+                           .label = {"command_buffer", WGPU_STRLEN},
                        });
   assert(command_buffer);
 
@@ -227,7 +223,9 @@ int main(int argc, char *argv[]) {
   wgpuQueueSubmit(queue, 1, &command_buffer);
 
   wgpuBufferMapAsync(staging_buffer, WGPUMapMode_Read, 0, numbers_size,
-                     handle_buffer_map, NULL);
+                     (const WGPUBufferMapCallbackInfo){
+                         .callback = handle_buffer_map
+                     });
   wgpuDevicePoll(device, true, NULL);
 
   uint32_t *buf =
