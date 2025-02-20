@@ -4004,16 +4004,23 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) {
+pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> native::WGPUStatus {
     let surface = surface.as_ref().expect("invalid surface");
     let context = &surface.context;
 
-    match context.surface_present(surface.id) {
-        Ok(_status) => surface
-            .has_surface_presented
-            .store(true, atomic::Ordering::SeqCst),
-        Err(cause) => handle_error_fatal(cause, "wgpuSurfacePresent"),
+    let _status = match context.surface_present(surface.id) {
+        Ok(status) => status,
+        Err(cause) => {
+            log::warn!("Presentation error: {}", cause);
+            return native::WGPUStatus_Error;
+        },
     };
+
+    surface
+        .has_surface_presented
+        .store(true, atomic::Ordering::SeqCst);
+
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
