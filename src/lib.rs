@@ -4013,7 +4013,7 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
         Err(cause) => {
             log::warn!("Presentation error: {}", cause);
             return native::WGPUStatus_Error;
-        },
+        }
     };
 
     surface
