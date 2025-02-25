@@ -723,7 +723,7 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
 pub unsafe extern "C" fn wgpuAdapterGetInfo(
     adapter: native::WGPUAdapter,
     info: Option<&mut native::WGPUAdapterInfo>,
-) {
+) -> native::WGPUStatus {
     let adapter = adapter.as_ref().expect("invalid adapter");
     let info = info.expect("invalid return pointer \"info\"");
     let context = adapter.context.as_ref();
@@ -739,6 +739,8 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.adapterType = map_adapter_type(result.device_type);
     info.vendorID = result.vendor;
     info.deviceID = result.device;
+
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
