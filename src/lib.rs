@@ -3882,7 +3882,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
     capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
-) {
+) -> native::WGPUStatus {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
@@ -3951,6 +3951,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         capabilities.alphaModes = std::ptr::null_mut();
         capabilities.alphaModeCount = 0;
     }
+
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
