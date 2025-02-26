@@ -723,7 +723,7 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
 pub unsafe extern "C" fn wgpuAdapterGetInfo(
     adapter: native::WGPUAdapter,
     info: Option<&mut native::WGPUAdapterInfo>,
-) {
+) -> native::WGPUStatus {
     let adapter = adapter.as_ref().expect("invalid adapter");
     let info = info.expect("invalid return pointer \"info\"");
     let context = adapter.context.as_ref();
@@ -739,6 +739,8 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.adapterType = map_adapter_type(result.device_type);
     info.vendorID = result.vendor;
     info.deviceID = result.device;
+
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
@@ -3880,7 +3882,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
     surface: native::WGPUSurface,
     adapter: native::WGPUAdapter,
     capabilities: Option<&mut native::WGPUSurfaceCapabilities>,
-) {
+) -> native::WGPUStatus {
     let (adapter_id, context) = {
         let adapter = adapter.as_ref().expect("invalid adapter");
         (adapter.id, &adapter.context)
@@ -3893,7 +3895,10 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         Err(
             wgc::instance::GetSurfaceSupportError::FailedToRetrieveSurfaceCapabilitiesForAdapter,
         ) => wgt::SurfaceCapabilities::default(),
-        Err(cause) => handle_error_fatal(cause, "wgpuSurfaceGetCapabilities"),
+        Err(cause) => {
+            log::warn!("Surface Capabilities error: {}", cause);
+            return native::WGPUStatus_Error;
+        }
     };
 
     capabilities.usages =
@@ -3949,6 +3954,8 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         capabilities.alphaModes = std::ptr::null_mut();
         capabilities.alphaModeCount = 0;
     }
+
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]
