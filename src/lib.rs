@@ -3895,7 +3895,10 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         Err(
             wgc::instance::GetSurfaceSupportError::FailedToRetrieveSurfaceCapabilitiesForAdapter,
         ) => wgt::SurfaceCapabilities::default(),
-        Err(cause) => handle_error_fatal(cause, "wgpuSurfaceGetCapabilities"),
+        Err(cause) => {
+            log::warn!("Surface Capabilities error: {}", cause);
+            return native::WGPUStatus_Error;
+        }
     };
 
     capabilities.usages =
