@@ -24,6 +24,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 - [WebGPU-C++](https://github.com/eliemichel/WebGPU-Cpp) - Auto-generated C++ wrapper (developed for the [Learn WebGPU native](https://eliemichel.github.io/LearnWebGPU) course)
 - [jai_wgpu_native](https://github.com/SogoCZE/jai_wgpu_native) - Raw Jai bindings
 - [WebGPU::Direct](https://github.com/atrodo/WebGPU-Direct) - Perl wrapper ([package](https://metacpan.org/pod/WebGPU::Direct))
+- [bronter/wgpu_native_zig](https://github.com/bronter/wgpu_native_zig) - Zig wrapper
 
 ## Pre-built binaries
 
