@@ -13,19 +13,15 @@ else
     lib_path='target/release/wgpu_native.lib'
 endif
 
-#build by cargo
+#build with cargo
 run_command(cargo,'build','--release', check: true)
-#mark cargo artifact to static library
-wgpu_native = static_library('wgpu_native', objects : lib_path, install : true)
 
-dep_wgpu_native = declare_dependency(
-link_with:wgpu_native,
-include_directories: inc_dirs
-)
+#mark cargo artifact for installation
+install_data(lib_path, install_dir : get_option('libdir'))
 
 pkg = import('pkgconfig')
 pkg.generate(name : 'wgpu-native',
              description : 'Headers for using wgpu-native',
-             libraries : [wgpu_native],
+             libraries : ['-L${libdir}', '-lwgpu_native'],
              version : meson.project_version(),
              )
