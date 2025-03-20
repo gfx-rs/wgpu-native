@@ -41,7 +41,8 @@ fn main() {
         .prepend_enum_name(false)
         .size_t_is_usize(true)
         .ignore_functions()
-        .layout_tests(true);
+        .layout_tests(true)
+        .clang_macro_fallback();
 
     for (old_name, new_name) in types_to_rename {
         let line = format!("pub type {old_name} = *const crate::{new_name};");

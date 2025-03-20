@@ -1,6 +1,6 @@
 #include "framework.h"
 
-static void log_callback(WGPULogLevel level, char const *message,
+static void log_callback(WGPULogLevel level, WGPUStringView message,
                          void *userdata) {
   UNUSED(userdata)
   char *level_str;
@@ -23,7 +23,7 @@ static void log_callback(WGPULogLevel level, char const *message,
   default:
     level_str = "unknown_level";
   }
-  fprintf(stderr, "[wgpu] [%s] %s\n", level_str, message);
+  fprintf(stderr, "[wgpu] [%s] %.*s\n", level_str, (int) message.length, message.data);
 }
 
 void frmwrk_setup_logging(WGPULogLevel level) {
@@ -64,15 +64,15 @@ WGPUShaderModule frmwrk_load_shader_module(WGPUDevice device,
 
   shader_module = wgpuDeviceCreateShaderModule(
       device, &(const WGPUShaderModuleDescriptor){
-                  .label = name,
+                  .label = {name, WGPU_STRLEN},
                   .nextInChain =
                       (const WGPUChainedStruct *)&(
-                          const WGPUShaderModuleWGSLDescriptor){
+                          const WGPUShaderSourceWGSL){
                           .chain =
                               (const WGPUChainedStruct){
-                                  .sType = WGPUSType_ShaderModuleWGSLDescriptor,
+                                  .sType = WGPUSType_ShaderSourceWGSL,
                               },
-                          .code = buf,
+                          .code = {buf, WGPU_STRLEN},
                       },
               });
 
@@ -92,7 +92,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   assert(descriptor);
   if (descriptor->content_size == 0) {
     return wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
-                                              .label = descriptor->label,
+                                              .label = {descriptor->label, WGPU_STRLEN},
                                               .size = 0,
                                               .usage = descriptor->usage,
                                               .mappedAtCreation = false,
@@ -105,7 +105,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
       MAX((unpadded_size + align_mask) & ~align_mask, COPY_BUFFER_ALIGNMENT);
   WGPUBuffer buffer =
       wgpuDeviceCreateBuffer(device, &(WGPUBufferDescriptor){
-                                         .label = descriptor->label,
+                                         .label = {descriptor->label, WGPU_STRLEN},
                                          .size = padded_size,
                                          .usage = descriptor->usage,
                                          .mappedAtCreation = true,
@@ -121,7 +121,6 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   printf("%snumAllocated=%zu\n", prefix, report.numAllocated);                 \
   printf("%snumKeptFromUser=%zu\n", prefix, report.numKeptFromUser);           \
   printf("%snumReleasedFromUser=%zu\n", prefix, report.numReleasedFromUser);   \
-  printf("%snumError=%zu\n", prefix, report.numError);                         \
   printf("%selementSize=%zu\n", prefix, report.elementSize)
 
 #define print_hub_report(report, prefix)                                       \
@@ -136,6 +135,7 @@ WGPUBuffer frmwrk_device_create_buffer_init(
   print_registry_report(report.renderBundles, prefix "renderBundles.");        \
   print_registry_report(report.renderPipelines, prefix "renderPipelines.");    \
   print_registry_report(report.computePipelines, prefix "computePipelines.");  \
+  print_registry_report(report.pipelineCaches, prefix "pipelineCaches.");      \
   print_registry_report(report.querySets, prefix "querySets.");                \
   print_registry_report(report.textures, prefix "textures.");                  \
   print_registry_report(report.textureViews, prefix "textureViews.");          \
@@ -144,34 +144,17 @@ WGPUBuffer frmwrk_device_create_buffer_init(
 void frmwrk_print_global_report(WGPUGlobalReport report) {
   printf("struct WGPUGlobalReport {\n");
   print_registry_report(report.surfaces, "\tsurfaces.");
-
-  switch (report.backendType) {
-  case WGPUBackendType_D3D12:
-    print_hub_report(report.dx12, "\tdx12.");
-    break;
-  case WGPUBackendType_Metal:
-    print_hub_report(report.metal, "\tmetal.");
-    break;
-  case WGPUBackendType_Vulkan:
-    print_hub_report(report.vulkan, "\tvulkan.");
-    break;
-  case WGPUBackendType_OpenGL:
-    print_hub_report(report.gl, "\tgl.");
-    break;
-  default:
-    printf("[framework] frmwrk_print_global_report: invalid backend type: %d",
-           report.backendType);
-  }
+  print_hub_report(report.hub, "\thub.");
   printf("}\n");
 }
 
 void frmwrk_print_adapter_info(WGPUAdapter adapter) {
   struct WGPUAdapterInfo info = {0};
   wgpuAdapterGetInfo(adapter, &info);
-  printf("description: %s\n", info.description);
-  printf("vendor: %s\n", info.vendor);
-  printf("architecture: %s\n", info.architecture);
-  printf("device: %s\n", info.device);
+  printf("description: %.*s\n", (int) info.description.length, info.description.data);
+  printf("vendor: %.*s\n", (int) info.vendor.length, info.vendor.data);
+  printf("architecture: %.*s\n", (int) info.architecture.length, info.architecture.data);
+  printf("device: %.*s\n", (int) info.device.length, info.device.data);
   printf("backend type: %u\n", info.backendType);
   printf("adapter type: %u\n", info.adapterType);
   printf("vendorID: %x\n", info.vendorID);

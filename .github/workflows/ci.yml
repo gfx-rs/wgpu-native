@@ -220,11 +220,13 @@ jobs:
           make example-triangle
           make example-enumerate_adapters
           make example-texture_arrays
+          make example-push_constants
       - name: Run examples debug
         run: |
           make run-example-capture
           make run-example-compute
           make run-example-enumerate_adapters
+          make run-example-push_constants
       - name: Build examples release
         run: |
           make example-capture-release
@@ -232,8 +234,10 @@ jobs:
           make example-triangle-release
           make example-enumerate_adapters-release
           make example-texture_arrays-release
+          make example-push_constants-release
       - name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
           make run-example-enumerate_adapters-release
+          make run-example-push_constants-release

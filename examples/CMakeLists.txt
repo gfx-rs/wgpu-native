@@ -32,6 +32,7 @@ add_subdirectory(framework)
 add_subdirectory(capture)
 add_subdirectory(compute)
 add_subdirectory(enumerate_adapters)
+add_subdirectory(push_constants)
 add_subdirectory(texture_arrays)
 add_subdirectory(triangle)
 
