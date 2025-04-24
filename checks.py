@@ -47,8 +47,7 @@ def remove_c_comments(code):
 
 
 def collect_function_args():
-    """ Get a dict that maps function-names to another dict that maps arg-names to c-arg strings.
-    """
+    """Get a dict that maps function-names to another dict that maps arg-names to c-arg strings."""
 
     funcs = {}
 
@@ -75,8 +74,7 @@ def collect_function_args():
 
 
 def collect_structs():
-    """ Get a dict that maps struct names to another dict that maps field-names to c-type string.
-    """
+    """Get a dict that maps struct names to another dict that maps field-names to c-type string."""
 
     structs = {}
 
@@ -117,8 +115,7 @@ def collect_structs():
 
 
 def check_rust_wrapper_args():
-    """ Test that the wrappers use pointers where the c-header specifies pointers.
-    """
+    """Test that the wrappers use pointers where the c-header specifies pointers."""
 
     funcs = collect_function_args()
 
@@ -141,7 +138,7 @@ def check_rust_wrapper_args():
                 print(f"In {funcname}:")
                 i1 = text.find("(", i0)
                 i2 = text.find(")", i1)
-                args = " ".join(text[i1+1:i2].split())
+                args = " ".join(text[i1 + 1 : i2].split())
                 args = [arg.strip() for arg in args.split(",")]
                 covered = set()
                 for arg in args:
@@ -157,7 +154,7 @@ def check_rust_wrapper_args():
                         print(message)
                         if not ok:
                             fails.append(message)
-                        #print(f"  {status} {argname}: {typ}\n       {' '*len(argname)}{c_arg}")
+                        # print(f"  {status} {argname}: {typ}\n       {' '*len(argname)}{c_arg}")
                 missing = set(funcs[funcname]).difference(covered)
                 if missing:
                     message = f"{funcname} has missing args: {missing}"
@@ -168,8 +165,7 @@ def check_rust_wrapper_args():
 
 
 def check_overloaded_structs():
-    """ Check that the overloaded structs in build.rs have fields that match the headers.
-    """
+    """Check that the overloaded structs in build.rs have fields that match the headers."""
 
     structs = collect_structs()
 
@@ -216,7 +212,6 @@ def check_overloaded_structs():
 
 
 def main():
-
     fails = []
     fails += check_rust_wrapper_args()
     fails += check_overloaded_structs()
