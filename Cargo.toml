@@ -159,4 +159,4 @@ bitflags = "2"
 js-sys = "0.3.77"
 
 [build-dependencies]
-bindgen = "0.70"
+bindgen = "0.71"
