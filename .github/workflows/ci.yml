@@ -13,7 +13,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
   CACHE_SUFFIX: a
-  WGPU_ANDROID_NDK_VERSION: r27b # 27.1.12297006
+  WGPU_ANDROID_NDK_VERSION: r28b # 28.1.13356709
 
 jobs:
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
