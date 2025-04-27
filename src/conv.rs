@@ -296,7 +296,7 @@ pub unsafe fn map_instance_descriptor(
                 (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
                     dxil_path: dxil_path.to_string(),
                     dxc_path: dxc_path.to_string(),
-                    max_shader_model:  wgt::DxcShaderModel::V6_7
+                    max_shader_model: wgt::DxcShaderModel::V6_7,
                 },
                 _ => wgt::Dx12Compiler::StaticDxc,
             },
@@ -1144,7 +1144,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::BUFFER_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_BufferBindingArray);
     }
-    // TODO: fix this, UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING is not supported anymore https://github.com/gfx-rs/wgpu/issues/4407 
+    // TODO: fix this, UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING is not supported anymore https://github.com/gfx-rs/wgpu/issues/4407
     // if features
     //     .contains(wgt::Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING)
     // {
