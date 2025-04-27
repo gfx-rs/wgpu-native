@@ -155,8 +155,5 @@ parking_lot = "0.12"
 smallvec = "1"
 bitflags = "2"
 
-# This is required to compile but not sure why because we are not targeting JS
-js-sys = "0.3.77"
-
 [build-dependencies]
 bindgen = "0.71"
