@@ -1,3 +1,17 @@
+# Fork Changes
+I made this fork because the release mode non-stripped `libwgpu_native.a` file is 48MB! This is huge, and I know we can do much better.
+
+Right now this fork is only made for my specific particle simulation project, and only builds for `x86_64-unknown-linux-gnu`, but I plan to make it compile work `wasm` and `windows`.
+
+- Update dependencies
+- Only enable `wgsl` feature by default -> From 48MB to 41MB
+- Enable more generic optimizations for [release mode](Cargo.toml#L164) -> From 41MB to 16MB
+- Enable [nightly features](.cargo/config.toml) -> From 16MB to 7.4MB
+- Enable [nightly flags](Makefile#L115) -> From 7.4MB to 5.6MB
+- Strip symbols from release mode -> From 5.6MB to 3.9MB
+
+We got a 91% reduction in size!
+
 # wgpu-native
 [![Matrix](https://img.shields.io/badge/Matrix-%23wgpu%3Amatrix.org-blueviolet.svg)](https://matrix.to/#/#wgpu:matrix.org)
 [![Build Status](https://github.com/gfx-rs/wgpu-native/workflows/CI/badge.svg)](https://github.com/gfx-rs/wgpu-native/actions)

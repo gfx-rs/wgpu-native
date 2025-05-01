@@ -2,11 +2,11 @@
 name = "wgpu-native"
 version = "0.0.0"
 authors = [
-	"Dzmitry Malyshau <kvark@mozilla.com>",
-	"Joshua Groves <josh@joshgroves.com>",
-	"Noah Charlton <ncharlton002@gmail.com>",
-	"Almar Klein <almar@almarklein.org>",
-	"Rajesh Malviya <rajveer0malviya@gmail.com>",
+    "Dzmitry Malyshau <kvark@mozilla.com>",
+    "Joshua Groves <josh@joshgroves.com>",
+    "Noah Charlton <ncharlton002@gmail.com>",
+    "Almar Klein <almar@almarklein.org>",
+    "Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
 description = "Native WebGPU implementation based on wgpu-core"
@@ -44,7 +44,7 @@ tag = "v24.0.3"
 crate-type = ["cdylib", "staticlib"]
 
 [features]
-default = ["wgsl", "spirv", "glsl", "dx12", "metal"]
+default = ["wgsl"]
 
 #! ### Backends
 # --------------------------------------------------------------------
@@ -147,7 +147,7 @@ version = "1"
 optional = true
 
 [dependencies]
-raw-window-handle = "0.6.0"
+raw-window-handle = "0.6"
 paste = "1"
 log = "0.4"
 thiserror = "2"
@@ -156,7 +156,13 @@ smallvec = "1"
 bitflags = "2"
 
 # This is required to compile but not sure why because we are not targeting JS
-js-sys = "0.3.77"
+js-sys = "0.3"
 
 [build-dependencies]
 bindgen = "0.71"
+
+[profile.release]
+codegen-units = 1 # Allows LLVM to perform better optimization.
+lto = true        # Enables link-time-optimizations.
+panic = "abort"   # Higher performance by disabling panic handlers.
+strip = true      # Ensures debug symbols are removed.
