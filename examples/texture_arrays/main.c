@@ -1,5 +1,5 @@
 #include "framework.h"
-#include "webgpu-headers/webgpu.h"
+#include "webgpu/webgpu.h"
 #include "wgpu.h"
 #include <assert.h>
 #include <stdbool.h>
@@ -266,8 +266,8 @@ int main(int argc, char *argv[]) {
                            &(const WGPUDeviceDescriptor){
                                .requiredFeatureCount = required_device_feature_count,
                                .requiredFeatures = required_device_features,
-                           }, 
-                           (const WGPURequestDeviceCallbackInfo){ 
+                           },
+                           (const WGPURequestDeviceCallbackInfo){
                                .callback = handle_request_device,
                                .userdata1 = &demo
                            });

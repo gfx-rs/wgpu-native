@@ -1,5 +1,5 @@
 [submodule "ffi/webgpu-headers"]
-	path = ffi/webgpu-headers
+	path = ffi/webgpu
 	url = https://github.com/webgpu-native/webgpu-headers
 [submodule "examples/vendor/glfw"]
 	path = examples/vendor/glfw

@@ -4,6 +4,7 @@ I made this fork because the release mode non-stripped `libwgpu_native.a` file i
 Right now this fork is only made for my specific particle simulation project, and only builds for `x86_64-unknown-linux-gnu`, but I plan to make it compile for `wasm` and `windows`.
 
 - Update dependencies
+- Move headers from `ffi/webgpu-headers/` to `ffi/webgpu/` for compatibility with [sdl3webgpu](https://github.com/eliemichel/sdl3webgpu)
 - Only enable `wgsl` feature by default -> From 48MB to 41MB
 - Enable more generic optimizations for [release mode](Cargo.toml#L164) -> From 41MB to 16MB
 - Enable [nightly features](.cargo/config.toml) -> From 16MB to 7.4MB
@@ -17,7 +18,7 @@ We got a 91% reduction in size!
 [![Build Status](https://github.com/gfx-rs/wgpu-native/workflows/CI/badge.svg)](https://github.com/gfx-rs/wgpu-native/actions)
 
 This is a native WebGPU implementation in Rust, based on [wgpu-core](https://github.com/gfx-rs/wgpu).
-The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/webgpu.h` and wgpu-native specific items in `ffi/wgpu.h`
+The bindings are based on the WebGPU-native header found at `ffi/webgpu/webgpu.h` and wgpu-native specific items in `ffi/wgpu.h`
 
 # Bindings
 

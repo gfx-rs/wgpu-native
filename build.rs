@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
-    println!("cargo:rerun-if-changed=ffi/webgpu-headers/webgpu.h");
+    println!("cargo:rerun-if-changed=ffi/webgpu/webgpu.h");
     println!("cargo:rerun-if-changed=ffi/wgpu.h");
 
     #[rustfmt::skip]
@@ -33,7 +33,7 @@ fn main() {
     ];
     let mut builder = bindgen::Builder::default()
         .header("ffi/wgpu.h")
-        .clang_arg("-Iffi/webgpu-headers")
+        .clang_arg("-Iffi/webgpu")
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_item("WGPU.*")
         .allowlist_item("wgpu.*")

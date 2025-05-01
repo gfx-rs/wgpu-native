@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "framework.h"
-#include "webgpu-headers/webgpu.h"
+#include "webgpu/webgpu.h"
 
 #define LOG_PREFIX "[push_constants]"
 
@@ -23,7 +23,7 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   UNUSED(userdata2)
   *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUMapAsyncStatus status, 
+static void handle_buffer_map(WGPUMapAsyncStatus status,
                               WGPUStringView message,
                               void *userdata1, void *userdata2) {
   UNUSED(userdata1)
@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
   };
 
   WGPUDevice device = NULL;
-  wgpuAdapterRequestDevice(adapter, &device_desc, 
-                           (const WGPURequestDeviceCallbackInfo){ 
+  wgpuAdapterRequestDevice(adapter, &device_desc,
+                           (const WGPURequestDeviceCallbackInfo){
                                .callback = handle_request_device,
                                .userdata1 = &device
                            });

@@ -1,5 +1,5 @@
 #include "framework.h"
-#include "webgpu-headers/webgpu.h"
+#include "webgpu/webgpu.h"
 #include "wgpu.h"
 #include <assert.h>
 #include <inttypes.h>

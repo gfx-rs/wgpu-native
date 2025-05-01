@@ -10,7 +10,7 @@ else()
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/../ffi)
-include_directories(${CMAKE_SOURCE_DIR}/../ffi/webgpu-headers)
+include_directories(${CMAKE_SOURCE_DIR}/../ffi/webgpu)
 
 if (WIN32)
     set(OS_LIBRARIES d3dcompiler ws2_32 userenv bcrypt ntdll opengl32)
