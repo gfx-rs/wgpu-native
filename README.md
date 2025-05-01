@@ -1,7 +1,7 @@
 # Fork Changes
 I made this fork because the release mode non-stripped `libwgpu_native.a` file is 48MB! This is huge, and I know we can do much better.
 
-Right now this fork is only made for my specific particle simulation project, and only builds for `x86_64-unknown-linux-gnu`, but I plan to make it compile work `wasm` and `windows`.
+Right now this fork is only made for my specific particle simulation project, and only builds for `x86_64-unknown-linux-gnu`, but I plan to make it compile for `wasm` and `windows`.
 
 - Update dependencies
 - Only enable `wgsl` feature by default -> From 48MB to 41MB
