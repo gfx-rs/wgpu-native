@@ -41,7 +41,7 @@ git = "https://github.com/gfx-rs/wgpu"
 tag = "v24.0.3"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["staticlib"]
 
 [features]
 default = ["wgsl"]
