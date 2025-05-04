@@ -4286,8 +4286,8 @@ pub unsafe extern "C" fn wgpuDevicePoll(
     };
 
     match context.device_poll(device_id, maintain) {
-        // TODO check if we need to check the PollStatus to return true or false
-        Ok(_) => true,
+        Ok(wgt::PollStatus::QueueEmpty) => true,
+        Ok(_) => false,
         Err(cause) => {
             handle_error_fatal(cause, "wgpuDevicePoll");
         }
