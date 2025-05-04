@@ -280,6 +280,21 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
     result
 }
 
+map_enum!(
+    map_dxc_max_shader_model,
+    WGPUDirectXMaxShaderModel,
+    wgt::DxcShaderModel,
+    "Unknown shader model version",
+    V6_0,
+    V6_1,
+    V6_2,
+    V6_3,
+    V6_4,
+    V6_5,
+    V6_6,
+    V6_7
+);
+
 #[inline]
 pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
@@ -288,7 +303,6 @@ pub unsafe fn map_instance_descriptor(
     if let Some(extras) = extras {
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
-            // TODO add specific value to cover dynamic and static Dxc
             native::WGPUDx12Compiler_Dxc => match (
                 string_view_into_str(extras.dxilPath),
                 string_view_into_str(extras.dxcPath),
@@ -296,7 +310,7 @@ pub unsafe fn map_instance_descriptor(
                 (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
                     dxil_path: dxil_path.to_string(),
                     dxc_path: dxc_path.to_string(),
-                    max_shader_model: wgt::DxcShaderModel::V6_7,
+                    max_shader_model: map_dxc_max_shader_model(extras.dxcMaxShaderModel),
                 },
                 _ => wgt::Dx12Compiler::StaticDxc,
             },
@@ -329,7 +343,7 @@ pub unsafe fn map_instance_descriptor(
 pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
-    extras: Option<&native::WGPUDeviceExtras>,
+    _extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
