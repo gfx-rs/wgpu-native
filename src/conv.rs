@@ -295,6 +295,15 @@ map_enum!(
     V6_7
 );
 
+map_enum!(
+    map_gl_fence_behavior,
+    WGPUGLFenceBehaviour,
+    wgt::GlFenceBehavior,
+    "Unknown gl fence behavior",
+    Normal,
+    AutoFinish
+);
+
 #[inline]
 pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
@@ -322,7 +331,7 @@ pub unsafe fn map_instance_descriptor(
             backend_options: wgt::BackendOptions {
                 gl: wgt::GlBackendOptions {
                     gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
-                    fence_behavior: Default::default(),
+                    fence_behavior: map_gl_fence_behavior(extras.glFenceBehaviour),
                 },
                 dx12: wgt::Dx12BackendOptions {
                     shader_compiler: dx12_shader_compiler,

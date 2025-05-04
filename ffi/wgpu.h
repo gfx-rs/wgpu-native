@@ -130,12 +130,19 @@ typedef enum WGPUDirectXMaxShaderModel {
     WGPUDirectXMaxShaderModel_Force32 = 0x7FFFFFFF
 } WGPUDirectXMaxShaderModel;
 
+typedef enum WGPUGLFenceBehaviour {
+    WGPUGLFenceBehaviour_Normal = 0x00000000,
+    WGPUGLFenceBehaviour_AutoFinish = 0x00000001,
+    WGPUGLFenceBehaviour_Force32 = 0x7FFFFFFF
+} WGPUGLFenceBehaviour;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackend backends;
     WGPUInstanceFlag flags;
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
+    WGPUGLFenceBehaviour glFenceBehaviour;
     WGPUStringView dxilPath;
     WGPUStringView dxcPath;
     WGPUDirectXMaxShaderModel dxcMaxShaderModel
