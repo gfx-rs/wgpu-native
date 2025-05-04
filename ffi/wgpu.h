@@ -145,7 +145,7 @@ typedef struct WGPUInstanceExtras {
     WGPUGLFenceBehaviour glFenceBehaviour;
     WGPUStringView dxilPath;
     WGPUStringView dxcPath;
-    WGPUDirectXMaxShaderModel dxcMaxShaderModel
+    WGPUDirectXMaxShaderModel dxcMaxShaderModel;
 } WGPUInstanceExtras;
 
 typedef struct WGPUDeviceExtras {
