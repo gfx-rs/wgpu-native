@@ -4,6 +4,7 @@ GIT_TAG=$(shell git describe --abbrev=0 --tags)
 GIT_TAG_FULL=$(shell git describe --tags)
 OS_NAME=
 
+EXTRA_RUSTFLAGS=
 EXTRA_BUILD_ARGS=
 TARGET_DIR=target
 ifdef TARGET
@@ -112,7 +113,7 @@ lib-native: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
 	cargo build $(EXTRA_BUILD_ARGS)
 
 lib-native-release: Cargo.lock Cargo.toml Makefile $(WILDCARD_SOURCE)
-	RUSTFLAGS="-Csymbol-mangling-version=v0 -Zlocation-detail=none -Zfmt-debug=none -Clink-args=-fuse-ld=lld -Clink-args=-Wl,--icf=all" cargo +nightly build --target x86_64-unknown-linux-gnu --release $(EXTRA_BUILD_ARGS)
+	RUSTFLAGS="-Csymbol-mangling-version=v0 -Zlocation-detail=none -Zfmt-debug=none -Clink-args=-fuse-ld=lld -Clink-args=-Wl,--icf=all $(EXTRA_RUSTFLAGS)" cargo +nightly build --target x86_64-unknown-linux-gnu --release $(EXTRA_BUILD_ARGS)
 
 examples-debug: lib-native
 	cd examples && $(MKDIR_CMD) "build/Debug" && cd build/Debug && cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ../..
