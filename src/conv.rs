@@ -282,7 +282,7 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
 
 map_enum!(
     map_dxc_max_shader_model,
-    WGPUDirectXMaxShaderModel,
+    WGPUDxcMaxShaderModel,
     wgt::DxcShaderModel,
     "Unknown shader model version",
     V6_0,
