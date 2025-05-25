@@ -23,22 +23,22 @@ resolver = "2"
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v25.0.1"
+tag = "v25.0.2"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v25.0.1"
+tag = "v25.0.2"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v25.0.1"
+tag = "v25.0.2"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu"
-tag = "v25.0.1"
+tag = "v25.0.2"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
