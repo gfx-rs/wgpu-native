@@ -182,7 +182,7 @@ impl Drop for WGPUDeviceImpl {
         if !thread::panicking() {
             let context = &self.context;
 
-            match context.device_poll(self.id, wgt::Maintain::Wait) {
+            match context.device_poll(self.id, wgt::PollType::Wait) {
                 Ok(_) => (),
                 Err(err) => handle_error_fatal(err, "WGPUDeviceImpl::drop"),
             }
@@ -785,9 +785,9 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     let adapter_limits = context.adapter_limits(adapter_id);
     let base_limits = get_base_device_limits_from_adapter_limits(&adapter_limits);
 
-    let (desc, trace_str, device_lost_handler, error_callback) = match descriptor {
+    let (desc, device_lost_handler, error_callback) = match descriptor {
         Some(descriptor) => {
-            let (desc, trace_str, error_callback) = follow_chain!(
+            let (desc, error_callback) = follow_chain!(
                 map_device_descriptor((descriptor, base_limits),
                 WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
             );
@@ -795,26 +795,19 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
                 callback: descriptor.deviceLostCallbackInfo.callback,
                 userdata: new_userdata!(descriptor.deviceLostCallbackInfo),
             };
-            (desc, trace_str, device_lost_handler, error_callback)
+            (desc, device_lost_handler, error_callback)
         }
         None => (
             wgt::DeviceDescriptor {
                 required_limits: base_limits,
                 ..Default::default()
             },
-            None,
             DEFAULT_DEVICE_LOST_HANDLER,
             None,
         ),
     };
 
-    let result = context.adapter_request_device(
-        adapter_id,
-        &desc,
-        trace_str.map(std::path::Path::new),
-        None,
-        None,
-    );
+    let result = context.adapter_request_device(adapter_id, &desc, None, None);
     match result {
         Ok((device_id, queue_id)) => {
             let mut error_sink = ErrorSinkRaw::new(device_lost_handler);
@@ -1101,12 +1094,15 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginComputePass(
     let desc = match descriptor {
         Some(descriptor) => wgc::command::ComputePassDescriptor {
             label: string_view_into_label(descriptor.label),
-            timestamp_writes: timestamp_writes.as_ref(),
+            timestamp_writes,
         },
-        None => wgc::command::ComputePassDescriptor::default(),
+        None => wgc::command::ComputePassDescriptor {
+            label: Label::default(),
+            timestamp_writes,
+        },
     };
 
-    let (pass, err) = context.command_encoder_create_compute_pass(command_encoder_id, &desc);
+    let (pass, err) = context.command_encoder_begin_compute_pass(command_encoder_id, &desc);
     if let Some(cause) = err {
         handle_error(
             error_sink,
@@ -1208,7 +1204,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
     };
 
-    let (pass, err) = context.command_encoder_create_render_pass(command_encoder_id, &desc);
+    let (pass, err) = context.command_encoder_begin_render_pass(command_encoder_id, &desc);
     if let Some(cause) = err {
         handle_error(
             error_sink,
@@ -1970,20 +1966,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
                 .id
                 .expect("invalid fragment shader module for render pipeline descriptor"),
             entry_point: string_view_into_label(descriptor.compute.entryPoint),
-            constants: Cow::Owned(
-                make_slice(
-                    descriptor.compute.constants,
-                    descriptor.compute.constantCount,
+            constants: make_slice(
+                descriptor.compute.constants,
+                descriptor.compute.constantCount,
+            )
+            .iter()
+            .map(|entry| {
+                (
+                    string_view_into_str(entry.key).unwrap_or("").to_string(),
+                    entry.value,
                 )
-                .iter()
-                .map(|entry| {
-                    (
-                        string_view_into_str(entry.key).unwrap_or("").to_string(),
-                        entry.value,
-                    )
-                })
-                .collect(),
-            ),
+            })
+            .collect(),
             // TODO(wgpu.h)
             zero_initialize_workgroup_memory: false,
         },
@@ -2144,17 +2138,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .id
                     .expect("invalid vertex shader module for vertex state"),
                 entry_point: string_view_into_label(descriptor.vertex.entryPoint),
-                constants: Cow::Owned(
-                    make_slice(descriptor.vertex.constants, descriptor.vertex.constantCount)
-                        .iter()
-                        .map(|entry| {
-                            (
-                                string_view_into_str(entry.key).unwrap_or("").to_string(),
-                                entry.value,
-                            )
-                        })
-                        .collect(),
-                ),
+                constants: make_slice(descriptor.vertex.constants, descriptor.vertex.constantCount)
+                    .iter()
+                    .map(|entry| {
+                        (
+                            string_view_into_str(entry.key).unwrap_or("").to_string(),
+                            entry.value,
+                        )
+                    })
+                    .collect(),
                 // TODO(wgpu.h)
                 zero_initialize_workgroup_memory: false,
             },
@@ -2254,17 +2246,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .id
                         .expect("invalid fragment shader module for render pipeline descriptor"),
                     entry_point: string_view_into_label(fragment.entryPoint),
-                    constants: Cow::Owned(
-                        make_slice(fragment.constants, fragment.constantCount)
-                            .iter()
-                            .map(|entry| {
-                                (
-                                    string_view_into_str(entry.key).unwrap_or("").to_string(),
-                                    entry.value,
-                                )
-                            })
-                            .collect(),
-                    ),
+                    constants: make_slice(fragment.constants, fragment.constantCount)
+                        .iter()
+                        .map(|entry| {
+                            (
+                                string_view_into_str(entry.key).unwrap_or("").to_string(),
+                                entry.value,
+                            )
+                        })
+                        .collect(),
                     // TODO(wgpu.h)
                     zero_initialize_workgroup_memory: false,
                 },
@@ -2394,10 +2384,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: string_view_into_label(descriptor.label),
-        runtime_checks: wgt::ShaderRuntimeChecks::default(),
-    };
+    let desc_label = string_view_into_label(descriptor.label);
 
     let source = match follow_chain!(
         map_shader_module((descriptor),
@@ -2410,7 +2397,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
             handle_error(
                 error_sink,
                 cause,
-                desc.label,
+                desc_label,
                 "wgpuDeviceCreateShaderModule",
             );
 
@@ -2419,6 +2406,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
                 id: None,
             }));
         }
+    };
+
+    let desc = wgc::pipeline::ShaderModuleDescriptor {
+        label: desc_label,
+        runtime_checks: wgt::ShaderRuntimeChecks::default(),
     };
 
     let (shader_module_id, error) =
@@ -2770,9 +2762,14 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
             let message = format_error(&err);
             callback(
                 match err {
-                    wgc::instance::RequestAdapterError::NotFound => {
-                        native::WGPURequestAdapterStatus_Unavailable
-                    }
+                    wgt::RequestAdapterError::NotFound {
+                        active_backends: _,
+                        requested_backends: _,
+                        supported_backends: _,
+                        no_fallback_backends: _,
+                        no_adapter_backends: _,
+                        incompatible_surface_backends: _,
+                    } => native::WGPURequestAdapterStatus_Unavailable,
                     _ => native::WGPURequestAdapterStatus_Unknown,
                 },
                 std::ptr::null_mut(),
@@ -3990,7 +3987,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
     };
 
     match context.surface_get_current_texture(surface.id, None) {
-        Ok(wgc::present::SurfaceOutput { status, texture_id }) => {
+        Ok(wgc::present::SurfaceOutput { status, texture }) => {
             surface
                 .has_surface_presented
                 .store(false, atomic::Ordering::SeqCst);
@@ -4007,7 +4004,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
                 // TODO add some logs to provide more context
                 wgt::SurfaceStatus::Unknown => native::WGPUSurfaceGetCurrentTextureStatus_Error,
             };
-            surface_texture.texture = match texture_id {
+            surface_texture.texture = match texture {
                 Some(texture_id) => Arc::into_raw(Arc::new(WGPUTextureImpl {
                     context: context.clone(),
                     id: texture_id,
@@ -4282,14 +4279,15 @@ pub unsafe extern "C" fn wgpuDevicePoll(
 
     let maintain = match wait {
         true => match submission_index {
-            Some(index) => wgt::Maintain::WaitForSubmissionIndex(*index),
-            None => wgt::Maintain::Wait,
+            Some(index) => wgt::PollType::WaitForSubmissionIndex(*index),
+            None => wgt::PollType::Wait,
         },
-        false => wgt::Maintain::Poll,
+        false => wgt::PollType::Poll,
     };
 
     match context.device_poll(device_id, maintain) {
-        Ok(queue_empty) => queue_empty,
+        Ok(wgt::PollStatus::QueueEmpty) => true,
+        Ok(_) => false,
         Err(cause) => {
             handle_error_fatal(cause, "wgpuDevicePoll");
         }
@@ -4307,22 +4305,26 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let desc = wgc::pipeline::ShaderModuleDescriptor {
-        label: string_view_into_label(descriptor.label),
-        runtime_checks: wgt::ShaderRuntimeChecks::unchecked(),
-    };
-
     let source = Cow::Borrowed(make_slice(
         descriptor.source,
         descriptor.sourceSize as usize,
     ));
+
+    let desc_label = string_view_into_label(descriptor.label);
+
+    let desc =
+        wgc::pipeline::ShaderModuleDescriptorPassthrough::SpirV(wgt::ShaderModuleDescriptorSpirV {
+            label: desc_label.clone(),
+            source,
+        });
+
     let (shader_module_id, error) =
-        context.device_create_shader_module_spirv(device_id, &desc, source, None);
+        context.device_create_shader_module_passthrough(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
             error_sink,
             cause,
-            desc.label,
+            desc_label,
             "wgpuDeviceCreateShaderModuleSpirV",
         );
     }

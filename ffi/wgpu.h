@@ -118,14 +118,34 @@ typedef enum WGPUNativeQueryType {
     WGPUNativeQueryType_Force32 = 0x7FFFFFFF
 } WGPUNativeQueryType WGPU_ENUM_ATTRIBUTE;
 
+typedef enum WGPUDxcMaxShaderModel {
+    WGPUDxcMaxShaderModel_V6_0 = 0x00000000,
+    WGPUDxcMaxShaderModel_V6_1 = 0x00000001,
+    WGPUDxcMaxShaderModel_V6_2 = 0x00000002,
+    WGPUDxcMaxShaderModel_V6_3 = 0x00000003,
+    WGPUDxcMaxShaderModel_V6_4 = 0x00000004,
+    WGPUDxcMaxShaderModel_V6_5 = 0x00000005,
+    WGPUDxcMaxShaderModel_V6_6 = 0x00000006,
+    WGPUDxcMaxShaderModel_V6_7 = 0x00000007,
+    WGPUDxcMaxShaderModel_Force32 = 0x7FFFFFFF
+} WGPUDxcMaxShaderModel;
+
+typedef enum WGPUGLFenceBehaviour {
+    WGPUGLFenceBehaviour_Normal = 0x00000000,
+    WGPUGLFenceBehaviour_AutoFinish = 0x00000001,
+    WGPUGLFenceBehaviour_Force32 = 0x7FFFFFFF
+} WGPUGLFenceBehaviour;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackend backends;
     WGPUInstanceFlag flags;
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
+    WGPUGLFenceBehaviour glFenceBehaviour;
     WGPUStringView dxilPath;
     WGPUStringView dxcPath;
+    WGPUDxcMaxShaderModel dxcMaxShaderModel;
 } WGPUInstanceExtras;
 
 typedef struct WGPUDeviceExtras {
