@@ -280,6 +280,30 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
     result
 }
 
+map_enum!(
+    map_dxc_max_shader_model,
+    WGPUDxcMaxShaderModel,
+    wgt::DxcShaderModel,
+    "Unknown shader model version",
+    V6_0,
+    V6_1,
+    V6_2,
+    V6_3,
+    V6_4,
+    V6_5,
+    V6_6,
+    V6_7
+);
+
+map_enum!(
+    map_gl_fence_behavior,
+    WGPUGLFenceBehaviour,
+    wgt::GlFenceBehavior,
+    "Unknown gl fence behavior",
+    Normal,
+    AutoFinish
+);
+
 #[inline]
 pub unsafe fn map_instance_descriptor(
     _base: &native::WGPUInstanceDescriptor,
@@ -288,7 +312,6 @@ pub unsafe fn map_instance_descriptor(
     if let Some(extras) = extras {
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
-            // TODO add specific value to cover dynamic and static Dxc
             native::WGPUDx12Compiler_Dxc => match (
                 string_view_into_str(extras.dxilPath),
                 string_view_into_str(extras.dxcPath),
@@ -296,6 +319,7 @@ pub unsafe fn map_instance_descriptor(
                 (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
                     dxil_path: dxil_path.to_string(),
                     dxc_path: dxc_path.to_string(),
+                    max_shader_model: map_dxc_max_shader_model(extras.dxcMaxShaderModel),
                 },
                 _ => wgt::Dx12Compiler::StaticDxc,
             },
@@ -307,10 +331,12 @@ pub unsafe fn map_instance_descriptor(
             backend_options: wgt::BackendOptions {
                 gl: wgt::GlBackendOptions {
                     gles_minor_version: map_gles3_minor_version(extras.gles3MinorVersion),
+                    fence_behavior: map_gl_fence_behavior(extras.glFenceBehaviour),
                 },
                 dx12: wgt::Dx12BackendOptions {
                     shader_compiler: dx12_shader_compiler,
                 },
+                noop: Default::default(),
             },
             flags: match extras.flags {
                 native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
@@ -326,10 +352,9 @@ pub unsafe fn map_instance_descriptor(
 pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
-    extras: Option<&native::WGPUDeviceExtras>,
+    _extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
-    Option<&'a str>,
     Option<UncapturedErrorCallback>,
 ) {
     (
@@ -350,8 +375,8 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
             },
             // TODO(wgpu.h)
             memory_hints: Default::default(),
+            trace: Default::default(),
         },
-        extras.and_then(|extras| string_view_into_str(extras.tracePath)),
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
             callback => Some(UncapturedErrorCallback {
@@ -1142,11 +1167,12 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::BUFFER_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_BufferBindingArray);
     }
-    if features
-        .contains(wgt::Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING)
-    {
-        temp.push(native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing);
-    }
+    // TODO: fix this, UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING is not supported anymore https://github.com/gfx-rs/wgpu/issues/4407
+    // if features
+    //     .contains(wgt::Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING)
+    // {
+    //     temp.push(native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing);
+    // }
     // TODO: requires wgpu.h api change
     // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
     //     temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
@@ -1249,7 +1275,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_TimestampQueryInsideEncoders => Some(Features::TIMESTAMP_QUERY_INSIDE_ENCODERS),
         native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
         native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
-        native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing => Some(Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
+        // TODO: fix this, UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING is not supported anymore https://github.com/gfx-rs/wgpu/issues/4407 
+        // native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing => Some(Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
         // TODO: requires wgpu.h api change
         // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
         // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
@@ -1308,7 +1335,7 @@ pub fn map_bind_group_entry<'a>(
             binding: entry.binding,
             resource: wgc::binding_model::BindingResource::Buffer(
                 wgc::binding_model::BufferBinding {
-                    buffer_id: buffer.id,
+                    buffer: buffer.id,
                     offset: entry.offset,
                     size: match entry.size {
                         0 => panic!("invalid size"),
@@ -1359,7 +1386,7 @@ pub fn map_bind_group_entry<'a>(
             let arr = make_slice(buffers, extras.bufferCount)
                 .iter()
                 .map(|v| wgc::binding_model::BufferBinding {
-                    buffer_id: unsafe { v.as_ref() }
+                    buffer: unsafe { v.as_ref() }
                         .expect("invalid buffers for bind group entry extras")
                         .id,
                     offset: entry.offset,
@@ -1687,7 +1714,7 @@ pub fn map_surface_configuration(
 
 pub fn map_backend_type(backend: wgt::Backend) -> native::WGPUBackendType {
     match backend {
-        wgt::Backend::Empty => native::WGPUBackendType_Null,
+        wgt::Backend::Noop => native::WGPUBackendType_Null,
         wgt::Backend::Vulkan => native::WGPUBackendType_Vulkan,
         wgt::Backend::Metal => native::WGPUBackendType_Metal,
         wgt::Backend::Dx12 => native::WGPUBackendType_D3D12,
