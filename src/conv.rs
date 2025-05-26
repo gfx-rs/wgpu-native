@@ -608,7 +608,7 @@ pub unsafe fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
     spirv: Option<&native::WGPUShaderSourceSPIRV>,
     wgsl: Option<&native::WGPUShaderSourceWGSL>,
-    glsl: Option<&native::WGPUShaderModuleGLSLDescriptor>,
+    glsl: Option<&native::WGPUShaderSourceGLSL>,
 ) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
     if let Some(wgsl) = wgsl {

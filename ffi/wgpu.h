@@ -8,7 +8,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_DeviceExtras = 0x00030001,
     WGPUSType_NativeLimits = 0x00030002,
     WGPUSType_PipelineLayoutExtras = 0x00030003,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
+    WGPUSType_ShaderSourceGLSL = 0x00030004,
     WGPUSType_InstanceExtras = 0x00030006,
     WGPUSType_BindGroupEntryExtras = 0x00030007,
     WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
@@ -179,13 +179,13 @@ typedef struct WGPUShaderDefine {
     WGPUStringView value;
 } WGPUShaderDefine;
 
-typedef struct WGPUShaderModuleGLSLDescriptor {
+typedef struct WGPUShaderSourceGLSL {
     WGPUChainedStruct chain;
     WGPUShaderStage stage;
     WGPUStringView code;
     uint32_t defineCount;
     WGPUShaderDefine * defines;
-} WGPUShaderModuleGLSLDescriptor;
+} WGPUShaderSourceGLSL;
 
 typedef struct WGPUShaderModuleDescriptorSpirV {
     WGPUStringView label;
@@ -280,7 +280,7 @@ size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUIn
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * wrappedSubmissionIndex);
+WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * submissionIndex);
 WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const * descriptor);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);

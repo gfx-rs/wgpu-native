@@ -2390,7 +2390,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
         map_shader_module((descriptor),
         WGPUSType_ShaderSourceSPIRV => native::WGPUShaderSourceSPIRV,
         WGPUSType_ShaderSourceWGSL => native::WGPUShaderSourceWGSL,
-        WGPUSType_ShaderModuleGLSLDescriptor => native::WGPUShaderModuleGLSLDescriptor)
+        WGPUSType_ShaderSourceGLSL => native::WGPUShaderSourceGLSL)
     ) {
         Ok(source) => source,
         Err(cause) => {
