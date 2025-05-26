@@ -18,7 +18,7 @@ if (WIN32)
 elseif(UNIX AND NOT APPLE)
     set(OS_LIBRARIES "-lm -ldl")
 elseif(APPLE)
-    set(OS_LIBRARIES "-framework CoreFoundation -framework QuartzCore -framework Metal")
+    set(OS_LIBRARIES "-framework Foundation -framework CoreFoundation -framework QuartzCore -framework Metal")
 endif()
 
 target_link_libraries(compute framework ${WGPU_LIBRARY} ${OS_LIBRARIES})

@@ -8,7 +8,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_DeviceExtras = 0x00030001,
     WGPUSType_NativeLimits = 0x00030002,
     WGPUSType_PipelineLayoutExtras = 0x00030003,
-    WGPUSType_ShaderModuleGLSLDescriptor = 0x00030004,
+    WGPUSType_ShaderSourceGLSL = 0x00030004,
     WGPUSType_InstanceExtras = 0x00030006,
     WGPUSType_BindGroupEntryExtras = 0x00030007,
     WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
@@ -118,14 +118,34 @@ typedef enum WGPUNativeQueryType {
     WGPUNativeQueryType_Force32 = 0x7FFFFFFF
 } WGPUNativeQueryType WGPU_ENUM_ATTRIBUTE;
 
+typedef enum WGPUDxcMaxShaderModel {
+    WGPUDxcMaxShaderModel_V6_0 = 0x00000000,
+    WGPUDxcMaxShaderModel_V6_1 = 0x00000001,
+    WGPUDxcMaxShaderModel_V6_2 = 0x00000002,
+    WGPUDxcMaxShaderModel_V6_3 = 0x00000003,
+    WGPUDxcMaxShaderModel_V6_4 = 0x00000004,
+    WGPUDxcMaxShaderModel_V6_5 = 0x00000005,
+    WGPUDxcMaxShaderModel_V6_6 = 0x00000006,
+    WGPUDxcMaxShaderModel_V6_7 = 0x00000007,
+    WGPUDxcMaxShaderModel_Force32 = 0x7FFFFFFF
+} WGPUDxcMaxShaderModel;
+
+typedef enum WGPUGLFenceBehaviour {
+    WGPUGLFenceBehaviour_Normal = 0x00000000,
+    WGPUGLFenceBehaviour_AutoFinish = 0x00000001,
+    WGPUGLFenceBehaviour_Force32 = 0x7FFFFFFF
+} WGPUGLFenceBehaviour;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackend backends;
     WGPUInstanceFlag flags;
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
+    WGPUGLFenceBehaviour glFenceBehaviour;
     WGPUStringView dxilPath;
     WGPUStringView dxcPath;
+    WGPUDxcMaxShaderModel dxcMaxShaderModel;
 } WGPUInstanceExtras;
 
 typedef struct WGPUDeviceExtras {
@@ -159,13 +179,13 @@ typedef struct WGPUShaderDefine {
     WGPUStringView value;
 } WGPUShaderDefine;
 
-typedef struct WGPUShaderModuleGLSLDescriptor {
+typedef struct WGPUShaderSourceGLSL {
     WGPUChainedStruct chain;
     WGPUShaderStage stage;
     WGPUStringView code;
     uint32_t defineCount;
     WGPUShaderDefine * defines;
-} WGPUShaderModuleGLSLDescriptor;
+} WGPUShaderSourceGLSL;
 
 typedef struct WGPUShaderModuleDescriptorSpirV {
     WGPUStringView label;
@@ -260,7 +280,7 @@ size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUIn
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * wrappedSubmissionIndex);
+WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * submissionIndex);
 WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const * descriptor);
 
 void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
