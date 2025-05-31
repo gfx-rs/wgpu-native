@@ -1603,6 +1603,7 @@ pub enum CreateSurfaceParams {
     ),
     #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     Metal(*mut std::ffi::c_void),
+    #[cfg(all(target_os = "windows", feature = "dx12"))]
     SwapChainPanel(*mut std::ffi::c_void)
 }
 
@@ -1614,7 +1615,7 @@ pub unsafe fn map_surface(
     wl: Option<&native::WGPUSurfaceSourceWaylandSurface>,
     _metal: Option<&native::WGPUSurfaceSourceMetalLayer>,
     android: Option<&native::WGPUSurfaceSourceAndroidNativeWindow>,
-    swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
+    _swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -1679,8 +1680,9 @@ pub unsafe fn map_surface(
         ));
     }
 
-    if let Some(swap_chain_panel) = swap_chain_panel {
-        return CreateSurfaceParams::SwapChainPanel(swap_chain_panel.panelNative)
+    #[cfg(all(target_os = "windows", feature = "dx12"))]
+    if let Some(swap_chain_panel) = _swap_chain_panel {
+        return CreateSurfaceParams::SwapChainPanel(swap_chain_panel.panelNative);
     }
 
     panic!("Error: Unsupported Surface");

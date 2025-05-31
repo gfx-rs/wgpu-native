@@ -2675,6 +2675,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
                 Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
             }
         }
+        #[cfg(all(target_os = "windows", feature = "dx12"))]
         CreateSurfaceParams::SwapChainPanel(panel) => {
             match context.instance_create_surface_from_swap_chain_panel(panel, None) {
                 Ok(surface_id) => surface_id,
