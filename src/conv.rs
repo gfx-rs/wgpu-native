@@ -1604,7 +1604,7 @@ pub enum CreateSurfaceParams {
     #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     Metal(*mut std::ffi::c_void),
     #[cfg(all(target_os = "windows", feature = "dx12"))]
-    SwapChainPanel(*mut std::ffi::c_void)
+    SwapChainPanel(*mut std::ffi::c_void),
 }
 
 pub unsafe fn map_surface(
