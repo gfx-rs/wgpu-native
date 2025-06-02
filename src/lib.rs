@@ -2657,7 +2657,8 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceSourceXlibWindow => native::WGPUSurfaceSourceXlibWindow,
             WGPUSType_SurfaceSourceWaylandSurface => native::WGPUSurfaceSourceWaylandSurface,
             WGPUSType_SurfaceSourceMetalLayer => native::WGPUSurfaceSourceMetalLayer,
-            WGPUSType_SurfaceSourceAndroidNativeWindow => native::WGPUSurfaceSourceAndroidNativeWindow)
+            WGPUSType_SurfaceSourceAndroidNativeWindow => native::WGPUSurfaceSourceAndroidNativeWindow,
+            WGPUSType_SurfaceSourceSwapChainPanel => native::WGPUSurfaceSourceSwapChainPanel)
     );
 
     let surface_id = match create_surface_params {
@@ -2670,6 +2671,13 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
         #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
         CreateSurfaceParams::Metal(layer) => {
             match context.instance_create_surface_metal(layer, None) {
+                Ok(surface_id) => surface_id,
+                Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
+            }
+        }
+        #[cfg(all(target_os = "windows", feature = "dx12"))]
+        CreateSurfaceParams::SwapChainPanel(panel) => {
+            match context.instance_create_surface_from_swap_chain_panel(panel, None) {
                 Ok(surface_id) => surface_id,
                 Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
             }

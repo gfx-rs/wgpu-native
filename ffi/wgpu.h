@@ -14,6 +14,7 @@ typedef enum WGPUNativeSType {
     WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
     WGPUSType_QuerySetDescriptorExtras = 0x00030009,
     WGPUSType_SurfaceConfigurationExtras = 0x0003000A,
+    WGPUSType_SurfaceSourceSwapChainPanel = 0x0003000B,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -255,6 +256,18 @@ typedef struct WGPUSurfaceConfigurationExtras {
     WGPUChainedStruct chain;
     uint32_t desiredMaximumFrameLatency;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a WinUI [`SwapChainPanel`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel).
+ */
+typedef struct WGPUSurfaceSourceSwapChainPanel {
+    WGPUChainedStruct chain;
+    /**
+     * A pointer to the [`ISwapChainPanelNative`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/microsoft.ui.xaml.media.dxinterop/nn-microsoft-ui-xaml-media-dxinterop-iswapchainpanelnative)
+     * interface of the SwapChainPanel that will be wrapped by the @ref WGPUSurface.
+     */
+    void * panelNative;
+} WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void * userdata);
 
