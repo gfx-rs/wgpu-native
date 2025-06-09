@@ -156,4 +156,4 @@ smallvec = "1"
 bitflags = "2"
 
 [build-dependencies]
-bindgen = "0.71"
+bindgen = "0.72"
