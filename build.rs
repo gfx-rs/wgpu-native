@@ -63,6 +63,15 @@ fn main() {
         builder = builder
             .clang_arg(format!("-isysroot {sdk}"))
             .clang_arg("--target=arm64-apple-ios");
+    } else if let Ok("macos") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
+        let output = Command::new("xcrun")
+            .args(["--sdk", "macosx", "--show-sdk-path"])
+            .output()
+            .expect("xcrun failed")
+            .stdout;
+        let sdk = std::str::from_utf8(&output).expect("invalid output from `xcrun`");
+        builder = builder
+            .clang_arg(format!("-isysroot{}", sdk.trim()));
     }
 
     let bindings = builder.generate().expect("Unable to generate bindings");
