@@ -70,8 +70,7 @@ fn main() {
             .expect("xcrun failed")
             .stdout;
         let sdk = std::str::from_utf8(&output).expect("invalid output from `xcrun`");
-        builder = builder
-            .clang_arg(format!("-isysroot{}", sdk.trim()));
+        builder = builder.clang_arg(format!("-isysroot{}", sdk.trim()));
     }
 
     let bindings = builder.generate().expect("Unable to generate bindings");
