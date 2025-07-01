@@ -5,10 +5,11 @@ use std::borrow::Cow;
 use std::num::{NonZeroIsize, NonZeroU32, NonZeroU64};
 use std::ptr::NonNull;
 
-map_enum!(
+map_enum_with_undefined!(
     map_store_op,
     WGPUStoreOp,
     wgc::command::StoreOp,
+    "Unknown store operation",
     Discard,
     Store
 );
