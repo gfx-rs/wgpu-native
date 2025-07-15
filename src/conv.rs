@@ -460,14 +460,14 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
     limits.maxComputeWorkgroupSizeZ = wgt_limits.max_compute_workgroup_size_z;
     limits.maxComputeWorkgroupsPerDimension = wgt_limits.max_compute_workgroups_per_dimension;
 
-    if let Some(native::WGPUChainedStructOut {
+    if let Some(native::WGPUChainedStruct {
         sType: native::WGPUSType_NativeLimits,
         ..
     }) = unsafe { limits.nextInChain.as_ref() }
     {
         unsafe {
             let native_limits = std::mem::transmute::<
-                *mut native::WGPUChainedStructOut,
+                *mut native::WGPUChainedStruct,
                 *mut native::WGPUNativeLimits,
             >(limits.nextInChain);
             (*native_limits).maxPushConstantSize = wgt_limits.max_push_constant_size;

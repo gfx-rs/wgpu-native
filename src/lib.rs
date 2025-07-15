@@ -643,8 +643,10 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 ) -> native::WGPUInstance {
     let instance_desc = match descriptor {
         Some(descriptor) => {
-            if descriptor.features.timedWaitAnyEnable != 0
-                || descriptor.features.timedWaitAnyMaxCount > 0
+            let timed_wait_any_max_count = descriptor.requiredLimits.as_ref().map_or(0, |x| x.timedWaitAnyMaxCount);
+            let required_features = make_slice(descriptor.requiredFeatures, descriptor.requiredFeatureCount);
+            if required_features.contains(&native::WGPUInstanceFeatureName_TimedWaitAny)
+                || timed_wait_any_max_count > 0
             {
                 panic!("Unsupported timed WaitAny features specified");
             }
@@ -663,13 +665,22 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuGetInstanceCapabilities(
-    capabilities: Option<&mut native::WGPUInstanceCapabilities>,
-) -> native::WGPUStatus {
-    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
+pub unsafe extern "C" fn wgpuGetInstanceFeatures(
+    features: Option<&mut native::WGPUSupportedInstanceFeatures>
+) {
+    let features = features.expect("invalid return pointer \"features\"");
     // WaitAny is currently completely unsupported, so...
-    capabilities.timedWaitAnyEnable = false as native::WGPUBool;
-    capabilities.timedWaitAnyMaxCount = 0;
+    features.featureCount = 0;
+    features.features = std::ptr::null();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetInstanceLimits(
+    limits: Option<&mut native::WGPUInstanceLimits>,
+) -> native::WGPUStatus {
+    let limits = limits.expect("invalid return pointer \"limits\"");
+    // WaitAny is currently completely unsupported, so...
+    limits.timedWaitAnyMaxCount = 0;
     native::WGPUStatus_Success
 }
 
@@ -2778,7 +2789,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                         no_adapter_backends: _,
                         incompatible_surface_backends: _,
                     } => native::WGPURequestAdapterStatus_Unavailable,
-                    _ => native::WGPURequestAdapterStatus_Unknown,
+                    _ => native::WGPURequestAdapterStatus_Error,
                 },
                 std::ptr::null_mut(),
                 str_into_string_view(&message),
@@ -2904,6 +2915,7 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     let closure: wgc::device::queue::SubmittedWorkDoneClosure = Box::new(move || {
         callback(
             native::WGPUQueueWorkDoneStatus_Success,
+            utils::null_string_view(),
             userdata.get_1(),
             userdata.get_2(),
         );

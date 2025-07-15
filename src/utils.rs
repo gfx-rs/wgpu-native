@@ -365,6 +365,13 @@ pub unsafe fn drop_string_view(view: native::WGPUStringView) {
     )))
 }
 
+pub fn null_string_view() -> native::WGPUStringView {
+    native::WGPUStringView{
+        data: std::ptr::null(),
+        length: crate::conv::WGPU_STRLEN,
+    }
+}
+
 #[test]
 pub fn test_string_view_into_str() {
     let str = "Hello, world!";
