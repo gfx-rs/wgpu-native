@@ -1426,7 +1426,10 @@ pub fn map_bind_group_layout_entry(
                 native::WGPUTextureSampleType_Depth => wgt::TextureSampleType::Depth,
                 native::WGPUTextureSampleType_Sint => wgt::TextureSampleType::Sint,
                 native::WGPUTextureSampleType_Uint => wgt::TextureSampleType::Uint,
-                _ => panic!("invalid sample type for texture binding layout"),
+                _ => panic!(
+                    "invalid sample type for texture binding layout at binding {}",
+                    entry.binding
+                ),
             },
             view_dimension: match entry.texture.viewDimension {
                 native::WGPUTextureViewDimension_1D => wgt::TextureViewDimension::D1,
@@ -1435,7 +1438,10 @@ pub fn map_bind_group_layout_entry(
                 native::WGPUTextureViewDimension_Cube => wgt::TextureViewDimension::Cube,
                 native::WGPUTextureViewDimension_CubeArray => wgt::TextureViewDimension::CubeArray,
                 native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
-                _ => panic!("invalid texture view dimension for texture binding layout"),
+                _ => panic!(
+                    "invalid texture view dimension for texture binding layout at binding {}",
+                    entry.binding
+                ),
             },
             multisampled: entry.texture.multisampled != 0,
         }
@@ -1450,7 +1456,10 @@ pub fn map_bind_group_layout_entry(
             native::WGPUSamplerBindingType_Comparison => {
                 wgt::BindingType::Sampler(wgt::SamplerBindingType::Comparison)
             }
-            _ => panic!("invalid sampler binding type for sampler binding layout"),
+            _ => panic!(
+                "invalid sampler binding type for sampler binding layout at binding {}",
+                entry.binding
+            ),
         }
     } else if is_storage_texture {
         wgt::BindingType::StorageTexture {
@@ -1466,7 +1475,7 @@ pub fn map_bind_group_layout_entry(
                 native::WGPUTextureViewDimension_CubeArray => wgt::TextureViewDimension::CubeArray,
                 native::WGPUTextureViewDimension_3D => wgt::TextureViewDimension::D3,
                 _ => {
-                    panic!("invalid texture view dimension for storage texture binding layout")
+                    panic!("invalid texture view dimension for storage texture binding layout at binding {}", entry.binding)
                 }
             },
         }
@@ -1482,7 +1491,10 @@ pub fn map_bind_group_layout_entry(
                 native::WGPUBufferBindingType_ReadOnlyStorage => {
                     wgt::BufferBindingType::Storage { read_only: true }
                 }
-                _ => panic!("invalid buffer binding type for buffer binding layout"),
+                _ => panic!(
+                    "invalid buffer binding type for buffer binding layout at binding {}",
+                    entry.binding
+                ),
             },
             has_dynamic_offset: entry.buffer.hasDynamicOffset != 0,
             min_binding_size: {
