@@ -13,6 +13,7 @@ use smallvec::SmallVec;
 use std::{
     borrow::Cow,
     error,
+    ffi::c_void,
     fmt::Display,
     mem,
     num::NonZeroU64,
@@ -2487,8 +2488,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceDestroy(_device: native::WGPUDevice) {
-    //TODO: needs to be implemented in wgpu-core
+pub unsafe extern "C" fn wgpuDeviceDestroy(device: native::WGPUDevice) {
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context)
+    };
+
+    context.device_destroy(device_id);
 }
 
 #[no_mangle]
@@ -2862,8 +2868,13 @@ pub unsafe extern "C" fn wgpuPipelineLayoutRelease(pipeline_layout: native::WGPU
 // QuerySet methods
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuQuerySetDestroy(_query_set: native::WGPUQuerySet) {
-    //TODO: needs to be implemented in wgpu-core
+pub unsafe extern "C" fn wgpuQuerySetDestroy(query_set: native::WGPUQuerySet) {
+    let (query_set_id, context) = {
+        let query_set = query_set.as_ref().expect("query set");
+        (query_set.id, &query_set.context)
+    };
+
+    context.query_set_drop(query_set_id);
 }
 
 #[no_mangle]
@@ -2949,7 +2960,7 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
     queue: native::WGPUQueue,
     buffer: native::WGPUBuffer,
     buffer_offset: u64,
-    data: *const u8, // TODO: Check - this might not follow the header
+    data: *const c_void,
     data_size: usize,
 ) {
     let (queue_id, context, error_sink) = {
@@ -2962,7 +2973,7 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
         queue_id,
         buffer_id,
         buffer_offset,
-        make_slice(data, data_size),
+        make_slice(data.cast(), data_size),
     ) {
         handle_error(error_sink, cause, None, "wgpuQueueWriteBuffer");
     }
@@ -2972,7 +2983,7 @@ pub unsafe extern "C" fn wgpuQueueWriteBuffer(
 pub unsafe extern "C" fn wgpuQueueWriteTexture(
     queue: native::WGPUQueue,
     destination: Option<&native::WGPUTexelCopyTextureInfo>,
-    data: *const u8, // TODO: Check - this might not follow the header
+    data: *const c_void,
     data_size: usize,
     data_layout: Option<&native::WGPUTexelCopyBufferLayout>,
     write_size: Option<&native::WGPUExtent3D>,
@@ -2985,7 +2996,7 @@ pub unsafe extern "C" fn wgpuQueueWriteTexture(
     if let Err(cause) = context.queue_write_texture(
         queue_id,
         &conv::map_image_copy_texture(destination.expect("invalid destination")),
-        make_slice(data, data_size),
+        make_slice(data.cast(), data_size),
         &conv::map_texture_data_layout(data_layout.expect("invalid data layout")),
         &conv::map_extent3d(write_size.expect("invalid write size")),
     ) {
@@ -3190,8 +3201,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     dynamic_offsets: *const u32,
 ) {
     let bundle = bundle.as_ref().expect("invalid render bundle");
-    // TODO: as per webgpu.h bindgroup is nullable
-    let bind_group_id = group.as_ref().expect("invalid bind group").id;
+    let bind_group_id = group.as_ref().map(|bg| bg.id);
     let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
@@ -3199,7 +3209,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     bundle_ffi::wgpu_render_bundle_set_bind_group(
         encoder,
         group_index,
-        Some(bind_group_id),
+        bind_group_id,
         dynamic_offsets,
         dynamic_offset_count,
     );
@@ -3554,14 +3564,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetBindGroup(
     dynamic_offsets: *const u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
-    // TODO: as per webgpu.h bindgroup is nullable
-    let bind_group_id = bind_group.as_ref().expect("invalid bind group").id;
+    let bind_group_id = bind_group.as_ref().map(|bg| bg.id);
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
     match pass.context.render_pass_set_bind_group(
         encoder,
         group_index,
-        Some(bind_group_id),
+        bind_group_id,
         make_slice(dynamic_offsets, dynamic_offset_count),
     ) {
         Ok(()) => (),
