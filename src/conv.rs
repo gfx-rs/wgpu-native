@@ -416,11 +416,11 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
             .collect()
     });
 
-    return wgc::binding_model::PipelineLayoutDescriptor {
+    wgc::binding_model::PipelineLayoutDescriptor {
         label: string_view_into_label(des.label),
         bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
-    };
+    }
 }
 
 #[inline]
@@ -1610,6 +1610,7 @@ pub enum CreateSurfaceParams {
     SwapChainPanel(*mut std::ffi::c_void),
 }
 
+#[allow(clippy::too_many_arguments)]
 pub unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
     win: Option<&native::WGPUSurfaceSourceWindowsHWND>,

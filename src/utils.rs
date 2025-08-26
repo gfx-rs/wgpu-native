@@ -30,7 +30,7 @@ impl Userdata {
 #[macro_export]
 macro_rules! new_userdata {
     ($var:expr) => {
-        crate::utils::Userdata::new($var.userdata1, $var.userdata2)
+        $crate::utils::Userdata::new($var.userdata1, $var.userdata2)
     };
 }
 
@@ -93,11 +93,11 @@ pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) 
 }
 
 pub fn texture_format_has_depth(format: wgt::TextureFormat) -> bool {
-    return format == wgt::TextureFormat::Depth16Unorm
+    format == wgt::TextureFormat::Depth16Unorm
         || format == wgt::TextureFormat::Depth24Plus
         || format == wgt::TextureFormat::Depth24PlusStencil8
         || format == wgt::TextureFormat::Depth32Float
-        || format == wgt::TextureFormat::Depth32FloatStencil8;
+        || format == wgt::TextureFormat::Depth32FloatStencil8
 }
 
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.
@@ -129,7 +129,6 @@ pub fn texture_format_has_depth(format: wgt::TextureFormat) -> bool {
 ///
 /// Given two or more extension structs of the same `SType` in the same chain, this macro will favor the latter most. There should
 /// not be more than one extension struct with the same `SType` in a chain anyway, so this behavior should be unproblematic.
-
 #[macro_export]
 macro_rules! follow_chain {
     ($func:ident(($base:expr) $(, $stype:ident => $ty:ty)*)) => {{

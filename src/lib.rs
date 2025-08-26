@@ -1,15 +1,7 @@
 #![allow(
-    clippy::missing_safety_doc,
-    clippy::arc_with_non_send_sync,
-    clippy::crate_in_macro_def,
-    clippy::manual_unwrap_or_default,
-    clippy::let_unit_value,
-    clippy::needless_return,
-    clippy::too_many_arguments,
-    clippy::collapsible_else_if,
-    clippy::manual_unwrap_or,
-    clippy::empty_line_after_doc_comments
-)] // TODO fix these warnings
+    clippy::missing_safety_doc, 
+    clippy::arc_with_non_send_sync // Need to investigate?
+)]
 
 use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
@@ -911,7 +903,7 @@ pub unsafe extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
         (buffer.id, &buffer.context)
     };
     // Per spec, no error to report. Even calling destroy multiple times is valid.
-    let _ = context.buffer_destroy(buffer_id);
+    context.buffer_destroy(buffer_id);
 }
 
 #[no_mangle]
@@ -2217,10 +2209,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 if desc.depthWriteEnabled == native::WGPUOptionalBool_Undefined {
                     panic!("Depth write not specified for depth format")
                 }
-            } else {
-                if desc.depthWriteEnabled == native::WGPUOptionalBool_True {
-                    panic!("Depth write enabled for non-depth format")
-                }
+            } else if desc.depthWriteEnabled == native::WGPUOptionalBool_True {
+                panic!("Depth write enabled for non-depth format")
             }
 
             wgt::DepthStencilState {
@@ -4169,7 +4159,7 @@ pub unsafe extern "C" fn wgpuTextureDestroy(texture: native::WGPUTexture) {
     };
 
     // Per spec, no error to report. Even calling destroy multiple times is valid.
-    let _ = context.texture_destroy(texture_id);
+    context.texture_destroy(texture_id);
 }
 
 #[no_mangle]
