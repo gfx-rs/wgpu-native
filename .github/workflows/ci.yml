@@ -21,7 +21,7 @@ jobs:
     name: Code integrity checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
       - name: Set up Python
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Install Rust toolchain
@@ -118,7 +118,7 @@ jobs:
             target: aarch64-apple-ios
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - name: Install Rust toolchain
@@ -183,7 +183,7 @@ jobs:
             setup_env: choco install -y make
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
       - if: contains(matrix.target, 'windows-msvc')
