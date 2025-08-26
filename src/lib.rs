@@ -1,7 +1,4 @@
-#![allow(
-    clippy::missing_safety_doc, 
-    clippy::arc_with_non_send_sync // Need to investigate?
-)]
+#![allow(clippy::missing_safety_doc)]
 
 use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
@@ -19,7 +16,7 @@ use std::{
     fmt::Display,
     mem,
     num::NonZeroU64,
-    sync::{atomic, Arc},
+    sync::{atomic, Arc, Weak},
     thread,
 };
 use utils::{
@@ -495,16 +492,16 @@ struct ErrorSinkRaw {
     scopes: Vec<ErrorScope>,
     uncaptured_handler: UncapturedErrorCallback,
     device_lost_handler: DeviceLostCallback,
-    device: Option<native::WGPUDevice>,
+    device: Weak<WGPUDeviceImpl>,
 }
 
 impl ErrorSinkRaw {
-    fn new(device_lost_handler: DeviceLostCallback) -> ErrorSinkRaw {
+    fn new(device_lost_handler: DeviceLostCallback, device: Weak<WGPUDeviceImpl>) -> ErrorSinkRaw {
         ErrorSinkRaw {
             scopes: Vec::new(),
             uncaptured_handler: DEFAULT_UNCAPTURED_ERROR_HANDLER,
             device_lost_handler,
-            device: None,
+            device,
         }
     }
 
@@ -515,9 +512,10 @@ impl ErrorSinkRaw {
                 if let Some(callback) = self.device_lost_handler.callback {
                     let userdata = &self.device_lost_handler.userdata;
                     let msg = err.to_string();
+                    let device = self.device.as_ptr();
                     unsafe {
                         callback(
-                            &self.device.unwrap(),
+                            &device,
                             native::WGPUDeviceLostReason_Destroyed,
                             str_into_string_view(&msg),
                             userdata.get_1(),
@@ -552,9 +550,10 @@ impl ErrorSinkRaw {
                 if let Some(callback) = self.uncaptured_handler.callback {
                     let userdata = &self.uncaptured_handler.userdata;
                     let msg = err.to_string();
+                    let device = self.device.as_ptr();
                     unsafe {
                         callback(
-                            &self.device.unwrap(),
+                            &device,
                             typ,
                             str_into_string_view(&msg),
                             userdata.get_1(),
@@ -815,22 +814,23 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
     let result = context.adapter_request_device(adapter_id, &desc, None, None);
     match result {
         Ok((device_id, queue_id)) => {
-            let mut error_sink = ErrorSinkRaw::new(device_lost_handler);
-            if let Some(error_callback) = error_callback {
-                error_sink.uncaptured_handler = error_callback;
-            }
-
-            let error_sink = Arc::new(Mutex::new(error_sink));
-            let device = Arc::into_raw(Arc::new(WGPUDeviceImpl {
-                context: context.clone(),
-                id: device_id,
-                queue: Arc::new(QueueId {
+            let device_impl = Arc::new_cyclic(|device| {
+                let mut error_sink = ErrorSinkRaw::new(device_lost_handler, device.clone());
+                if let Some(error_callback) = error_callback {
+                    error_sink.uncaptured_handler = error_callback;
+                }
+                let error_sink = Arc::new(Mutex::new(error_sink));
+                WGPUDeviceImpl {
                     context: context.clone(),
-                    id: queue_id,
-                }),
-                error_sink: error_sink.clone(),
-            }));
-            error_sink.lock().device = Some(device);
+                    id: device_id,
+                    queue: Arc::new(QueueId {
+                        context: context.clone(),
+                        id: queue_id,
+                    }),
+                    error_sink: error_sink.clone(),
+                }
+            });
+            let device = Arc::into_raw(device_impl);
 
             callback(
                 native::WGPURequestDeviceStatus_Success,
