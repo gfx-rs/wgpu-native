@@ -1213,6 +1213,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_F64) {
         temp.push(native::WGPUNativeFeature_ShaderF64);
     }
+    if features.contains(wgt::Features::SHADER_INT64) {
+        temp.push(native::WGPUNativeFeature_ShaderInt64);
+    }
     if features.contains(wgt::Features::SHADER_I16) {
         temp.push(native::WGPUNativeFeature_ShaderI16);
     }
@@ -1275,7 +1278,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_TimestampQueryInsideEncoders => Some(Features::TIMESTAMP_QUERY_INSIDE_ENCODERS),
         native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
         native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
-        // TODO: fix this, UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING is not supported anymore https://github.com/gfx-rs/wgpu/issues/4407 
+        // TODO: fix this, UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING is not supported anymore https://github.com/gfx-rs/wgpu/issues/4407
         // native::WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing => Some(Features::UNIFORM_BUFFER_AND_STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
         // TODO: requires wgpu.h api change
         // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
@@ -1291,6 +1294,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE),
         native::WGPUNativeFeature_RayQuery => Some(Features::EXPERIMENTAL_RAY_QUERY),
         native::WGPUNativeFeature_ShaderF64 => Some(Features::SHADER_F64),
+        native::WGPUNativeFeature_ShaderInt64 => Some(Features::SHADER_INT64),
         native::WGPUNativeFeature_ShaderPrimitiveIndex => Some(Features::SHADER_PRIMITIVE_INDEX),
         native::WGPUNativeFeature_ShaderEarlyDepthTest => Some(Features::SHADER_EARLY_DEPTH_TEST),
         native::WGPUNativeFeature_Subgroup => Some(Features::SUBGROUP),
