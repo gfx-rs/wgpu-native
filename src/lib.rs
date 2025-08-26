@@ -1,3 +1,16 @@
+#![allow(
+    clippy::missing_safety_doc,
+    clippy::arc_with_non_send_sync,
+    clippy::crate_in_macro_def,
+    clippy::manual_unwrap_or_default,
+    clippy::let_unit_value,
+    clippy::needless_return,
+    clippy::too_many_arguments,
+    clippy::collapsible_else_if,
+    clippy::manual_unwrap_or,
+    clippy::empty_line_after_doc_comments
+)] // TODO fix these warnings
+
 use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
     map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
@@ -1194,6 +1207,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                             .expect("invalid load op for render pass color attachment"),
                             store_op: conv::map_store_op(color_attachment.storeOp)
                                 .expect("invalid store op for render pass color attachment"),
+                            depth_slice: Some(color_attachment.depthSlice),
                         }
                     })
                 })
@@ -1277,7 +1291,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
         source_offset,
         destination_buffer_id,
         destination_offset,
-        size,
+        Some(size),
     ) {
         handle_error(
             error_sink,

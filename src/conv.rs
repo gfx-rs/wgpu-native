@@ -312,12 +312,8 @@ pub unsafe fn map_instance_descriptor(
     if let Some(extras) = extras {
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
-            native::WGPUDx12Compiler_Dxc => match (
-                string_view_into_str(extras.dxilPath),
-                string_view_into_str(extras.dxcPath),
-            ) {
-                (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
-                    dxil_path: dxil_path.to_string(),
+            native::WGPUDx12Compiler_Dxc => match string_view_into_str(extras.dxcPath) {
+                Some(dxc_path) => wgt::Dx12Compiler::DynamicDxc {
                     dxc_path: dxc_path.to_string(),
                     max_shader_model: map_dxc_max_shader_model(extras.dxcMaxShaderModel),
                 },
@@ -325,6 +321,9 @@ pub unsafe fn map_instance_descriptor(
             },
             _ => wgt::Dx12Compiler::default(),
         };
+
+        let for_resource_creation = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
+        let for_device_loss = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
 
         wgt::InstanceDescriptor {
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
@@ -341,6 +340,10 @@ pub unsafe fn map_instance_descriptor(
             flags: match extras.flags {
                 native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
                 flags => map_instance_flags(flags),
+            },
+            memory_budget_thresholds: wgt::MemoryBudgetThresholds {
+                for_device_loss,
+                for_resource_creation,
             },
         }
     } else {

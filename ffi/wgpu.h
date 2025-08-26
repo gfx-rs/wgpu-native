@@ -144,9 +144,11 @@ typedef struct WGPUInstanceExtras {
     WGPUDx12Compiler dx12ShaderCompiler;
     WGPUGles3MinorVersion gles3MinorVersion;
     WGPUGLFenceBehaviour glFenceBehaviour;
-    WGPUStringView dxilPath;
     WGPUStringView dxcPath;
     WGPUDxcMaxShaderModel dxcMaxShaderModel;
+
+    WGPU_NULLABLE const uint8_t* budgetForDeviceCreation;
+    WGPU_NULLABLE const uint8_t* budgetForDeviceLoss;
 } WGPUInstanceExtras;
 
 typedef struct WGPUDeviceExtras {
