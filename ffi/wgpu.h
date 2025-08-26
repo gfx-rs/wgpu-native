@@ -56,6 +56,7 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_SubgroupBarrier = 0x00030023,
     WGPUNativeFeature_TimestampQueryInsideEncoders = 0x00030024,
     WGPUNativeFeature_TimestampQueryInsidePasses = 0x00030025,
+    WGPUNativeFeature_ShaderInt64 = 0x00030026,
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
