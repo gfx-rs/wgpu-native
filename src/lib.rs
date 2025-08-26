@@ -1141,19 +1141,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 .expect("invalid texture view for depth stencil attachment")
                 .id,
             depth: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.depthLoadOp, Some(desc.depthClearValue))
-                    .or(Some(wgc::command::LoadOp::Load)),
-                store_op: Some(
-                    conv::map_store_op(desc.depthStoreOp).unwrap_or(wgc::command::StoreOp::Store),
-                ),
+                load_op: conv::map_load_op(desc.depthLoadOp, Some(desc.depthClearValue)),
+                store_op: conv::map_store_op(desc.depthStoreOp),
                 read_only: desc.depthReadOnly != 0,
             },
             stencil: wgc::command::PassChannel {
-                load_op: conv::map_load_op(desc.stencilLoadOp, Some(desc.stencilClearValue))
-                    .or(Some(wgc::command::LoadOp::Load)),
-                store_op: Some(
-                    conv::map_store_op(desc.stencilStoreOp).unwrap_or(wgc::command::StoreOp::Store),
-                ),
+                load_op: conv::map_load_op(desc.stencilLoadOp, Some(desc.stencilClearValue)),
+                store_op: conv::map_store_op(desc.stencilStoreOp),
                 read_only: desc.stencilReadOnly != 0,
             },
         }
