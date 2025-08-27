@@ -1690,14 +1690,13 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetBindGroup(
     dynamic_offsets: *const u32,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
-    //TODO: as per webgpu.h bindgroup is nullable
-    let bind_group_id = bind_group.as_ref().expect("invalid bind group").id;
+    let bind_group_id = bind_group.as_ref().map(|bg| bg.id);
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
     match pass.context.compute_pass_set_bind_group(
         encoder,
         group_index,
-        Some(bind_group_id),
+        bind_group_id,
         make_slice(dynamic_offsets, dynamic_offset_count),
     ) {
         Ok(()) => (),
