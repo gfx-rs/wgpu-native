@@ -29,6 +29,8 @@ use wgc::{
     id, resource, Label,
 };
 
+use crate::conv::map_primitive_state;
+
 pub mod conv;
 pub mod logging;
 pub mod unimplemented;
@@ -2178,24 +2180,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .collect(),
             ),
         },
-        primitive: wgt::PrimitiveState {
-            topology: conv::map_primitive_topology(descriptor.primitive.topology)
-                .unwrap_or(wgt::PrimitiveTopology::TriangleList),
-            strip_index_format: conv::map_index_format(descriptor.primitive.stripIndexFormat).ok(),
-            front_face: match descriptor.primitive.frontFace {
-                native::WGPUFrontFace_CCW | native::WGPUFrontFace_Undefined => wgt::FrontFace::Ccw,
-                native::WGPUFrontFace_CW => wgt::FrontFace::Cw,
-                _ => panic!("invalid front face for primitive state"),
-            },
-            cull_mode: match descriptor.primitive.cullMode {
-                native::WGPUCullMode_None | native::WGPUCullMode_Undefined => None,
-                native::WGPUCullMode_Front => Some(wgt::Face::Front),
-                native::WGPUCullMode_Back => Some(wgt::Face::Back),
-                _ => panic!("invalid cull mode for primitive state"),
-            },
-            unclipped_depth: descriptor.primitive.unclippedDepth != 0,
-            polygon_mode: wgt::PolygonMode::Fill,
-            conservative: false,
+        primitive: {
+            follow_chain!(map_primitive_state((descriptor.primitive), WGPUSType_PrimitiveStateExtras => native::WGPUPrimitiveStateExtras))
         },
         depth_stencil: descriptor.depthStencil.as_ref().map(|desc| {
             let format = conv::map_texture_format(desc.format)

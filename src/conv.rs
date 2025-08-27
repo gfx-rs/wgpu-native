@@ -1184,15 +1184,15 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
     //     temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
     // }
-    // if features.contains(wgt::Features::POLYGON_MODE_LINE) {
-    //     temp.push(native::WGPUNativeFeature_PolygonModeLine);
-    // }
-    // if features.contains(wgt::Features::POLYGON_MODE_POINT) {
-    //     temp.push(native::WGPUNativeFeature_PolygonModePoint);
-    // }
-    // if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
-    //     temp.push(native::WGPUNativeFeature_ConservativeRasterization);
-    // }
+    if features.contains(wgt::Features::POLYGON_MODE_LINE) {
+        temp.push(native::WGPUNativeFeature_PolygonModeLine);
+    }
+    if features.contains(wgt::Features::POLYGON_MODE_POINT) {
+        temp.push(native::WGPUNativeFeature_PolygonModePoint);
+    }
+    if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
+        temp.push(native::WGPUNativeFeature_ConservativeRasterization);
+    }
     // if features.contains(wgt::Features::CLEAR_TEXTURE) {
     //     temp.push(native::WGPUNativeFeature_ClearTexture);
     // }
@@ -1287,9 +1287,9 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // TODO: requires wgpu.h api change
         // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
         // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
-        // native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
-        // native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
-        // native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
+        native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
+        native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
+        native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
         // native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
         native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
         // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
@@ -1753,6 +1753,47 @@ pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType
         wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
         wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
         wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+    }
+}
+
+fn map_polygon_mode(mode: native::WGPUPolygonMode) -> wgt::PolygonMode {
+    match mode {
+        native::WGPUPolygonMode_Fill => wgt::PolygonMode::Fill,
+        native::WGPUPolygonMode_Line => wgt::PolygonMode::Line,
+        native::WGPUPolygonMode_Point => wgt::PolygonMode::Point,
+        _ => panic!("unknown polygon mode {mode}"),
+    }
+}
+
+pub fn map_primitive_state(
+    primitive: native::WGPUPrimitiveState,
+    extras: Option<&native::WGPUPrimitiveStateExtras>,
+) -> wgt::PrimitiveState {
+    let polygon_mode = extras
+        .map(|extras| map_polygon_mode(extras.polygonMode))
+        .unwrap_or_default();
+    let conservative = extras
+        .map(|extras| extras.conservative != 0)
+        .unwrap_or_default();
+
+    wgt::PrimitiveState {
+        topology: map_primitive_topology(primitive.topology)
+            .unwrap_or(wgt::PrimitiveTopology::TriangleList),
+        strip_index_format: map_index_format(primitive.stripIndexFormat).ok(),
+        front_face: match primitive.frontFace {
+            native::WGPUFrontFace_CCW | native::WGPUFrontFace_Undefined => wgt::FrontFace::Ccw,
+            native::WGPUFrontFace_CW => wgt::FrontFace::Cw,
+            _ => panic!("invalid front face for primitive state"),
+        },
+        cull_mode: match primitive.cullMode {
+            native::WGPUCullMode_None | native::WGPUCullMode_Undefined => None,
+            native::WGPUCullMode_Front => Some(wgt::Face::Front),
+            native::WGPUCullMode_Back => Some(wgt::Face::Back),
+            _ => panic!("invalid cull mode for primitive state"),
+        },
+        unclipped_depth: primitive.unclippedDepth != 0,
+        polygon_mode,
+        conservative,
     }
 }
 
