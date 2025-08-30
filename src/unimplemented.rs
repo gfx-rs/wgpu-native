@@ -229,3 +229,38 @@ pub extern "C" fn wgpuInstanceWaitAny(
 ) -> native::WGPUWaitStatus {
     unimplemented!();
 }
+
+#[no_mangle]
+pub extern "C" fn wgpuHasInstanceFeature(
+    _feature: native::WGPUInstanceFeatureName,
+) -> native::WGPUBool {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBufferReadMappedRange(
+    _buffer: native::WGPUBuffer,
+    _offset: usize,
+    _data: *mut ::std::os::raw::c_void,
+    _size: usize,
+) -> native::WGPUStatus {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBufferWriteMappedRange(
+    _buffer: native::WGPUBuffer,
+    _offset: usize,
+    _data: *const ::std::os::raw::c_void,
+    _size: usize,
+) -> native::WGPUStatus {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuSupportedInstanceFeaturesFreeMembers(
+    _supported_instance_features: native::WGPUSupportedInstanceFeatures,
+) {
+    unimplemented!();
+}
+
