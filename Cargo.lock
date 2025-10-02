@@ -234,6 +234,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
+name = "foldhash"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
+
+[[package]]
 name = "foreign-types"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -337,7 +343,7 @@ checksum = "b89c83349105e3732062a895becfc71a8f921bb71ecbbdd8ff99263e3b53a0ca"
 dependencies = [
  "bitflags",
  "gpu-descriptor-types",
- "hashbrown",
+ "hashbrown 0.15.4",
 ]
 
 [[package]]
@@ -369,7 +375,16 @@ checksum = "5971ac85611da7067dbfcabef3c70ebb5606018acd9e2a3903a0da507521e0d5"
 dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash",
+ "foldhash 0.1.5",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
+dependencies = [
+ "foldhash 0.2.0",
  "serde",
 ]
 
@@ -386,7 +401,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe4cd85333e22411419a0bcae1297d25e58c9443848b11dc6a86fefe8c78a661"
 dependencies = [
  "equivalent",
- "hashbrown",
+ "hashbrown 0.15.4",
  "serde",
 ]
 
@@ -514,8 +529,8 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "naga"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -524,7 +539,7 @@ dependencies = [
  "cfg_aliases",
  "codespan-reporting",
  "half",
- "hashbrown",
+ "hashbrown 0.16.0",
  "hexf-parse",
  "indexmap",
  "libm",
@@ -629,7 +644,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54acf3a685220b533e437e264e4d932cfbdc4cc7ec0cd232ed73c08d03b8a7ca"
 dependencies = [
  "fixedbitset",
- "hashbrown",
+ "hashbrown 0.15.4",
  "indexmap",
 ]
 
@@ -963,8 +978,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -973,7 +988,7 @@ dependencies = [
  "bytemuck",
  "cfg_aliases",
  "document-features",
- "hashbrown",
+ "hashbrown 0.16.0",
  "indexmap",
  "log",
  "naga",
@@ -994,32 +1009,32 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core-deps-apple"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "wgpu-hal",
 ]
 
 [[package]]
 name = "wgpu-core-deps-emscripten"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "wgpu-hal",
 ]
 
 [[package]]
 name = "wgpu-core-deps-windows-linux-android"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "wgpu-hal",
 ]
 
 [[package]]
 name = "wgpu-hal"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1036,7 +1051,7 @@ dependencies = [
  "gpu-alloc",
  "gpu-allocator",
  "gpu-descriptor",
- "hashbrown",
+ "hashbrown 0.16.0",
  "js-sys",
  "khronos-egl",
  "libc",
@@ -1046,6 +1061,7 @@ dependencies = [
  "naga",
  "ndk-sys",
  "objc",
+ "once_cell",
  "ordered-float",
  "parking_lot",
  "profiling",
@@ -1082,8 +1098,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "26.0.4"
-source = "git+https://github.com/gfx-rs/wgpu?tag=v26.0.4#983d46054c521a2d3771b2a7f94d960687500f88"
+version = "27.0.0"
+source = "git+https://github.com/gfx-rs/wgpu?tag=v27.0.0#482a983e1006333dc249bd1a08b04db3e4a48230"
 dependencies = [
  "bitflags",
  "bytemuck",

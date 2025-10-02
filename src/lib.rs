@@ -187,7 +187,8 @@ impl Drop for WGPUDeviceImpl {
         if !thread::panicking() {
             let context = &self.context;
 
-            match context.device_poll(self.id, wgt::PollType::Wait) {
+            // wait_indefinitely() *should* match the old behavior of using wgt::PollType::Wait
+            match context.device_poll(self.id, wgt::PollType::wait_indefinitely()) {
                 Ok(_) => (),
                 Err(err) => handle_error_fatal(err, "WGPUDeviceImpl::drop"),
             }
@@ -1406,7 +1407,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
         None => wgt::CommandBufferDescriptor::default(),
     };
 
-    let (command_buffer_id, error) = context.command_encoder_finish(command_encoder_id, &desc);
+    let (command_buffer_id, error) =
+        context.command_encoder_finish(command_encoder_id, &desc, None);
     if let Some(cause) = error {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderFinish");
     }
@@ -1990,7 +1992,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     };
 
     let (compute_pipeline_id, error) =
-        context.device_create_compute_pipeline(device_id, &desc, None, None);
+        context.device_create_compute_pipeline(device_id, &desc, None);
     if let Some(cause) = error {
         if let wgc::pipeline::CreateComputePipelineError::Internal(ref error) = cause {
             log::warn!(
@@ -2270,8 +2272,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
         cache: None,
     };
 
-    let (render_pipeline_id, error) =
-        context.device_create_render_pipeline(device_id, &desc, None, None);
+    let (render_pipeline_id, error) = context.device_create_render_pipeline(device_id, &desc, None);
     if let Some(cause) = error {
         if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
             log::error!("Shader translation error for stage {:?}: {}", stage, error);
@@ -4268,6 +4269,7 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
     }
 }
 
+// FIXME: rework this function to match how wgpu v27 handles polling devices
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDevicePoll(
     device: native::WGPUDevice,
@@ -4281,8 +4283,11 @@ pub unsafe extern "C" fn wgpuDevicePoll(
 
     let maintain = match wait {
         true => match submission_index {
-            Some(index) => wgt::PollType::WaitForSubmissionIndex(*index),
-            None => wgt::PollType::Wait,
+            Some(&index) => wgt::PollType::Wait {
+                submission_index: Some(index),
+                timeout: None,
+            },
+            None => wgt::PollType::wait_indefinitely(),
         },
         false => wgt::PollType::Poll,
     };
@@ -4296,6 +4301,7 @@ pub unsafe extern "C" fn wgpuDevicePoll(
     }
 }
 
+// FIXME: wgpu has generic shader passthrough now, we should be doing something similar
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     device: native::WGPUDevice,
@@ -4314,11 +4320,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
 
     let desc_label = string_view_into_label(descriptor.label);
 
-    let desc =
-        wgc::pipeline::ShaderModuleDescriptorPassthrough::SpirV(wgt::ShaderModuleDescriptorSpirV {
-            label: desc_label.clone(),
-            source,
-        });
+    let desc = wgc::pipeline::ShaderModuleDescriptorPassthrough {
+        label: desc_label.to_owned(),
+        spirv: Some(source),
+        ..Default::default()
+    };
 
     let (shader_module_id, error) =
         context.device_create_shader_module_passthrough(device_id, &desc, None);

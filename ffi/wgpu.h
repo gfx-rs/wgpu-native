@@ -22,7 +22,6 @@ typedef enum WGPUNativeSType {
 typedef enum WGPUNativeFeature {
     WGPUNativeFeature_PushConstants = 0x00030001,
     WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x00030002,
-    WGPUNativeFeature_MultiDrawIndirect = 0x00030003,
     WGPUNativeFeature_MultiDrawIndirectCount = 0x00030004,
     WGPUNativeFeature_VertexWritableStorage = 0x00030005,
     WGPUNativeFeature_TextureBindingArray = 0x00030006,
@@ -46,7 +45,6 @@ typedef enum WGPUNativeFeature {
     // WGPUNativeFeature_Multiview = 0x00030018,
     WGPUNativeFeature_VertexAttribute64bit = 0x00030019,
     WGPUNativeFeature_TextureFormatNv12 = 0x0003001A,
-    WGPUNativeFeature_RayTracingAccelerationStructure = 0x0003001B,
     WGPUNativeFeature_RayQuery = 0x0003001C,
     WGPUNativeFeature_ShaderF64 = 0x0003001D,
     WGPUNativeFeature_ShaderI16 = 0x0003001E,
@@ -297,6 +295,7 @@ typedef enum WGPUNativeTextureFormat {
     WGPUNativeTextureFormat_Rgba16Snorm = 0x00030006,
     // From Features::TEXTURE_FORMAT_NV12
     WGPUNativeTextureFormat_NV12 = 0x00030007,
+    WGPUNativeTextureFormat_P010 = 0x00030008,
 } WGPUNativeTextureFormat;
 
 
