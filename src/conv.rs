@@ -313,12 +313,8 @@ pub unsafe fn map_instance_descriptor(
     if let Some(extras) = extras {
         let dx12_shader_compiler = match extras.dx12ShaderCompiler {
             native::WGPUDx12Compiler_Fxc => wgt::Dx12Compiler::Fxc,
-            native::WGPUDx12Compiler_Dxc => match (
-                string_view_into_str(extras.dxilPath),
-                string_view_into_str(extras.dxcPath),
-            ) {
-                (Some(dxil_path), Some(dxc_path)) => wgt::Dx12Compiler::DynamicDxc {
-                    dxil_path: dxil_path.to_string(),
+            native::WGPUDx12Compiler_Dxc => match string_view_into_str(extras.dxcPath) {
+                Some(dxc_path) => wgt::Dx12Compiler::DynamicDxc {
                     dxc_path: dxc_path.to_string(),
                     max_shader_model: map_dxc_max_shader_model(extras.dxcMaxShaderModel),
                 },
@@ -326,6 +322,9 @@ pub unsafe fn map_instance_descriptor(
             },
             _ => wgt::Dx12Compiler::default(),
         };
+
+        let for_resource_creation = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
+        let for_device_loss = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
 
         wgt::InstanceDescriptor {
             backends: map_instance_backend_flags(extras.backends as native::WGPUInstanceBackend),
@@ -336,12 +335,17 @@ pub unsafe fn map_instance_descriptor(
                 },
                 dx12: wgt::Dx12BackendOptions {
                     shader_compiler: dx12_shader_compiler,
+                    ..Default::default()
                 },
                 noop: Default::default(),
             },
             flags: match extras.flags {
                 native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
                 flags => map_instance_flags(flags),
+            },
+            memory_budget_thresholds: wgt::MemoryBudgetThresholds {
+                for_device_loss,
+                for_resource_creation,
             },
         }
     } else {
@@ -377,6 +381,7 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
             // TODO(wgpu.h)
             memory_hints: Default::default(),
             trace: Default::default(),
+            experimental_features: wgt::ExperimentalFeatures::disabled(),
         },
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
@@ -414,11 +419,11 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
             .collect()
     });
 
-    return wgc::binding_model::PipelineLayoutDescriptor {
+    wgc::binding_model::PipelineLayoutDescriptor {
         label: string_view_into_label(des.label),
         bind_group_layouts: Cow::from(bind_group_layouts),
         push_constant_ranges: Cow::from(push_constant_ranges),
-    };
+    }
 }
 
 #[inline]
@@ -1003,6 +1008,7 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUNativeTextureFormat_Rgba16Unorm),
         wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUNativeTextureFormat_Rgba16Snorm),
         wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
+        wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010)
     }
 }
 
@@ -1124,9 +1130,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES) {
         temp.push(native::WGPUNativeFeature_TextureAdapterSpecificFormatFeatures);
     }
-    if features.contains(wgt::Features::MULTI_DRAW_INDIRECT) {
-        temp.push(native::WGPUNativeFeature_MultiDrawIndirect);
-    }
     if features.contains(wgt::Features::MULTI_DRAW_INDIRECT_COUNT) {
         temp.push(native::WGPUNativeFeature_MultiDrawIndirectCount);
     }
@@ -1181,21 +1184,18 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
     //     temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
     // }
-    // if features.contains(wgt::Features::POLYGON_MODE_LINE) {
-    //     temp.push(native::WGPUNativeFeature_PolygonModeLine);
-    // }
-    // if features.contains(wgt::Features::POLYGON_MODE_POINT) {
-    //     temp.push(native::WGPUNativeFeature_PolygonModePoint);
-    // }
-    // if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
-    //     temp.push(native::WGPUNativeFeature_ConservativeRasterization);
-    // }
+    if features.contains(wgt::Features::POLYGON_MODE_LINE) {
+        temp.push(native::WGPUNativeFeature_PolygonModeLine);
+    }
+    if features.contains(wgt::Features::POLYGON_MODE_POINT) {
+        temp.push(native::WGPUNativeFeature_PolygonModePoint);
+    }
+    if features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
+        temp.push(native::WGPUNativeFeature_ConservativeRasterization);
+    }
     // if features.contains(wgt::Features::CLEAR_TEXTURE) {
     //     temp.push(native::WGPUNativeFeature_ClearTexture);
     // }
-    if features.contains(wgt::Features::SPIRV_SHADER_PASSTHROUGH) {
-        temp.push(native::WGPUNativeFeature_SpirvShaderPassthrough);
-    }
     // if features.contains(wgt::Features::MULTIVIEW) {
     //     temp.push(native::WGPUNativeFeature_Multiview);
     // }
@@ -1204,9 +1204,6 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     if features.contains(wgt::Features::TEXTURE_FORMAT_NV12) {
         temp.push(native::WGPUNativeFeature_TextureFormatNv12);
-    }
-    if features.contains(wgt::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE) {
-        temp.push(native::WGPUNativeFeature_RayTracingAccelerationStructure);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_RAY_QUERY) {
         temp.push(native::WGPUNativeFeature_RayQuery);
@@ -1265,7 +1262,6 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // wgpu-rs only features
         native::WGPUNativeFeature_PushConstants => Some(Features::PUSH_CONSTANTS),
         native::WGPUNativeFeature_TextureAdapterSpecificFormatFeatures => Some(Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES),
-        native::WGPUNativeFeature_MultiDrawIndirect => Some(Features::MULTI_DRAW_INDIRECT),
         native::WGPUNativeFeature_MultiDrawIndirectCount => Some(Features::MULTI_DRAW_INDIRECT_COUNT),
         native::WGPUNativeFeature_VertexWritableStorage => Some(Features::VERTEX_WRITABLE_STORAGE),
         native::WGPUNativeFeature_TextureBindingArray => Some(Features::TEXTURE_BINDING_ARRAY),
@@ -1284,15 +1280,13 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         // TODO: requires wgpu.h api change
         // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
         // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
-        // native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
-        // native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
-        // native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
+        native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
+        native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
+        native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
         // native::WGPUNativeFeature_ClearTexture => Some(Features::CLEAR_TEXTURE),
-        native::WGPUNativeFeature_SpirvShaderPassthrough => Some(Features::SPIRV_SHADER_PASSTHROUGH),
         // native::WGPUNativeFeature_Multiview => Some(Features::MULTIVIEW),
         native::WGPUNativeFeature_VertexAttribute64bit => Some(Features::VERTEX_ATTRIBUTE_64BIT),
         native::WGPUNativeFeature_TextureFormatNv12 => Some(Features::TEXTURE_FORMAT_NV12),
-        native::WGPUNativeFeature_RayTracingAccelerationStructure => Some(Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE),
         native::WGPUNativeFeature_RayQuery => Some(Features::EXPERIMENTAL_RAY_QUERY),
         native::WGPUNativeFeature_ShaderF64 => Some(Features::SHADER_F64),
         native::WGPUNativeFeature_ShaderInt64 => Some(Features::SHADER_INT64),
@@ -1624,6 +1618,7 @@ pub enum CreateSurfaceParams {
     SwapChainPanel(*mut std::ffi::c_void),
 }
 
+#[allow(clippy::too_many_arguments)]
 pub unsafe fn map_surface(
     _: &native::WGPUSurfaceDescriptor,
     win: Option<&native::WGPUSurfaceSourceWindowsHWND>,
@@ -1749,6 +1744,47 @@ pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType
         wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
         wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
         wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
+    }
+}
+
+fn map_polygon_mode(mode: native::WGPUPolygonMode) -> wgt::PolygonMode {
+    match mode {
+        native::WGPUPolygonMode_Fill => wgt::PolygonMode::Fill,
+        native::WGPUPolygonMode_Line => wgt::PolygonMode::Line,
+        native::WGPUPolygonMode_Point => wgt::PolygonMode::Point,
+        _ => panic!("unknown polygon mode {mode}"),
+    }
+}
+
+pub fn map_primitive_state(
+    primitive: native::WGPUPrimitiveState,
+    extras: Option<&native::WGPUPrimitiveStateExtras>,
+) -> wgt::PrimitiveState {
+    let polygon_mode = extras
+        .map(|extras| map_polygon_mode(extras.polygonMode))
+        .unwrap_or_default();
+    let conservative = extras
+        .map(|extras| extras.conservative != 0)
+        .unwrap_or_default();
+
+    wgt::PrimitiveState {
+        topology: map_primitive_topology(primitive.topology)
+            .unwrap_or(wgt::PrimitiveTopology::TriangleList),
+        strip_index_format: map_index_format(primitive.stripIndexFormat).ok(),
+        front_face: match primitive.frontFace {
+            native::WGPUFrontFace_CCW | native::WGPUFrontFace_Undefined => wgt::FrontFace::Ccw,
+            native::WGPUFrontFace_CW => wgt::FrontFace::Cw,
+            _ => panic!("invalid front face for primitive state"),
+        },
+        cull_mode: match primitive.cullMode {
+            native::WGPUCullMode_None | native::WGPUCullMode_Undefined => None,
+            native::WGPUCullMode_Front => Some(wgt::Face::Front),
+            native::WGPUCullMode_Back => Some(wgt::Face::Back),
+            _ => panic!("invalid cull mode for primitive state"),
+        },
+        unclipped_depth: primitive.unclippedDepth != 0,
+        polygon_mode,
+        conservative,
     }
 }
 
