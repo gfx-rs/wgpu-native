@@ -15,7 +15,7 @@ use std::{
     error,
     ffi::c_void,
     fmt::Display,
-    mem,
+    mem::{self},
     num::NonZeroU64,
     sync::{atomic, Arc, Weak},
     thread,
@@ -187,7 +187,7 @@ impl Drop for WGPUDeviceImpl {
         if !thread::panicking() {
             let context = &self.context;
 
-            // wait_indefinitely() *should* match the old behavior of using wgt::PollType::Wait
+            // pre v27 this would wait for 60 seconds instead of waiting indefinitely
             match context.device_poll(self.id, wgt::PollType::wait_indefinitely()) {
                 Ok(_) => (),
                 Err(err) => handle_error_fatal(err, "WGPUDeviceImpl::drop"),
@@ -2856,6 +2856,7 @@ pub unsafe extern "C" fn wgpuQuerySetDestroy(query_set: native::WGPUQuerySet) {
         (query_set.id, &query_set.context)
     };
 
+    // FIXME: we shouldn't be using drop to implement this!
     context.query_set_drop(query_set_id);
 }
 
