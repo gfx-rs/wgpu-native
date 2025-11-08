@@ -219,13 +219,3 @@ pub extern "C" fn wgpuTextureViewSetLabel(
 ) {
     unimplemented!();
 }
-
-#[no_mangle]
-pub extern "C" fn wgpuInstanceWaitAny(
-    _instance: native::WGPUInstance,
-    _future_count: usize,
-    _futures: *mut native::WGPUFutureWaitInfo,
-    _timeout_ns: u64,
-) -> native::WGPUWaitStatus {
-    unimplemented!();
-}

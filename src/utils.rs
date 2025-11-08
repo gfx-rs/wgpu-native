@@ -1,4 +1,6 @@
-use std::{borrow::Cow, ffi::CStr};
+use std::{borrow::Cow, ffi::CStr, sync::Arc};
+
+use wgc::identity::IdentityManager;
 
 use crate::native;
 
@@ -45,6 +47,17 @@ pub(crate) fn make_slice<'a, T: 'a>(ptr: *const T, len: usize) -> &'a [T] {
         &[]
     } else {
         unsafe { std::slice::from_raw_parts(ptr, len) }
+    }
+}
+
+// Safer wrapper around `slice::from_raw_parts_mut` to handle
+// invalid `ptr` when `len` is zero.
+#[inline]
+pub(crate) fn make_slice_mut<'a, T: 'a>(ptr: *mut T, len: usize) -> &'a mut [T] {
+    if len == 0 {
+        &mut []
+    } else {
+        unsafe { std::slice::from_raw_parts_mut(ptr, len) }
     }
 }
 
@@ -565,4 +578,102 @@ pub fn test_get_base_device_limits_from_adapter_limits() {
             },
         );
     }
+}
+
+pub struct FutureIdMarker;
+impl wgc::id::Marker for FutureIdMarker {}
+
+#[derive(Clone)]
+pub struct FutureId(wgc::id::Id<FutureIdMarker>);
+impl From<native::WGPUFuture> for FutureId {
+    fn from(value: native::WGPUFuture) -> Self {
+        FutureId(unsafe { std::mem::transmute(value.id) })
+    }
+}
+impl Into<native::WGPUFuture> for FutureId {
+    fn into(self) -> native::WGPUFuture {
+        native::WGPUFuture {
+            id: unsafe { std::mem::transmute(self) },
+        }
+    }
+}
+
+// Somewhat borrowed from wgc's Registry and Storage types, which are crate-private
+pub struct FutureRegistry {
+    identity: Arc<IdentityManager<FutureIdMarker>>,
+    futures: Vec<FutureElement>,
+}
+
+impl Default for FutureRegistry {
+    fn default() -> Self {
+        Self {
+            identity: Arc::new(IdentityManager::new()),
+            futures: Vec::new(),
+        }
+    }
+}
+
+impl FutureRegistry {
+    /// Test whether the future is completed.
+    pub fn is_completed(&self, FutureId(id): FutureId) -> bool {
+        let (idx, epoch) = id.unzip();
+        let stored = self.futures.get(idx as usize);
+        match stored {
+            Some(FutureElement::Occupied {
+                epoch: stored_epoch,
+            }) => *stored_epoch == epoch,
+            _ => true,
+        }
+    }
+
+    /// Creates a `FutureId` that's immediately completed. This is functionally
+    /// identical to calling `incomplete_future` followed by `complete`
+    pub fn completed_future(&mut self) -> FutureId {
+        let id = self.identity.process();
+        self.identity.free(id);
+        return FutureId(id);
+    }
+
+    /// Creates a `FutureId` that's incomplete. Call `complete` to mark the
+    /// future completed.
+    pub fn incomplete_future(&mut self) -> FutureId {
+        let id = self.identity.process();
+        let (idx, epoch) = id.unzip();
+        if idx as usize >= self.futures.len() {
+            self.futures
+                .resize_with(idx as usize + 1, || FutureElement::Vacant);
+        }
+        // index is ensured with above resize
+        let stored = self.futures.get_mut(idx as usize).unwrap();
+        match std::mem::replace(stored, FutureElement::Occupied { epoch }) {
+            FutureElement::Vacant => FutureId(id),
+            FutureElement::Occupied {
+                epoch: existing_epoch,
+            } => {
+                // Storage does assert_ne! but i feel like this should always be an error
+                unreachable!("Index {idx:?} of FutureId is already occupied (new epoch: {epoch}, existing epoch: {existing_epoch})")
+            }
+        }
+    }
+
+    pub fn complete(&mut self, FutureId(id): FutureId) {
+        let (idx, epoch) = id.unzip();
+        let stored = self
+            .futures
+            .get_mut(idx as usize)
+            .unwrap_or_else(|| panic!("FutureId[{id:?}] does not exist"));
+        match std::mem::replace(stored, FutureElement::Vacant) {
+            FutureElement::Vacant => panic!("Cannot remove a vacant resource"),
+            FutureElement::Occupied {
+                epoch: storage_epoch,
+            } => {
+                assert_eq!(epoch, storage_epoch, "id epoch mismatch");
+            }
+        }
+    }
+}
+
+enum FutureElement {
+    Vacant,
+    Occupied { epoch: u32 },
 }

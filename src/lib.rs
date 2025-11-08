@@ -21,8 +21,8 @@ use std::{
     thread,
 };
 use utils::{
-    get_base_device_limits_from_adapter_limits, make_slice, str_into_string_view,
-    string_view_into_label, string_view_into_str, texture_format_has_depth,
+    get_base_device_limits_from_adapter_limits, make_slice, make_slice_mut, str_into_string_view,
+    string_view_into_label, string_view_into_str, texture_format_has_depth, FutureRegistry,
 };
 use wgc::{
     command::{bundle_ffi, ComputePass, RenderPass},
@@ -46,6 +46,7 @@ pub mod native {
 
 pub struct Context {
     global: wgc::global::Global,
+    futures: parking_lot::RwLock<FutureRegistry>,
 }
 
 pub struct WGPUAdapterImpl {
@@ -673,6 +674,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
     Arc::into_raw(Arc::new(WGPUInstanceImpl {
         context: Arc::new(Context {
             global: wgc::global::Global::new("wgpu", &instance_desc),
+            futures: Default::default(),
         }),
     }))
 }
@@ -865,7 +867,8 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         }
     };
 
-    NULL_FUTURE
+    // `context.global.adapter_request_device` resolves immediately
+    context.futures.write().completed_future().into()
 }
 
 #[no_mangle]
@@ -998,6 +1001,9 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
+    let id = context.futures.write().incomplete_future();
+    let dup_id = id.clone();
+    let ctx = context.clone();
     let operation = wgc::resource::BufferMapOperation {
         host: match mode as native::WGPUMapMode {
             native::WGPUMapMode_Write => wgc::device::HostMap::Write,
@@ -1025,6 +1031,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
                 userdata.get_1(),
                 userdata.get_2(),
             );
+            ctx.futures.write().complete(dup_id);
         })),
     };
 
@@ -1037,8 +1044,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
     };
 
-    // TODO: Properly handle futures.
-    NULL_FUTURE
+    id.into()
 }
 
 #[no_mangle]
@@ -2637,7 +2643,7 @@ pub unsafe extern "C" fn wgpuDevicePopErrorScope(
         }
     };
 
-    NULL_FUTURE
+    device.context.futures.write().completed_future().into()
 }
 
 #[no_mangle]
@@ -2746,6 +2752,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
     let context = &instance.context;
     let callback = callback_info.callback.expect("invalid callback");
 
+    let id = context.futures.write().completed_future();
     let (desc, inputs) = match options {
         Some(options) => (
             wgt::RequestAdapterOptions {
@@ -2776,7 +2783,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                         callback_info.userdata1,
                         callback_info.userdata2,
                     );
-                    return NULL_FUTURE;
+                    return id.into();
                 }
                 backend_type => panic!("invalid backend type: 0x{backend_type:08X}"),
             },
@@ -2819,7 +2826,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
         }
     };
 
-    NULL_FUTURE
+    id.into()
 }
 
 #[no_mangle]
@@ -2940,20 +2947,23 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
+    let id = context.futures.write().incomplete_future();
+    let dup_id = id.clone();
+    let ctx = context.clone();
     let closure: wgc::device::queue::SubmittedWorkDoneClosure = Box::new(move || {
         callback(
             native::WGPUQueueWorkDoneStatus_Success,
             userdata.get_1(),
             userdata.get_2(),
         );
+        ctx.futures.write().complete(dup_id);
     });
 
     context
         .global
         .queue_on_submitted_work_done(queue_id, closure);
 
-    // TODO: Properly handle futures.
-    NULL_FUTURE
+    id.into()
 }
 
 #[no_mangle]
@@ -4740,5 +4750,48 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderWriteTimestamp(
             None,
             "wgpuRenderPassEncoderWriteTimestamp",
         ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceWaitAny(
+    instance: native::WGPUInstance,
+    future_count: usize,
+    futures: *mut native::WGPUFutureWaitInfo,
+    timeout_ns: u64,
+) -> native::WGPUWaitStatus {
+    let instance = instance.as_ref().expect("invalid instance");
+    let context = &instance.context;
+    let futures = make_slice_mut(futures, future_count);
+
+    for future in futures.iter() {
+        assert_ne!(
+            future.future.id, NULL_FUTURE.id,
+            "null future should never be used"
+        );
+    }
+
+    let start = std::time::Instant::now();
+    loop {
+        let mut success = false;
+        let registry = context.futures.read();
+        for future in futures.iter_mut() {
+            future.completed = if registry.is_completed(future.future.into()) {
+                success = true;
+                true as native::WGPUBool
+            } else {
+                false as native::WGPUBool
+            }
+        }
+        drop(registry);
+
+        if success {
+            return native::WGPUWaitStatus_Success;
+        }
+
+        let now = std::time::Instant::now();
+        if now - start >= std::time::Duration::from_nanos(timeout_ns) {
+            return native::WGPUWaitStatus_TimedOut;
+        }
     }
 }
