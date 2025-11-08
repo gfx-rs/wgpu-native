@@ -587,13 +587,14 @@ impl wgc::id::Marker for FutureIdMarker {}
 pub struct FutureId(wgc::id::Id<FutureIdMarker>);
 impl From<native::WGPUFuture> for FutureId {
     fn from(value: native::WGPUFuture) -> Self {
-        FutureId(unsafe { std::mem::transmute(value.id) })
+        unsafe { std::mem::transmute::<u64, FutureId>(value.id) }
     }
 }
+#[allow(clippy::from_over_into)]
 impl Into<native::WGPUFuture> for FutureId {
     fn into(self) -> native::WGPUFuture {
         native::WGPUFuture {
-            id: unsafe { std::mem::transmute(self) },
+            id: unsafe { std::mem::transmute::<FutureId, u64>(self) },
         }
     }
 }
@@ -631,7 +632,7 @@ impl FutureRegistry {
     pub fn completed_future(&mut self) -> FutureId {
         let id = self.identity.process();
         self.identity.free(id);
-        return FutureId(id);
+        FutureId(id)
     }
 
     /// Creates a `FutureId` that's incomplete. Call `complete` to mark the
