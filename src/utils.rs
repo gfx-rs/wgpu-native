@@ -583,7 +583,7 @@ pub fn test_get_base_device_limits_from_adapter_limits() {
 pub struct FutureIdMarker;
 impl wgc::id::Marker for FutureIdMarker {}
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FutureId(wgc::id::Id<FutureIdMarker>);
 impl From<native::WGPUFuture> for FutureId {
     fn from(value: native::WGPUFuture) -> Self {
@@ -621,7 +621,7 @@ impl FutureRegistry {
         match stored {
             Some(FutureElement::Occupied {
                 epoch: stored_epoch,
-            }) => *stored_epoch == epoch,
+            }) => *stored_epoch != epoch,
             _ => true,
         }
     }
@@ -673,7 +673,48 @@ impl FutureRegistry {
     }
 }
 
+#[derive(Debug)]
 enum FutureElement {
     Vacant,
     Occupied { epoch: u32 },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn future_registry_completions() {
+        let mut reg = FutureRegistry::default();
+        for _ in 0..10 {
+            let id = reg.completed_future();
+            assert!(reg.is_completed(id));
+        }
+
+        let mut incompleted = (0..10).map(|_| reg.incomplete_future()).collect::<Vec<_>>();
+        while let Some(id) = incompleted.pop() {
+            assert!(
+                !reg.is_completed(id.clone()),
+                "FutureId[{id:?}] is already completed"
+            );
+            for incomplete in incompleted.iter() {
+                assert!(
+                    !reg.is_completed(incomplete.clone()),
+                    "FutureId[{incomplete:?}] is already completed"
+                );
+            }
+
+            reg.complete(id.clone());
+            assert!(
+                reg.is_completed(id.clone()),
+                "FutureId[{id:?}] is not completed"
+            );
+            for incomplete in incompleted.iter() {
+                assert!(
+                    !reg.is_completed(incomplete.clone()),
+                    "FutureId[{incomplete:?}] is already completed"
+                );
+            }
+        }
+    }
 }
