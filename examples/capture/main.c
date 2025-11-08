@@ -29,7 +29,7 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   UNUSED(userdata2)
   *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUMapAsyncStatus status, 
+static void handle_buffer_map(WGPUMapAsyncStatus status,
                               WGPUStringView message,
                               void *userdata1, void *userdata2) {
   UNUSED(message)
@@ -73,19 +73,29 @@ int main(int argc, char *argv[]) {
   assert(instance);
 
   WGPUAdapter adapter = NULL;
-  wgpuInstanceRequestAdapter(instance, NULL,
+  WGPUFuture future = wgpuInstanceRequestAdapter(instance, NULL,
                              (const WGPURequestAdapterCallbackInfo){
                                  .callback = handle_request_adapter,
                                  .userdata1 = &adapter
                              });
+  WGPUFutureWaitInfo wait_info = {
+    .future = future,
+    .completed = false,
+  };
+  assert(WGPUWaitStatus_Success == wgpuInstanceWaitAny(instance, 1, &wait_info, 0));
   assert(adapter);
 
   WGPUDevice device = NULL;
-  wgpuAdapterRequestDevice(adapter, NULL,
-                           (const WGPURequestDeviceCallbackInfo){ 
+  future = wgpuAdapterRequestDevice(adapter, NULL,
+                           (const WGPURequestDeviceCallbackInfo){
                                .callback = handle_request_device,
                                .userdata1 = &device
                            });
+  wait_info = (WGPUFutureWaitInfo){
+    .future = future,
+    .completed = false,
+  };
+  assert(WGPUWaitStatus_Success == wgpuInstanceWaitAny(instance, 1, &wait_info, 0));
   assert(device);
 
   WGPUQueue queue = wgpuDeviceGetQueue(device);
@@ -186,11 +196,16 @@ int main(int argc, char *argv[]) {
 
   wgpuQueueSubmit(queue, 1, (const WGPUCommandBuffer[]){command_buffer});
 
-  wgpuBufferMapAsync(output_buffer, WGPUMapMode_Read, 0, buffer_size,
+  future = wgpuBufferMapAsync(output_buffer, WGPUMapMode_Read, 0, buffer_size,
                      (const WGPUBufferMapCallbackInfo){
                          .callback = handle_buffer_map
                      });
   wgpuDevicePoll(device, true, NULL);
+  wait_info = (WGPUFutureWaitInfo){
+      .future = future,
+      .completed = false,
+  };
+  assert(WGPUWaitStatus_Success == wgpuInstanceWaitAny(instance, 1, &wait_info, 0));
 
   uint8_t *buf =
       (uint8_t *)wgpuBufferGetConstMappedRange(output_buffer, 0, buffer_size);
