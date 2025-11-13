@@ -22,7 +22,7 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-version = "27.0.1"
+version = "27.0.3"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
@@ -30,11 +30,11 @@ version = "27.0.1"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-version = "27.0.2"
+version = "27.0.4"
 
 [workspace.dependencies.naga]
 package = "naga"
-version = "27.0.0"
+version = "27.0.3"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
