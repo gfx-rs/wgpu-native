@@ -332,6 +332,12 @@ pub unsafe fn map_instance_descriptor(
             _ => wgt::Dx12Compiler::default(),
         };
 
+        let dx12_presentation_system = match extras.dx12PresentationSystem {
+            native::WGPUDx12SwapchainKind_DxgiFromHwnd => wgt::Dx12SwapchainKind::DxgiFromHwnd,
+            native::WGPUDx12SwapchainKind_DxgiFromVisual => wgt::Dx12SwapchainKind::DxgiFromVisual,
+            _ => wgt::Dx12SwapchainKind::default(),
+        };
+
         let for_resource_creation = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
         let for_device_loss = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
 
@@ -344,6 +350,7 @@ pub unsafe fn map_instance_descriptor(
                 },
                 dx12: wgt::Dx12BackendOptions {
                     shader_compiler: dx12_shader_compiler,
+                    presentation_system: dx12_presentation_system,
                     ..Default::default()
                 },
                 noop: Default::default(),
