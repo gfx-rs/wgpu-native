@@ -2939,6 +2939,18 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuQueueGetTimestampPeriod(
+    queue: native::WGPUQueue
+) -> f32 {
+    let (queue_id, context) = {
+        let queue = queue.as_ref().expect("invalid queue");
+        (queue.queue.id, &queue.queue.context)
+    };
+
+    context.queue_get_timestamp_period(queue_id)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuQueueWriteBuffer(
     queue: native::WGPUQueue,
     buffer: native::WGPUBuffer,
