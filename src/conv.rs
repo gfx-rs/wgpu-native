@@ -464,10 +464,8 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
     limits.minStorageBufferOffsetAlignment = wgt_limits.min_storage_buffer_offset_alignment;
     // TODO: not yet in wgt
     // limits.maxInterStageShaderVariables = wgt_limits.max_inter_stage_shader_variables;
-    // TODO: not yet in wgt
-    // limits.maxColorAttachments = wgt_limits.max_color_attachments;
-    // TODO: not yet in wgt
-    // limits.maxColorAttachmentBytesPerSample = wgt_limits.max_color_attachment_bytes_per_sample;
+    limits.maxColorAttachments = wgt_limits.max_color_attachments;
+    limits.maxColorAttachmentBytesPerSample = wgt_limits.max_color_attachment_bytes_per_sample;
     limits.maxComputeWorkgroupStorageSize = wgt_limits.max_compute_workgroup_storage_size;
     limits.maxComputeInvocationsPerWorkgroup = wgt_limits.max_compute_invocations_per_workgroup;
     limits.maxComputeWorkgroupSizeX = wgt_limits.max_compute_workgroup_size_x;
@@ -571,14 +569,12 @@ pub fn map_required_limits(
     // if limits.maxInterStageShaderVariables != native::WGPU_LIMIT_U32_UNDEFINED {
     //     wgt_limits.max_inter_stage_shader_variables = limits.maxInterStageShaderVariables;
     // }
-    // TODO: not yet in wgt
-    // if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
-    //     wgt_limits.max_color_attachments = limits.maxColorAttachments;
-    // }
-    // TODO: not yet in wgt
-    // if limits.maxColorAttachmentBytesPerSample != native::WGPU_LIMIT_U32_UNDEFINED {
-    //     wgt_limits.max_color_attachment_bytes_per_sample = limits.maxColorAttachmentBytesPerSample;
-    // }
+    if limits.maxColorAttachments != native::WGPU_LIMIT_U32_UNDEFINED {
+        wgt_limits.max_color_attachments = limits.maxColorAttachments;
+    }
+    if limits.maxColorAttachmentBytesPerSample != native::WGPU_LIMIT_U32_UNDEFINED {
+        wgt_limits.max_color_attachment_bytes_per_sample = limits.maxColorAttachmentBytesPerSample;
+    }
     if limits.maxComputeWorkgroupStorageSize != native::WGPU_LIMIT_U32_UNDEFINED {
         wgt_limits.max_compute_workgroup_storage_size = limits.maxComputeWorkgroupStorageSize;
     }
