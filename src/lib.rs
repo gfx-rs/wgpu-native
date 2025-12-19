@@ -651,8 +651,9 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 ) -> native::WGPUInstance {
     let instance_desc = match descriptor {
         Some(descriptor) => {
-            if descriptor.features.timedWaitAnyEnable != 0
-                || descriptor.features.timedWaitAnyMaxCount > 0
+            // Timed WaitAny is expressed ONLY via instance limits now
+            if !descriptor.requiredLimits.is_null()
+                && (*descriptor.requiredLimits).timedWaitAnyMaxCount > 0
             {
                 panic!("Unsupported timed WaitAny features specified");
             }
@@ -672,12 +673,13 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuGetInstanceCapabilities(
-    capabilities: Option<&mut native::WGPUInstanceCapabilities>,
+    capabilities: Option<&mut native::WGPUInstanceLimits>,
 ) -> native::WGPUStatus {
     let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
-    // WaitAny is currently completely unsupported, so...
-    capabilities.timedWaitAnyEnable = false as native::WGPUBool;
+
+    // Timed WaitAny is expressed only via limits; unsupported => max count = 0
     capabilities.timedWaitAnyMaxCount = 0;
+
     native::WGPUStatus_Success
 }
 
@@ -2770,7 +2772,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                         no_adapter_backends: _,
                         incompatible_surface_backends: _,
                     } => native::WGPURequestAdapterStatus_Unavailable,
-                    _ => native::WGPURequestAdapterStatus_Unknown,
+                    _ => native::WGPURequestAdapterStatus_Error,
                 },
                 std::ptr::null_mut(),
                 str_into_string_view(&message),
@@ -2900,8 +2902,13 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
     let userdata = new_userdata!(callback_info);
 
     let closure: wgc::device::queue::SubmittedWorkDoneClosure = Box::new(move || {
+        let empty_message = native::WGPUStringView {
+            data: std::ptr::null(),
+            length: 0,
+        };
         callback(
             native::WGPUQueueWorkDoneStatus_Success,
+            empty_message,
             userdata.get_1(),
             userdata.get_2(),
         );
