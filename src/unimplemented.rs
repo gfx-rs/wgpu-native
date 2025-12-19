@@ -82,7 +82,7 @@ pub extern "C" fn wgpuDeviceCreateRenderPipelineAsync(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuDeviceGetAdapterInfo(_device: native::WGPUDevice) -> native::WGPUAdapterInfo {
+pub extern "C" fn wgpuDeviceGetAdapterInfo(_device: native::WGPUDevice, _adapter_info: *mut native::WGPUAdapterInfo) -> native::WGPUStatus {
     unimplemented!();
 }
 
