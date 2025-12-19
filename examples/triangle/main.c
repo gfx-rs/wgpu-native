@@ -296,8 +296,8 @@ int main(int argc, char *argv[]) {
       }
       continue;
     }
-    case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
-    case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
+    // case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
+    // case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
     case WGPUSurfaceGetCurrentTextureStatus_Force32:
       // Fatal error
       printf(LOG_PREFIX " get_current_texture status=%#.8x\n",
