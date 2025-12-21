@@ -161,6 +161,7 @@ typedef struct WGPUNativeLimits {
     WGPUChainedStructOut chain;
     uint32_t maxPushConstantSize;
     uint32_t maxNonSamplerBindings;
+    uint32_t maxBindingArrayElementsPerShaderStage;
 } WGPUNativeLimits;
 
 typedef struct WGPUPushConstantRange {
