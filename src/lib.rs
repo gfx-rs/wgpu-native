@@ -126,7 +126,7 @@ pub struct WGPUCommandEncoderImpl {
 }
 impl Drop for WGPUCommandEncoderImpl {
     fn drop(&mut self) {
-        if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
+        if !thread::panicking() {
             let context = &self.context;
             context.command_encoder_drop(self.id);
         }
