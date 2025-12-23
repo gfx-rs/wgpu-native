@@ -20,7 +20,7 @@ name: CD
 
 env:
   CACHE_SUFFIX: a
-  WGPU_ANDROID_NDK_VERSION: r27b # 27.1.12297006
+  WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
 
 on:
   workflow_dispatch:
