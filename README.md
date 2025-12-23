@@ -21,7 +21,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 - [club-doki7/vulkan4j](https://github.com/club-doki7/vulkan4j) - Java wrapper (FFM-based)
 - [wgpu4k/wgpu4k](https://github.com/wgpu4k/wgpu4k) / [wgpu4k/wgpu4k-native](https://github.com/wgpu4k/wgpu4k-native) - Kotlin/Multiplatform wrappers
 - [karmakrafts/Multiplatform wgpu](https://git.karmakrafts.dev/kk/multiplatform-wgpu) - Kotlin/Native wrapper
-- [rajveermalviya/go-webgpu](https://github.com/rajveermalviya/go-webgpu) - Go wrapper
+- [go-webgpu/webgpu](https://github.com/go-webgpu/webgpu) - Go wrapper (Zero-CGO)
 - [WebGPU-C++](https://github.com/eliemichel/WebGPU-Cpp) - Auto-generated C++ wrapper (developed for the [Learn WebGPU native](https://eliemichel.github.io/LearnWebGPU) course)
 - [jai_wgpu_native](https://github.com/SogoCZE/jai_wgpu_native) - Raw Jai bindings
 - [WebGPU::Direct](https://github.com/atrodo/WebGPU-Direct) - Perl wrapper ([package](https://metacpan.org/pod/WebGPU::Direct))
