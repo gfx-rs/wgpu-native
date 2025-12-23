@@ -315,6 +315,7 @@ void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
 size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
 
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
+float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
 WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * submissionIndex);
