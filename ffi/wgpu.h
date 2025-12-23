@@ -137,6 +137,13 @@ typedef enum WGPUGLFenceBehaviour {
     WGPUGLFenceBehaviour_Force32 = 0x7FFFFFFF
 } WGPUGLFenceBehaviour;
 
+typedef enum WGPUDx12SwapchainKind {
+    WGPUDx12SwapchainKind_Undefined = 0x00000000,
+    WGPUDx12SwapchainKind_DxgiFromHwnd = 0x00000001,
+    WGPUDx12SwapchainKind_DxgiFromVisual = 0x00000002,
+    WGPUDx12SwapchainKind_Force32 = 0x7FFFFFFF
+} WGPUDx12SwapchainKind;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackend backends;
@@ -146,6 +153,7 @@ typedef struct WGPUInstanceExtras {
     WGPUGLFenceBehaviour glFenceBehaviour;
     WGPUStringView dxcPath;
     WGPUDxcMaxShaderModel dxcMaxShaderModel;
+    WGPUDx12SwapchainKind dx12PresentationSystem;
 
     WGPU_NULLABLE const uint8_t* budgetForDeviceCreation;
     WGPU_NULLABLE const uint8_t* budgetForDeviceLoss;
