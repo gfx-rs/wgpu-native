@@ -29,7 +29,6 @@ on:
     branches: [trunk, cd]
 
 jobs:
-
   # -----
   ios:
     # Config
@@ -56,6 +55,10 @@ jobs:
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
+      - name: Setup Xcode
+        uses: apple/actions/setup-xcode@v3
+        with:
+          xcode-version: "15.2"
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -97,7 +100,9 @@ jobs:
               echo "CARGO_TARGET_I686_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_i686-linux-android=-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_i686_linux_android=-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
           - name: android-x86_64
             target: x86_64-linux-android
             setup_env: |
@@ -111,7 +116,9 @@ jobs:
               echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64-linux-android=-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android=-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
           - name: android-aarch64
             target: aarch64-linux-android
             setup_env: |
@@ -125,7 +132,9 @@ jobs:
               echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=-target aarch64-none-linux-android -isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64-linux-android=-target aarch64-none-linux-android -isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android=-target aarch64-none-linux-android -isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
           - name: android-armv7
             target: armv7-linux-androideabi
             setup_env: |
@@ -139,7 +148,9 @@ jobs:
               echo "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=-target armv7-none-linux-androideabi -isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7-linux-androideabi=-target armv7-none-linux-androideabi -isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi=-target armv7-none-linux-androideabi -isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
@@ -245,19 +256,19 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name:  windows-x86_64 - MSVC
+          - name: windows-x86_64 - MSVC
             target: x86_64-pc-windows-msvc
             archive-name: windows-x86_64-msvc
             toolchain: stable-msvc
-          - name:  windows-i686 - MSVC
+          - name: windows-i686 - MSVC
             target: i686-pc-windows-msvc
             archive-name: windows-i686-msvc
             toolchain: stable-msvc
-          - name:  windows-aarch64 - MSVC
+          - name: windows-aarch64 - MSVC
             target: aarch64-pc-windows-msvc
             archive-name: windows-aarch64-msvc
             toolchain: stable-msvc
-          - name:  windows-x86_64 - GNU
+          - name: windows-x86_64 - GNU
             target: x86_64-pc-windows-gnu
             archive-name: windows-x86_64-gnu
             toolchain: stable-gnu
@@ -277,6 +288,23 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           targets: ${{ env.TARGET }}
+      - name: Setup bindgen includes for MSVC
+        if: matrix.target == 'i686-pc-windows-msvc'
+        shell: powershell
+        run: |
+          $sdkPath = 'C:\Program Files (x86)\Windows Kits\10\Include'
+          if (Test-Path $sdkPath) {
+            $sdk = Get-ChildItem $sdkPath | Sort-Object -Property Name -Descending | Select-Object -First 1
+            if ($sdk) {
+              $sdkver = $sdk.Name
+              $ucrt = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkver\ucrt"
+              $shared = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkver\shared"
+              $um = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkver\um"
+              Write-Output "BINDGEN_EXTRA_CLANG_ARGS=-isystem \"$ucrt\" -isystem \"$shared\" -isystem \"$um\"" >> $env:GITHUB_ENV
+            }
+          } else {
+            Write-Output "BINDGEN_EXTRA_CLANG_ARGS=-I\"C:\\Program Files (x86)\\Windows Kits\\10\\Include\"" >> $env:GITHUB_ENV
+          }
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
@@ -301,10 +329,10 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name:  macos-x86_64
+          - name: macos-x86_64
             target: x86_64-apple-darwin
             archive-name: macos-x86_64
-          - name:  macos-aarch64
+          - name: macos-aarch64
             target: aarch64-apple-darwin
             archive-name: macos-aarch64
     env:
