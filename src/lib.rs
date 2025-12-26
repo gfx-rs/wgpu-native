@@ -126,7 +126,7 @@ pub struct WGPUCommandEncoderImpl {
 }
 impl Drop for WGPUCommandEncoderImpl {
     fn drop(&mut self) {
-        if self.open.load(atomic::Ordering::SeqCst) && !thread::panicking() {
+        if !thread::panicking() {
             let context = &self.context;
             context.command_encoder_drop(self.id);
         }
@@ -2943,6 +2943,16 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
     if let Err(cause) = context.queue_submit(queue_id, &command_buffers) {
         handle_error_fatal(cause.1, "wgpuQueueSubmit");
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueGetTimestampPeriod(queue: native::WGPUQueue) -> f32 {
+    let (queue_id, context) = {
+        let queue = queue.as_ref().expect("invalid queue");
+        (queue.queue.id, &queue.queue.context)
+    };
+
+    context.queue_get_timestamp_period(queue_id)
 }
 
 #[no_mangle]

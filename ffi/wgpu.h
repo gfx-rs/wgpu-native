@@ -137,6 +137,13 @@ typedef enum WGPUGLFenceBehaviour {
     WGPUGLFenceBehaviour_Force32 = 0x7FFFFFFF
 } WGPUGLFenceBehaviour;
 
+typedef enum WGPUDx12SwapchainKind {
+    WGPUDx12SwapchainKind_Undefined = 0x00000000,
+    WGPUDx12SwapchainKind_DxgiFromHwnd = 0x00000001,
+    WGPUDx12SwapchainKind_DxgiFromVisual = 0x00000002,
+    WGPUDx12SwapchainKind_Force32 = 0x7FFFFFFF
+} WGPUDx12SwapchainKind;
+
 typedef struct WGPUInstanceExtras {
     WGPUChainedStruct chain;
     WGPUInstanceBackend backends;
@@ -146,6 +153,7 @@ typedef struct WGPUInstanceExtras {
     WGPUGLFenceBehaviour glFenceBehaviour;
     WGPUStringView dxcPath;
     WGPUDxcMaxShaderModel dxcMaxShaderModel;
+    WGPUDx12SwapchainKind dx12PresentationSystem;
 
     WGPU_NULLABLE const uint8_t* budgetForDeviceCreation;
     WGPU_NULLABLE const uint8_t* budgetForDeviceLoss;
@@ -307,6 +315,7 @@ void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
 size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
 
 WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
+float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
 
 // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
 WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * submissionIndex);
