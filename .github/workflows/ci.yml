@@ -116,6 +116,16 @@ jobs:
           - name: iOS stable
             os: macos-14
             target: aarch64-apple-ios
+            setup_env: |
+              set -x
+              SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+              CC=$(xcrun --sdk iphoneos --find clang)
+
+              echo "SDKROOT=$SDKROOT" >> $GITHUB_ENV
+              echo "CC=$CC" >> $GITHUB_ENV
+              echo "CARGO_TARGET_AARCH64_APPLE_IOS_LINKER=$CC" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $SDKROOT'" >> $GITHUB_ENV
+              echo "CFLAGS=-isysroot $SDKROOT" >> $GITHUB_ENV
     steps:
       - name: Checkout
         uses: actions/checkout@v6
