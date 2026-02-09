@@ -485,7 +485,8 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
             >(limits.nextInChain);
             (*native_limits).maxPushConstantSize = wgt_limits.max_push_constant_size;
             (*native_limits).maxNonSamplerBindings = wgt_limits.max_non_sampler_bindings;
-            (*native_limits).maxBindingArrayElementsPerShaderStage = wgt_limits.max_binding_array_elements_per_shader_stage;
+            (*native_limits).maxBindingArrayElementsPerShaderStage =
+                wgt_limits.max_binding_array_elements_per_shader_stage;
         }
     };
 }
@@ -602,7 +603,8 @@ pub fn map_required_limits(
             wgt_limits.max_non_sampler_bindings = limits.maxNonSamplerBindings;
         }
         if limits.maxBindingArrayElementsPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
-            wgt_limits.max_binding_array_elements_per_shader_stage = limits.maxBindingArrayElementsPerShaderStage;
+            wgt_limits.max_binding_array_elements_per_shader_stage =
+                limits.maxBindingArrayElementsPerShaderStage;
         }
     }
     wgt_limits
