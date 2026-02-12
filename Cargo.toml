@@ -26,7 +26,7 @@ version = "27.0.3"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-version = "27.0.1"
+version = "28.0.0"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
