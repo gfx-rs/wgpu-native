@@ -34,7 +34,7 @@ version = "27.0.4"
 
 [workspace.dependencies.naga]
 package = "naga"
-version = "27.0.3"
+version = "28.0.0"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
