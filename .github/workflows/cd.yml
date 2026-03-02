@@ -71,7 +71,7 @@ jobs:
         run: make package
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -173,7 +173,7 @@ jobs:
         shell: bash
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -231,7 +231,7 @@ jobs:
           docker rm $CID
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -287,7 +287,7 @@ jobs:
         shell: bash
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -333,7 +333,7 @@ jobs:
         run: make package
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -357,7 +357,7 @@ jobs:
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Download assets
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dist
       - name: Create commit-sha file
