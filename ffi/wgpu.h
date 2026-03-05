@@ -328,6 +328,33 @@ void wgpuSetLogLevel(WGPULogLevel level);
 
 uint32_t wgpuGetVersion(void);
 
+/**
+ * Returns the backend-native `id<MTLDevice>` as an opaque pointer.
+ *
+ * The returned pointer is borrowed and remains valid only while `device` is alive.
+ * Ownership is retained by wgpu-native; callers must not release or destroy it.
+ * Returns NULL when the active backend is not Metal or when the handle is unavailable.
+ */
+void* wgpuDeviceGetNativeMetalDevice(WGPUDevice device);
+
+/**
+ * Returns the backend-native `id<MTLCommandQueue>` as an opaque pointer.
+ *
+ * The returned pointer is borrowed and remains valid only while `queue` is alive.
+ * Ownership is retained by wgpu-native; callers must not release or destroy it.
+ * Returns NULL when the active backend is not Metal or when the handle is unavailable.
+ */
+void* wgpuQueueGetNativeMetalCommandQueue(WGPUQueue queue);
+
+/**
+ * Returns the backend-native `id<MTLTexture>` as an opaque pointer.
+ *
+ * The returned pointer is borrowed and remains valid only while `texture` is alive.
+ * Ownership is retained by wgpu-native; callers must not release or destroy it.
+ * Returns NULL when the active backend is not Metal or when the handle is unavailable.
+ */
+void* wgpuTextureGetNativeMetalTexture(WGPUTexture texture);
+
 void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void const * data);
 void wgpuComputePassEncoderSetPushConstants(WGPUComputePassEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const * data);
 void wgpuRenderBundleEncoderSetPushConstants(WGPURenderBundleEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void const * data);
