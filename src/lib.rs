@@ -2541,9 +2541,7 @@ pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> nativ
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceGetNativeMetalDevice(
-    device: native::WGPUDevice,
-) -> *mut c_void {
+pub unsafe extern "C" fn wgpuDeviceGetNativeMetalDevice(device: native::WGPUDevice) -> *mut c_void {
     #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     {
         let device = device.as_ref().expect("invalid device");
@@ -4272,7 +4270,9 @@ pub unsafe extern "C" fn wgpuTextureGetNativeMetalTexture(
     #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     {
         let texture = texture.as_ref().expect("invalid texture");
-        let hal_texture = texture.context.texture_as_hal::<hal::api::Metal>(texture.id);
+        let hal_texture = texture
+            .context
+            .texture_as_hal::<hal::api::Metal>(texture.id);
         if let Some(hal_texture) = hal_texture {
             return hal_texture.raw_handle().as_ptr().cast();
         }
