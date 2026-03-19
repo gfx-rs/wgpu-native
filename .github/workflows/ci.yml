@@ -9,9 +9,13 @@ on:
     branches-ignore: []
 
 env:
+  CI_RUST_VERSION: "1.91"
+  CI_RUST_MSRV: "1.82"
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
+  RUSTFLAGS: -Dwarnings
+  RUSTDOCFLAGS: -Dwarnings
   CACHE_SUFFIX: a
   WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
 
@@ -37,13 +41,45 @@ jobs:
         with:
           submodules: true
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
           components: rustfmt
       - name: Run rustfmt
         run: |
           cargo fmt -- --check
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: ""
+      RUSTDOCFLAGS: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Install Rust toolchain
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
+        with:
+          version: ${{ env.CI_RUST_MSRV }}
+      - name: Check with default features
+        run: cargo check
+      - name: Check without default features
+        run: cargo check --no-default-features
+
+  deny:
+    name: Deny
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: taiki-e/install-action@cargo-deny
+      - name: Run cargo-deny
+        run: cargo deny --all-features check
 
   clippy:
     name: Clippy ${{ matrix.name }}
@@ -122,10 +158,11 @@ jobs:
         with:
           submodules: true
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
           components: clippy
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
@@ -205,9 +242,10 @@ jobs:
             rust:p
       - if: "!contains(matrix.target, 'windows-gnu')"
         name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:

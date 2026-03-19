@@ -19,6 +19,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 - [dvijaha/WGPUNative.jl](https://github.com/dvijaha/WGPUNative.jl) - stable Julia wrapper
 - [kgpu/wgpuj](https://github.com/kgpu/kgpu/tree/master/wgpuj) - Java/Kotlin wrapper
 - [club-doki7/vulkan4j](https://github.com/club-doki7/vulkan4j) - Java wrapper (FFM-based)
+- [xpenatan/jWebGPU](https://github.com/xpenatan/jWebGPU) / [gdx-webgpu](https://github.com/MonstrousSoftware/gdx-webgpu) - Java/TeaVM wrapper for libGDX
 - [wgpu4k/wgpu4k](https://github.com/wgpu4k/wgpu4k) / [wgpu4k/wgpu4k-native](https://github.com/wgpu4k/wgpu4k-native) - Kotlin/Multiplatform wrappers
 - [karmakrafts/Multiplatform wgpu](https://git.karmakrafts.dev/kk/multiplatform-wgpu) - Kotlin/Native wrapper
 - [go-webgpu/webgpu](https://github.com/go-webgpu/webgpu) - Go wrapper (Zero-CGO)
@@ -36,3 +37,7 @@ Automated 32 and 64-bit builds for MacOS, Windows and Linux are available as Git
 This repository contains C-language examples that link to the native library targets and perform basic rendering and computation. Please refer to our [Getting Started](https://github.com/gfx-rs/wgpu-native/wiki/Getting-Started) page at the wiki for more information.
 
 There's also a (small) [contributor guide](https://github.com/gfx-rs/wgpu-native/wiki/Contributing).
+
+## Minimum Supported Rust Version
+
+The minimum supported Rust version (MSRV) for wgpu-native is **1.82**. MSRV bumps are considered breaking changes.
