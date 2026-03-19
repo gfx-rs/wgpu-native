@@ -7,7 +7,6 @@ use conv::{
     map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
     CreateSurfaceParams,
 };
-use core::slice;
 #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
 use foreign_types_shared::ForeignType as _;
 use parking_lot::Mutex;
