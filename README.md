@@ -37,3 +37,7 @@ Automated 32 and 64-bit builds for MacOS, Windows and Linux are available as Git
 This repository contains C-language examples that link to the native library targets and perform basic rendering and computation. Please refer to our [Getting Started](https://github.com/gfx-rs/wgpu-native/wiki/Getting-Started) page at the wiki for more information.
 
 There's also a (small) [contributor guide](https://github.com/gfx-rs/wgpu-native/wiki/Contributing).
+
+## Minimum Supported Rust Version
+
+The minimum supported Rust version (MSRV) for wgpu-native is **1.82**. MSRV bumps are considered breaking changes.

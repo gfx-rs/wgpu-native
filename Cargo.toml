@@ -9,10 +9,12 @@ authors = [
 	"Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
+rust-version = "1.82"
 description = "Native WebGPU implementation based on wgpu-core"
 homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
 keywords = ["graphics"]
+categories = ["graphics", "rendering"]
 license = "MIT OR Apache-2.0"
 
 [workspace]

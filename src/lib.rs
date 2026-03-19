@@ -2503,7 +2503,7 @@ pub unsafe extern "C" fn wgpuSupportedFeaturesFreeMembers(
     supported_features: native::WGPUSupportedFeatures,
 ) {
     if !supported_features.features.is_null() && supported_features.featureCount > 0 {
-        drop(Box::from_raw(slice::from_raw_parts_mut(
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
             supported_features.features as *mut native::WGPUFeatureName,
             supported_features.featureCount,
         )))

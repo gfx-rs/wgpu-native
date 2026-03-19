@@ -1,34 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", "schedule:weekly"],
-  "dependencyDashboard": true,
-  "prConcurrentLimit": 20,
-  "prHourlyLimit": 200,
-  "configMigration": true,
-  "labels": ["dependencies"],
-  "lockFileMaintenance": {
-    "enabled": true,
-    "recreateWhen": "always",
-    "rebaseWhen": "conflicted",
-    "branchTopic": "Cargo.lock update",
-    "commitMessageAction": "Update Cargo.lock",
-    "schedule": ["before 4am on monday"],
-    "prBodyDefinitions": {
-      "Change": "All locks refreshed"
-    }
-  },
-  "packageRules": [
-    {
-      "matchUpdateTypes": ["patch"],
-      "matchCurrentVersion": "<1.0.0",
-      "enabled": false,
-      "description": "Patch updates to 0.x.y crates are compatible and handled by lockFileMaintenance"
-    },
-    {
-      "matchUpdateTypes": ["minor", "patch"],
-      "matchCurrentVersion": ">=1.0.0",
-      "enabled": false,
-      "description": "Minor and patch updates to x.y.z crates are compatible and handled by lockFileMaintenance"
-    }
-  ]
+  "extends": ["github>cwfitzgerald/repo-common"],
+  "configMigration": true
 }
