@@ -16,7 +16,7 @@ env:
   RUST_BACKTRACE: full
   RUSTFLAGS: -Dwarnings
   RUSTDOCFLAGS: -Dwarnings
-  CACHE_SUFFIX: a
+  CACHE_SUFFIX: b
   WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
 
 jobs:

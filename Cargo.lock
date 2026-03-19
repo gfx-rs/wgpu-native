@@ -1080,6 +1080,7 @@ version = "0.0.0"
 dependencies = [
  "bindgen",
  "bitflags",
+ "foreign-types-shared",
  "log",
  "naga",
  "parking_lot",
