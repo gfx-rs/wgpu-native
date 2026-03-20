@@ -33,6 +33,7 @@ add_subdirectory(capture)
 add_subdirectory(compute)
 add_subdirectory(enumerate_adapters)
 add_subdirectory(push_constants)
+add_subdirectory(metal_interop)
 add_subdirectory(texture_arrays)
 add_subdirectory(triangle)
 

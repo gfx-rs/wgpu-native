@@ -14,10 +14,7 @@ pub extern "C" fn wgpuGetVersion() -> std::os::raw::c_uint {
     };
     let mut version: u32 = 0;
     for (index, part) in (0..).zip(static_str.split('.')) {
-        let versionpart: u32 = match part.parse::<u32>() {
-            Ok(n) => n,
-            Err(_e) => 0,
-        };
+        let versionpart = part.parse::<u32>().unwrap_or_default();
         let shift: i32 = 8 * (3 - index);
         if shift < 0 {
             break;

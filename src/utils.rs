@@ -30,7 +30,7 @@ impl Userdata {
 #[macro_export]
 macro_rules! new_userdata {
     ($var:expr) => {
-        crate::utils::Userdata::new($var.userdata1, $var.userdata2)
+        $crate::utils::Userdata::new($var.userdata1, $var.userdata2)
     };
 }
 
@@ -93,11 +93,11 @@ pub fn get_base_device_limits_from_adapter_limits(adapter_limits: &wgt::Limits) 
 }
 
 pub fn texture_format_has_depth(format: wgt::TextureFormat) -> bool {
-    return format == wgt::TextureFormat::Depth16Unorm
+    format == wgt::TextureFormat::Depth16Unorm
         || format == wgt::TextureFormat::Depth24Plus
         || format == wgt::TextureFormat::Depth24PlusStencil8
         || format == wgt::TextureFormat::Depth32Float
-        || format == wgt::TextureFormat::Depth32FloatStencil8;
+        || format == wgt::TextureFormat::Depth32FloatStencil8
 }
 
 /// Follow a chain of next pointers and automatically resolve them to the underlying structs.
@@ -129,7 +129,6 @@ pub fn texture_format_has_depth(format: wgt::TextureFormat) -> bool {
 ///
 /// Given two or more extension structs of the same `SType` in the same chain, this macro will favor the latter most. There should
 /// not be more than one extension struct with the same `SType` in a chain anyway, so this behavior should be unproblematic.
-
 #[macro_export]
 macro_rules! follow_chain {
     ($func:ident(($base:expr) $(, $stype:ident => $ty:ty)*)) => {{
@@ -321,6 +320,7 @@ pub unsafe fn string_view_into_str<'a>(string_view: native::WGPUStringView) -> O
     } else {
         let bytes = match string_view.length {
             crate::conv::WGPU_STRLEN => CStr::from_ptr(string_view.data).to_bytes(),
+            #[allow(clippy::unnecessary_cast)] // On android, this is unnecessary.
             _ => make_slice(string_view.data as *const u8, string_view.length),
         };
 
@@ -359,7 +359,7 @@ pub unsafe fn drop_string_view(view: native::WGPUStringView) {
         return;
     }
 
-    drop(Box::from_raw(std::slice::from_raw_parts_mut(
+    drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
         view.data as *mut u8,
         view.length,
     )))

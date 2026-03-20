@@ -9,11 +9,15 @@ on:
     branches-ignore: []
 
 env:
+  CI_RUST_VERSION: "1.91"
+  CI_RUST_MSRV: "1.82"
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
-  CACHE_SUFFIX: a
-  WGPU_ANDROID_NDK_VERSION: r28b # 28.1.13356709
+  RUSTFLAGS: -Dwarnings
+  RUSTDOCFLAGS: -Dwarnings
+  CACHE_SUFFIX: b
+  WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
 
 jobs:
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
@@ -21,11 +25,11 @@ jobs:
     name: Code integrity checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
       - run: python checks.py
 
   fmt:
@@ -33,17 +37,49 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
           components: rustfmt
       - name: Run rustfmt
         run: |
           cargo fmt -- --check
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: ""
+      RUSTDOCFLAGS: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Install Rust toolchain
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
+        with:
+          version: ${{ env.CI_RUST_MSRV }}
+      - name: Check with default features
+        run: cargo check
+      - name: Check without default features
+        run: cargo check --no-default-features
+
+  deny:
+    name: Deny
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: taiki-e/install-action@cargo-deny
+      - name: Run cargo-deny
+        run: cargo deny --all-features check
 
   clippy:
     name: Clippy ${{ matrix.name }}
@@ -59,11 +95,14 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             # Macos
-          - name: Macos x86_64
+          - name: Macos 14 x86_64
             os: macos-14
             target: x86_64-apple-darwin
-          - name: Macos aarch64
+          - name: Macos 14 aarch64
             os: macos-14
+            target: aarch64-apple-darwin
+          - name: Macos 15 aarch64
+            os: macos-15
             target: aarch64-apple-darwin
             # Windows
           - name: Windows gnu x86_64
@@ -115,14 +154,15 @@ jobs:
             target: aarch64-apple-ios
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
           components: clippy
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
@@ -180,7 +220,7 @@ jobs:
             setup_env: choco install -y make
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - if: contains(matrix.target, 'windows-msvc')
@@ -202,9 +242,10 @@ jobs:
             rust:p
       - if: "!contains(matrix.target, 'windows-gnu')"
         name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:

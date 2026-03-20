@@ -19,14 +19,17 @@
 name: CD
 
 env:
-  CACHE_SUFFIX: a
-  WGPU_ANDROID_NDK_VERSION: r27b # 27.1.12297006
+  CI_RUST_VERSION: "1.91"
+  CACHE_SUFFIX: b
+  WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
 
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
-    branches: [trunk, cd]
+    branches: ["*"]
+  pull_request:
+    branches-ignore: []
 
 jobs:
 
@@ -50,28 +53,27 @@ jobs:
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          toolchain: stable
-      - name: Add ios targets
-        run: rustup target add ${{ matrix.TARGET }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ matrix.TARGET }}-${{ matrix.CACHE_SUFFIX }}
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: make package
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -145,20 +147,21 @@ jobs:
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ matrix.TARGET }}-${{ matrix.CACHE_SUFFIX }}
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       - name: Setup Android NDK
         run: |
           mkdir -p $HOME/wgpu-deps/ndk
@@ -173,7 +176,7 @@ jobs:
         shell: bash
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -196,11 +199,10 @@ jobs:
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
-      TOOLCHAIN: stable-${{ matrix.target }}
       IMAGE: ${{ matrix.image }}
     steps:
       # Common part (same for nearly each build)
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -209,7 +211,7 @@ jobs:
       # prepare qemu for cross-compilation
       - name: Set up QEMU
         if: matrix.image == 'manylinux_2_28_aarch64'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
       # Build
@@ -221,8 +223,8 @@ jobs:
             export PATH=/root/.cargo/bin:\$PATH && \
             export USER=root && \
             curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
-            rustup toolchain install --no-self-update $TOOLCHAIN && \
-            rustup default $TOOLCHAIN && \
+            rustup toolchain install --no-self-update $CI_RUST_VERSION && \
+            rustup default $CI_RUST_VERSION && \
             dnf install clang-devel zip -y && \
             make package")
           docker start -ai $CID
@@ -231,7 +233,7 @@ jobs:
           docker rm $CID
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -248,46 +250,42 @@ jobs:
           - name:  windows-x86_64 - MSVC
             target: x86_64-pc-windows-msvc
             archive-name: windows-x86_64-msvc
-            toolchain: stable-msvc
           - name:  windows-i686 - MSVC
             target: i686-pc-windows-msvc
             archive-name: windows-i686-msvc
-            toolchain: stable-msvc
           - name:  windows-aarch64 - MSVC
             target: aarch64-pc-windows-msvc
             archive-name: windows-aarch64-msvc
-            toolchain: stable-msvc
           - name:  windows-x86_64 - GNU
             target: x86_64-pc-windows-gnu
             archive-name: windows-x86_64-gnu
-            toolchain: stable-gnu
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.archive-name }}
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          toolchain: ${{ matrix.toolchain }}
-          targets: ${{ env.TARGET }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: make package
         shell: bash
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -314,16 +312,17 @@ jobs:
       RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          targets: ${{ env.TARGET }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
@@ -333,7 +332,7 @@ jobs:
         run: make package
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -351,13 +350,13 @@ jobs:
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: set version (which gets used as release name)
         run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Download assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
       - name: Create commit-sha file
