@@ -2,9 +2,23 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
+fn sdk_path(sdk_name: &str) -> String {
+    let output = Command::new("xcrun")
+        .args(["--sdk", sdk_name, "--show-sdk-path"])
+        .output()
+        .expect("xcrun failed")
+        .stdout;
+    std::str::from_utf8(&output)
+        .expect("invalid output from `xcrun`")
+        .trim()
+        .to_owned()
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=ffi/webgpu-headers/webgpu.h");
     println!("cargo:rerun-if-changed=ffi/wgpu.h");
+    println!("cargo:rerun-if-env-changed=TARGET");
+    println!("cargo:rerun-if-env-changed=BINDGEN_EXTRA_CLANG_ARGS");
 
     #[rustfmt::skip]
     let types_to_rename = vec![
@@ -52,25 +66,31 @@ fn main() {
             .raw_line(line);
     }
 
-    // See https://github.com/rust-lang/rust-bindgen/issues/1780
-    if let Ok("ios") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
-        let output = Command::new("xcrun")
-            .args(["--sdk", "iphoneos", "--show-sdk-path"])
-            .output()
-            .expect("xcrun failed")
-            .stdout;
-        let sdk = std::str::from_utf8(&output).expect("invalid output from `xcrun`");
-        builder = builder
-            .clang_arg(format!("-isysroot {sdk}"))
-            .clang_arg("--target=arm64-apple-ios");
-    } else if let Ok("macos") = env::var("CARGO_CFG_TARGET_OS").as_ref().map(|x| &**x) {
-        let output = Command::new("xcrun")
-            .args(["--sdk", "macosx", "--show-sdk-path"])
-            .output()
-            .expect("xcrun failed")
-            .stdout;
-        let sdk = std::str::from_utf8(&output).expect("invalid output from `xcrun`");
-        builder = builder.clang_arg(format!("-isysroot{}", sdk.trim()));
+    if let Ok(target) = env::var("TARGET") {
+        match target.as_str() {
+            "aarch64-apple-ios" => {
+                builder = builder
+                    .clang_arg("-isysroot")
+                    .clang_arg(sdk_path("iphoneos"))
+                    .clang_arg("--target=arm64-apple-ios");
+            }
+            "aarch64-apple-ios-sim" => {
+                builder = builder
+                    .clang_arg("-isysroot")
+                    .clang_arg(sdk_path("iphonesimulator"))
+                    .clang_arg("--target=arm64-apple-ios-simulator");
+            }
+            "x86_64-apple-ios" => {
+                builder = builder
+                    .clang_arg("-isysroot")
+                    .clang_arg(sdk_path("iphonesimulator"))
+                    .clang_arg("--target=x86_64-apple-ios-simulator");
+            }
+            "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
+                builder = builder.clang_arg("-isysroot").clang_arg(sdk_path("macosx"));
+            }
+            _ => {}
+        }
     }
 
     let bindings = builder.generate().expect("Unable to generate bindings");

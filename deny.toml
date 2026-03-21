@@ -1,0 +1,33 @@
+[licenses]
+allow = [
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "ISC",
+    "MIT",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+
+[bans]
+multiple-versions = "deny"
+skip = [
+    # Upstream wgpu dependency tree hasn't fully migrated yet
+    { crate = "foldhash@0.1", reason = "hashbrown 0.15 vs 0.16 in wgpu deps" },
+    { crate = "hashbrown@0.15", reason = "gpu-descriptor and petgraph lag behind" },
+    { crate = "rustc-hash@1", reason = "wgpu deps still use v1" },
+    { crate = "thiserror@1", reason = "wgpu deps still use v1" },
+    { crate = "thiserror-impl@1", reason = "wgpu deps still use v1" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "allow"
+
+[advisories]
+ignore = [
+    # paste is unmaintained but has no replacement yet and is widely used
+    "RUSTSEC-2024-0436",
+]

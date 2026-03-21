@@ -7,7 +7,8 @@ use conv::{
     map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
     CreateSurfaceParams,
 };
-use core::slice;
+#[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+use foreign_types_shared::ForeignType as _;
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 use std::{
@@ -2164,8 +2165,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .map(|buffer| wgc::pipeline::VertexBufferLayout {
                         array_stride: buffer.arrayStride,
                         step_mode: match buffer.stepMode {
+                            native::WGPUVertexStepMode_Undefined if buffer.attributeCount > 0 => {
+                                wgt::VertexStepMode::Vertex
+                            }
                             native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
                             native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
+                            native::WGPUVertexStepMode_VertexBufferNotUsed
+                            | native::WGPUVertexStepMode_Undefined => {
+                                panic!("Unused vertex buffers are currently not supported in vertex buffer layout. Instead, use a vertex buffer with no attributes and a defined vertex step mode.")
+                            }
                             _ => panic!("invalid vertex step mode for vertex buffer layout"),
                         },
                         attributes: Cow::Owned(
@@ -2503,7 +2511,7 @@ pub unsafe extern "C" fn wgpuSupportedFeaturesFreeMembers(
     supported_features: native::WGPUSupportedFeatures,
 ) {
     if !supported_features.features.is_null() && supported_features.featureCount > 0 {
-        drop(Box::from_raw(slice::from_raw_parts_mut(
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
             supported_features.features as *mut native::WGPUFeatureName,
             supported_features.featureCount,
         )))
@@ -2538,6 +2546,25 @@ pub unsafe extern "C" fn wgpuDeviceGetQueue(device: native::WGPUDevice) -> nativ
         queue: queue.clone(),
         error_sink: error_sink.clone(),
     }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetNativeMetalDevice(device: native::WGPUDevice) -> *mut c_void {
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+    {
+        let device = device.as_ref().expect("invalid device");
+        let hal_device = device.context.device_as_hal::<hal::api::Metal>(device.id);
+        if let Some(hal_device) = hal_device {
+            let raw_device = hal_device.raw_device().lock();
+            return raw_device.as_ptr().cast();
+        }
+        std::ptr::null_mut()
+    }
+    #[cfg(not(all(any(target_os = "ios", target_os = "macos"), feature = "metal")))]
+    {
+        let _ = device;
+        std::ptr::null_mut()
+    }
 }
 
 #[no_mangle]
@@ -2953,6 +2980,30 @@ pub unsafe extern "C" fn wgpuQueueGetTimestampPeriod(queue: native::WGPUQueue) -
     };
 
     context.queue_get_timestamp_period(queue_id)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueGetNativeMetalCommandQueue(
+    queue: native::WGPUQueue,
+) -> *mut c_void {
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+    {
+        let queue = queue.as_ref().expect("invalid queue");
+        let hal_queue = queue
+            .queue
+            .context
+            .queue_as_hal::<hal::api::Metal>(queue.queue.id);
+        if let Some(hal_queue) = hal_queue {
+            let raw_queue = hal_queue.as_raw().lock();
+            return raw_queue.as_ptr().cast();
+        }
+        std::ptr::null_mut()
+    }
+    #[cfg(not(all(any(target_os = "ios", target_os = "macos"), feature = "metal")))]
+    {
+        let _ = queue;
+        std::ptr::null_mut()
+    }
 }
 
 #[no_mangle]
@@ -4223,6 +4274,28 @@ pub unsafe extern "C" fn wgpuTextureGetUsage(
 pub unsafe extern "C" fn wgpuTextureGetWidth(texture: native::WGPUTexture) -> u32 {
     let texture = texture.as_ref().expect("invalid texture");
     texture.data.size.width
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTextureGetNativeMetalTexture(
+    texture: native::WGPUTexture,
+) -> *mut c_void {
+    #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
+    {
+        let texture = texture.as_ref().expect("invalid texture");
+        let hal_texture = texture
+            .context
+            .texture_as_hal::<hal::api::Metal>(texture.id);
+        if let Some(hal_texture) = hal_texture {
+            return hal_texture.raw_handle().as_ptr().cast();
+        }
+        std::ptr::null_mut()
+    }
+    #[cfg(not(all(any(target_os = "ios", target_os = "macos"), feature = "metal")))]
+    {
+        let _ = texture;
+        std::ptr::null_mut()
+    }
 }
 
 #[no_mangle]

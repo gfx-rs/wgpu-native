@@ -19,14 +19,17 @@
 name: CD
 
 env:
-  CACHE_SUFFIX: a
+  CI_RUST_VERSION: "1.91"
+  CACHE_SUFFIX: b
   WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
 
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
-    branches: [trunk, cd]
+    branches: ["*"]
+  pull_request:
+    branches-ignore: []
 
 jobs:
   # -----
@@ -60,21 +63,20 @@ jobs:
         with:
           xcode-version: "15.2"
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          toolchain: stable
-      - name: Add ios targets
-        run: rustup target add ${{ matrix.TARGET }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ matrix.TARGET }}-${{ matrix.CACHE_SUFFIX }}
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: make package
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -167,13 +169,14 @@ jobs:
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          target: ${{ matrix.target }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ matrix.TARGET }}-${{ matrix.CACHE_SUFFIX }}
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       - name: Setup Android NDK
         run: |
           mkdir -p $HOME/wgpu-deps/ndk
@@ -188,7 +191,7 @@ jobs:
         shell: bash
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -211,7 +214,6 @@ jobs:
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
-      TOOLCHAIN: stable-${{ matrix.target }}
       IMAGE: ${{ matrix.image }}
     steps:
       # Common part (same for nearly each build)
@@ -224,7 +226,7 @@ jobs:
       # prepare qemu for cross-compilation
       - name: Set up QEMU
         if: matrix.image == 'manylinux_2_28_aarch64'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
       # Build
@@ -236,8 +238,8 @@ jobs:
             export PATH=/root/.cargo/bin:\$PATH && \
             export USER=root && \
             curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none && \
-            rustup toolchain install --no-self-update $TOOLCHAIN && \
-            rustup default $TOOLCHAIN && \
+            rustup toolchain install --no-self-update $CI_RUST_VERSION && \
+            rustup default $CI_RUST_VERSION && \
             dnf install clang-devel zip -y && \
             make package")
           docker start -ai $CID
@@ -246,7 +248,7 @@ jobs:
           docker rm $CID
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -263,19 +265,15 @@ jobs:
           - name: windows-x86_64 - MSVC
             target: x86_64-pc-windows-msvc
             archive-name: windows-x86_64-msvc
-            toolchain: stable-msvc
-          - name: windows-i686 - MSVC
+          - name:  windows-i686 - MSVC
             target: i686-pc-windows-msvc
             archive-name: windows-i686-msvc
-            toolchain: stable-msvc
-          - name: windows-aarch64 - MSVC
+          - name:  windows-aarch64 - MSVC
             target: aarch64-pc-windows-msvc
             archive-name: windows-aarch64-msvc
-            toolchain: stable-msvc
-          # - name: windows-x86_64 - GNU
-          #   target: x86_64-pc-windows-gnu
-          #   archive-name: windows-x86_64-gnu
-          #   toolchain: stable-gnu
+          - name:  windows-x86_64 - GNU
+            target: x86_64-pc-windows-gnu
+            archive-name: windows-x86_64-gnu
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.archive-name }}
@@ -288,38 +286,21 @@ jobs:
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          toolchain: ${{ matrix.toolchain }}
-          targets: ${{ env.TARGET }}
-      - name: Setup bindgen includes for MSVC
-        if: matrix.target == 'i686-pc-windows-msvc'
-        shell: powershell
-        run: |
-          $sdkPath = 'C:\Program Files (x86)\Windows Kits\10\Include'
-          if (Test-Path $sdkPath) {
-            $sdk = Get-ChildItem $sdkPath | Sort-Object -Property Name -Descending | Select-Object -First 1
-            if ($sdk) {
-              $sdkver = $sdk.Name
-              $ucrt = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkver\ucrt"
-              $shared = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkver\shared"
-              $um = "C:\Program Files (x86)\Windows Kits\10\Include\$sdkver\um"
-              Write-Output "BINDGEN_EXTRA_CLANG_ARGS=-isystem \"$ucrt\" -isystem \"$shared\" -isystem \"$um\"" >> $env:GITHUB_ENV
-            }
-          } else {
-            Write-Output "BINDGEN_EXTRA_CLANG_ARGS=-I\"C:\\Program Files (x86)\\Windows Kits\\10\\Include\"" >> $env:GITHUB_ENV
-          }
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
-          key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
+          key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       # Build
       - name: Build
         run: make package
         shell: bash
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -353,9 +334,10 @@ jobs:
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
-          targets: ${{ env.TARGET }}
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
@@ -365,7 +347,7 @@ jobs:
         run: make package
       # Upload (same for each build)
       - name: Upload
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           path: dist
           name: ${{ env.ARCHIVE_NAME }}
@@ -389,7 +371,7 @@ jobs:
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
       - name: Download assets
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dist
       - name: Create commit-sha file
