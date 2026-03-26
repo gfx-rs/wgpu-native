@@ -24,7 +24,7 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-version = "27.0.3"
+version = "29.0.0"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
