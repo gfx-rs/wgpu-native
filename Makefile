@@ -39,10 +39,12 @@ endif
 .PHONY: check test doc clear \
 	lib-native lib-native-release \
 	example-capture example-compute example-triangle \
+	example-metal_interop \
 	example-push_constants example-push_constants-release \
+	example-metal_interop-release \
 	run-example-push_constants run-example-push_constants-release \
 	example-capture-release example-compute-release example-triangle-release \
-	run-example-capture run-example-compute run-example-triangle \
+	run-example-capture run-example-compute run-example-triangle run-example-metal_interop \
 	run-example-capture-release run-example-compute-release run-example-triangle-release
 
 package: lib-native lib-native-release
@@ -173,6 +175,18 @@ example-texture_arrays: examples-debug
 
 run-example-texture_arrays: example-texture_arrays
 	cd examples/texture_arrays && "../build/Debug/texture_arrays/texture_arrays"
+
+example-metal_interop: examples-debug
+	cd examples/build/Debug && cmake --build . --target metal_interop
+
+run-example-metal_interop: example-metal_interop
+	cd examples/metal_interop && "../build/Debug/metal_interop/metal_interop"
+
+example-metal_interop-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target metal_interop
+
+run-example-metal_interop-release: example-metal_interop-release
+	cd examples/metal_interop && "../build/RelWithDebInfo/metal_interop/metal_interop"
 
 example-texture_arrays-release: examples-release
 	cd examples/build/RelWithDebInfo && cmake --build . --target texture_arrays
