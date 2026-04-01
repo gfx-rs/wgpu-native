@@ -196,7 +196,7 @@ typedef struct WGPUShaderSourceGLSL {
     WGPUShaderStage stage;
     WGPUStringView code;
     uint32_t defineCount;
-    WGPUShaderDefine * defines;
+    WGPUShaderDefine const * defines;
 } WGPUShaderSourceGLSL;
 
 typedef struct WGPUShaderModuleDescriptorSpirV {
