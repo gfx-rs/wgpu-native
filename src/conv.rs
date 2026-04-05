@@ -384,10 +384,7 @@ pub unsafe fn map_instance_descriptor(
                 },
                 noop: Default::default(),
             },
-            flags: match extras.flags {
-                native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
-                flags => map_instance_flags(flags),
-            },
+            flags: map_instance_flags(extras.flags),
             memory_budget_thresholds: wgt::MemoryBudgetThresholds {
                 for_device_loss,
                 for_resource_creation,
