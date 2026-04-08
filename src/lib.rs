@@ -2170,7 +2170,6 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                             }
                             native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
                             native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
-                            native::WGPUVertexStepMode_VertexBufferNotUsed
                             | native::WGPUVertexStepMode_Undefined => {
                                 panic!("Unused vertex buffers are currently not supported in vertex buffer layout. Instead, use a vertex buffer with no attributes and a defined vertex step mode.")
                             }
