@@ -674,12 +674,12 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuGetInstanceLimits(
-    capabilities: Option<&mut native::WGPUInstanceLimits>,
+    limits: Option<&mut native::WGPUInstanceLimits>,
 ) -> native::WGPUStatus {
-    let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
+    let limits = limits.expect("invalid return pointer \"limits\"");
 
     // Timed WaitAny is expressed only via limits; unsupported => max count = 0
-    capabilities.timedWaitAnyMaxCount = 0;
+    limits.timedWaitAnyMaxCount = 0;
 
     native::WGPUStatus_Success
 }
