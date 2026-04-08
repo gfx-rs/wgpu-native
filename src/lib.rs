@@ -686,100 +686,43 @@ pub unsafe extern "C" fn wgpuGetInstanceLimits(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuGetInstanceFeatures(
-    features: Option<&mut native::WGPUSupportedInstanceFeatures>,
+    _features: Option<&mut native::WGPUSupportedInstanceFeatures>,
 ) {
-    let features = features.expect("invalid return pointer \"features\"");
-    features.featureCount = 0;
-    features.features = std::ptr::null();
+    unimplemented!("wgpuGetInstanceFeatures is not implemented");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuHasInstanceFeature(
     _feature_name: native::WGPUInstanceFeatureName,
 ) -> native::WGPUBool {
-    false as native::WGPUBool
+    unimplemented!("wgpuHasInstanceFeature is not implemented");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuSupportedInstanceFeaturesFreeMembers(
-    supported_features: native::WGPUSupportedInstanceFeatures,
+    _supported_features: native::WGPUSupportedInstanceFeatures,
 ) {
-    if !supported_features.features.is_null() && supported_features.featureCount > 0 {
-        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
-            supported_features.features as *mut native::WGPUInstanceFeatureName,
-            supported_features.featureCount,
-        )))
-    }
+    unimplemented!("wgpuSupportedInstanceFeaturesFreeMembers is not implemented");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferReadMappedRange(
-    buffer: native::WGPUBuffer,
-    offset: usize,
-    data: *mut c_void,
-    size: usize,
+    _buffer: native::WGPUBuffer,
+    _offset: usize,
+    _data: *mut c_void,
+    _size: usize,
 ) -> native::WGPUStatus {
-    if data.is_null() && size > 0 {
-        return native::WGPUStatus_Error;
-    }
-    if size == conv::WGPU_WHOLE_MAP_SIZE {
-        return native::WGPUStatus_Error;
-    }
-
-    let (buffer_id, context, error_sink) = {
-        let buffer = buffer.as_ref().expect("invalid buffer");
-        (buffer.id, &buffer.context, &buffer.error_sink)
-    };
-
-    let mapped = match context.buffer_get_mapped_range(
-        buffer_id,
-        offset as wgt::BufferAddress,
-        Some(size as wgt::BufferAddress),
-    ) {
-        Ok((ptr, _)) => ptr,
-        Err(cause) => {
-            handle_error(error_sink, cause, None, "wgpuBufferReadMappedRange");
-            return native::WGPUStatus_Error;
-        }
-    };
-
-    std::ptr::copy_nonoverlapping(mapped.as_ptr(), data as *mut u8, size);
-    native::WGPUStatus_Success
+    unimplemented!("wgpuBufferReadMappedRange is not implemented");
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferWriteMappedRange(
-    buffer: native::WGPUBuffer,
-    offset: usize,
-    data: *const c_void,
-    size: usize,
+    _buffer: native::WGPUBuffer,
+    _offset: usize,
+    _data: *const c_void,
+    _size: usize,
 ) -> native::WGPUStatus {
-    if data.is_null() && size > 0 {
-        return native::WGPUStatus_Error;
-    }
-    if size == conv::WGPU_WHOLE_MAP_SIZE {
-        return native::WGPUStatus_Error;
-    }
-
-    let (buffer_id, context, error_sink) = {
-        let buffer = buffer.as_ref().expect("invalid buffer");
-        (buffer.id, &buffer.context, &buffer.error_sink)
-    };
-
-    let mapped = match context.buffer_get_mapped_range(
-        buffer_id,
-        offset as wgt::BufferAddress,
-        Some(size as wgt::BufferAddress),
-    ) {
-        Ok((ptr, _)) => ptr,
-        Err(cause) => {
-            handle_error(error_sink, cause, None, "wgpuBufferWriteMappedRange");
-            return native::WGPUStatus_Error;
-        }
-    };
-
-    std::ptr::copy_nonoverlapping(data as *const u8, mapped.as_ptr(), size);
-    native::WGPUStatus_Success
+    unimplemented!("wgpuBufferWriteMappedRange is not implemented");
 }
 
 
