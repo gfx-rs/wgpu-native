@@ -95,6 +95,8 @@ jobs:
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
               ANDROID_TARGET=i686-linux-android21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
               CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
@@ -103,15 +105,17 @@ jobs:
               echo "CARGO_TARGET_I686_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS_i686-linux-android=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS_i686_linux_android=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_i686-linux-android=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_i686_linux_android=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: android-x86_64
             target: x86_64-linux-android
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
               ANDROID_TARGET=x86_64-linux-android21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
               CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
@@ -120,9 +124,9 @@ jobs:
               echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64-linux-android=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64-linux-android=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: android-aarch64
             target: aarch64-linux-android
             setup_env: |
@@ -131,6 +135,8 @@ jobs:
               export ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
               export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
               export ANDROID_TARGET=aarch64-linux-android21
+              export ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              export BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
 
               export CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
               export CXX=${CC}++
@@ -143,13 +149,15 @@ jobs:
               echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
 
-              echo "BINDGEN_EXTRA_CLANG_ARGS=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: android-armv7
             target: armv7-linux-androideabi
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
               ANDROID_TARGET=armv7a-linux-androideabi21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
               CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
@@ -158,9 +166,9 @@ jobs:
               echo "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7-linux-androideabi=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi=--target=$ANDROID_TARGET --sysroot=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7-linux-androideabi=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi=$BINDGEN_ARGS" >> $GITHUB_ENV
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
