@@ -58,10 +58,10 @@ jobs:
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
-      - name: Setup Xcode
-        uses: apple/actions/setup-xcode@v3
-        with:
-          xcode-version: "15.2"
+      # - name: Setup Xcode
+      #   uses: apple/actions/setup-xcode@v3
+      #   with:
+      #     xcode-version: "15.2"
       - name: Install Rust toolchain
         uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
