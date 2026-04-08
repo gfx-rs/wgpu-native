@@ -187,6 +187,7 @@ jobs:
           update: true
           pacboy: >-
             toolchain:p
+            llvm:p
       - name: Install Rust toolchain
         uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
@@ -196,9 +197,16 @@ jobs:
       - if: matrix.target == 'i686-pc-windows-gnu'
         name: Setup bindgen env (i686 gnu)
         run: |
-          echo "BINDGEN_EXTRA_CLANG_ARGS=--target=i686-w64-windows-gnu --sysroot=C:/msys64/mingw32 -isystem C:/msys64/mingw32/include" >> $GITHUB_ENV
-          echo "BINDGEN_EXTRA_CLANG_ARGS_i686-pc-windows-gnu=--target=i686-w64-windows-gnu --sysroot=C:/msys64/mingw32 -isystem C:/msys64/mingw32/include" >> $GITHUB_ENV
-          echo "BINDGEN_EXTRA_CLANG_ARGS_i686_pc_windows_gnu=--target=i686-w64-windows-gnu --sysroot=C:/msys64/mingw32 -isystem C:/msys64/mingw32/include" >> $GITHUB_ENV
+          BINDGEN_TARGET=i686-w64-windows-gnu
+          MINGW32_ROOT=C:/msys64/mingw32
+          MINGW32_INCLUDE=$MINGW32_ROOT/include
+          BINDGEN_ARGS="--target=$BINDGEN_TARGET --sysroot=$MINGW32_ROOT -isystem $MINGW32_INCLUDE"
+
+          echo "LIBCLANG_PATH=$MINGW32_ROOT/bin" >> $GITHUB_ENV
+          echo "CLANG_PATH=$MINGW32_ROOT/bin/clang.exe" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS_i686-pc-windows-gnu=$BINDGEN_ARGS" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS_i686_pc_windows_gnu=$BINDGEN_ARGS" >> $GITHUB_ENV
         shell: bash
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
