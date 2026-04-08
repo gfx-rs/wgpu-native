@@ -179,12 +179,29 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
+      - if: matrix.target == 'i686-pc-windows-gnu'
+        name: Setup msys2 (i686)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          pacboy: >-
+            toolchain:p
+            clang:p
       - name: Install Rust toolchain
         uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
           version: ${{ env.CI_RUST_VERSION }}
           components: clippy
           targets: ${{ matrix.target }}
+      - if: matrix.target == 'i686-pc-windows-gnu'
+        name: Setup bindgen env (i686 gnu)
+        run: |
+          echo "CLANG_PATH=C:/msys64/mingw32/bin/clang.exe" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=--target=i686-w64-windows-gnu --sysroot=C:/msys64/mingw32 -isystem C:/msys64/mingw32/include" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS_i686-pc-windows-gnu=--target=i686-w64-windows-gnu --sysroot=C:/msys64/mingw32 -isystem C:/msys64/mingw32/include" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS_i686_pc_windows_gnu=--target=i686-w64-windows-gnu --sysroot=C:/msys64/mingw32 -isystem C:/msys64/mingw32/include" >> $GITHUB_ENV
+        shell: bash
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
