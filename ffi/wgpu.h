@@ -84,10 +84,18 @@ static const WGPUInstanceBackend WGPUInstanceBackend_Secondary = (1 << 1) | (1 <
 static const WGPUInstanceBackend WGPUInstanceBackend_Force32 = 0x7FFFFFFF;
 
 typedef WGPUFlags WGPUInstanceFlag;
-static const WGPUInstanceFlag WGPUInstanceFlag_Default = 0x00000000;
+static const WGPUInstanceFlag WGPUInstanceFlag_Empty = 0x00000000;
 static const WGPUInstanceFlag WGPUInstanceFlag_Debug = 1 << 0;
 static const WGPUInstanceFlag WGPUInstanceFlag_Validation = 1 << 1;
 static const WGPUInstanceFlag WGPUInstanceFlag_DiscardHalLabels = 1 << 2;
+static const WGPUInstanceFlag WGPUInstanceFlag_AllowUnderlyingNoncompliantAdapter = 1 << 3;
+static const WGPUInstanceFlag WGPUInstanceFlag_GPUBasedValidation = 1 << 4;
+static const WGPUInstanceFlag WGPUInstanceFlag_ValidationIndirectCall = 1 << 5;
+static const WGPUInstanceFlag WGPUInstanceFlag_AutomaticTimestampNormalization = 1 << 6;
+static const WGPUInstanceFlag WGPUInstanceFlag_Default = 1 << 24;
+static const WGPUInstanceFlag WGPUInstanceFlag_Debugging = 1 << 25;
+static const WGPUInstanceFlag WGPUInstanceFlag_AdvancedDebugging = 1 << 26;
+static const WGPUInstanceFlag WGPUInstanceFlag_WithEnv = 1 << 27;
 static const WGPUInstanceFlag WGPUInstanceFlag_Force32 = 0x7FFFFFFF;
 
 typedef enum WGPUDx12Compiler {
@@ -196,7 +204,7 @@ typedef struct WGPUShaderSourceGLSL {
     WGPUShaderStage stage;
     WGPUStringView code;
     uint32_t defineCount;
-    WGPUShaderDefine * defines;
+    WGPUShaderDefine const * defines;
 } WGPUShaderSourceGLSL;
 
 typedef struct WGPUShaderModuleDescriptorSpirV {

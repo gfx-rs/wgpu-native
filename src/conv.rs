@@ -278,6 +278,8 @@ pub fn map_instance_backend_flags(flags: native::WGPUInstanceBackend) -> wgt::Ba
 #[inline]
 pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags {
     let mut result = wgt::InstanceFlags::empty();
+
+    // Actual single-bit flags
     if (flags & native::WGPUInstanceFlag_Debug) != 0 {
         result.insert(wgt::InstanceFlags::DEBUG);
     }
@@ -287,6 +289,33 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
     if (flags & native::WGPUInstanceFlag_DiscardHalLabels) != 0 {
         result.insert(wgt::InstanceFlags::DISCARD_HAL_LABELS);
     }
+    if (flags & native::WGPUInstanceFlag_AllowUnderlyingNoncompliantAdapter) != 0 {
+        result.insert(wgt::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER);
+    }
+    if (flags & native::WGPUInstanceFlag_GPUBasedValidation) != 0 {
+        result.insert(wgt::InstanceFlags::GPU_BASED_VALIDATION);
+    }
+    if (flags & native::WGPUInstanceFlag_ValidationIndirectCall) != 0 {
+        result.insert(wgt::InstanceFlags::VALIDATION_INDIRECT_CALL);
+    }
+    if (flags & native::WGPUInstanceFlag_AutomaticTimestampNormalization) != 0 {
+        result.insert(wgt::InstanceFlags::AUTOMATIC_TIMESTAMP_NORMALIZATION);
+    }
+
+    // Convenience helpers
+    if (flags & native::WGPUInstanceFlag_Default) != 0 {
+        result.insert(wgt::InstanceFlags::default());
+    }
+    if (flags & native::WGPUInstanceFlag_Debugging) != 0 {
+        result.insert(wgt::InstanceFlags::debugging());
+    }
+    if (flags & native::WGPUInstanceFlag_AdvancedDebugging) != 0 {
+        result.insert(wgt::InstanceFlags::advanced_debugging());
+    }
+    if (flags & native::WGPUInstanceFlag_WithEnv) != 0 {
+        result.insert(wgt::InstanceFlags::empty().with_env());
+    }
+
     result
 }
 
@@ -355,10 +384,7 @@ pub unsafe fn map_instance_descriptor(
                 },
                 noop: Default::default(),
             },
-            flags: match extras.flags {
-                native::WGPUInstanceFlag_Default => wgt::InstanceFlags::default(),
-                flags => map_instance_flags(flags),
-            },
+            flags: map_instance_flags(extras.flags),
             memory_budget_thresholds: wgt::MemoryBudgetThresholds {
                 for_device_loss,
                 for_resource_creation,
