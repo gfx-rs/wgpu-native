@@ -2497,7 +2497,7 @@ pub unsafe extern "C" fn wgpuDeviceGetFeatures(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceStartGraphicsDebuggerCapture(
-    device: native::WGPUDevice
+    device: native::WGPUDevice,
 ) -> bool {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
