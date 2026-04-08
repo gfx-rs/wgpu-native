@@ -725,7 +725,6 @@ pub unsafe extern "C" fn wgpuBufferWriteMappedRange(
     unimplemented!("wgpuBufferWriteMappedRange is not implemented");
 }
 
-
 // Adapter methods
 
 #[no_mangle]
