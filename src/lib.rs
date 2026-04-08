@@ -673,7 +673,7 @@ pub unsafe extern "C" fn wgpuCreateInstance(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuGetInstanceCapabilities(
+pub unsafe extern "C" fn wgpuGetInstanceLimits(
     capabilities: Option<&mut native::WGPUInstanceLimits>,
 ) -> native::WGPUStatus {
     let capabilities = capabilities.expect("invalid return pointer \"capabilities\"");
@@ -683,6 +683,40 @@ pub unsafe extern "C" fn wgpuGetInstanceCapabilities(
 
     native::WGPUStatus_Success
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuGetInstanceFeatures() -> native::WGPUSupportedInstanceFeatures {
+    unimplemented!("wgpuGetInstanceFeatures is not implemented");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuHasInstanceFeature(
+    _feature_name: native::WGPUInstanceFeatureName,
+) -> bool {
+    unimplemented!("wgpuHasInstanceFeature is not implemented");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSupportedInstanceFeaturesFreeMembers(
+    _features: &native::WGPUSupportedInstanceFeatures,
+) {
+    unimplemented!("wgpuSupportedInstanceFeaturesFreeMembers is not implemented");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferReadMappedRange(
+    _buffer: Option<&mut native::WGPUBuffer>,
+) -> native::WGPUStatus {
+    unimplemented!("wgpuBufferReadMappedRange is not implemented");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferWriteMappedRange(
+    _buffer: Option<&mut native::WGPUBuffer>,
+) -> native::WGPUStatus {
+    unimplemented!("wgpuBufferWriteMappedRange is not implemented");
+}
+
 
 // Adapter methods
 
