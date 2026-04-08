@@ -201,13 +201,16 @@ jobs:
       - if: matrix.target == 'i686-pc-windows-gnu'
         name: Setup bindgen env (i686 gnu)
         run: |
-          BINDGEN_TARGET=i686-w64-windows-gnu
+          BINDGEN_TARGET=i686-pc-windows-gnu
           MINGW32_ROOT=C:/msys64/mingw32
           MINGW32_INCLUDE=$MINGW32_ROOT/include
-          BINDGEN_ARGS="--target=$BINDGEN_TARGET --sysroot=$MINGW32_ROOT -isystem $MINGW32_INCLUDE"
+          MINGW32_TRIPLE_INCLUDE=$MINGW32_ROOT/i686-w64-mingw32/include
+          BINDGEN_ARGS="--target=$BINDGEN_TARGET --sysroot=$MINGW32_ROOT -isystem $MINGW32_INCLUDE -isystem $MINGW32_TRIPLE_INCLUDE"
 
           echo "LIBCLANG_PATH=$MINGW32_ROOT/bin" >> $GITHUB_ENV
           echo "CLANG_PATH=$MINGW32_ROOT/bin/clang.exe" >> $GITHUB_ENV
+          echo "C_INCLUDE_PATH=$MINGW32_INCLUDE:$MINGW32_TRIPLE_INCLUDE" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=$MINGW32_INCLUDE:$MINGW32_TRIPLE_INCLUDE" >> $GITHUB_ENV
           echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
           echo "BINDGEN_EXTRA_CLANG_ARGS_i686-pc-windows-gnu=$BINDGEN_ARGS" >> $GITHUB_ENV
           echo "BINDGEN_EXTRA_CLANG_ARGS_i686_pc_windows_gnu=$BINDGEN_ARGS" >> $GITHUB_ENV
