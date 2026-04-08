@@ -174,7 +174,7 @@ typedef struct WGPUDeviceExtras {
 
 typedef struct WGPUNativeLimits {
     /** This struct chain is used as mutable in some places and immutable in others. */
-    WGPUChainedStructOut chain;
+    WGPUChainedStruct chain;
     uint32_t maxPushConstantSize;
     uint32_t maxNonSamplerBindings;
     uint32_t maxBindingArrayElementsPerShaderStage;
