@@ -43,4 +43,4 @@ There's also a (small) [contributor guide](https://github.com/gfx-rs/wgpu-native
 
 ## Minimum Supported Rust Version
 
-The minimum supported Rust version (MSRV) for wgpu-native is **1.82**. MSRV bumps are considered breaking changes.
+The minimum supported Rust version (MSRV) for wgpu-native is **1.87**. MSRV bumps are considered breaking changes.

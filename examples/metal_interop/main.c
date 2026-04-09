@@ -112,9 +112,12 @@ int main(int argc, char *argv[]) {
 
   int ok = 1;
   if (is_metal) {
-    if (!native_device || !native_queue || !native_texture) {
+    if (!native_device || !native_texture) {
       fprintf(stderr, LOG_PREFIX " expected non-null native Metal handles on Metal backend\n");
       ok = 0;
+    }
+    if (!native_queue) {
+      printf(LOG_PREFIX " native_queue is not available (wgpu-hal does not expose the raw MTLCommandQueue)\n");
     }
   } else {
     printf(LOG_PREFIX " non-Metal backend: skipping strict non-null check\n");

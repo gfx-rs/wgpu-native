@@ -3,7 +3,8 @@
 
 #include "webgpu.h"
 
-typedef enum WGPUNativeSType {
+typedef enum WGPUNativeSType
+{
     // Start at 0003 since that's allocated range for wgpu-native
     WGPUSType_DeviceExtras = 0x00030001,
     WGPUSType_NativeLimits = 0x00030002,
@@ -19,8 +20,41 @@ typedef enum WGPUNativeSType {
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
-typedef enum WGPUNativeFeature {
-    WGPUNativeFeature_PushConstants = 0x00030001,
+typedef enum WGPUNativeSurfaceGetCurrentTextureStatus
+{
+    /**
+     * The surface texture was not acquired because the window is occluded
+     * (e.g. minimized or fully covered by another window).
+     *
+     * No texture is returned and the @c texture field of
+     * @c WGPUSurfaceTexture will be NULL. The surface and swapchain remain
+     * valid -- there is no need to reconfigure or recreate the surface.
+     *
+     * Applications should skip rendering for the current frame and try
+     * again once the window is no longer occluded. If you are using a
+     * windowing library such as winit, listen for the window's "occluded"
+     * event and request a new redraw when the window becomes visible again.
+     *
+     * When does this occur?
+     *
+     * Currently this status is only produced by the Metal backend on macOS.
+     * When a window is not visible (checked via the @c NSWindow
+     * @c occlusionState property), acquiring the next drawable would block
+     * for up to one second waiting for vsync. wgpu-native returns
+     * @c Occluded instead to avoid that hang.
+     *
+     * Other backends (Vulkan, DX12, GL) do not currently report this
+     * status; an occluded window on those backends may produce
+     * @c WGPUSurfaceGetCurrentTextureStatus_Timeout or simply succeed
+     * normally.
+     */
+    WGPUSurfaceGetCurrentTextureStatus_Occluded = 0x00030001,
+    WGPUNativeSurfaceGetCurrentTextureStatus_Force32 = 0x7FFFFFFF
+} WGPUNativeSurfaceGetCurrentTextureStatus;
+
+typedef enum WGPUNativeFeature
+{
+    WGPUNativeFeature_Immediates = 0x00030001,
     WGPUNativeFeature_TextureAdapterSpecificFormatFeatures = 0x00030002,
     WGPUNativeFeature_MultiDrawIndirectCount = 0x00030004,
     WGPUNativeFeature_VertexWritableStorage = 0x00030005,
@@ -48,7 +82,6 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_RayQuery = 0x0003001C,
     WGPUNativeFeature_ShaderF64 = 0x0003001D,
     WGPUNativeFeature_ShaderI16 = 0x0003001E,
-    WGPUNativeFeature_ShaderPrimitiveIndex = 0x0003001F,
     WGPUNativeFeature_ShaderEarlyDepthTest = 0x00030020,
     WGPUNativeFeature_Subgroup = 0x00030021,
     WGPUNativeFeature_SubgroupVertex = 0x00030022,
@@ -59,7 +92,8 @@ typedef enum WGPUNativeFeature {
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
-typedef enum WGPULogLevel {
+typedef enum WGPULogLevel
+{
     WGPULogLevel_Off = 0x00000000,
     WGPULogLevel_Error = 0x00000001,
     WGPULogLevel_Warn = 0x00000002,
@@ -98,14 +132,16 @@ static const WGPUInstanceFlag WGPUInstanceFlag_AdvancedDebugging = 1 << 26;
 static const WGPUInstanceFlag WGPUInstanceFlag_WithEnv = 1 << 27;
 static const WGPUInstanceFlag WGPUInstanceFlag_Force32 = 0x7FFFFFFF;
 
-typedef enum WGPUDx12Compiler {
+typedef enum WGPUDx12Compiler
+{
     WGPUDx12Compiler_Undefined = 0x00000000,
     WGPUDx12Compiler_Fxc = 0x00000001,
     WGPUDx12Compiler_Dxc = 0x00000002,
     WGPUDx12Compiler_Force32 = 0x7FFFFFFF
 } WGPUDx12Compiler;
 
-typedef enum WGPUGles3MinorVersion {
+typedef enum WGPUGles3MinorVersion
+{
     WGPUGles3MinorVersion_Automatic = 0x00000000,
     WGPUGles3MinorVersion_Version0 = 0x00000001,
     WGPUGles3MinorVersion_Version1 = 0x00000002,
@@ -113,7 +149,8 @@ typedef enum WGPUGles3MinorVersion {
     WGPUGles3MinorVersion_Force32 = 0x7FFFFFFF
 } WGPUGles3MinorVersion;
 
-typedef enum WGPUPipelineStatisticName {
+typedef enum WGPUPipelineStatisticName
+{
     WGPUPipelineStatisticName_VertexShaderInvocations = 0x00000000,
     WGPUPipelineStatisticName_ClipperInvocations = 0x00000001,
     WGPUPipelineStatisticName_ClipperPrimitivesOut = 0x00000002,
@@ -122,12 +159,14 @@ typedef enum WGPUPipelineStatisticName {
     WGPUPipelineStatisticName_Force32 = 0x7FFFFFFF
 } WGPUPipelineStatisticName WGPU_ENUM_ATTRIBUTE;
 
-typedef enum WGPUNativeQueryType {
+typedef enum WGPUNativeQueryType
+{
     WGPUNativeQueryType_PipelineStatistics = 0x00030000,
     WGPUNativeQueryType_Force32 = 0x7FFFFFFF
 } WGPUNativeQueryType WGPU_ENUM_ATTRIBUTE;
 
-typedef enum WGPUDxcMaxShaderModel {
+typedef enum WGPUDxcMaxShaderModel
+{
     WGPUDxcMaxShaderModel_V6_0 = 0x00000000,
     WGPUDxcMaxShaderModel_V6_1 = 0x00000001,
     WGPUDxcMaxShaderModel_V6_2 = 0x00000002,
@@ -139,20 +178,97 @@ typedef enum WGPUDxcMaxShaderModel {
     WGPUDxcMaxShaderModel_Force32 = 0x7FFFFFFF
 } WGPUDxcMaxShaderModel;
 
-typedef enum WGPUGLFenceBehaviour {
+typedef enum WGPUGLFenceBehaviour
+{
     WGPUGLFenceBehaviour_Normal = 0x00000000,
     WGPUGLFenceBehaviour_AutoFinish = 0x00000001,
     WGPUGLFenceBehaviour_Force32 = 0x7FFFFFFF
 } WGPUGLFenceBehaviour;
 
-typedef enum WGPUDx12SwapchainKind {
+typedef enum WGPUDx12SwapchainKind
+{
     WGPUDx12SwapchainKind_Undefined = 0x00000000,
     WGPUDx12SwapchainKind_DxgiFromHwnd = 0x00000001,
     WGPUDx12SwapchainKind_DxgiFromVisual = 0x00000002,
     WGPUDx12SwapchainKind_Force32 = 0x7FFFFFFF
 } WGPUDx12SwapchainKind;
 
-typedef struct WGPUInstanceExtras {
+/**
+ * Discriminant for @ref WGPUNativeDisplayHandle.
+ *
+ * Identifies which platform's display connection is stored in the tagged union.
+ * Use @ref WGPUNativeDisplayHandleType_None (the default when zero-initialized) when
+ * no display handle is needed. Platforms with no display connection data (Windows,
+ * macOS, iOS, Android) should use @ref WGPUNativeDisplayHandleType_None.
+ */
+typedef enum WGPUNativeDisplayHandleType
+{
+    /** No display handle provided. */
+    WGPUNativeDisplayHandleType_None = 0x00000000,
+    /** X11 display connection via Xlib. See @ref WGPUXlibDisplayHandle. */
+    WGPUNativeDisplayHandleType_Xlib = 0x00000001,
+    /** X11 display connection via XCB. See @ref WGPUXcbDisplayHandle. */
+    WGPUNativeDisplayHandleType_Xcb = 0x00000002,
+    /** Wayland display connection. See @ref WGPUWaylandDisplayHandle. */
+    WGPUNativeDisplayHandleType_Wayland = 0x00000003,
+    WGPUNativeDisplayHandleType_Force32 = 0x7FFFFFFF
+} WGPUNativeDisplayHandleType;
+
+/**
+ * Xlib display connection data for @ref WGPUNativeDisplayHandle.
+ */
+typedef struct WGPUXlibDisplayHandle
+{
+    /** Pointer to the X11 @c Display (i.e. @c Display*). Must not be NULL. */
+    void *display;
+    /** X11 screen number. */
+    int screen;
+} WGPUXlibDisplayHandle;
+
+/**
+ * XCB display connection data for @ref WGPUNativeDisplayHandle.
+ */
+typedef struct WGPUXcbDisplayHandle
+{
+    /** Pointer to the XCB connection (i.e. @c xcb_connection_t*). Must not be NULL. */
+    void *connection;
+    /** X11 screen number. */
+    int screen;
+} WGPUXcbDisplayHandle;
+
+/**
+ * Wayland display connection data for @ref WGPUNativeDisplayHandle.
+ */
+typedef struct WGPUWaylandDisplayHandle
+{
+    /** Pointer to the Wayland display (i.e. @c wl_display*). Must not be NULL. */
+    void *display;
+} WGPUWaylandDisplayHandle;
+
+/**
+ * Platform display connection, passed as a field of @ref WGPUInstanceExtras.
+ *
+ * This is a tagged union. Set @c type to indicate which variant is active, then
+ * populate the corresponding field in @c data. Zero-initialization yields
+ * @ref WGPUNativeDisplayHandleType_None, meaning no display handle is provided.
+ *
+ * Currently required by the GLES backend when presenting on Wayland. Other
+ * backends ignore this field. If the instance is created with a display handle,
+ * all surfaces created from it must use the same display connection.
+ */
+typedef struct WGPUNativeDisplayHandle
+{
+    WGPUNativeDisplayHandleType type;
+    union
+    {
+        WGPUXlibDisplayHandle xlib;
+        WGPUXcbDisplayHandle xcb;
+        WGPUWaylandDisplayHandle wayland;
+    } data;
+} WGPUNativeDisplayHandle;
+
+typedef struct WGPUInstanceExtras
+{
     WGPUChainedStruct chain;
     WGPUInstanceBackend backends;
     WGPUInstanceFlag flags;
@@ -163,64 +279,71 @@ typedef struct WGPUInstanceExtras {
     WGPUDxcMaxShaderModel dxcMaxShaderModel;
     WGPUDx12SwapchainKind dx12PresentationSystem;
 
-    WGPU_NULLABLE const uint8_t* budgetForDeviceCreation;
-    WGPU_NULLABLE const uint8_t* budgetForDeviceLoss;
+    WGPU_NULLABLE const uint8_t *budgetForDeviceCreation;
+    WGPU_NULLABLE const uint8_t *budgetForDeviceLoss;
+
+    /**
+     * Platform display connection to associate with this instance.
+     * Zero-initialized yields @ref WGPUNativeDisplayHandleType_None (no handle).
+     */
+    WGPUNativeDisplayHandle displayHandle;
 } WGPUInstanceExtras;
 
-typedef struct WGPUDeviceExtras {
+typedef struct WGPUDeviceExtras
+{
     WGPUChainedStruct chain;
     WGPUStringView tracePath;
 } WGPUDeviceExtras;
 
-typedef struct WGPUNativeLimits {
+typedef struct WGPUNativeLimits
+{
     /** This struct chain is used as mutable in some places and immutable in others. */
     WGPUChainedStruct chain;
-    uint32_t maxPushConstantSize;
+    uint32_t maxImmediateSize;
     uint32_t maxNonSamplerBindings;
     uint32_t maxBindingArrayElementsPerShaderStage;
 } WGPUNativeLimits;
 
-typedef struct WGPUPushConstantRange {
-    WGPUShaderStage stages;
-    uint32_t start;
-    uint32_t end;
-} WGPUPushConstantRange;
-
-typedef struct WGPUPipelineLayoutExtras {
+typedef struct WGPUPipelineLayoutExtras
+{
     WGPUChainedStruct chain;
-    size_t pushConstantRangeCount;
-    WGPUPushConstantRange const * pushConstantRanges;
+    uint32_t immediateDataSize;
 } WGPUPipelineLayoutExtras;
 
 typedef uint64_t WGPUSubmissionIndex;
 
-typedef struct WGPUShaderDefine {
+typedef struct WGPUShaderDefine
+{
     WGPUStringView name;
     WGPUStringView value;
 } WGPUShaderDefine;
 
-typedef struct WGPUShaderSourceGLSL {
+typedef struct WGPUShaderSourceGLSL
+{
     WGPUChainedStruct chain;
     WGPUShaderStage stage;
     WGPUStringView code;
     uint32_t defineCount;
-    WGPUShaderDefine const * defines;
+    WGPUShaderDefine const *defines;
 } WGPUShaderSourceGLSL;
 
-typedef struct WGPUShaderModuleDescriptorSpirV {
+typedef struct WGPUShaderModuleDescriptorSpirV
+{
     WGPUStringView label;
     uint32_t sourceSize;
-    uint32_t const * source;
+    uint32_t const *source;
 } WGPUShaderModuleDescriptorSpirV;
 
-typedef struct WGPURegistryReport {
-   size_t numAllocated;
-   size_t numKeptFromUser;
-   size_t numReleasedFromUser;
-   size_t elementSize;
+typedef struct WGPURegistryReport
+{
+    size_t numAllocated;
+    size_t numKeptFromUser;
+    size_t numReleasedFromUser;
+    size_t elementSize;
 } WGPURegistryReport;
 
-typedef struct WGPUHubReport {
+typedef struct WGPUHubReport
+{
     WGPURegistryReport adapters;
     WGPURegistryReport devices;
     WGPURegistryReport queues;
@@ -240,69 +363,79 @@ typedef struct WGPUHubReport {
     WGPURegistryReport samplers;
 } WGPUHubReport;
 
-typedef struct WGPUGlobalReport {
+typedef struct WGPUGlobalReport
+{
     WGPURegistryReport surfaces;
     WGPUHubReport hub;
 } WGPUGlobalReport;
 
-typedef struct WGPUInstanceEnumerateAdapterOptions {
-    WGPUChainedStruct const * nextInChain;
+typedef struct WGPUInstanceEnumerateAdapterOptions
+{
+    WGPUChainedStruct const *nextInChain;
     WGPUInstanceBackend backends;
 } WGPUInstanceEnumerateAdapterOptions;
 
-typedef struct WGPUBindGroupEntryExtras {
+typedef struct WGPUBindGroupEntryExtras
+{
     WGPUChainedStruct chain;
-    WGPUBuffer const * buffers;
+    WGPUBuffer const *buffers;
     size_t bufferCount;
-    WGPUSampler const * samplers;
+    WGPUSampler const *samplers;
     size_t samplerCount;
-    WGPUTextureView const * textureViews;
+    WGPUTextureView const *textureViews;
     size_t textureViewCount;
 } WGPUBindGroupEntryExtras;
 
-typedef struct WGPUBindGroupLayoutEntryExtras {
+typedef struct WGPUBindGroupLayoutEntryExtras
+{
     WGPUChainedStruct chain;
     uint32_t count;
 } WGPUBindGroupLayoutEntryExtras;
 
-typedef struct WGPUQuerySetDescriptorExtras {
+typedef struct WGPUQuerySetDescriptorExtras
+{
     WGPUChainedStruct chain;
-    WGPUPipelineStatisticName const * pipelineStatistics;
+    WGPUPipelineStatisticName const *pipelineStatistics;
     size_t pipelineStatisticCount;
 } WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef struct WGPUSurfaceConfigurationExtras {
+typedef struct WGPUSurfaceConfigurationExtras
+{
     WGPUChainedStruct chain;
     uint32_t desiredMaximumFrameLatency;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
-* Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a WinUI [`SwapChainPanel`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel).
-*/
-typedef struct WGPUSurfaceSourceSwapChainPanel {
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a WinUI [`SwapChainPanel`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel).
+ */
+typedef struct WGPUSurfaceSourceSwapChainPanel
+{
     WGPUChainedStruct chain;
     /**
-    * A pointer to the [`ISwapChainPanelNative`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/microsoft.ui.xaml.media.dxinterop/nn-microsoft-ui-xaml-media-dxinterop-iswapchainpanelnative)
-    * interface of the SwapChainPanel that will be wrapped by the @ref WGPUSurface.
-    */
-    void * panelNative;
+     * A pointer to the [`ISwapChainPanelNative`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/microsoft.ui.xaml.media.dxinterop/nn-microsoft-ui-xaml-media-dxinterop-iswapchainpanelnative)
+     * interface of the SwapChainPanel that will be wrapped by the @ref WGPUSurface.
+     */
+    void *panelNative;
 } WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef enum WGPUPolygonMode {
+typedef enum WGPUPolygonMode
+{
     WGPUPolygonMode_Fill = 0,
     WGPUPolygonMode_Line = 1,
     WGPUPolygonMode_Point = 2,
 } WGPUPolygonMode;
 
-typedef struct WGPUPrimitiveStateExtras {
+typedef struct WGPUPrimitiveStateExtras
+{
     WGPUChainedStruct chain;
     WGPUPolygonMode polygonMode;
     WGPUBool conservative;
 } WGPUPrimitiveStateExtras WGPU_STRUCTURE_ATTRIBUTE;
 
-typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void * userdata);
+typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
 
-typedef enum WGPUNativeTextureFormat {
+typedef enum WGPUNativeTextureFormat
+{
     // From Features::TEXTURE_FORMAT_16BIT_NORM
     WGPUNativeTextureFormat_R16Unorm = 0x00030001,
     WGPUNativeTextureFormat_R16Snorm = 0x00030002,
@@ -315,75 +448,75 @@ typedef enum WGPUNativeTextureFormat {
     WGPUNativeTextureFormat_P010 = 0x00030008,
 } WGPUNativeTextureFormat;
 
-
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport * report);
-size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const * options, WGPUAdapter * adapters);
+    void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
+    size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
 
-WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const * commands);
-float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
+    WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);
+    float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
 
-// Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const * submissionIndex);
-WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const * descriptor);
+    // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
+    WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex);
+    WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const *descriptor);
 
-void wgpuSetLogCallback(WGPULogCallback callback, void * userdata);
+    void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
 
-void wgpuSetLogLevel(WGPULogLevel level);
+    void wgpuSetLogLevel(WGPULogLevel level);
 
-uint32_t wgpuGetVersion(void);
+    uint32_t wgpuGetVersion(void);
 
-/**
- * Returns the backend-native `id<MTLDevice>` as an opaque pointer.
- *
- * The returned pointer is borrowed and remains valid only while `device` is alive.
- * Ownership is retained by wgpu-native; callers must not release or destroy it.
- * Returns NULL when the active backend is not Metal or when the handle is unavailable.
- */
-void* wgpuDeviceGetNativeMetalDevice(WGPUDevice device);
+    /**
+     * Returns the backend-native `id<MTLDevice>` as an opaque pointer.
+     *
+     * The returned pointer is borrowed and remains valid only while `device` is alive.
+     * Ownership is retained by wgpu-native; callers must not release or destroy it.
+     * Returns NULL when the active backend is not Metal or when the handle is unavailable.
+     */
+    void *wgpuDeviceGetNativeMetalDevice(WGPUDevice device);
 
-/**
- * Returns the backend-native `id<MTLCommandQueue>` as an opaque pointer.
- *
- * The returned pointer is borrowed and remains valid only while `queue` is alive.
- * Ownership is retained by wgpu-native; callers must not release or destroy it.
- * Returns NULL when the active backend is not Metal or when the handle is unavailable.
- */
-void* wgpuQueueGetNativeMetalCommandQueue(WGPUQueue queue);
+    /**
+     * Returns the backend-native `id<MTLCommandQueue>` as an opaque pointer.
+     *
+     * The returned pointer is borrowed and remains valid only while `queue` is alive.
+     * Ownership is retained by wgpu-native; callers must not release or destroy it.
+     * Returns NULL when the active backend is not Metal or when the handle is unavailable.
+     */
+    void *wgpuQueueGetNativeMetalCommandQueue(WGPUQueue queue);
 
-/**
- * Returns the backend-native `id<MTLTexture>` as an opaque pointer.
- *
- * The returned pointer is borrowed and remains valid only while `texture` is alive.
- * Ownership is retained by wgpu-native; callers must not release or destroy it.
- * Returns NULL when the active backend is not Metal or when the handle is unavailable.
- */
-void* wgpuTextureGetNativeMetalTexture(WGPUTexture texture);
+    /**
+     * Returns the backend-native `id<MTLTexture>` as an opaque pointer.
+     *
+     * The returned pointer is borrowed and remains valid only while `texture` is alive.
+     * Ownership is retained by wgpu-native; callers must not release or destroy it.
+     * Returns NULL when the active backend is not Metal or when the handle is unavailable.
+     */
+    void *wgpuTextureGetNativeMetalTexture(WGPUTexture texture);
 
-void wgpuRenderPassEncoderSetPushConstants(WGPURenderPassEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void const * data);
-void wgpuComputePassEncoderSetPushConstants(WGPUComputePassEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const * data);
-void wgpuRenderBundleEncoderSetPushConstants(WGPURenderBundleEncoder encoder, WGPUShaderStage stages, uint32_t offset, uint32_t sizeBytes, void const * data);
+    void wgpuRenderPassEncoderSetImmediates(WGPURenderPassEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const *data);
+    void wgpuComputePassEncoderSetImmediates(WGPUComputePassEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const *data);
+    void wgpuRenderBundleEncoderSetImmediates(WGPURenderBundleEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const *data);
 
-void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
-void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
+    void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
+    void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
 
-void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
-void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
+    void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
+    void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 
-void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
-void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
-void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
-void wgpuRenderPassEncoderEndPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder);
+    void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+    void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
+    void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+    void wgpuRenderPassEncoderEndPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder);
 
-void wgpuComputePassEncoderWriteTimestamp(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
-void wgpuRenderPassEncoderWriteTimestamp(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+    void wgpuComputePassEncoderWriteTimestamp(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
+    void wgpuRenderPassEncoderWriteTimestamp(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
 
-// Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.
-WGPUBool wgpuDeviceStartGraphicsDebuggerCapture(WGPUDevice device);
-void wgpuDeviceStopGraphicsDebuggerCapture(WGPUDevice device);
+    // Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.
+    WGPUBool wgpuDeviceStartGraphicsDebuggerCapture(WGPUDevice device);
+    void wgpuDeviceStopGraphicsDebuggerCapture(WGPUDevice device);
 
 #ifdef __cplusplus
 } // extern "C"
