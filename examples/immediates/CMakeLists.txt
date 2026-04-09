@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(push_constants LANGUAGES C)
+project(immediates LANGUAGES C)
 
-add_executable(push_constants main.c)
+add_executable(immediates main.c)
 
 if (MSVC)
     add_compile_options(/W4)
@@ -21,4 +21,4 @@ elseif(APPLE)
     set(OS_LIBRARIES "-framework Foundation -framework CoreFoundation -framework QuartzCore -framework Metal")
 endif()
 
-target_link_libraries(push_constants framework ${WGPU_LIBRARY} ${OS_LIBRARIES})
+target_link_libraries(immediates framework ${WGPU_LIBRARY} ${OS_LIBRARIES})

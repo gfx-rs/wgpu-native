@@ -7,8 +7,6 @@ use conv::{
     map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
     CreateSurfaceParams,
 };
-#[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
-use foreign_types_shared::ForeignType as _;
 use parking_lot::Mutex;
 use smallvec::SmallVec;
 use std::{
@@ -392,7 +390,7 @@ impl Drop for WGPUTextureViewImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             let context = &self.context;
-            let _ = context.texture_view_drop(self.id);
+            context.texture_view_drop(self.id);
         }
     }
 }
@@ -664,11 +662,11 @@ pub unsafe extern "C" fn wgpuCreateInstance(
                 WGPUSType_InstanceExtras => native::WGPUInstanceExtras
             ))
         }
-        None => wgt::InstanceDescriptor::default(),
+        None => wgt::InstanceDescriptor::new_without_display_handle(),
     };
 
     Arc::into_raw(Arc::new(WGPUInstanceImpl {
-        context: Arc::new(Context::new("wgpu", &instance_desc)),
+        context: Arc::new(Context::new("wgpu", instance_desc, None)),
     }))
 }
 
@@ -1252,6 +1250,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
         timestamp_writes: timestamp_writes.as_ref(),
         occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
+        multiview_mask: None,
     };
 
     let (pass, err) = context.command_encoder_begin_render_pass(command_encoder_id, &desc);
@@ -1453,7 +1452,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderFinish(
 
     let (command_buffer_id, error) =
         context.command_encoder_finish(command_encoder_id, &desc, None);
-    if let Some(cause) = error {
+    if let Some((_label, cause)) = error {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderFinish");
     }
 
@@ -2153,7 +2152,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
         multiview: None,
     };
 
-    match wgc::command::RenderBundleEncoder::new(&desc, device_id, None) {
+    match wgc::command::RenderBundleEncoder::new(&desc, device_id) {
         Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
             context: context.clone(),
             encoder: Box::into_raw(Box::new(Some(Box::into_raw(Box::new(encoder))))),
@@ -2249,11 +2248,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 
             wgt::DepthStencilState {
                 format,
-                depth_write_enabled: desc.depthWriteEnabled == native::WGPUOptionalBool_True,
+                depth_write_enabled: Some(desc.depthWriteEnabled == native::WGPUOptionalBool_True),
                 // TODO: Is validation correct if we return always for undefined depth compare?
-                depth_compare: conv::map_compare_function(desc.depthCompare)
-                    .expect("invalid depth compare function for depth stencil state")
-                    .unwrap_or(wgt::CompareFunction::Always),
+                depth_compare: Some(
+                    conv::map_compare_function(desc.depthCompare)
+                        .expect("invalid depth compare function for depth stencil state")
+                        .unwrap_or(wgt::CompareFunction::Always),
+                ),
                 stencil: wgt::StencilState {
                     front: conv::map_stencil_face_state(desc.stencilFront, "front"),
                     back: conv::map_stencil_face_state(desc.stencilBack, "back"),
@@ -2317,7 +2318,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 ),
             }),
         // TODO(wgpu.h)
-        multiview: None,
+        multiview_mask: None,
         // TODO(wgpu.h)
         cache: None,
     };
@@ -2369,7 +2370,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
             min_filter: conv::map_filter_mode(descriptor.minFilter)
                 .unwrap_or(wgt::FilterMode::Nearest),
             mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter)
-                .unwrap_or(wgt::FilterMode::Nearest),
+                .unwrap_or(wgt::MipmapFilterMode::Nearest),
             lod_min_clamp: descriptor.lodMinClamp,
             lod_max_clamp: descriptor.lodMaxClamp,
             compare: conv::map_compare_function(descriptor.compare)
@@ -2390,7 +2391,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
             ],
             mag_filter: wgt::FilterMode::Nearest,
             min_filter: wgt::FilterMode::Nearest,
-            mipmap_filter: wgt::FilterMode::Nearest,
+            mipmap_filter: wgt::MipmapFilterMode::Nearest,
             lod_min_clamp: 0f32,
             lod_max_clamp: 32f32,
             compare: None,
@@ -2619,8 +2620,7 @@ pub unsafe extern "C" fn wgpuDeviceGetNativeMetalDevice(device: native::WGPUDevi
         let device = device.as_ref().expect("invalid device");
         let hal_device = device.context.device_as_hal::<hal::api::Metal>(device.id);
         if let Some(hal_device) = hal_device {
-            let raw_device = hal_device.raw_device().lock();
-            return raw_device.as_ptr().cast();
+            return &**hal_device.raw_device() as *const _ as *mut c_void;
         }
         std::ptr::null_mut()
     }
@@ -2748,7 +2748,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
 
     let surface_id = match create_surface_params {
         CreateSurfaceParams::Raw((rdh, rwh)) => {
-            match context.instance_create_surface(rdh, rwh, None) {
+            match context.instance_create_surface(Some(rdh), rwh, None) {
                 Ok(surface_id) => surface_id,
                 Err(cause) => handle_error_fatal(cause, "wgpuInstanceCreateSurface"),
             }
@@ -3053,14 +3053,12 @@ pub unsafe extern "C" fn wgpuQueueGetNativeMetalCommandQueue(
     #[cfg(all(any(target_os = "ios", target_os = "macos"), feature = "metal"))]
     {
         let queue = queue.as_ref().expect("invalid queue");
-        let hal_queue = queue
-            .queue
-            .context
-            .queue_as_hal::<hal::api::Metal>(queue.queue.id);
-        if let Some(hal_queue) = hal_queue {
-            let raw_queue = hal_queue.as_raw().lock();
-            return raw_queue.as_ptr().cast();
-        }
+        // wgpu-hal v29 no longer exposes a public accessor for the raw
+        // MTLCommandQueue. Return null until upstream adds one back.
+        log::warn!(
+            "wgpuQueueGetNativeMetalCommandQueue: not available in current wgpu-hal version"
+        );
+        let _ = queue;
         std::ptr::null_mut()
     }
     #[cfg(not(all(any(target_os = "ios", target_os = "macos"), feature = "metal")))]
@@ -4137,8 +4135,11 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
                 wgt::SurfaceStatus::Timeout => native::WGPUSurfaceGetCurrentTextureStatus_Timeout,
                 wgt::SurfaceStatus::Outdated => native::WGPUSurfaceGetCurrentTextureStatus_Outdated,
                 wgt::SurfaceStatus::Lost => native::WGPUSurfaceGetCurrentTextureStatus_Lost,
-                // TODO add some logs to provide more context
-                wgt::SurfaceStatus::Unknown => native::WGPUSurfaceGetCurrentTextureStatus_Error,
+                wgt::SurfaceStatus::Occluded => native::WGPUSurfaceGetCurrentTextureStatus_Occluded,
+                wgt::SurfaceStatus::Validation => {
+                    log::error!("Surface validation error");
+                    native::WGPUSurfaceGetCurrentTextureStatus_Error
+                }
             };
             surface_texture.texture = match texture {
                 Some(texture_id) => Arc::into_raw(Arc::new(WGPUTextureImpl {
@@ -4351,7 +4352,7 @@ pub unsafe extern "C" fn wgpuTextureGetNativeMetalTexture(
             .context
             .texture_as_hal::<hal::api::Metal>(texture.id);
         if let Some(hal_texture) = hal_texture {
-            return hal_texture.raw_handle().as_ptr().cast();
+            return hal_texture.raw_handle() as *const _ as *mut c_void;
         }
         std::ptr::null_mut()
     }
@@ -4499,9 +4500,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
+pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
     pass: native::WGPURenderPassEncoder,
-    stages: native::WGPUShaderStage,
     offset: u32,
     size_bytes: u32,
     data: *const u8,
@@ -4509,9 +4509,8 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
     let pass = pass.as_ref().expect("invalid render pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match pass.context.render_pass_set_push_constants(
+    match pass.context.render_pass_set_immediates(
         encoder,
-        from_u64_bits(stages).expect("invalid shader stage"),
         offset,
         make_slice(data, size_bytes as usize),
     ) {
@@ -4520,13 +4519,13 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetPushConstants(
             &pass.error_sink,
             cause,
             None,
-            "wgpuRenderPassEncoderSetPushConstants",
+            "wgpuRenderPassEncoderSetImmediates",
         ),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
+pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
     pass: native::WGPUComputePassEncoder,
     offset: u32,
     size_bytes: u32,
@@ -4535,7 +4534,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
     let pass = pass.as_ref().expect("invalid compute pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match pass.context.compute_pass_set_push_constants(
+    match pass.context.compute_pass_set_immediates(
         encoder,
         offset,
         make_slice(data, size_bytes as usize),
@@ -4545,15 +4544,14 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetPushConstants(
             &pass.error_sink,
             cause,
             None,
-            "wgpuComputePassEncoderSetPushConstants",
+            "wgpuComputePassEncoderSetImmediates",
         ),
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPushConstants(
+pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     bundle: native::WGPURenderBundleEncoder,
-    stages: native::WGPUShaderStage,
     offset: u32,
     size_bytes: u32,
     data: *const u8,
@@ -4563,13 +4561,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPushConstants(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_push_constants(
-        encoder,
-        wgt::ShaderStages::from_bits(stages.try_into().unwrap()).expect("invalid shader stage"),
-        offset,
-        size_bytes,
-        data,
-    );
+    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size_bytes, data);
 }
 
 #[no_mangle]

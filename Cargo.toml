@@ -9,7 +9,7 @@ authors = [
 	"Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.87"
 description = "Native WebGPU implementation based on wgpu-core"
 homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
@@ -24,19 +24,19 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-version = "29.0.0"
+version = "29.0.1"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-version = "27.0.1"
+version = "29.0.1"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-version = "27.0.4"
+version = "29.0.1"
 
 [workspace.dependencies.naga]
 package = "naga"
-version = "27.0.3"
+version = "29.0.1"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
@@ -101,7 +101,6 @@ replay = ["serde", "wgc/replay"]
 
 [dependencies.wgc]
 workspace = true
-features = ["raw-window-handle"]
 
 [dependencies.hal]
 workspace = true
@@ -131,7 +130,6 @@ thiserror = "2"
 parking_lot = "0.12"
 smallvec = "1"
 bitflags = "2"
-foreign-types-shared = "0.3"
 
 [build-dependencies]
 bindgen = "0.72"

@@ -10,7 +10,7 @@ on:
 
 env:
   CI_RUST_VERSION: "1.91"
-  CI_RUST_MSRV: "1.82"
+  CI_RUST_MSRV: "1.87"
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
@@ -312,13 +312,13 @@ jobs:
           make example-triangle
           make example-enumerate_adapters
           make example-texture_arrays
-          make example-push_constants
+          make example-immediates
       - name: Run examples debug
         run: |
           make run-example-capture
           make run-example-compute
           make run-example-enumerate_adapters
-          make run-example-push_constants
+          make run-example-immediates
       - name: Build examples release
         run: |
           make example-capture-release
@@ -326,10 +326,10 @@ jobs:
           make example-triangle-release
           make example-enumerate_adapters-release
           make example-texture_arrays-release
-          make example-push_constants-release
+          make example-immediates-release
       - name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
           make run-example-enumerate_adapters-release
-          make run-example-push_constants-release
+          make run-example-immediates-release

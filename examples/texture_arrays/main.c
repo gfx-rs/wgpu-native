@@ -527,7 +527,7 @@ int main(int argc, char *argv[]) {
       (const WGPUBindGroupEntry){
           .binding = 0,
           .nextInChain =
-              (const WGPUChainedStruct *)&(const WGPUBindGroupEntryExtras){
+              (WGPUChainedStruct *)&(WGPUBindGroupEntryExtras){
                   .chain =
                       (const WGPUChainedStruct){
                           .sType = (WGPUSType)WGPUSType_BindGroupEntryExtras,
@@ -543,7 +543,7 @@ int main(int argc, char *argv[]) {
       (const WGPUBindGroupEntry){
           .binding = 1,
           .nextInChain =
-              (const WGPUChainedStruct *)&(const WGPUBindGroupEntryExtras){
+              (WGPUChainedStruct *)&(WGPUBindGroupEntryExtras){
                   .chain =
                       (const WGPUChainedStruct){
                           .sType = (WGPUSType)WGPUSType_BindGroupEntryExtras,
@@ -559,7 +559,7 @@ int main(int argc, char *argv[]) {
       (const WGPUBindGroupEntry){
           .binding = 2,
           .nextInChain =
-              (const WGPUChainedStruct *)&(const WGPUBindGroupEntryExtras){
+              (WGPUChainedStruct *)&(WGPUBindGroupEntryExtras){
                   .chain =
                       (const WGPUChainedStruct){
                           .sType = (WGPUSType)WGPUSType_BindGroupEntryExtras,
