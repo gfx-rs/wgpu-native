@@ -381,6 +381,10 @@ void wgpuRenderPassEncoderEndPipelineStatisticsQuery(WGPURenderPassEncoder rende
 void wgpuComputePassEncoderWriteTimestamp(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
 void wgpuRenderPassEncoderWriteTimestamp(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
 
+// Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.
+WGPUBool wgpuDeviceStartGraphicsDebuggerCapture(WGPUDevice device);
+void wgpuDeviceStopGraphicsDebuggerCapture(WGPUDevice device);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

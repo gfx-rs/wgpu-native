@@ -2547,6 +2547,30 @@ pub unsafe extern "C" fn wgpuDeviceGetFeatures(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceStartGraphicsDebuggerCapture(
+    device: native::WGPUDevice,
+) -> bool {
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context)
+    };
+
+    // FIXME: wgpu-hal's start_graphics_debugger_capture returns a bool, but wgpu's doesn't
+    context.device_start_graphics_debugger_capture(device_id);
+    true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceStopGraphicsDebuggerCapture(device: native::WGPUDevice) {
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context)
+    };
+
+    context.device_stop_graphics_debugger_capture(device_id)
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuSupportedFeaturesFreeMembers(
     supported_features: native::WGPUSupportedFeatures,
 ) {
