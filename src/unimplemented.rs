@@ -232,3 +232,28 @@ pub extern "C" fn wgpuInstanceWaitAny(
 ) -> native::WGPUWaitStatus {
     unimplemented!();
 }
+
+#[no_mangle]
+pub extern "C" fn wgpuExternalTextureSetLabel(
+    _external_texture: native::WGPUExternalTexture,
+    _label: native::WGPUStringView,
+) {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuExternalTextureAddRef(_external_texture: native::WGPUExternalTexture) {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuExternalTextureRelease(_external_texture: native::WGPUExternalTexture) {
+    unimplemented!();
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuTextureGetTextureBindingViewDimension(
+    _texture: native::WGPUTexture,
+) -> native::WGPUTextureViewDimension {
+    unimplemented!("Blocked on wgpu-core support: https://github.com/gfx-rs/wgpu/issues/7428");
+}
