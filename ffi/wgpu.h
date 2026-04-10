@@ -601,19 +601,14 @@ static const WGPUInstanceBackend WGPUInstanceBackend_Metal = 1 << 2;
  */
 static const WGPUInstanceBackend WGPUInstanceBackend_DX12 = 1 << 3;
 /**
- * Direct3D 11 backend.
- * @deprecated Legacy backend with limited support.
- */
-static const WGPUInstanceBackend WGPUInstanceBackend_DX11 = 1 << 4;
-/**
  * Browser WebGPU backend.
  * Supported when targeting the web through WebAssembly.
  */
 static const WGPUInstanceBackend WGPUInstanceBackend_BrowserWebGPU = 1 << 5;
 /** Primary (first-tier) backends: Vulkan, Metal, DX12, and BrowserWebGPU. */
 static const WGPUInstanceBackend WGPUInstanceBackend_Primary = (1 << 0) | (1 << 2) | (1 << 3) | (1 << 5);
-/** Secondary (second-tier) backends: GL and DX11. */
-static const WGPUInstanceBackend WGPUInstanceBackend_Secondary = (1 << 1) | (1 << 4);
+/** Secondary (second-tier) backends: GL. */
+static const WGPUInstanceBackend WGPUInstanceBackend_Secondary = (1 << 1);
 static const WGPUInstanceBackend WGPUInstanceBackend_Force32 = 0x7FFFFFFF;
 
 /**
