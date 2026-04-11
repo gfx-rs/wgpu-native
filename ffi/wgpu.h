@@ -996,18 +996,6 @@ typedef struct WGPUNativeLimits
     /** This struct chain is used as mutable in some places and immutable in others. */
     WGPUChainedStruct chain;
     /**
-     * Amount of storage available for immediate data, in bytes.
-     *
-     * Defaults to 0. A non-zero value requires
-     * @ref WGPUNativeFeature_Immediates. Expected maximum sizes vary by
-     * backend:
-     * - Vulkan: 128-256 bytes
-     * - DX12: 128 bytes
-     * - Metal: 4096 bytes
-     * - OpenGL: ~256 bytes (emulated with uniforms)
-     */
-    uint32_t maxImmediateSize;
-    /**
      * Maximum number of live non-sampler bindings.
      *
      * Default is 1,000,000. Only meaningful on D3D12.
@@ -1017,10 +1005,19 @@ typedef struct WGPUNativeLimits
      */
     uint32_t maxNonSamplerBindings;
     /**
-     * Maximum number of individual resources within binding arrays per
-     * shader stage.
+     * Maximum number of individual resources within binding arrays that can be accessed
+     * in a single shader stage. Applies to all types of bindings except samplers.
      */
     uint32_t maxBindingArrayElementsPerShaderStage;
+    /**
+     * Maximum number of individual samplers within binding arrays that
+     * can be accessed in a single shader stage.
+     */
+    uint32_t maxBindingArraySamplerElementsPerShaderStage;
+    /**
+     * The maximum number of views that can be used in multiview rendering.
+     */
+    uint32_t maxMultiviewViewCount;
 } WGPUNativeLimits;
 
 typedef struct WGPUPipelineLayoutExtras
