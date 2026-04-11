@@ -329,12 +329,12 @@ typedef enum WGPUNativeFeature
      */
     WGPUNativeFeature_BufferBindingArray = 0x0003000F,
     /**
-     * Allows shaders to index uniform buffer and storage texture resource
+     * Allows shaders to index storage texture resource
      * arrays with dynamically non-uniform values.
      *
      * This is a native only feature.
      */
-    WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing = 0x00030010,
+    WGPUNativeFeature_StorageTextureArrayNonUniformIndexing = 0x00030010,
     // TODO: requires wgpu.h api change
     // WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
     // WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
@@ -379,24 +379,20 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_ConservativeRasterization = 0x00030015,
+    // TODO: requires wgpu.h api change
     // WGPUNativeFeature_ClearTexture = 0x00030016,
     /**
-     * Enables creating shader modules from pre-compiled SPIR-V binary via
-     * @ref wgpuDeviceCreateShaderModuleSpirV.
-     *
-     * Shader code isn't parsed or interpreted in any way. It is the caller's
-     * responsibility to ensure the code is correct.
-     *
+     * Enables multiview render passes and `builtin(view_index)` in vertex/mesh shaders.
+     * 
      * Supported platforms:
      * - Vulkan
-     * - DX12
      * - Metal
-     * - WebGPU
-     *
+     * - DX12
+     * - OpenGL (web only)
+     * 
      * This is a native only feature.
      */
-    WGPUNativeFeature_SpirvShaderPassthrough = 0x00030017,
-    // WGPUNativeFeature_Multiview = 0x00030018,
+    WGPUNativeFeature_Multiview = 0x00030018,
     /**
      * Enables using 64-bit types for vertex attributes.
      *
@@ -552,6 +548,203 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_ShaderInt64 = 0x00030026,
+    /**
+     * Allows shaders to use f32 atomic load, store, add, sub, and exchange.
+     * 
+     * Supported platforms:
+     * - Metal (with MSL 3.0+ and Apple7+/Mac2)
+     * - Vulkan (with [VK_EXT_shader_atomic_float])
+     *  
+     * This is a native only feature.
+    */
+    WGPUNativeFeature_ShaderFloat32Atomic = 0x00030027,
+    /**
+     * Enables image atomic fetch add, and, xor, or, min, and max for R32Uint and R32Sint textures.
+     * 
+     * Supported platforms:
+     * - Vulkan
+     * - DX12
+     * - Metal (with MSL 3.1+)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_TextureAtomic = 0x00030028,
+    /**
+     * Allows for creation of textures of format
+     * @ref WGPUNativeTextureFormat_P010.
+     *
+     * Supported platforms:
+     * - DX12
+     * - Vulkan
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_TextureFormatP010 = 0x00030029,
+    // TODO: requires wgpu.h api change
+    // WGPUNativeFeature_ExternalTexture = 0x0003002A,
+    /**
+     * Allows the use of pipeline cache objects
+     * 
+     * Supported platforms:
+     * - Vulkan
+     * 
+     * Unimplemented Platforms:
+     * - DX12
+     * - Metal
+     */
+    WGPUNativeFeature_PipelineCache = 0x0003002B,
+    /**
+     * Allows shaders to use i64 and u64 atomic min and max.
+     *
+     * Supported platforms:
+     * - Vulkan (with VK_KHR_shader_atomic_int64)
+     * - DX12 (with SM 6.6+)
+     * - Metal (with MSL 2.4+)
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ShaderInt64AtomicMinMax = 0x0003002C,
+    /**
+     * Allows shaders to use all i64 and u64 atomic operations.
+     *
+     * Supported platforms:
+     * - Vulkan (with VK_KHR_shader_atomic_int64)
+     * - DX12 (with SM 6.6+)
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ShaderInt64AtomicAllOps = 0x0003002D,
+    // TODO: requires wgpu.h api change
+    // WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x0003002E,
+    // WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x0003002F,
+    /**
+     * Enables R64Uint image atomic min and max.
+     * 
+     * Supported platforms:
+     * - Vulkan (with VK_EXT_shader_image_atomic_int64)
+     * - DX12 (with SM 6.6+)
+     * - Metal (with MSL 3.1+)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_TextureInt64Atomic = 0x00030030,
+    // TODO: not implemented yet, see https://github.com/gfx-rs/wgpu/issues/7149
+    // WGPUNativeFeature_UniformBufferBindingArrays = 0x00030031,
+    // TODO: requires wgpu.h api change
+    // WGPUNativeFeature_MeshShader = 0x00030032,
+    // WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
+    // WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
+    // WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
+    // WGPUNativeFeature_PassthroughShaders = 0x00030036,
+    /**
+     * Enables shader barycentric coordinates.
+     * 
+     * Supported platforms:
+     * - Vulkan (with VK_KHR_fragment_shader_barycentric)
+     * - DX12 (with SM 6.1+)
+     * - Metal (with MSL 2.2+)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ShaderBarycentrics = 0x00030037,
+    /**
+     * Enables using multiview where not all texture array layers are rendered to in a single render pass/render pipeline. Making
+     * use of this feature also requires enabling `Features::MULTIVIEW`.
+     * 
+     * Supported platforms
+     * - Vulkan
+     * - DX12
+     * 
+     * While metal supports this in theory, the behavior of `view_index` differs from vulkan and dx12 so the feature isn't exposed.
+     */
+    WGPUNativeFeature_SelectiveMultiview = 0x00030038,
+    // TODO: requires wgpu.h api change
+    // WGPUNativeFeature_MeshShaderPoints = 0x00030039,
+    WGPUNativeFeature_MultisampleArray = 0x0003003A,
+    /**
+     * Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
+     * or simdgroup matrix operations on Apple GPUs).
+     * 
+     * Cooperative matrices allow a workgroup to collectively load, store, and perform
+     * matrix multiply-accumulate operations on small tiles of data, enabling
+     * hardware-accelerated matrix math.
+     *
+     * @b EXPERIMENTAL: Features enabled by this may have major bugs and are
+     * expected to be subject to breaking changes.
+     * 
+     * **Current limitations:** The implementation currently only supports 8x8 f32 matrices.
+     * On Vulkan, support is determined by querying `vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR`
+     * for configurations matching 8x8x8 f32. Most Vulkan implementations (NVIDIA, AMD) primarily
+     * support f16 inputs at larger sizes (e.g., 16x16), so Vulkan support may be limited.
+     * 
+     * Supported platforms:
+     * - Metal (with MSL 2.3+ and Apple7+/Mac2+, using simdgroup matrix operations)
+     * - Vulkan (with [VK_KHR_cooperative_matrix](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_cooperative_matrix.html), if 8x8 f32 is supported)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_CooperativeMatrix = 0x0003003B,
+    /**
+     * Enables shader per-vertex attributes.
+     * 
+     * Supported platforms:
+     * - Vulkan (with VK_KHR_fragment_shader_barycentric)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ShaderPerVertex = 0x0003003C,
+    /**
+     * Enables shader `draw_index` builtin.
+     * 
+     * Supported platforms:
+     * - GLES
+     * - Vulkan
+     * 
+     * Potential platforms:
+     * - DX12
+     * - Metal
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ShaderDrawIndex = 0x0003003D,
+    /**
+     * Allows the user to create arrays of acceleration structures in shaders:
+     * 
+     * ex.
+     * - `var tlas: binding_array<acceleration_structure, 10>` (WGSL)
+     * 
+     * This capability allows them to exist and to be indexed by dynamically uniform values.
+     * 
+     * Supported platforms:
+     * - DX12
+     * - Vulkan
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_AccelerationStructureBindingArray = 0x0003003E,
+    /**
+     * Enables the `@coherent` memory decoration on storage buffer variables.
+     * 
+     * Backend mapping:
+     * - Vulkan
+     * - DX12
+     * - Metal (3.2+)
+     * - GLES (ES 3.1+ / GL 4.3+)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_MemoryDecorationCoherent = 0x0003003F,
+    /**
+     * Enables the `@volatile` memory decoration on storage buffer variables.
+     * 
+     * Backend mapping:
+     * - Vulkan
+     * - GLES (ES 3.1+ / GL 4.3+)
+     * 
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_MemoryDecorationVolatile = 0x00030040,
+
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
