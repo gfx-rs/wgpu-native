@@ -17,7 +17,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - MSRV bumped from 1.82 to 1.87.
 - **Push constants renamed to immediates.** This matches the upstream wgpu rename.
   - `WGPUNativeFeature_PushConstants` -> `WGPUNativeFeature_Immediates`
-  - `WGPUNativeLimits::maxPushConstantSize` -> `WGPUNativeLimits::maxImmediateSize`
+  - `WGPUNativeLimits::maxPushConstantSize` -> `WGPULimits::maxImmediateSize` @lisyarus
   - `WGPUPipelineLayoutExtras` no longer takes an array of `WGPUPushConstantRange`. It now takes a single `uint32_t immediateDataSize` representing the total size in bytes.
     ```c
     // Before
@@ -63,6 +63,8 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   };
   ```
 - `WGPUSurfaceGetCurrentTextureStatus_Occluded` native extension value for `WGPUSurfaceGetCurrentTextureStatus`. Returned by `wgpuSurfaceGetCurrentTexture` when the window is not visible (e.g. minimized or fully behind another window). Currently only produced by the Metal backend on macOS, where acquiring a drawable while occluded would otherwise block for up to one second waiting for vsync. When you receive this status, no texture is returned and the surface remains valid -- skip rendering for the current frame and retry once the window becomes visible again. No reconfiguration is needed.
+  - `WGPUNativeLimits::maxBindingArraySamplerElementsPerShaderStage` @lisyarus
+  - `WGPUNativeLimits::maxMultiviewViewCount` @lisyarus
 
 ### Removed
 
