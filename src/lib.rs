@@ -4,8 +4,8 @@ use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
     map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
     map_instance_descriptor, map_pipeline_layout_descriptor, map_query_set_descriptor,
-    map_query_set_index, map_shader_module, map_shader_runtime_checks, map_surface,
-    map_surface_configuration, CreateSurfaceParams,
+    map_query_set_index, map_sampler_border_color_extras, map_shader_module,
+    map_shader_runtime_checks, map_surface, map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -2418,8 +2418,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
             compare: conv::map_compare_function(descriptor.compare)
                 .expect("Invalid compare function"),
             anisotropy_clamp: descriptor.maxAnisotropy,
-            // TODO(wgpu.h)
-            border_color: None,
+            border_color: follow_chain!(map_sampler_border_color_extras((*descriptor), WGPUSType_SamplerDescriptorExtras => native::WGPUSamplerDescriptorExtras)),
         },
         // wgpu-core doesn't have Default implementation for SamplerDescriptor,
         // use defaults from spec.
