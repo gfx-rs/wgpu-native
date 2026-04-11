@@ -51,15 +51,8 @@ int main(int argc, char *argv[]) {
                              });
   assert(adapter);
 
-  WGPUNativeLimits supported_limits_extras = {
-      .chain =
-          {
-              .sType = WGPUSType_NativeLimits,
-          },
-      .maxImmediateSize = 0,
-  };
   WGPULimits supported_limits = {
-      .nextInChain = &supported_limits_extras.chain,
+      .maxImmediateSize = 0,
   };
   wgpuAdapterGetLimits(adapter, &supported_limits);
 
