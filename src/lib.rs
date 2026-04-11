@@ -1301,6 +1301,51 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearBuffer(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderClearTexture(
+    command_encoder: native::WGPUCommandEncoder,
+    texture: native::WGPUTexture,
+    range: Option<&native::WGPUImageSubresourceRange>,
+) {
+    let (command_encoder_id, context, error_sink) = {
+        let command_encoder = command_encoder.as_ref().expect("invalid command encoder");
+        (
+            command_encoder.id,
+            &command_encoder.context,
+            &command_encoder.error_sink,
+        )
+    };
+    let texture_id = texture.as_ref().expect("invalid texture").id;
+
+    let subresource_range = match range {
+        Some(range) => wgt::ImageSubresourceRange {
+            aspect: conv::map_texture_aspect(range.aspect)
+                .unwrap_or(wgt::TextureAspect::All),
+            base_mip_level: range.baseMipLevel,
+            mip_level_count: match range.mipLevelCount {
+                0 => panic!("invalid mipLevelCount"),
+                native::WGPU_MIP_LEVEL_COUNT_UNDEFINED => None,
+                _ => Some(range.mipLevelCount),
+            },
+            base_array_layer: range.baseArrayLayer,
+            array_layer_count: match range.arrayLayerCount {
+                0 => panic!("invalid arrayLayerCount"),
+                native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED => None,
+                _ => Some(range.arrayLayerCount),
+            },
+        },
+        None => wgt::ImageSubresourceRange::default(),
+    };
+
+    if let Err(cause) = context.command_encoder_clear_texture(
+        command_encoder_id,
+        texture_id,
+        &subresource_range
+    ) {
+        handle_error(error_sink, cause, None, "wgpuCommandEncoderClearTexture");
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuCommandEncoderCopyBufferToBuffer(
     command_encoder: native::WGPUCommandEncoder,
     source: native::WGPUBuffer,
