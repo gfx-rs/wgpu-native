@@ -1283,8 +1283,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::BUFFER_BINDING_ARRAY) {
         temp.push(native::WGPUNativeFeature_BufferBindingArray);
     }
-    if features.contains(wgt::Features::STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING)
-    {
+    if features.contains(wgt::Features::STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING) {
         temp.push(native::WGPUNativeFeature_StorageTextureArrayNonUniformIndexing);
     }
     // TODO: requires wgpu.h api change
