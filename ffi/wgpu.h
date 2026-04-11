@@ -1020,6 +1020,17 @@ typedef struct WGPUNativeLimits
     uint32_t maxMultiviewViewCount;
 } WGPUNativeLimits;
 
+#define WGPU_NATIVE_LIMITS_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeLimits, { \
+    /*.chain=*/_wgpu_MAKE_INIT_STRUCT(WGPUChainedStruct, { \
+        /*.next=*/NULL _wgpu_COMMA \
+        /*.sType=*/(WGPUSType)WGPUSType_NativeLimits _wgpu_COMMA \
+    }) _wgpu_COMMA \
+    /*.maxNonSamplerBindings=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBindingArrayElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBindingArraySamplerElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+})
+
 typedef struct WGPUPipelineLayoutExtras
 {
     WGPUChainedStruct chain;
