@@ -394,7 +394,7 @@ jobs:
         run: |
           echo $GITHUB_SHA > dist/commit-sha
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.WGPU_NATIVE_VERSION }}
           name: ${{ env.WGPU_NATIVE_VERSION }}
