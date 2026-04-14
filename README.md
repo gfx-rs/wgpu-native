@@ -28,6 +28,7 @@ The bindings are based on the WebGPU-native header found at `ffi/webgpu-headers/
 - [go-webgpu/webgpu](https://github.com/go-webgpu/webgpu) - Go wrapper (Zero-CGO)
 - [WebGPU-C++](https://github.com/eliemichel/WebGPU-Cpp) - Auto-generated C++ wrapper (developed for the [Learn WebGPU native](https://eliemichel.github.io/LearnWebGPU) course)
 - [jai_wgpu_native](https://github.com/SogoCZE/jai_wgpu_native) - Raw Jai bindings
+- [wgpu-mojo](https://github.com/Hundo1018/wgpu-mojo) - Mojo bindings for wgpu-native
 - [WebGPU::Direct](https://github.com/atrodo/WebGPU-Direct) - Perl wrapper ([package](https://metacpan.org/pod/WebGPU::Direct))
 - [bronter/wgpu_native_zig](https://github.com/bronter/wgpu_native_zig) - Zig wrapper
 
