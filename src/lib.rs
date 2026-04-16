@@ -2457,6 +2457,8 @@ unsafe fn create_shader_module_impl(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
     runtime_checks: wgt::ShaderRuntimeChecks,
+    fn_ident: &'static str,
+
 ) -> native::WGPUShaderModule {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
@@ -2478,7 +2480,7 @@ unsafe fn create_shader_module_impl(
                 error_sink,
                 cause,
                 desc_label,
-                "wgpuDeviceCreateShaderModule",
+                fn_ident,
             );
 
             return Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
@@ -2500,7 +2502,7 @@ unsafe fn create_shader_module_impl(
             error_sink,
             cause,
             desc.label,
-            "wgpuDeviceCreateShaderModule",
+            fn_ident,
         );
     }
 
@@ -2515,7 +2517,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
 ) -> native::WGPUShaderModule {
-    create_shader_module_impl(device, descriptor, wgt::ShaderRuntimeChecks::default())
+    create_shader_module_impl(
+        device,
+        descriptor,
+        wgt::ShaderRuntimeChecks::default(),
+        "wgpuDeviceCreateShaderModule",
+    )
 }
 
 #[no_mangle]
@@ -2528,6 +2535,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleTrusted(
         device,
         descriptor,
         map_shader_runtime_checks(runtime_checks),
+        "wgpuDeviceCreateShaderModuleTrusted",
     )
 }
 
