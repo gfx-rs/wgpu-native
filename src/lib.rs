@@ -2458,7 +2458,6 @@ unsafe fn create_shader_module_impl(
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
     runtime_checks: wgt::ShaderRuntimeChecks,
     fn_ident: &'static str,
-
 ) -> native::WGPUShaderModule {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
@@ -2476,12 +2475,7 @@ unsafe fn create_shader_module_impl(
     ) {
         Ok(source) => source,
         Err(cause) => {
-            handle_error(
-                error_sink,
-                cause,
-                desc_label,
-                fn_ident,
-            );
+            handle_error(error_sink, cause, desc_label, fn_ident);
 
             return Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
                 context: context.clone(),
@@ -2498,12 +2492,7 @@ unsafe fn create_shader_module_impl(
     let (shader_module_id, error) =
         context.device_create_shader_module(device_id, &desc, source, None);
     if let Some(cause) = error {
-        handle_error(
-            error_sink,
-            cause,
-            desc.label,
-            fn_ident,
-        );
+        handle_error(error_sink, cause, desc.label, fn_ident);
     }
 
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {

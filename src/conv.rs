@@ -2018,7 +2018,7 @@ pub fn map_primitive_state(
 }
 
 pub fn map_shader_runtime_checks(
-    value: native::WGPUNativeShaderRuntimeChecks
+    value: native::WGPUNativeShaderRuntimeChecks,
 ) -> wgt::ShaderRuntimeChecks {
     wgt::ShaderRuntimeChecks {
         bounds_checks: (value & native::WGPUNativeShaderRuntimeChecks_BoundsChecks) != 0,
