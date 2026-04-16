@@ -21,8 +21,6 @@ typedef enum WGPUNativeSType
     WGPUSType_DeviceExtras = 0x00030001,
     /** Identifies @ref WGPUNativeLimits. */
     WGPUSType_NativeLimits = 0x00030002,
-    /** Identifies @ref WGPUPipelineLayoutExtras. */
-    WGPUSType_PipelineLayoutExtras = 0x00030003,
     /** Identifies @ref WGPUShaderSourceGLSL. */
     WGPUSType_ShaderSourceGLSL = 0x00030004,
     /** Identifies @ref WGPUInstanceExtras. */
@@ -98,8 +96,8 @@ typedef enum WGPUNativeFeature
      * Enables @ref wgpuRenderPassEncoderSetImmediates,
      * @ref wgpuComputePassEncoderSetImmediates,
      * @ref wgpuRenderBundleEncoderSetImmediates,
-     * non-zero @c immediateDataSize in @ref WGPUPipelineLayoutExtras,
-     * and non-zero @c maxImmediateSize in @ref WGPUNativeLimits.
+     * non-zero @c immediateSize in @ref WGPUPipelineLayout,
+     * and non-zero @c maxImmediateSize in @ref WGPULimits.
      *
      * A block of immediate data can be declared in WGSL with
      * @c var<immediate>:
@@ -1231,20 +1229,6 @@ typedef struct WGPUNativeLimits
     /*.maxBindingArraySamplerElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
 })
-
-typedef struct WGPUPipelineLayoutExtras
-{
-    WGPUChainedStruct chain;
-    /**
-     * The number of bytes of immediate data allocated for use in shaders
-     * attached to this pipeline.
-     *
-     * The @c var<immediate> declarations in the shader must be equal or
-     * smaller than this size. If this value is non-zero,
-     * @ref WGPUNativeFeature_Immediates must be enabled.
-     */
-    uint32_t immediateDataSize;
-} WGPUPipelineLayoutExtras;
 
 /**
  * Identifier for a particular call to @ref wgpuQueueSubmitForIndex.
