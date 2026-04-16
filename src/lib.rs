@@ -1318,8 +1318,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearTexture(
 
     let subresource_range = match range {
         Some(range) => wgt::ImageSubresourceRange {
-            aspect: conv::map_texture_aspect(range.aspect)
-                .unwrap_or(wgt::TextureAspect::All),
+            aspect: conv::map_texture_aspect(range.aspect).unwrap_or(wgt::TextureAspect::All),
             base_mip_level: range.baseMipLevel,
             mip_level_count: match range.mipLevelCount {
                 0 => panic!("invalid mipLevelCount"),
@@ -1336,11 +1335,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderClearTexture(
         None => wgt::ImageSubresourceRange::default(),
     };
 
-    if let Err(cause) = context.command_encoder_clear_texture(
-        command_encoder_id,
-        texture_id,
-        &subresource_range
-    ) {
+    if let Err(cause) =
+        context.command_encoder_clear_texture(command_encoder_id, texture_id, &subresource_range)
+    {
         handle_error(error_sink, cause, None, "wgpuCommandEncoderClearTexture");
     }
 }
