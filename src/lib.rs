@@ -2518,7 +2518,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleTrusted(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
-    runtime_checks: native::WGPUNativeShaderRuntimeChecks,
+    runtime_checks: native::WGPUShaderRuntimeChecks,
 ) -> native::WGPUShaderModule {
     create_shader_module_impl(
         device,

@@ -2018,19 +2018,19 @@ pub fn map_primitive_state(
 }
 
 pub fn map_shader_runtime_checks(
-    value: native::WGPUNativeShaderRuntimeChecks,
+    value: native::WGPUShaderRuntimeChecks,
 ) -> wgt::ShaderRuntimeChecks {
     wgt::ShaderRuntimeChecks {
-        bounds_checks: (value & native::WGPUNativeShaderRuntimeChecks_BoundsChecks) != 0,
-        force_loop_bounding: (value & native::WGPUNativeShaderRuntimeChecks_ForceLoopBounding) != 0,
+        bounds_checks: (value & native::WGPUShaderRuntimeChecks_BoundsChecks) != 0,
+        force_loop_bounding: (value & native::WGPUShaderRuntimeChecks_ForceLoopBounding) != 0,
         ray_query_initialization_tracking: (value
-            & native::WGPUNativeShaderRuntimeChecks_RayQueryInitializationTracking)
+            & native::WGPUShaderRuntimeChecks_RayQueryInitializationTracking)
             != 0,
         task_shader_dispatch_tracking: (value
-            & native::WGPUNativeShaderRuntimeChecks_TaskShaderDispatchTracking)
+            & native::WGPUShaderRuntimeChecks_TaskShaderDispatchTracking)
             != 0,
         mesh_shader_primitive_indices_clamp: (value
-            & native::WGPUNativeShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp)
+            & native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp)
             != 0,
     }
 }
