@@ -509,7 +509,6 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
 #[inline]
 pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
-    extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
     let bind_group_layouts = make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount)
         .iter()
@@ -523,7 +522,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         })
         .collect::<Vec<_>>();
 
-    let immediate_size = extras.map_or(0, |extras| extras.immediateDataSize);
+    let immediate_size = des.immediateSize;
 
     wgc::binding_model::PipelineLayoutDescriptor {
         label: string_view_into_label(des.label),
