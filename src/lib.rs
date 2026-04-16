@@ -4,8 +4,8 @@ use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
     map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
     map_instance_descriptor, map_pipeline_layout_descriptor, map_query_set_descriptor,
-    map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
-    map_shader_runtime_checks, CreateSurfaceParams,
+    map_query_set_index, map_shader_module, map_shader_runtime_checks, map_surface,
+    map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -2456,7 +2456,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
 unsafe fn create_shader_module_impl(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
-    runtime_checks: wgt::ShaderRuntimeChecks
+    runtime_checks: wgt::ShaderRuntimeChecks,
 ) -> native::WGPUShaderModule {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
@@ -2524,7 +2524,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleTrusted(
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
     runtime_checks: native::WGPUNativeShaderRuntimeChecks,
 ) -> native::WGPUShaderModule {
-    create_shader_module_impl(device, descriptor, map_shader_runtime_checks(runtime_checks))
+    create_shader_module_impl(
+        device,
+        descriptor,
+        map_shader_runtime_checks(runtime_checks),
+    )
 }
 
 #[no_mangle]
