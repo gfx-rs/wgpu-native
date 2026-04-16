@@ -63,14 +63,16 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   };
   ```
 - `WGPUSurfaceGetCurrentTextureStatus_Occluded` native extension value for `WGPUSurfaceGetCurrentTextureStatus`. Returned by `wgpuSurfaceGetCurrentTexture` when the window is not visible (e.g. minimized or fully behind another window). Currently only produced by the Metal backend on macOS, where acquiring a drawable while occluded would otherwise block for up to one second waiting for vsync. When you receive this status, no texture is returned and the surface remains valid -- skip rendering for the current frame and retry once the window becomes visible again. No reconfiguration is needed.
-  - `WGPUNativeLimits::maxBindingArraySamplerElementsPerShaderStage` @lisyarus
-  - `WGPUNativeLimits::maxMultiviewViewCount` @lisyarus
+- `WGPUNativeLimits::maxBindingArraySamplerElementsPerShaderStage` @lisyarus
+- `WGPUNativeLimits::maxMultiviewViewCount` @lisyarus
+- `WGPUNativeFeature_StorageTextureArrayNonUniformIndexing`, `WGPUNativeFeature_Multiview`, `WGPUNativeFeature_ShaderFloat32Atomic`, `WGPUNativeFeature_TextureAtomic`, `WGPUNativeFeature_TextureFormatP010`, `WGPUNativeFeature_PipelineCache`, `WGPUNativeFeature_ShaderInt64AtomicMinMax`, `WGPUNativeFeature_ShaderInt64AtomicAllOps`, `WGPUNativeFeature_TextureInt64Atomic`, `WGPUNativeFeature_ShaderBarycentrics`, `WGPUNativeFeature_SelectiveMultiview`, `WGPUNativeFeature_MultisampleArray`, `WGPUNativeFeature_CooperativeMatrix`, `WGPUNativeFeature_ShaderPerVertex`, `WGPUNativeFeature_ShaderDrawIndex`, `WGPUNativeFeature_AccelerationStructureBindingArray`, `WGPUNativeFeature_MemoryDecorationCoherent`, `WGPUNativeFeature_MemoryDecorationVolatile` @lisyarus
 
 ### Removed
 
 - `WGPUPushConstantRange` struct.
 - `foreign-types-shared` dependency (no longer needed after Metal backend switched to `objc2`).
 - `raw-window-handle` feature on `wgpu-core` dependency (removed upstream).
+- `WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing` and `WGPUNativeFeature_SpirvShaderPassthrough` removed @lisyarus
 
 ## Diffs
 
