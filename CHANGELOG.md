@@ -7,20 +7,13 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 #### Table of Contents
 
 - [Unreleased](#unreleased)
-- [v29.0.0.0](#v290000)
 - [Diffs](#diffs)
-
 
 ## Unreleased
 
-### Changed
-- Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. @Vipitis
-
-
-## [v29.0.0.0](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.0.0)
 
 ### Changed
-
+- Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
 - Updated all wgpu crates to v29
 - MSRV bumped from 1.82 to 1.87.
 - **Push constants renamed to immediates.** This matches the upstream wgpu rename.
