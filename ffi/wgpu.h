@@ -379,8 +379,15 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_ConservativeRasterization = 0x00030015,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_ClearTexture = 0x00030016,
+    /**
+     * Enables clear to zero for textures.
+     *
+     * Supported platforms:
+     * - All
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ClearTexture = 0x00030016,
     /**
      * Enables multiview render passes and `builtin(view_index)` in vertex/mesh shaders.
      * 
@@ -1456,6 +1463,14 @@ typedef enum WGPUNativeTextureFormat
     WGPUNativeTextureFormat_P010 = 0x00030008,
 } WGPUNativeTextureFormat;
 
+typedef struct WGPUImageSubresourceRange {
+    WGPUTextureAspect aspect;
+    uint32_t baseMipLevel;
+    uint32_t mipLevelCount;
+    uint32_t baseArrayLayer;
+    uint32_t arrayLayerCount;
+} WGPUImageSubresourceRange WGPU_STRUCTURE_ATTRIBUTE;
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -1525,6 +1540,8 @@ extern "C"
     // Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.
     WGPUBool wgpuDeviceStartGraphicsDebuggerCapture(WGPUDevice device);
     void wgpuDeviceStopGraphicsDebuggerCapture(WGPUDevice device);
+
+    void wgpuCommandEncoderClearTexture(WGPUCommandEncoder commandEncoder, WGPUTexture texture, WGPUImageSubresourceRange const * range);
 
 #ifdef __cplusplus
 } // extern "C"
