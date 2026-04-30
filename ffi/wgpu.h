@@ -22,23 +22,23 @@ typedef enum WGPUNativeSType
     /** Identifies @ref WGPUNativeLimits. */
     WGPUSType_NativeLimits = 0x00030002,
     /** Identifies @ref WGPUShaderSourceGLSL. */
-    WGPUSType_ShaderSourceGLSL = 0x00030004,
+    WGPUSType_ShaderSourceGLSL = 0x00030003,
     /** Identifies @ref WGPUInstanceExtras. */
-    WGPUSType_InstanceExtras = 0x00030006,
+    WGPUSType_InstanceExtras = 0x00030004,
     /** Identifies @ref WGPUBindGroupEntryExtras. */
-    WGPUSType_BindGroupEntryExtras = 0x00030007,
+    WGPUSType_BindGroupEntryExtras = 0x00030005,
     /** Identifies @ref WGPUBindGroupLayoutEntryExtras. */
-    WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
+    WGPUSType_BindGroupLayoutEntryExtras = 0x00030006,
     /** Identifies @ref WGPUQuerySetDescriptorExtras. */
-    WGPUSType_QuerySetDescriptorExtras = 0x00030009,
+    WGPUSType_QuerySetDescriptorExtras = 0x00030007,
     /** Identifies @ref WGPUSurfaceConfigurationExtras. */
-    WGPUSType_SurfaceConfigurationExtras = 0x0003000A,
+    WGPUSType_SurfaceConfigurationExtras = 0x00030008,
     /** Identifies @ref WGPUSurfaceSourceSwapChainPanel. */
-    WGPUSType_SurfaceSourceSwapChainPanel = 0x0003000B,
+    WGPUSType_SurfaceSourceSwapChainPanel = 0x00030009,
     /** Identifies @ref WGPUPrimitiveStateExtras. */
-    WGPUSType_PrimitiveStateExtras = 0x0003000C,
+    WGPUSType_PrimitiveStateExtras = 0x0003000A,
     /** Identifies @ref WGPUSamplerDescriptorExtras. */
-    WGPUSType_SamplerDescriptorExtras = 0x0003000D,
+    WGPUSType_SamplerDescriptorExtras = 0x0003000B,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
