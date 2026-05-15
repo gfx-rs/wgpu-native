@@ -2,11 +2,11 @@
 name = "wgpu-native"
 version = "0.0.0"
 authors = [
-	"Dzmitry Malyshau <kvark@mozilla.com>",
-	"Joshua Groves <josh@joshgroves.com>",
-	"Noah Charlton <ncharlton002@gmail.com>",
-	"Almar Klein <almar@almarklein.org>",
-	"Rajesh Malviya <rajveer0malviya@gmail.com>",
+  "Dzmitry Malyshau <kvark@mozilla.com>",
+  "Joshua Groves <josh@joshgroves.com>",
+  "Noah Charlton <ncharlton002@gmail.com>",
+  "Almar Klein <almar@almarklein.org>",
+  "Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
 rust-version = "1.87"
@@ -18,17 +18,9 @@ categories = ["graphics", "rendering"]
 license = "MIT OR Apache-2.0"
 
 [workspace]
+resolver = "2"
 members = ["."]
 default-members = ["."]
-resolver = "2"
-
-[workspace.dependencies.wgc]
-package = "wgpu-core"
-version = "29.0.1"
-
-[workspace.dependencies.wgt]
-package = "wgpu-types"
-version = "29.0.1"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
@@ -38,11 +30,54 @@ version = "29.0.1"
 package = "naga"
 version = "29.0.1"
 
+[workspace.dependencies.wgc]
+package = "wgpu-core"
+version = "29.0.1"
+
+[workspace.dependencies.wgt]
+package = "wgpu-types"
+version = "29.0.1"
+
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+[dependencies]
+bitflags = "2"
+log = "0.4"
+parking_lot = "0.12"
+paste = "1"
+raw-window-handle = "0.6.0"
+smallvec = "1"
+thiserror = "2"
+
+[dependencies.hal]
+workspace = true
+
+[dependencies.naga]
+workspace = true
+optional = true
+
+[dependencies.serde]
+version = "1"
+optional = true
+
+[dependencies.wgc]
+workspace = true
+
+[dependencies.wgt]
+workspace = true
+
+[build-dependencies]
+bindgen = "0.72"
+
+[target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
+hal = { workspace = true, features = ["renderdoc"] }
+
+[target.'cfg(windows)'.dependencies]
+hal = { workspace = true, features = ["dx12", "renderdoc"] }
 
 [features]
-default = ["wgsl", "spirv", "glsl", "dx12", "metal", "vulkan", "gles"]
+default = ["dx12", "gles", "glsl", "metal", "spirv", "vulkan", "wgsl"]
 
 ## Enables the DX12 backend on Windows.
 dx12 = ["wgc/dx12"]
@@ -53,10 +88,10 @@ metal = ["wgc/metal"]
 ## Enables the GLES backend via [ANGLE](https://github.com/google/angle) on macOS using.
 angle = ["wgc/gles"]
 
-## Enables the Vulkan backend on Windows, Linux, and Android.
-vulkan = ["wgc/vulkan"]
 ## Enables the OpenGL/GLES backend on Windows, Linux, Android.
 gles = ["wgc/gles"]
+## Enables the Vulkan backend on Windows, Linux, and Android.
+vulkan = ["wgc/vulkan"]
 
 ## Enables the Vulkan backend on macOS & iOS.
 vulkan-portability = ["wgc/vulkan"]
@@ -98,38 +133,3 @@ serde = ["dep:serde", "wgc/serde"]
 ## Allow deserializing of trace capture files that were written with the `trace` feature.
 ## To replay a trace file use the [wgpu player](https://github.com/gfx-rs/wgpu/tree/trunk/player).
 replay = ["serde", "wgc/replay"]
-
-[dependencies.wgc]
-workspace = true
-
-[dependencies.hal]
-workspace = true
-
-[target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
-hal = { workspace = true, features = ["renderdoc"] }
-
-[target.'cfg(windows)'.dependencies]
-hal = { workspace = true, features = ["dx12", "renderdoc"] }
-
-[dependencies.wgt]
-workspace = true
-
-[dependencies.naga]
-workspace = true
-optional = true
-
-[dependencies.serde]
-version = "1"
-optional = true
-
-[dependencies]
-raw-window-handle = "0.6.0"
-paste = "1"
-log = "0.4"
-thiserror = "2"
-parking_lot = "0.12"
-smallvec = "1"
-bitflags = "2"
-
-[build-dependencies]
-bindgen = "0.72"
