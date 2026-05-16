@@ -3060,6 +3060,18 @@ pub unsafe extern "C" fn wgpuInstanceRelease(instance: native::WGPUInstance) {
     Arc::decrement_strong_count(instance);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstancePollAllDevices(
+    instance: native::WGPUInstance,
+    wait: bool,
+) -> bool {
+    let context = &instance.as_ref().expect("invalid instance").context;
+    match context.poll_all_devices(wait) {
+        Ok(all_empty) => all_empty,
+        Err(cause) => handle_error_fatal(cause, "wgpuInstancePollAllDevices"),
+    }
+}
+
 // PipelineCache methods
 
 #[no_mangle]

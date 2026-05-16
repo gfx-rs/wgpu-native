@@ -1559,6 +1559,13 @@ extern "C"
 
     void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
     size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
+    /**
+     * Poll all devices owned by this instance.
+     *
+     * If @c wait is true, blocks until all devices are idle.
+     * Returns true if all device queues are empty, false if work remains in flight.
+     */
+    WGPUBool wgpuInstancePollAllDevices(WGPUInstance instance, WGPUBool wait);
 
     WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);
     float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
