@@ -32,6 +32,7 @@ fn main() {
         ("WGPUComputePipeline", "WGPUComputePipelineImpl"),
         ("WGPUDevice", "WGPUDeviceImpl"),
         ("WGPUInstance", "WGPUInstanceImpl"),
+        ("WGPUPipelineCache", "WGPUPipelineCacheImpl"),
         ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
         ("WGPUQuerySet", "WGPUQuerySetImpl"),
         ("WGPUQueue", "WGPUQueueImpl"),

@@ -14,6 +14,8 @@
 
 #include "webgpu.h"
 
+typedef struct WGPUPipelineCacheImpl* WGPUPipelineCache WGPU_OBJECT_ATTRIBUTE;
+
 typedef enum WGPUNativeSType
 {
     // Start at 0003 since that's allocated range for wgpu-native
@@ -39,6 +41,10 @@ typedef enum WGPUNativeSType
     WGPUSType_SurfaceSourceSwapChainPanel = 0x0003000B,
     /** Identifies @ref WGPUPrimitiveStateExtras. */
     WGPUSType_PrimitiveStateExtras = 0x0003000C,
+    /** Identifies @ref WGPUComputePipelineDescriptorExtras. */
+    WGPUSType_ComputePipelineDescriptorExtras = 0x0003000D,
+    /** Identifies @ref WGPURenderPipelineDescriptorExtras. */
+    WGPUSType_RenderPipelineDescriptorExtras = 0x0003000E,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1412,6 +1418,52 @@ typedef struct WGPUPrimitiveStateExtras
     WGPUBool conservative;
 } WGPUPrimitiveStateExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Descriptor for creating a pipeline cache object via @ref wgpuDeviceCreatePipelineCache.
+ *
+ * Pass previously saved cache data in @c data/@c dataSize to seed the cache.
+ * Leave both as zero/NULL to create an empty cache.
+ * If @c fallback is true, creation errors are non-fatal and an empty cache is returned.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUPipelineCacheDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    /** Number of bytes in @c data. */
+    size_t dataSize;
+    /** Previously saved cache blob, or NULL to start empty. */
+    WGPU_NULLABLE uint8_t const * data;
+    /**
+     * If true, a cache-creation failure produces an empty (no-op) cache
+     * rather than propagating an error.
+     */
+    WGPUBool fallback;
+} WGPUPipelineCacheDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUComputePipelineDescriptor to attach a pipeline cache.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUComputePipelineDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+} WGPUComputePipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPURenderPipelineDescriptor to attach a pipeline cache.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPURenderPipelineDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+} WGPURenderPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
 
 typedef enum WGPUNativeTextureFormat
@@ -1573,6 +1625,18 @@ extern "C"
     void wgpuCommandEncoderClearTexture(WGPUCommandEncoder commandEncoder, WGPUTexture texture, WGPUImageSubresourceRange const * range);
 
     WGPUShaderModule wgpuDeviceCreateShaderModuleTrusted(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor, WGPUShaderRuntimeChecks runtimeChecks);
+
+    WGPUPipelineCache wgpuDeviceCreatePipelineCache(WGPUDevice device, WGPUPipelineCacheDescriptor const * descriptor);
+    /**
+     * Retrieve serialized cache data.
+     *
+     * Call with @c data = NULL to obtain the required buffer size.
+     * Allocate a buffer of that size and call again with @c data pointing to it.
+     * Returns 0 if the cache has no data or an error occurred.
+     */
+    size_t wgpuPipelineCacheGetData(WGPUPipelineCache cache, void * data);
+    void wgpuPipelineCacheAddRef(WGPUPipelineCache cache);
+    void wgpuPipelineCacheRelease(WGPUPipelineCache cache);
 
 #ifdef __cplusplus
 } // extern "C"

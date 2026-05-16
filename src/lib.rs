@@ -298,6 +298,18 @@ impl Drop for WGPURenderPipelineImpl {
     }
 }
 
+pub struct WGPUPipelineCacheImpl {
+    context: Arc<Context>,
+    id: id::PipelineCacheId,
+}
+impl Drop for WGPUPipelineCacheImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.pipeline_cache_drop(self.id);
+        }
+    }
+}
+
 pub struct WGPUSamplerImpl {
     context: Arc<Context>,
     id: id::SamplerId,
@@ -2072,8 +2084,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             // TODO(wgpu.h)
             zero_initialize_workgroup_memory: false,
         },
-        // TODO(wgpu.h)
-        cache: None,
+        cache: {
+            unsafe fn get_compute_cache(
+                _desc: &native::WGPUComputePipelineDescriptor,
+                extras: Option<&native::WGPUComputePipelineDescriptorExtras>,
+            ) -> Option<id::PipelineCacheId> {
+                extras.and_then(|e| unsafe { e.cache.as_ref() }).map(|c| c.id)
+            }
+            follow_chain!(get_compute_cache(
+                (descriptor),
+                WGPUSType_ComputePipelineDescriptorExtras => native::WGPUComputePipelineDescriptorExtras
+            ))
+        },
     };
 
     let (compute_pipeline_id, error) =
@@ -2131,6 +2153,48 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     Arc::into_raw(Arc::new(WGPUPipelineLayoutImpl {
         context: context.clone(),
         id: pipeline_layout_id,
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreatePipelineCache(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUPipelineCacheDescriptor>,
+) -> native::WGPUPipelineCache {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid descriptor");
+
+    let data = if descriptor.data.is_null() || descriptor.dataSize == 0 {
+        None
+    } else {
+        Some(std::borrow::Cow::Borrowed(std::slice::from_raw_parts(
+            descriptor.data,
+            descriptor.dataSize,
+        )))
+    };
+
+    let desc = wgc::pipeline::PipelineCacheDescriptor {
+        label: string_view_into_label(descriptor.label),
+        data,
+        fallback: descriptor.fallback != 0,
+    };
+
+    let (pipeline_cache_id, error) = unsafe { context.device_create_pipeline_cache(device_id, &desc, None) };
+    if let Some(cause) = error {
+        handle_error(
+            error_sink,
+            cause,
+            desc.label,
+            "wgpuDeviceCreatePipelineCache",
+        );
+    }
+
+    Arc::into_raw(Arc::new(WGPUPipelineCacheImpl {
+        context: context.clone(),
+        id: pipeline_cache_id,
     }))
 }
 
@@ -2359,10 +2423,19 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .collect(),
                 ),
             }),
-        // TODO(wgpu.h)
         multiview_mask: None,
-        // TODO(wgpu.h)
-        cache: None,
+        cache: {
+            unsafe fn get_render_cache(
+                _desc: &native::WGPURenderPipelineDescriptor,
+                extras: Option<&native::WGPURenderPipelineDescriptorExtras>,
+            ) -> Option<id::PipelineCacheId> {
+                extras.and_then(|e| unsafe { e.cache.as_ref() }).map(|c| c.id)
+            }
+            follow_chain!(get_render_cache(
+                (descriptor),
+                WGPUSType_RenderPipelineDescriptorExtras => native::WGPURenderPipelineDescriptorExtras
+            ))
+        },
     };
 
     let (render_pipeline_id, error) = context.device_create_render_pipeline(device_id, &desc, None);
@@ -2985,6 +3058,37 @@ pub unsafe extern "C" fn wgpuInstanceAddRef(instance: native::WGPUInstance) {
 pub unsafe extern "C" fn wgpuInstanceRelease(instance: native::WGPUInstance) {
     assert!(!instance.is_null(), "invalid instance");
     Arc::decrement_strong_count(instance);
+}
+
+// PipelineCache methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineCacheAddRef(cache: native::WGPUPipelineCache) {
+    assert!(!cache.is_null(), "invalid pipeline cache");
+    Arc::increment_strong_count(cache);
+}
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineCacheRelease(cache: native::WGPUPipelineCache) {
+    assert!(!cache.is_null(), "invalid pipeline cache");
+    Arc::decrement_strong_count(cache);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuPipelineCacheGetData(
+    cache: native::WGPUPipelineCache,
+    data: *mut u8,
+) -> usize {
+    let cache = cache.as_ref().expect("invalid pipeline cache");
+    match cache.context.pipeline_cache_get_data(cache.id) {
+        Some(bytes) => {
+            let size = bytes.len();
+            if !data.is_null() {
+                std::ptr::copy_nonoverlapping(bytes.as_ptr(), data, size);
+            }
+            size
+        }
+        None => 0,
+    }
 }
 
 // PipelineLayout methods
