@@ -4558,8 +4558,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
     pass: native::WGPURenderPassEncoder,
     offset: u32,
-    size_bytes: u32,
     data: *const u8,
+    size: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
@@ -4567,7 +4567,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
     match pass.context.render_pass_set_immediates(
         encoder,
         offset,
-        make_slice(data, size_bytes as usize),
+        make_slice(data, size as usize),
     ) {
         Ok(()) => (),
         Err(cause) => handle_error(
@@ -4583,8 +4583,8 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
 pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
     pass: native::WGPUComputePassEncoder,
     offset: u32,
-    size_bytes: u32,
     data: *const u8,
+    size: u32,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
@@ -4592,7 +4592,7 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
     match pass.context.compute_pass_set_immediates(
         encoder,
         offset,
-        make_slice(data, size_bytes as usize),
+        make_slice(data, size as usize),
     ) {
         Ok(()) => (),
         Err(cause) => handle_error(
@@ -4608,15 +4608,15 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
 pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     bundle: native::WGPURenderBundleEncoder,
     offset: u32,
-    size_bytes: u32,
     data: *const u8,
+    size: u32,
 ) {
     let bundle = bundle.as_ref().expect("invalid render bundle");
     let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size_bytes, data);
+    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size, data);
 }
 
 #[no_mangle]
