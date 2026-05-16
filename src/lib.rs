@@ -2460,6 +2460,186 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUMeshPipelineDescriptor>,
+) -> native::WGPURenderPipeline {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid descriptor");
+
+    fn map_stage(
+        state_module: native::WGPUShaderModule,
+        state_entry_point: native::WGPUStringView,
+        state_constants: *const native::WGPUConstantEntry,
+        state_constant_count: usize,
+    ) -> wgc::pipeline::ProgrammableStageDescriptor<'static> {
+        wgc::pipeline::ProgrammableStageDescriptor {
+            module: unsafe { state_module.as_ref() }
+                .expect("invalid shader module")
+                .id
+                .expect("invalid shader module id"),
+            entry_point: unsafe { string_view_into_label(state_entry_point) },
+            constants: make_slice(state_constants, state_constant_count)
+                .iter()
+                .map(|entry| {
+                    (
+                        unsafe { string_view_into_str(entry.key) }
+                            .unwrap_or("")
+                            .to_string(),
+                        entry.value,
+                    )
+                })
+                .collect(),
+            zero_initialize_workgroup_memory: false,
+        }
+    }
+
+    let task = descriptor.task.as_ref().map(|t| wgc::pipeline::TaskState {
+        stage: map_stage(t.module, t.entryPoint, t.constants, t.constantCount),
+    });
+
+    let mesh = wgc::pipeline::MeshState {
+        stage: map_stage(
+            descriptor.mesh.module,
+            descriptor.mesh.entryPoint,
+            descriptor.mesh.constants,
+            descriptor.mesh.constantCount,
+        ),
+    };
+
+    let desc = wgc::pipeline::MeshPipelineDescriptor {
+        label: string_view_into_label(descriptor.label),
+        layout: descriptor.layout.as_ref().map(|v| v.id),
+        task,
+        mesh,
+        primitive: {
+            follow_chain!(map_primitive_state(
+                (descriptor.primitive),
+                WGPUSType_PrimitiveStateExtras => native::WGPUPrimitiveStateExtras
+            ))
+        },
+        depth_stencil: descriptor.depthStencil.as_ref().map(|desc| {
+            let format = conv::map_texture_format(desc.format)
+                .expect("invalid texture format for depth stencil state");
+            if texture_format_has_depth(format) {
+                if desc.depthWriteEnabled == native::WGPUOptionalBool_Undefined {
+                    panic!("Depth write not specified for depth format")
+                }
+            } else if desc.depthWriteEnabled == native::WGPUOptionalBool_True {
+                panic!("Depth write enabled for non-depth format")
+            }
+            wgt::DepthStencilState {
+                format,
+                depth_write_enabled: Some(
+                    desc.depthWriteEnabled == native::WGPUOptionalBool_True,
+                ),
+                depth_compare: Some(
+                    conv::map_compare_function(desc.depthCompare)
+                        .expect("invalid depth compare function for depth stencil state")
+                        .unwrap_or(wgt::CompareFunction::Always),
+                ),
+                stencil: wgt::StencilState {
+                    front: conv::map_stencil_face_state(desc.stencilFront, "front"),
+                    back: conv::map_stencil_face_state(desc.stencilBack, "back"),
+                    read_mask: desc.stencilReadMask,
+                    write_mask: desc.stencilWriteMask,
+                },
+                bias: wgt::DepthBiasState {
+                    constant: desc.depthBias,
+                    slope_scale: desc.depthBiasSlopeScale,
+                    clamp: desc.depthBiasClamp,
+                },
+            }
+        }),
+        multisample: wgt::MultisampleState {
+            count: descriptor.multisample.count,
+            mask: descriptor.multisample.mask as u64,
+            alpha_to_coverage_enabled: descriptor.multisample.alphaToCoverageEnabled != 0,
+        },
+        fragment: descriptor
+            .fragment
+            .as_ref()
+            .map(|fragment| wgc::pipeline::FragmentState {
+                stage: wgc::pipeline::ProgrammableStageDescriptor {
+                    module: fragment
+                        .module
+                        .as_ref()
+                        .expect("invalid fragment shader module")
+                        .id
+                        .expect("invalid fragment shader module id"),
+                    entry_point: string_view_into_label(fragment.entryPoint),
+                    constants: make_slice(fragment.constants, fragment.constantCount)
+                        .iter()
+                        .map(|entry| {
+                            (
+                                string_view_into_str(entry.key).unwrap_or("").to_string(),
+                                entry.value,
+                            )
+                        })
+                        .collect(),
+                    zero_initialize_workgroup_memory: false,
+                },
+                targets: Cow::Owned(
+                    make_slice(fragment.targets, fragment.targetCount)
+                        .iter()
+                        .map(|color_target| {
+                            conv::map_texture_format(color_target.format).map(|format| {
+                                wgt::ColorTargetState {
+                                    format,
+                                    blend: color_target.blend.as_ref().map(|blend| {
+                                        wgt::BlendState {
+                                            color: conv::map_blend_component(blend.color),
+                                            alpha: conv::map_blend_component(blend.alpha),
+                                        }
+                                    }),
+                                    write_mask: from_u64_bits(color_target.writeMask).unwrap(),
+                                }
+                            })
+                        })
+                        .collect(),
+                ),
+            }),
+        multiview: None,
+        cache: {
+            unsafe fn get_mesh_cache(
+                _desc: &native::WGPUMeshPipelineDescriptor,
+                extras: Option<&native::WGPUMeshPipelineDescriptorExtras>,
+            ) -> Option<id::PipelineCacheId> {
+                extras.and_then(|e| unsafe { e.cache.as_ref() }).map(|c| c.id)
+            }
+            follow_chain!(get_mesh_cache(
+                (descriptor),
+                WGPUSType_MeshPipelineDescriptorExtras => native::WGPUMeshPipelineDescriptorExtras
+            ))
+        },
+    };
+
+    let (render_pipeline_id, error) =
+        context.device_create_mesh_pipeline(device_id, &desc, None);
+    if let Some(cause) = error {
+        if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
+            log::error!("Shader translation error for stage {:?}: {}", stage, error);
+            log::error!("Please report it to https://github.com/gfx-rs/wgpu");
+        }
+        handle_error(
+            error_sink,
+            cause,
+            desc.label,
+            "wgpuDeviceCreateMeshPipeline",
+        );
+    }
+
+    Arc::into_raw(Arc::new(WGPURenderPipelineImpl {
+        context: context.clone(),
+        id: render_pipeline_id,
+        error_sink: error_sink.clone(),
+    }))
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUSamplerDescriptor>,
@@ -4850,6 +5030,111 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
             cause,
             None,
             "wgpuRenderPassEncoderMultiDrawIndexedIndirectCount",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawMeshTasks(
+    pass: native::WGPURenderPassEncoder,
+    group_count_x: u32,
+    group_count_y: u32,
+    group_count_z: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+    match pass
+        .context
+        .render_pass_draw_mesh_tasks(encoder, group_count_x, group_count_y, group_count_z)
+    {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuRenderPassEncoderDrawMeshTasks",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderDrawMeshTasksIndirect(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+    match pass
+        .context
+        .render_pass_draw_mesh_tasks_indirect(encoder, buffer_id, offset)
+    {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuRenderPassEncoderDrawMeshTasksIndirect",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    count: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+    match pass
+        .context
+        .render_pass_multi_draw_mesh_tasks_indirect(encoder, buffer_id, offset, count)
+    {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuRenderPassEncoderMultiDrawMeshTasksIndirect",
+        ),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(
+    pass: native::WGPURenderPassEncoder,
+    buffer: native::WGPUBuffer,
+    offset: u64,
+    count_buffer: native::WGPUBuffer,
+    count_buffer_offset: u64,
+    max_count: u32,
+) {
+    let pass = pass.as_ref().expect("invalid render pass");
+    let buffer_id = buffer.as_ref().expect("invalid buffer").id;
+    let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
+    let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
+
+    match pass.context.render_pass_multi_draw_mesh_tasks_indirect_count(
+        encoder,
+        buffer_id,
+        offset,
+        count_buffer_id,
+        count_buffer_offset,
+        max_count,
+    ) {
+        Ok(()) => (),
+        Err(cause) => handle_error(
+            &pass.error_sink,
+            cause,
+            None,
+            "wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount",
         ),
     }
 }

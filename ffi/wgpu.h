@@ -45,6 +45,8 @@ typedef enum WGPUNativeSType
     WGPUSType_ComputePipelineDescriptorExtras = 0x0003000D,
     /** Identifies @ref WGPURenderPipelineDescriptorExtras. */
     WGPUSType_RenderPipelineDescriptorExtras = 0x0003000E,
+    /** Identifies @ref WGPUMeshPipelineDescriptorExtras. */
+    WGPUSType_MeshPipelineDescriptorExtras = 0x0003000F,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -643,8 +645,7 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_TextureInt64Atomic = 0x00030030,
     // TODO: not implemented yet, see https://github.com/gfx-rs/wgpu/issues/7149
     // WGPUNativeFeature_UniformBufferBindingArrays = 0x00030031,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_MeshShader = 0x00030032,
+    WGPUNativeFeature_MeshShader = 0x00030032,
     // WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
     // WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
     // WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
@@ -1464,6 +1465,67 @@ typedef struct WGPURenderPipelineDescriptorExtras
     WGPU_NULLABLE WGPUPipelineCache cache;
 } WGPURenderPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Describes the mesh shader stage in a @ref WGPUMeshPipelineDescriptor.
+ *
+ * Requires @ref WGPUNativeFeature_MeshShader.
+ */
+typedef struct WGPUMeshState
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUShaderModule module;
+    WGPUStringView entryPoint;
+    size_t constantCount;
+    WGPUConstantEntry const * constants;
+} WGPUMeshState WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Describes the optional task shader stage in a @ref WGPUMeshPipelineDescriptor.
+ *
+ * Requires @ref WGPUNativeFeature_MeshShader.
+ */
+typedef struct WGPUTaskState
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUShaderModule module;
+    WGPUStringView entryPoint;
+    size_t constantCount;
+    WGPUConstantEntry const * constants;
+} WGPUTaskState WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for @ref wgpuDeviceCreateMeshPipeline.
+ *
+ * A mesh pipeline replaces the vertex stage with an optional task stage
+ * and a required mesh stage. All other fields mirror @ref WGPURenderPipelineDescriptor.
+ *
+ * Requires @ref WGPUNativeFeature_MeshShader.
+ */
+typedef struct WGPUMeshPipelineDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    WGPU_NULLABLE WGPUPipelineLayout layout;
+    /** Optional task shader stage. NULL if no task shader is used. */
+    WGPU_NULLABLE WGPUTaskState const * task;
+    WGPUMeshState mesh;
+    WGPUPrimitiveState primitive;
+    WGPU_NULLABLE WGPUDepthStencilState const * depthStencil;
+    WGPUMultisampleState multisample;
+    WGPU_NULLABLE WGPUFragmentState const * fragment;
+} WGPUMeshPipelineDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUMeshPipelineDescriptor to attach a pipeline cache.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUMeshPipelineDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+} WGPUMeshPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
 
 typedef enum WGPUNativeTextureFormat
@@ -1617,6 +1679,11 @@ extern "C"
     void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
     void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 
+    void wgpuRenderPassEncoderDrawMeshTasks(WGPURenderPassEncoder encoder, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+    void wgpuRenderPassEncoderDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset);
+    void wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
+    void wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer countBuffer, uint64_t countBufferOffset, uint32_t maxCount);
+
     void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
     void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
     void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
@@ -1633,6 +1700,7 @@ extern "C"
 
     WGPUShaderModule wgpuDeviceCreateShaderModuleTrusted(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor, WGPUShaderRuntimeChecks runtimeChecks);
 
+    WGPURenderPipeline wgpuDeviceCreateMeshPipeline(WGPUDevice device, WGPUMeshPipelineDescriptor const * descriptor);
     WGPUPipelineCache wgpuDeviceCreatePipelineCache(WGPUDevice device, WGPUPipelineCacheDescriptor const * descriptor);
     /**
      * Retrieve serialized cache data.

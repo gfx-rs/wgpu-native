@@ -1380,9 +1380,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     // if features.contains(wgt::Features::UNIFORM_BUFFER_BINDING_ARRAYS) {
     //     temp.push(native::WGPUNativeFeature_UniformBufferBindingArrays);
     // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
-    //     temp.push(native::WGPUNativeFeature_MeshShader);
-    // }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
+        temp.push(native::WGPUNativeFeature_MeshShader);
+    }
     // if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
     //     temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
     // }
@@ -1504,7 +1504,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
         // TODO: requires wgpu.h api change
         // native::WGPUNativeFeature_UniformBufferBindingArrays => Some(Features::UNIFORM_BUFFER_BINDING_ARRAYS),
-        // native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
+        native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
         // native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
         // native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
         // native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
