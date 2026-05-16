@@ -323,9 +323,19 @@ impl Drop for WGPUSamplerImpl {
     }
 }
 
+pub struct CompilationMessage {
+    pub message: String,
+    pub message_type: native::WGPUCompilationMessageType,
+    pub line_num: u64,
+    pub line_pos: u64,
+    pub offset: u64,
+    pub length: u64,
+}
+
 pub struct WGPUShaderModuleImpl {
     context: Arc<Context>,
     id: Option<id::ShaderModuleId>,
+    compilation_messages: Vec<CompilationMessage>,
 }
 impl Drop for WGPUShaderModuleImpl {
     fn drop(&mut self) {
@@ -801,6 +811,8 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.adapterType = map_adapter_type(result.device_type);
     info.vendorID = result.vendor;
     info.deviceID = result.device;
+    info.subgroupMaxSize = result.subgroup_max_size;
+    info.subgroupMinSize = result.subgroup_min_size;
 
     native::WGPUStatus_Success
 }
@@ -2089,7 +2101,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
                 _desc: &native::WGPUComputePipelineDescriptor,
                 extras: Option<&native::WGPUComputePipelineDescriptorExtras>,
             ) -> Option<id::PipelineCacheId> {
-                extras.and_then(|e| unsafe { e.cache.as_ref() }).map(|c| c.id)
+                extras
+                    .and_then(|e| unsafe { e.cache.as_ref() })
+                    .map(|c| c.id)
             }
             follow_chain!(get_compute_cache(
                 (descriptor),
@@ -2182,7 +2196,8 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineCache(
         fallback: descriptor.fallback != 0,
     };
 
-    let (pipeline_cache_id, error) = unsafe { context.device_create_pipeline_cache(device_id, &desc, None) };
+    let (pipeline_cache_id, error) =
+        unsafe { context.device_create_pipeline_cache(device_id, &desc, None) };
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -2533,9 +2548,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
             }
             wgt::DepthStencilState {
                 format,
-                depth_write_enabled: Some(
-                    desc.depthWriteEnabled == native::WGPUOptionalBool_True,
-                ),
+                depth_write_enabled: Some(desc.depthWriteEnabled == native::WGPUOptionalBool_True),
                 depth_compare: Some(
                     conv::map_compare_function(desc.depthCompare)
                         .expect("invalid depth compare function for depth stencil state")
@@ -2608,7 +2621,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
                 _desc: &native::WGPUMeshPipelineDescriptor,
                 extras: Option<&native::WGPUMeshPipelineDescriptorExtras>,
             ) -> Option<id::PipelineCacheId> {
-                extras.and_then(|e| unsafe { e.cache.as_ref() }).map(|c| c.id)
+                extras
+                    .and_then(|e| unsafe { e.cache.as_ref() })
+                    .map(|c| c.id)
             }
             follow_chain!(get_mesh_cache(
                 (descriptor),
@@ -2617,8 +2632,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
         },
     };
 
-    let (render_pipeline_id, error) =
-        context.device_create_mesh_pipeline(device_id, &desc, None);
+    let (render_pipeline_id, error) = context.device_create_mesh_pipeline(device_id, &desc, None);
     if let Some(cause) = error {
         if let wgc::pipeline::CreateRenderPipelineError::Internal { stage, ref error } = cause {
             log::error!("Shader translation error for stage {:?}: {}", stage, error);
@@ -2733,6 +2747,7 @@ unsafe fn create_shader_module_impl(
             return Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
                 context: context.clone(),
                 id: None,
+                compilation_messages: vec![],
             }));
         }
     };
@@ -2744,6 +2759,18 @@ unsafe fn create_shader_module_impl(
 
     let (shader_module_id, error) =
         context.device_create_shader_module(device_id, &desc, source, None);
+    let compilation_messages = if let Some(ref cause) = error {
+        vec![CompilationMessage {
+            message: format!("{cause}"),
+            message_type: native::WGPUCompilationMessageType_Error,
+            line_num: 0,
+            line_pos: 0,
+            offset: 0,
+            length: 0,
+        }]
+    } else {
+        vec![]
+    };
     if let Some(cause) = error {
         handle_error(error_sink, cause, desc.label, fn_ident);
     }
@@ -2751,6 +2778,7 @@ unsafe fn create_shader_module_impl(
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: Some(shader_module_id),
+        compilation_messages,
     }))
 }
 
@@ -4321,6 +4349,49 @@ pub unsafe extern "C" fn wgpuSamplerRelease(sampler: native::WGPUSampler) {
 // ShaderModule methods
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
+    shader_module: native::WGPUShaderModule,
+    callback_info: native::WGPUCompilationInfoCallbackInfo,
+) -> native::WGPUFuture {
+    let shader_module = shader_module.as_ref().expect("invalid shader module");
+
+    let c_messages: Vec<native::WGPUCompilationMessage> = shader_module
+        .compilation_messages
+        .iter()
+        .map(|m| native::WGPUCompilationMessage {
+            nextInChain: std::ptr::null_mut(),
+            message: str_into_string_view(&m.message),
+            type_: m.message_type,
+            lineNum: m.line_num,
+            linePos: m.line_pos,
+            offset: m.offset,
+            length: m.length,
+        })
+        .collect();
+
+    let compilation_info = native::WGPUCompilationInfo {
+        nextInChain: std::ptr::null_mut(),
+        messageCount: c_messages.len(),
+        messages: if c_messages.is_empty() {
+            std::ptr::null()
+        } else {
+            c_messages.as_ptr()
+        },
+    };
+
+    if let Some(callback) = callback_info.callback {
+        callback(
+            native::WGPUCompilationInfoRequestStatus_Success,
+            &compilation_info,
+            callback_info.userdata1,
+            callback_info.userdata2,
+        );
+    }
+
+    native::WGPUFuture { id: 0 }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuShaderModuleAddRef(shader_module: native::WGPUShaderModule) {
     assert!(!shader_module.is_null(), "invalid shader module");
     Arc::increment_strong_count(shader_module);
@@ -4840,6 +4911,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
 
     let (shader_module_id, error) =
         context.device_create_shader_module_passthrough(device_id, &desc, None);
+    let compilation_messages = if let Some(ref cause) = error {
+        vec![CompilationMessage {
+            message: format!("{cause}"),
+            message_type: native::WGPUCompilationMessageType_Error,
+            line_num: 0,
+            line_pos: 0,
+            offset: 0,
+            length: 0,
+        }]
+    } else {
+        vec![]
+    };
     if let Some(cause) = error {
         handle_error(
             error_sink,
@@ -4852,6 +4935,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: Some(shader_module_id),
+        compilation_messages,
     }))
 }
 
@@ -5044,10 +5128,12 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderDrawMeshTasks(
     let pass = pass.as_ref().expect("invalid render pass");
     let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
 
-    match pass
-        .context
-        .render_pass_draw_mesh_tasks(encoder, group_count_x, group_count_y, group_count_z)
-    {
+    match pass.context.render_pass_draw_mesh_tasks(
+        encoder,
+        group_count_x,
+        group_count_y,
+        group_count_z,
+    ) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -5121,14 +5207,16 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(
     let count_buffer_id = count_buffer.as_ref().expect("invalid count buffer").id;
     let encoder = pass.encoder.as_mut().expect("invalid render pass encoder");
 
-    match pass.context.render_pass_multi_draw_mesh_tasks_indirect_count(
-        encoder,
-        buffer_id,
-        offset,
-        count_buffer_id,
-        count_buffer_offset,
-        max_count,
-    ) {
+    match pass
+        .context
+        .render_pass_multi_draw_mesh_tasks_indirect_count(
+            encoder,
+            buffer_id,
+            offset,
+            count_buffer_id,
+            count_buffer_offset,
+            max_count,
+        ) {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,

@@ -177,14 +177,6 @@ pub extern "C" fn wgpuSamplerSetLabel(
 }
 
 #[no_mangle]
-pub extern "C" fn wgpuShaderModuleGetCompilationInfo(
-    _shader_module: native::WGPUShaderModule,
-    _callback: native::WGPUCompilationInfoCallbackInfo,
-) -> native::WGPUFuture {
-    unimplemented!();
-}
-
-#[no_mangle]
 pub extern "C" fn wgpuShaderModuleSetLabel(
     _shader_module: native::WGPUShaderModule,
     _label: native::WGPUStringView,
