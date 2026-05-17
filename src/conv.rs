@@ -2016,7 +2016,7 @@ pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType
         wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
         wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
         wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
-        wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+        wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_Unknown,
         wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
     }
 }

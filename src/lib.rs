@@ -2108,6 +2108,22 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
+    unsafe fn get_compute_extras(
+        _desc: &native::WGPUComputePipelineDescriptor,
+        extras: Option<&native::WGPUComputePipelineDescriptorExtras>,
+    ) -> (Option<id::PipelineCacheId>, bool) {
+        (
+            extras
+                .and_then(|e| unsafe { e.cache.as_ref() })
+                .map(|c| c.id),
+            extras.map_or(false, |e| e.zeroInitializeWorkgroupMemory != 0),
+        )
+    }
+    let (compute_cache, zero_init_workgroup) = follow_chain!(get_compute_extras(
+        (descriptor),
+        WGPUSType_ComputePipelineDescriptorExtras => native::WGPUComputePipelineDescriptorExtras
+    ));
+
     let desc = wgc::pipeline::ComputePipelineDescriptor {
         label: string_view_into_label(descriptor.label),
         layout: descriptor.layout.as_ref().map(|v| v.id),
@@ -2132,23 +2148,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
                 )
             })
             .collect(),
-            // TODO(wgpu.h)
-            zero_initialize_workgroup_memory: false,
+            zero_initialize_workgroup_memory: zero_init_workgroup,
         },
-        cache: {
-            unsafe fn get_compute_cache(
-                _desc: &native::WGPUComputePipelineDescriptor,
-                extras: Option<&native::WGPUComputePipelineDescriptorExtras>,
-            ) -> Option<id::PipelineCacheId> {
-                extras
-                    .and_then(|e| unsafe { e.cache.as_ref() })
-                    .map(|c| c.id)
-            }
-            follow_chain!(get_compute_cache(
-                (descriptor),
-                WGPUSType_ComputePipelineDescriptorExtras => native::WGPUComputePipelineDescriptorExtras
-            ))
-        },
+        cache: compute_cache,
     };
 
     let (compute_pipeline_id, error) =
@@ -2348,6 +2350,23 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
+    unsafe fn get_render_extras(
+        _desc: &native::WGPURenderPipelineDescriptor,
+        extras: Option<&native::WGPURenderPipelineDescriptorExtras>,
+    ) -> (Option<id::PipelineCacheId>, Option<NonZeroU32>, bool) {
+        (
+            extras
+                .and_then(|e| unsafe { e.cache.as_ref() })
+                .map(|c| c.id),
+            extras.and_then(|e| NonZeroU32::new(e.multiviewMask)),
+            extras.map_or(false, |e| e.zeroInitializeWorkgroupMemory != 0),
+        )
+    }
+    let (render_cache, multiview_mask, zero_init_workgroup) = follow_chain!(get_render_extras(
+        (descriptor),
+        WGPUSType_RenderPipelineDescriptorExtras => native::WGPURenderPipelineDescriptorExtras
+    ));
+
     let desc = wgc::pipeline::RenderPipelineDescriptor {
         label: string_view_into_label(descriptor.label),
         layout: descriptor.layout.as_ref().map(|v| v.id),
@@ -2370,8 +2389,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         )
                     })
                     .collect(),
-                // TODO(wgpu.h)
-                zero_initialize_workgroup_memory: false,
+                zero_initialize_workgroup_memory: zero_init_workgroup,
             },
             buffers: Cow::Owned(
                 make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
@@ -2468,8 +2486,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                             )
                         })
                         .collect(),
-                    // TODO(wgpu.h)
-                    zero_initialize_workgroup_memory: false,
+                    zero_initialize_workgroup_memory: zero_init_workgroup,
                 },
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount)
@@ -2491,19 +2508,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                         .collect(),
                 ),
             }),
-        multiview_mask: None,
-        cache: {
-            unsafe fn get_render_cache(
-                _desc: &native::WGPURenderPipelineDescriptor,
-                extras: Option<&native::WGPURenderPipelineDescriptorExtras>,
-            ) -> Option<id::PipelineCacheId> {
-                extras.and_then(|e| unsafe { e.cache.as_ref() }).map(|c| c.id)
-            }
-            follow_chain!(get_render_cache(
-                (descriptor),
-                WGPUSType_RenderPipelineDescriptorExtras => native::WGPURenderPipelineDescriptorExtras
-            ))
-        },
+        multiview_mask,
+        cache: render_cache,
     };
 
     let (render_pipeline_id, error) = context.device_create_render_pipeline(device_id, &desc, None);
@@ -2538,11 +2544,29 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
+    unsafe fn get_mesh_extras(
+        _desc: &native::WGPUMeshPipelineDescriptor,
+        extras: Option<&native::WGPUMeshPipelineDescriptorExtras>,
+    ) -> (Option<id::PipelineCacheId>, Option<NonZeroU32>, bool) {
+        (
+            extras
+                .and_then(|e| unsafe { e.cache.as_ref() })
+                .map(|c| c.id),
+            extras.and_then(|e| NonZeroU32::new(e.multiviewMask)),
+            extras.map_or(false, |e| e.zeroInitializeWorkgroupMemory != 0),
+        )
+    }
+    let (mesh_cache, mesh_multiview, zero_init_workgroup) = follow_chain!(get_mesh_extras(
+        (descriptor),
+        WGPUSType_MeshPipelineDescriptorExtras => native::WGPUMeshPipelineDescriptorExtras
+    ));
+
     fn map_stage(
         state_module: native::WGPUShaderModule,
         state_entry_point: native::WGPUStringView,
         state_constants: *const native::WGPUConstantEntry,
         state_constant_count: usize,
+        zero_initialize_workgroup_memory: bool,
     ) -> wgc::pipeline::ProgrammableStageDescriptor<'static> {
         wgc::pipeline::ProgrammableStageDescriptor {
             module: unsafe { state_module.as_ref() }
@@ -2561,12 +2585,18 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
                     )
                 })
                 .collect(),
-            zero_initialize_workgroup_memory: false,
+            zero_initialize_workgroup_memory,
         }
     }
 
     let task = descriptor.task.as_ref().map(|t| wgc::pipeline::TaskState {
-        stage: map_stage(t.module, t.entryPoint, t.constants, t.constantCount),
+        stage: map_stage(
+            t.module,
+            t.entryPoint,
+            t.constants,
+            t.constantCount,
+            zero_init_workgroup,
+        ),
     });
 
     let mesh = wgc::pipeline::MeshState {
@@ -2575,6 +2605,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
             descriptor.mesh.entryPoint,
             descriptor.mesh.constants,
             descriptor.mesh.constantCount,
+            zero_init_workgroup,
         ),
     };
 
@@ -2646,7 +2677,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
                             )
                         })
                         .collect(),
-                    zero_initialize_workgroup_memory: false,
+                    zero_initialize_workgroup_memory: zero_init_workgroup,
                 },
                 targets: Cow::Owned(
                     make_slice(fragment.targets, fragment.targetCount)
@@ -2668,21 +2699,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
                         .collect(),
                 ),
             }),
-        multiview: None,
-        cache: {
-            unsafe fn get_mesh_cache(
-                _desc: &native::WGPUMeshPipelineDescriptor,
-                extras: Option<&native::WGPUMeshPipelineDescriptorExtras>,
-            ) -> Option<id::PipelineCacheId> {
-                extras
-                    .and_then(|e| unsafe { e.cache.as_ref() })
-                    .map(|c| c.id)
-            }
-            follow_chain!(get_mesh_cache(
-                (descriptor),
-                WGPUSType_MeshPipelineDescriptorExtras => native::WGPUMeshPipelineDescriptorExtras
-            ))
-        },
+        multiview: mesh_multiview,
+        cache: mesh_cache,
     };
 
     let (render_pipeline_id, error) = context.device_create_mesh_pipeline(device_id, &desc, None);

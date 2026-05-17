@@ -1625,17 +1625,22 @@ typedef struct WGPUComputePipelineDescriptorExtras
 {
     WGPUChainedStruct chain;
     WGPU_NULLABLE WGPUPipelineCache cache;
+    WGPUBool zeroInitializeWorkgroupMemory;
 } WGPUComputePipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
- * Chained in @ref WGPURenderPipelineDescriptor to attach a pipeline cache.
+ * Chained in @ref WGPURenderPipelineDescriptor to attach a pipeline cache
+ * or configure multiview rendering.
  *
- * Requires @ref WGPUNativeFeature_PipelineCache.
+ * Requires @ref WGPUNativeFeature_PipelineCache for the cache field.
+ * Requires @ref WGPUNativeFeature_MultiView for the multiviewMask field.
  */
 typedef struct WGPURenderPipelineDescriptorExtras
 {
     WGPUChainedStruct chain;
     WGPU_NULLABLE WGPUPipelineCache cache;
+    uint32_t multiviewMask;
+    WGPUBool zeroInitializeWorkgroupMemory;
 } WGPURenderPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
@@ -1697,6 +1702,8 @@ typedef struct WGPUMeshPipelineDescriptorExtras
 {
     WGPUChainedStruct chain;
     WGPU_NULLABLE WGPUPipelineCache cache;
+    uint32_t multiviewMask;
+    WGPUBool zeroInitializeWorkgroupMemory;
 } WGPUMeshPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
