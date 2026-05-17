@@ -4,7 +4,8 @@ use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
     map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
     map_instance_descriptor, map_pipeline_layout_descriptor, map_query_set_descriptor,
-    map_query_set_index, map_shader_module, map_shader_runtime_checks, map_surface,
+    map_query_set_index, map_sampler_extras, map_shader_module, map_shader_runtime_checks,
+    map_surface,
     map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
@@ -15,7 +16,7 @@ use std::{
     ffi::c_void,
     fmt::Display,
     mem::{self},
-    num::NonZeroU64,
+    num::{NonZeroU32, NonZeroU64},
     sync::{atomic, Arc, Weak},
     thread,
 };
@@ -804,7 +805,7 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     let result = context.adapter_get_info(adapter_id);
 
     info.vendor = utils::str_into_owned_string_view(&result.driver);
-    info.architecture = EMPTY_STRING; // TODO(webgpu.h)
+    info.architecture = EMPTY_STRING; // no source in wgpu-types
     info.device = utils::str_into_owned_string_view(&result.name);
     info.description = utils::str_into_owned_string_view(&result.driver_info);
     info.backendType = map_backend_type(result.backend);
@@ -813,6 +814,18 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.deviceID = result.device;
     info.subgroupMaxSize = result.subgroup_max_size;
     info.subgroupMinSize = result.subgroup_min_size;
+
+    if let Some(native::WGPUChainedStruct {
+        sType: native::WGPUSType_AdapterInfoExtras,
+        ..
+    }) = unsafe { info.nextInChain.as_ref() }
+    {
+        let extras =
+            unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
+        extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
+        extras.devicePciBusId =
+            utils::str_into_owned_string_view(&result.device_pci_bus_id);
+    }
 
     native::WGPUStatus_Success
 }
@@ -842,6 +855,18 @@ pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAd
     utils::drop_string_view(adapter_info.architecture);
     utils::drop_string_view(adapter_info.device);
     utils::drop_string_view(adapter_info.description);
+
+    if let Some(native::WGPUChainedStruct {
+        sType: native::WGPUSType_AdapterInfoExtras,
+        ..
+    }) = unsafe { adapter_info.nextInChain.as_ref() }
+    {
+        let extras = unsafe {
+            &mut *(adapter_info.nextInChain as *mut native::WGPUAdapterInfoExtras)
+        };
+        utils::drop_string_view(extras.devicePciBusId);
+        extras.devicePciBusId = EMPTY_STRING;
+    }
 }
 
 #[no_mangle]
@@ -863,7 +888,8 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
         Some(descriptor) => {
             let (desc, error_callback) = follow_chain!(
                 map_device_descriptor((descriptor, base_limits),
-                WGPUSType_DeviceExtras => native::WGPUDeviceExtras)
+                WGPUSType_DeviceExtras => native::WGPUDeviceExtras,
+                WGPUSType_DeviceDescriptorExtras => native::WGPUDeviceDescriptorExtras)
             );
             let device_lost_handler = DeviceLostCallback {
                 callback: descriptor.deviceLostCallbackInfo.callback,
@@ -1274,7 +1300,20 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
         depth_stencil_attachment: depth_stencil_attachment.as_ref(),
         timestamp_writes: timestamp_writes.as_ref(),
         occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
-        multiview_mask: None,
+        multiview_mask: {
+            let mut mask = None;
+            let mut chain = descriptor.nextInChain;
+            while let Some(next) = unsafe { chain.as_ref() } {
+                if next.sType == native::WGPUSType_RenderPassDescriptorExtras {
+                    let extras = unsafe {
+                        &*(next as *const _ as *const native::WGPURenderPassDescriptorExtras)
+                    };
+                    mask = NonZeroU32::new(extras.multiviewMask);
+                }
+                chain = next.next;
+            }
+            mask
+        },
     };
 
     let (pass, err) = context.command_encoder_begin_render_pass(command_encoder_id, &desc);
@@ -2256,6 +2295,20 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
+    let multiview = {
+        let mut mv = None;
+        let mut chain = descriptor.nextInChain;
+        while let Some(next) = unsafe { chain.as_ref() } {
+            if next.sType == native::WGPUSType_RenderBundleEncoderDescriptorExtras {
+                let extras = unsafe {
+                    &*(next as *const _ as *const native::WGPURenderBundleEncoderDescriptorExtras)
+                };
+                mv = NonZeroU32::new(extras.multiviewMask);
+            }
+            chain = next.next;
+        }
+        mv
+    };
     let desc = wgc::command::RenderBundleEncoderDescriptor {
         label: string_view_into_label(descriptor.label),
         color_formats: make_slice(descriptor.colorFormats, descriptor.colorFormatCount)
@@ -2270,7 +2323,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
             }
         }),
         sample_count: descriptor.sampleCount,
-        multiview: None,
+        multiview,
     };
 
     match wgc::command::RenderBundleEncoder::new(&desc, device_id) {
@@ -2664,30 +2717,35 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     };
 
     let desc = match descriptor {
-        Some(descriptor) => wgc::resource::SamplerDescriptor {
-            label: string_view_into_label(descriptor.label),
-            address_modes: [
-                conv::map_address_mode(descriptor.addressModeU)
-                    .unwrap_or(wgt::AddressMode::ClampToEdge),
-                conv::map_address_mode(descriptor.addressModeV)
-                    .unwrap_or(wgt::AddressMode::ClampToEdge),
-                conv::map_address_mode(descriptor.addressModeW)
-                    .unwrap_or(wgt::AddressMode::ClampToEdge),
-            ],
-            mag_filter: conv::map_filter_mode(descriptor.magFilter)
-                .unwrap_or(wgt::FilterMode::Nearest),
-            min_filter: conv::map_filter_mode(descriptor.minFilter)
-                .unwrap_or(wgt::FilterMode::Nearest),
-            mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter)
-                .unwrap_or(wgt::MipmapFilterMode::Nearest),
-            lod_min_clamp: descriptor.lodMinClamp,
-            lod_max_clamp: descriptor.lodMaxClamp,
-            compare: conv::map_compare_function(descriptor.compare)
-                .expect("Invalid compare function"),
-            anisotropy_clamp: descriptor.maxAnisotropy,
-            // TODO(wgpu.h)
-            border_color: None,
-        },
+        Some(descriptor) => {
+            let border_color = follow_chain!(
+                map_sampler_extras((descriptor),
+                WGPUSType_SamplerDescriptorExtras => native::WGPUSamplerDescriptorExtras)
+            );
+            wgc::resource::SamplerDescriptor {
+                label: string_view_into_label(descriptor.label),
+                address_modes: [
+                    conv::map_address_mode_native(descriptor.addressModeU)
+                        .unwrap_or(wgt::AddressMode::ClampToEdge),
+                    conv::map_address_mode_native(descriptor.addressModeV)
+                        .unwrap_or(wgt::AddressMode::ClampToEdge),
+                    conv::map_address_mode_native(descriptor.addressModeW)
+                        .unwrap_or(wgt::AddressMode::ClampToEdge),
+                ],
+                mag_filter: conv::map_filter_mode(descriptor.magFilter)
+                    .unwrap_or(wgt::FilterMode::Nearest),
+                min_filter: conv::map_filter_mode(descriptor.minFilter)
+                    .unwrap_or(wgt::FilterMode::Nearest),
+                mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter)
+                    .unwrap_or(wgt::MipmapFilterMode::Nearest),
+                lod_min_clamp: descriptor.lodMinClamp,
+                lod_max_clamp: descriptor.lodMaxClamp,
+                compare: conv::map_compare_function(descriptor.compare)
+                    .expect("Invalid compare function"),
+                anisotropy_clamp: descriptor.maxAnisotropy,
+                border_color,
+            }
+        }
         // wgpu-core doesn't have Default implementation for SamplerDescriptor,
         // use defaults from spec.
         // ref: https://gpuweb.github.io/gpuweb/#GPUSamplerDescriptor

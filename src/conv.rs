@@ -47,6 +47,34 @@ map_enum_with_undefined!(
     Repeat,
     MirrorRepeat
 );
+
+#[inline]
+pub fn map_address_mode_native(value: native::WGPUAddressMode) -> Option<wgt::AddressMode> {
+    if value == native::WGPUNativeAddressMode_ClampToBorder as native::WGPUAddressMode {
+        return Some(wgt::AddressMode::ClampToBorder);
+    }
+    map_address_mode(value)
+}
+
+#[inline]
+pub fn map_sampler_border_color(color: native::WGPUSamplerBorderColor) -> wgt::SamplerBorderColor {
+    match color {
+        native::WGPUSamplerBorderColor_TransparentBlack => wgt::SamplerBorderColor::TransparentBlack,
+        native::WGPUSamplerBorderColor_OpaqueBlack => wgt::SamplerBorderColor::OpaqueBlack,
+        native::WGPUSamplerBorderColor_OpaqueWhite => wgt::SamplerBorderColor::OpaqueWhite,
+        native::WGPUSamplerBorderColor_Zero => wgt::SamplerBorderColor::Zero,
+        x => panic!("Unknown sampler border color: {x}"),
+    }
+}
+
+#[inline]
+pub(crate) unsafe fn map_sampler_extras(
+    _descriptor: &native::WGPUSamplerDescriptor,
+    extras: Option<&native::WGPUSamplerDescriptorExtras>,
+) -> Option<wgt::SamplerBorderColor> {
+    extras.map(|e| map_sampler_border_color(e.borderColor))
+}
+
 map_enum_with_undefined!(
     map_filter_mode,
     WGPUFilterMode,
@@ -377,7 +405,7 @@ pub unsafe fn map_instance_descriptor(
         };
 
         let for_resource_creation = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
-        let for_device_loss = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
+        let for_device_loss = unsafe { extras.budgetForDeviceLoss.as_ref() }.copied();
 
         let display = map_native_display_handle(&extras.displayHandle);
 
@@ -457,10 +485,28 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     _extras: Option<&native::WGPUDeviceExtras>,
+    device_extras: Option<&native::WGPUDeviceDescriptorExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
 ) {
+    let memory_hints = match device_extras {
+        Some(e) => match e.memoryHints {
+            native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
+            native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeMin
+                    ..e.suballocatedDeviceMemoryBlockSizeMax,
+            },
+            _ => wgt::MemoryHints::Performance,
+        },
+        None => wgt::MemoryHints::default(),
+    };
+    let experimental_features = match device_extras {
+        Some(e) if e.experimentalFeaturesEnabled != 0 => unsafe {
+            wgt::ExperimentalFeatures::enabled()
+        },
+        _ => wgt::ExperimentalFeatures::disabled(),
+    };
     (
         wgt::DeviceDescriptor {
             label: string_view_into_label(des.label),
@@ -477,10 +523,9 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
-            // TODO(wgpu.h)
-            memory_hints: Default::default(),
+            memory_hints,
             trace: Default::default(),
-            experimental_features: wgt::ExperimentalFeatures::disabled(),
+            experimental_features,
         },
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
@@ -1286,13 +1331,12 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING) {
         temp.push(native::WGPUNativeFeature_StorageTextureArrayNonUniformIndexing);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
-    //     temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
-    // }
-    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
-    //     temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
-    // }
+    if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
+        temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
+    }
+    if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
+        temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
+    }
     if features.contains(wgt::Features::POLYGON_MODE_LINE) {
         temp.push(native::WGPUNativeFeature_PolygonModeLine);
     }
@@ -1353,10 +1397,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_FORMAT_P010) {
         temp.push(native::WGPUNativeFeature_TextureFormatP010);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::EXTERNAL_TEXTURE) {
-    //     temp.push(native::WGPUNativeFeature_ExternalTexture);
-    // }
+    if features.contains(wgt::Features::EXTERNAL_TEXTURE) {
+        temp.push(native::WGPUNativeFeature_ExternalTexture);
+    }
     if features.contains(wgt::Features::PIPELINE_CACHE) {
         temp.push(native::WGPUNativeFeature_PipelineCache);
     }
@@ -1366,45 +1409,40 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_INT64_ATOMIC_ALL_OPS) {
         temp.push(native::WGPUNativeFeature_ShaderInt64AtomicAllOps);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::VULKAN_GOOGLE_DISPLAY_TIMING) {
-    //     temp.push(native::WGPUNativeFeature_VulkanGoogleDisplayTiming);
-    // }
-    // if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
-    //     temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
-    // }
+    if features.contains(wgt::Features::VULKAN_GOOGLE_DISPLAY_TIMING) {
+        temp.push(native::WGPUNativeFeature_VulkanGoogleDisplayTiming);
+    }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
+    }
     if features.contains(wgt::Features::TEXTURE_INT64_ATOMIC) {
         temp.push(native::WGPUNativeFeature_TextureInt64Atomic);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::UNIFORM_BUFFER_BINDING_ARRAYS) {
-    //     temp.push(native::WGPUNativeFeature_UniformBufferBindingArrays);
-    // }
+    // WGPUNativeFeature_UniformBufferBindingArrays is not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
         temp.push(native::WGPUNativeFeature_MeshShader);
     }
-    // if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
-    //     temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
-    //     temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
-    // }
-    // if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
-    //     temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
-    // }
-    // if features.contains(wgt::Features::PASSTHROUGH_SHADERS) {
-    //     temp.push(native::WGPUNativeFeature_PassthroughShaders);
-    // }
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
+        temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
+        temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
+    }
+    if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
+        temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
+    }
+    if features.contains(wgt::Features::PASSTHROUGH_SHADERS) {
+        temp.push(native::WGPUNativeFeature_PassthroughShaders);
+    }
     if features.contains(wgt::Features::SHADER_BARYCENTRICS) {
         temp.push(native::WGPUNativeFeature_ShaderBarycentrics);
     }
     if features.contains(wgt::Features::SELECTIVE_MULTIVIEW) {
         temp.push(native::WGPUNativeFeature_SelectiveMultiview);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
-    //     temp.push(native::WGPUNativeFeature_MeshShaderPoints);
-    // }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
+        temp.push(native::WGPUNativeFeature_MeshShaderPoints);
+    }
     if features.contains(wgt::Features::MULTISAMPLE_ARRAY) {
         temp.push(native::WGPUNativeFeature_MultisampleArray);
     }
@@ -1469,9 +1507,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
         native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
         native::WGPUNativeFeature_StorageTextureArrayNonUniformIndexing => Some(Features::STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
-        // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
+        native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
+        native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
         native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
         native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
         native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
@@ -1493,26 +1530,22 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_ShaderFloat32Atomic => Some(Features::SHADER_FLOAT32_ATOMIC),
         native::WGPUNativeFeature_TextureAtomic => Some(Features::TEXTURE_ATOMIC),
         native::WGPUNativeFeature_TextureFormatP010 => Some(Features::TEXTURE_FORMAT_P010),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_ExternalTexture => Some(Features::EXTERNAL_TEXTURE),
+        native::WGPUNativeFeature_ExternalTexture => Some(Features::EXTERNAL_TEXTURE),
         native::WGPUNativeFeature_PipelineCache => Some(Features::PIPELINE_CACHE),
         native::WGPUNativeFeature_ShaderInt64AtomicMinMax => Some(Features::SHADER_INT64_ATOMIC_MIN_MAX),
         native::WGPUNativeFeature_ShaderInt64AtomicAllOps => Some(Features::SHADER_INT64_ATOMIC_ALL_OPS),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
-        // native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
+        native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
+        native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_UniformBufferBindingArrays => Some(Features::UNIFORM_BUFFER_BINDING_ARRAYS),
+        // WGPUNativeFeature_UniformBufferBindingArrays not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
         native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
-        // native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
-        // native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
-        // native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
-        // native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
+        native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
+        native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
+        native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
+        native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
         native::WGPUNativeFeature_ShaderBarycentrics => Some(Features::SHADER_BARYCENTRICS),
         native::WGPUNativeFeature_SelectiveMultiview => Some(Features::SELECTIVE_MULTIVIEW),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
+        native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
         native::WGPUNativeFeature_MultisampleArray => Some(Features::MULTISAMPLE_ARRAY),
         native::WGPUNativeFeature_CooperativeMatrix => Some(Features::EXPERIMENTAL_COOPERATIVE_MATRIX),
         native::WGPUNativeFeature_ShaderPerVertex => Some(Features::SHADER_PER_VERTEX),
@@ -1810,8 +1843,14 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     if (flags & native::WGPUTextureUsage_TextureBinding) != 0 {
         temp.insert(wgt::TextureUsages::TEXTURE_BINDING);
     }
+    if (flags & native::WGPUTextureUsage_StorageBinding) != 0 {
+        temp.insert(wgt::TextureUsages::STORAGE_BINDING);
+    }
     if (flags & native::WGPUTextureUsage_RenderAttachment) != 0 {
         temp.insert(wgt::TextureUsages::RENDER_ATTACHMENT);
+    }
+    if (flags & native::WGPUTextureUsage_TransientAttachment) != 0 {
+        temp.insert(wgt::TextureUsages::TRANSIENT);
     }
     temp
 }
@@ -1823,13 +1862,19 @@ pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUT
         flag |= native::WGPUTextureUsage_CopySrc;
     }
     if flags.contains(wgt::TextureUsages::COPY_DST) {
-        flag |= native::WGPUTextureUsage_CopySrc;
+        flag |= native::WGPUTextureUsage_CopyDst;
     }
     if flags.contains(wgt::TextureUsages::TEXTURE_BINDING) {
         flag |= native::WGPUTextureUsage_TextureBinding;
     }
+    if flags.contains(wgt::TextureUsages::STORAGE_BINDING) {
+        flag |= native::WGPUTextureUsage_StorageBinding;
+    }
     if flags.contains(wgt::TextureUsages::RENDER_ATTACHMENT) {
         flag |= native::WGPUTextureUsage_RenderAttachment;
+    }
+    if flags.contains(wgt::TextureUsages::TRANSIENT) {
+        flag |= native::WGPUTextureUsage_TransientAttachment;
     }
     flag
 }

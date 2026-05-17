@@ -47,6 +47,16 @@ typedef enum WGPUNativeSType
     WGPUSType_RenderPipelineDescriptorExtras = 0x0003000E,
     /** Identifies @ref WGPUMeshPipelineDescriptorExtras. */
     WGPUSType_MeshPipelineDescriptorExtras = 0x0003000F,
+    /** Identifies @ref WGPUAdapterInfoExtras. */
+    WGPUSType_AdapterInfoExtras = 0x00030010,
+    /** Identifies @ref WGPUSamplerDescriptorExtras. */
+    WGPUSType_SamplerDescriptorExtras = 0x00030011,
+    /** Identifies @ref WGPURenderPassDescriptorExtras. */
+    WGPUSType_RenderPassDescriptorExtras = 0x00030012,
+    /** Identifies @ref WGPURenderBundleEncoderDescriptorExtras. */
+    WGPUSType_RenderBundleEncoderDescriptorExtras = 0x00030013,
+    /** Identifies @ref WGPUDeviceDescriptorExtras. */
+    WGPUSType_DeviceDescriptorExtras = 0x00030014,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -343,9 +353,18 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_StorageTextureArrayNonUniformIndexing = 0x00030010,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
-    // WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
+    /**
+     * Allows the use of @ref WGPUSamplerBorderColor_Zero via @ref WGPUSamplerDescriptorExtras.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
+    /**
+     * Allows the use of @ref WGPUNativeAddressMode_ClampToBorder.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
     /**
      * Allows the user to set @ref WGPUPolygonMode_Line in
      * @ref WGPUPrimitiveStateExtras::polygonMode.
@@ -595,8 +614,12 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_TextureFormatP010 = 0x00030029,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_ExternalTexture = 0x0003002A,
+    /**
+     * Enables @c ExternalTexture support.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ExternalTexture = 0x0003002A,
     /**
      * Allows the use of pipeline cache objects
      * 
@@ -629,9 +652,18 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_ShaderInt64AtomicAllOps = 0x0003002D,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x0003002E,
-    // WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x0003002F,
+    /**
+     * Enables Vulkan VK_GOOGLE_display_timing extension.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x0003002E,
+    /**
+     * Enables Vulkan external memory for Win32 handles.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x0003002F,
     /**
      * Enables R64Uint image atomic min and max.
      * 
@@ -646,10 +678,30 @@ typedef enum WGPUNativeFeature
     // TODO: not implemented yet, see https://github.com/gfx-rs/wgpu/issues/7149
     // WGPUNativeFeature_UniformBufferBindingArrays = 0x00030031,
     WGPUNativeFeature_MeshShader = 0x00030032,
-    // WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
-    // WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
-    // WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
-    // WGPUNativeFeature_PassthroughShaders = 0x00030036,
+    /**
+     * Enables returning hit vertex data from ray tracing shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
+    /**
+     * Enables multiview in mesh shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
+    /**
+     * Enables extended vertex format support for acceleration structures.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
+    /**
+     * Enables passthrough shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_PassthroughShaders = 0x00030036,
     /**
      * Enables shader barycentric coordinates.
      * 
@@ -672,8 +724,12 @@ typedef enum WGPUNativeFeature
      * While metal supports this in theory, the behavior of `view_index` differs from vulkan and dx12 so the feature isn't exposed.
      */
     WGPUNativeFeature_SelectiveMultiview = 0x00030038,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_MeshShaderPoints = 0x00030039,
+    /**
+     * Enables point topology in mesh shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_MeshShaderPoints = 0x00030039,
     WGPUNativeFeature_MultisampleArray = 0x0003003A,
     /**
      * Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
@@ -1129,6 +1185,27 @@ typedef struct WGPUNativeDisplayHandle
     } data;
 } WGPUNativeDisplayHandle;
 
+/**
+ * Chained in @ref WGPUAdapterInfo to expose wgpu-native-specific adapter properties.
+ *
+ * Passed as @ref WGPUAdapterInfo::nextInChain to @ref wgpuAdapterGetInfo.
+ * Caller must free @ref devicePciBusId via @ref wgpuAdapterInfoFreeMembers.
+ */
+typedef struct WGPUAdapterInfoExtras
+{
+    WGPUChainedStruct chain;
+    /** Whether the adapter uses memory that is shared with the CPU and
+     *  benefits from keeping allocations small (e.g. integrated/mobile GPUs). */
+    WGPUBool transientSavesMemory;
+    /**
+     * PCI bus identifier for the adapter in the form @c "bus:device.function",
+     * e.g. @c "0000:01:00.0". Empty when not available.
+     *
+     * This is an \ref OutputString.
+     */
+    WGPUStringView devicePciBusId;
+} WGPUAdapterInfoExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef struct WGPUInstanceExtras
 {
     WGPUChainedStruct chain;
@@ -1387,6 +1464,49 @@ typedef struct WGPUSurfaceSourceSwapChainPanel
     void *panelNative;
 } WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Native extension for @ref WGPUAddressMode.
+ *
+ * Cast to @c WGPUAddressMode when storing in sampler descriptor fields.
+ */
+typedef enum WGPUNativeAddressMode
+{
+    /** Clamp to border color. Requires @ref WGPUNativeFeature_AddressModeClampToBorder. */
+    WGPUNativeAddressMode_ClampToBorder = 0x00030001,
+    WGPUNativeAddressMode_Force32 = 0x7FFFFFFF
+} WGPUNativeAddressMode;
+
+/**
+ * Border color to use when address mode is @ref WGPUNativeAddressMode_ClampToBorder.
+ *
+ * Pass via @ref WGPUSamplerDescriptorExtras.
+ */
+typedef enum WGPUSamplerBorderColor
+{
+    WGPUSamplerBorderColor_TransparentBlack = 0x00000000,
+    WGPUSamplerBorderColor_OpaqueBlack = 0x00000001,
+    WGPUSamplerBorderColor_OpaqueWhite = 0x00000002,
+    /** Requires @ref WGPUNativeFeature_AddressModeClampToZero. */
+    WGPUSamplerBorderColor_Zero = 0x00000003,
+    WGPUSamplerBorderColor_Force32 = 0x7FFFFFFF
+} WGPUSamplerBorderColor;
+
+/**
+ * Memory allocation strategy for device creation.
+ *
+ * Pass via @ref WGPUDeviceDescriptorExtras.
+ */
+typedef enum WGPUMemoryHints
+{
+    /** Favour performance over memory usage (default). */
+    WGPUMemoryHints_Performance = 0x00000000,
+    /** Favour memory usage over performance. */
+    WGPUMemoryHints_MemoryUsage = 0x00000001,
+    /** Manual suballocation block size. Use @ref WGPUDeviceDescriptorExtras fields. */
+    WGPUMemoryHints_Manual = 0x00000002,
+    WGPUMemoryHints_Force32 = 0x7FFFFFFF
+} WGPUMemoryHints;
+
 typedef enum WGPUPolygonMode
 {
     WGPUPolygonMode_Fill = 0,
@@ -1418,6 +1538,59 @@ typedef struct WGPUPrimitiveStateExtras
      */
     WGPUBool conservative;
 } WGPUPrimitiveStateExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSamplerDescriptor to set the border color.
+ *
+ * Required when any address mode is @ref WGPUNativeAddressMode_ClampToBorder.
+ * Requires @ref WGPUNativeFeature_AddressModeClampToBorder (or
+ * @ref WGPUNativeFeature_AddressModeClampToZero for @ref WGPUSamplerBorderColor_Zero).
+ */
+typedef struct WGPUSamplerDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPUSamplerBorderColor borderColor;
+} WGPUSamplerDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPURenderPassDescriptor to enable multiview rendering.
+ *
+ * Requires @ref WGPUNativeFeature_Multiview.
+ */
+typedef struct WGPURenderPassDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    /** Bitmask of view indices to render into. Zero disables multiview. */
+    uint32_t multiviewMask;
+} WGPURenderPassDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPURenderBundleEncoderDescriptor to enable multiview rendering.
+ *
+ * Requires @ref WGPUNativeFeature_Multiview.
+ */
+typedef struct WGPURenderBundleEncoderDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    /** Bitmask of view indices the bundle will render into. Zero disables multiview. */
+    uint32_t multiviewMask;
+} WGPURenderBundleEncoderDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUDeviceDescriptor to configure memory hints and experimental features.
+ */
+typedef struct WGPUDeviceDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    /** Memory allocation strategy. See @ref WGPUMemoryHints. Default: @ref WGPUMemoryHints_Performance. */
+    WGPUMemoryHints memoryHints;
+    /** Minimum suballocation block size in bytes. Only used when @c memoryHints is @ref WGPUMemoryHints_Manual. */
+    uint64_t suballocatedDeviceMemoryBlockSizeMin;
+    /** Maximum suballocation block size in bytes. Only used when @c memoryHints is @ref WGPUMemoryHints_Manual. */
+    uint64_t suballocatedDeviceMemoryBlockSizeMax;
+    /** If true, enables experimental wgpu features on the device. */
+    WGPUBool experimentalFeaturesEnabled;
+} WGPUDeviceDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Descriptor for creating a pipeline cache object via @ref wgpuDeviceCreatePipelineCache.
