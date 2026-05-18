@@ -15,6 +15,8 @@
 #include "webgpu.h"
 
 typedef struct WGPUPipelineCacheImpl* WGPUPipelineCache WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUBlasImpl* WGPUBlas WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUTlasImpl* WGPUTlas WGPU_OBJECT_ATTRIBUTE;
 
 typedef enum WGPUNativeSType
 {
@@ -57,6 +59,8 @@ typedef enum WGPUNativeSType
     WGPUSType_RenderBundleEncoderDescriptorExtras = 0x00030013,
     /** Identifies @ref WGPUDeviceDescriptorExtras. */
     WGPUSType_DeviceDescriptorExtras = 0x00030014,
+    /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
+    WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -818,6 +822,56 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
 
+/**
+ * Geometry kind stored in a bottom level acceleration structure.
+ */
+typedef enum WGPUBlasGeometryKind
+{
+    WGPUBlasGeometryKind_Triangles = 0x00000000,
+    WGPUBlasGeometryKind_AABBs = 0x00000001,
+    WGPUBlasGeometryKind_Force32 = 0x7FFFFFFF
+} WGPUBlasGeometryKind;
+
+/**
+ * Build mode for acceleration structures.
+ */
+typedef enum WGPUAccelerationStructureUpdateMode
+{
+    /** Always perform a full build. */
+    WGPUAccelerationStructureUpdateMode_Build = 0x00000000,
+    /** Perform an incremental update if possible. */
+    WGPUAccelerationStructureUpdateMode_PreferUpdate = 0x00000001,
+    WGPUAccelerationStructureUpdateMode_Force32 = 0x7FFFFFFF
+} WGPUAccelerationStructureUpdateMode;
+
+typedef WGPUFlags WGPUAccelerationStructureFlags;
+/** No flags. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_None = 0x00000000;
+/** Allow incremental updates. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowUpdate = 1 << 0;
+/** Allow compaction via @ref wgpuQueueCompactBlas. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowCompaction = 1 << 1;
+/** Optimize for fast ray tracing (non-dynamic geometry). */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_PreferFastTrace = 1 << 2;
+/** Optimize for fast build (dynamic geometry). */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_PreferFastBuild = 1 << 3;
+/** Minimize memory footprint. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_LowMemory = 1 << 4;
+/** Use transform buffer during BLAS build (only valid at BLAS creation). */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_UseTransform = 1 << 5;
+/** Allow retrieval of hit triangle vertices. Requires @ref WGPUNativeFeature_RayHitVertexReturn. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowRayHitVertexReturn = 1 << 6;
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_Force32 = 0x7FFFFFFF;
+
+typedef WGPUFlags WGPUAccelerationStructureGeometryFlags;
+/** No flags. */
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_None = 0x00000000;
+/** Geometry is opaque (no alpha testing). */
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_Opaque = 1 << 0;
+/** Prevent duplicate any-hit shader invocations per primitive. */
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_NoDuplicateAnyHitInvocation = 1 << 1;
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_Force32 = 0x7FFFFFFF;
+
 typedef enum WGPULogLevel
 {
     WGPULogLevel_Off = 0x00000000,
@@ -1418,6 +1472,8 @@ typedef struct WGPUBindGroupEntryExtras
     size_t samplerCount;
     WGPUTextureView const *textureViews;
     size_t textureViewCount;
+    /** For AccelerationStructure bindings. NULL for non-AS bindings. */
+    WGPU_NULLABLE WGPUTlas tlas;
 } WGPUBindGroupEntryExtras;
 
 typedef struct WGPUBindGroupLayoutEntryExtras
@@ -1706,6 +1762,211 @@ typedef struct WGPUMeshPipelineDescriptorExtras
     WGPUBool zeroInitializeWorkgroupMemory;
 } WGPUMeshPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Chained in @ref WGPUBindGroupLayoutEntry to describe an acceleration structure binding.
+ *
+ * Set @c chain.sType to @ref WGPUSType_AccelerationStructureBindingLayout.
+ * Requires @ref WGPUNativeFeature_RayQuery.
+ */
+typedef struct WGPUAccelerationStructureBindingLayout
+{
+    WGPUChainedStruct chain;
+    /** Enable vertex return. Requires @ref WGPUNativeFeature_RayHitVertexReturn. */
+    WGPUBool vertexReturn;
+} WGPUAccelerationStructureBindingLayout WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for creating a bottom level acceleration structure.
+ * Pass to @ref wgpuDeviceCreateBlas.
+ */
+typedef struct WGPUBlasDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    WGPUAccelerationStructureFlags flags;
+    WGPUAccelerationStructureUpdateMode updateMode;
+} WGPUBlasDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for creating a top level acceleration structure.
+ * Pass to @ref wgpuDeviceCreateTlas.
+ */
+typedef struct WGPUTlasDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    uint32_t maxInstances;
+    WGPUAccelerationStructureFlags flags;
+    WGPUAccelerationStructureUpdateMode updateMode;
+} WGPUTlasDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Size attributes for one group of triangle geometry in a BLAS.
+ * Used in @ref WGPUBlasSizeDescriptors.
+ */
+typedef struct WGPUBlasTriangleGeometrySizeDescriptor
+{
+    WGPUVertexFormat vertexFormat;
+    uint32_t vertexCount;
+    /** @ref WGPUIndexFormat_Undefined means no index buffer. */
+    WGPUIndexFormat indexFormat;
+    /** Ignored when @ref indexFormat is @ref WGPUIndexFormat_Undefined. */
+    uint32_t indexCount;
+    WGPUAccelerationStructureGeometryFlags flags;
+} WGPUBlasTriangleGeometrySizeDescriptor;
+
+/**
+ * Size attributes for one group of AABB geometry in a BLAS.
+ * Used in @ref WGPUBlasSizeDescriptors.
+ */
+typedef struct WGPUBlasAABBGeometrySizeDescriptor
+{
+    uint32_t primitiveCount;
+    WGPUAccelerationStructureGeometryFlags flags;
+} WGPUBlasAABBGeometrySizeDescriptor;
+
+/**
+ * Size descriptors for a BLAS.
+ * Set @ref kind and fill the matching pair of fields.
+ * The other pair should be NULL/0.
+ * Pass to @ref wgpuDeviceCreateBlas.
+ */
+typedef struct WGPUBlasSizeDescriptors
+{
+    WGPUBlasGeometryKind kind;
+    /** Triangle geometry descriptors (used when kind == Triangles). */
+    WGPUBlasTriangleGeometrySizeDescriptor const *triangleDescriptors;
+    size_t triangleDescriptorCount;
+    /** AABB geometry descriptors (used when kind == AABBs). */
+    WGPUBlasAABBGeometrySizeDescriptor const *aabbDescriptors;
+    size_t aabbDescriptorCount;
+} WGPUBlasSizeDescriptors;
+
+/**
+ * Triangle geometry for a BLAS build entry.
+ * Used in @ref WGPUBlasBuildEntry.
+ */
+typedef struct WGPUBlasTriangleGeometry
+{
+    WGPUChainedStruct const *nextInChain;
+    WGPUBlasTriangleGeometrySizeDescriptor const *size;
+    WGPUBuffer vertexBuffer;
+    /** NULL means no index buffer. */
+    WGPU_NULLABLE WGPUBuffer indexBuffer;
+    /** NULL means no transform. */
+    WGPU_NULLABLE WGPUBuffer transformBuffer;
+    uint32_t firstVertex;
+    uint64_t vertexStride;
+    /** Ignored when @ref indexBuffer is NULL. */
+    uint32_t firstIndex;
+    /** Ignored when @ref transformBuffer is NULL. */
+    uint64_t transformBufferOffset;
+} WGPUBlasTriangleGeometry;
+
+/**
+ * AABB geometry for a BLAS build entry.
+ * Used in @ref WGPUBlasBuildEntry.
+ */
+typedef struct WGPUBlasAABBGeometry
+{
+    WGPUChainedStruct const *nextInChain;
+    WGPUBlasAABBGeometrySizeDescriptor const *size;
+    uint64_t stride;
+    WGPUBuffer aabbBuffer;
+    uint32_t primitiveOffset;
+} WGPUBlasAABBGeometry;
+
+/**
+ * Describes one BLAS and its geometries to build.
+ * Set @ref geometryKind and fill the matching pair of fields.
+ * The other pair should be NULL/0.
+ * Passed as an array to @ref wgpuCommandEncoderBuildAccelerationStructures.
+ */
+typedef struct WGPUBlasBuildEntry
+{
+    WGPUBlas blas;
+    WGPUBlasGeometryKind geometryKind;
+    /** Triangle geometries (used when geometryKind == Triangles). */
+    WGPUBlasTriangleGeometry const *triangleGeometries;
+    size_t triangleGeometryCount;
+    /** AABB geometries (used when geometryKind == AABBs). */
+    WGPUBlasAABBGeometry const *aabbGeometries;
+    size_t aabbGeometryCount;
+} WGPUBlasBuildEntry;
+
+/**
+ * One instance slot in a @ref WGPUTlasPackage.
+ * Set @ref blas to NULL to mark the slot as inactive.
+ */
+typedef struct WGPUTlasInstance
+{
+    /** NULL means this slot is inactive. */
+    WGPU_NULLABLE WGPUBlas blas;
+    /** Affine transform 3x4, row major (3 rows, 4 columns). */
+    float transform[12];
+    /** Custom index passed to the shader (must fit in 24 bits). */
+    uint32_t customData;
+    /** Visibility mask for ray filtering. */
+    uint8_t mask;
+} WGPUTlasInstance;
+
+/**
+ * Describes one TLAS and its instances to build.
+ * Passed as an array to @ref wgpuCommandEncoderBuildAccelerationStructures.
+ */
+typedef struct WGPUTlasPackage
+{
+    WGPUTlas tlas;
+    WGPUTlasInstance const *instances;
+    size_t instanceCount;
+    /** First unmodified instance index (for partial updates). */
+    uint32_t lowestUnmodified;
+} WGPUTlasPackage;
+
+/**
+ * Internal counters from the HAL layer, returned by @ref wgpuDeviceGetInternalCounters.
+ */
+typedef struct WGPUHalCounters
+{
+    int64_t buffers;
+    int64_t textures;
+    int64_t textureViews;
+    int64_t bindGroups;
+    int64_t bindGroupLayouts;
+    int64_t renderPipelines;
+    int64_t computePipelines;
+    int64_t pipelineLayouts;
+    int64_t samplers;
+    int64_t commandEncoders;
+    int64_t shaderModules;
+    int64_t querySets;
+    int64_t fences;
+    int64_t bufferMemory;
+    int64_t textureMemory;
+    int64_t accelerationStructureMemory;
+    int64_t memoryAllocations;
+} WGPUHalCounters;
+
+/**
+ * All internal counters, returned by @ref wgpuDeviceGetInternalCounters.
+ */
+typedef struct WGPUInternalCounters
+{
+    WGPUHalCounters hal;
+} WGPUInternalCounters;
+
+/** Callback invoked when a BLAS compaction is ready. */
+typedef void (*WGPUBlasCompactCallback)(WGPUBool success, void *userdata1, void *userdata2);
+
+typedef struct WGPUBlasCompactCallbackInfo
+{
+    WGPUChainedStruct const *nextInChain;
+    WGPUCallbackMode mode;
+    WGPUBlasCompactCallback callback;
+    void *userdata1;
+    void *userdata2;
+} WGPUBlasCompactCallbackInfo;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
 
 typedef enum WGPUNativeTextureFormat
@@ -1892,6 +2153,53 @@ extern "C"
     size_t wgpuPipelineCacheGetData(WGPUPipelineCache cache, void * data);
     void wgpuPipelineCacheAddRef(WGPUPipelineCache cache);
     void wgpuPipelineCacheRelease(WGPUPipelineCache cache);
+
+    // ── Acceleration structures ───────────────────────────────────────────────
+
+    /** Create a bottom level acceleration structure. */
+    WGPUBlas wgpuDeviceCreateBlas(WGPUDevice device, WGPUBlasDescriptor const *descriptor, WGPUBlasSizeDescriptors sizes);
+    /** Create a top level acceleration structure. */
+    WGPUTlas wgpuDeviceCreateTlas(WGPUDevice device, WGPUTlasDescriptor const *descriptor);
+
+    /**
+     * Return the device address handle for a BLAS.
+     * Returns 0 if the handle is not available.
+     */
+    uint64_t wgpuBlasGetHandle(WGPUBlas blas);
+
+    void wgpuBlasAddRef(WGPUBlas blas);
+    void wgpuBlasRelease(WGPUBlas blas);
+    void wgpuTlasAddRef(WGPUTlas tlas);
+    void wgpuTlasRelease(WGPUTlas tlas);
+
+    /** Begin preparing a BLAS for compaction. Calls @p callbackInfo when ready. */
+    void wgpuBlasPrepareCompactAsync(WGPUBlas blas, WGPUBlasCompactCallbackInfo callbackInfo);
+    /** Returns true if the BLAS is ready to be compacted via @ref wgpuQueueCompactBlas. */
+    WGPUBool wgpuBlasReadyForCompaction(WGPUBlas blas);
+
+    /**
+     * Compact a BLAS. Returns a new (smaller) BLAS handle.
+     * The old handle remains valid and must be released separately.
+     */
+    WGPUBlas wgpuQueueCompactBlas(WGPUQueue queue, WGPUBlas blas);
+
+    /** Query internal wgpu-core/HAL resource counters for debugging. */
+    WGPUInternalCounters wgpuDeviceGetInternalCounters(WGPUDevice device);
+
+    /** Build acceleration structures on the command encoder. */
+    void wgpuCommandEncoderBuildAccelerationStructures(
+        WGPUCommandEncoder commandEncoder,
+        size_t blasEntryCount, WGPUBlasBuildEntry const *blasEntries,
+        size_t tlasPackageCount, WGPUTlasPackage const *tlasPackages);
+
+    /**
+     * Mark acceleration structures as already built (for external builds).
+     * Registers them with the wgpu-core tracker without issuing GPU commands.
+     */
+    void wgpuCommandEncoderMarkAccelerationStructuresBuilt(
+        WGPUCommandEncoder commandEncoder,
+        size_t blasCount, WGPUBlas const *blases,
+        size_t tlasCount, WGPUTlas const *tlases);
 
 #ifdef __cplusplus
 } // extern "C"

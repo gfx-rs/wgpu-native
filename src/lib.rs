@@ -1,12 +1,13 @@
 #![allow(clippy::missing_safety_doc)]
 
 use conv::{
-    from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
-    map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
-    map_instance_descriptor, map_pipeline_layout_descriptor, map_query_set_descriptor,
-    map_query_set_index, map_sampler_extras, map_shader_module, map_shader_runtime_checks,
-    map_surface,
-    map_surface_configuration, CreateSurfaceParams,
+    from_u64_bits, map_acceleration_structure_flags, map_acceleration_structure_geometry_flags,
+    map_acceleration_structure_update_mode, map_adapter_type, map_backend_type,
+    map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
+    map_index_format, map_instance_backend_flags, map_instance_descriptor,
+    map_pipeline_layout_descriptor, map_query_set_descriptor, map_query_set_index,
+    map_sampler_extras, map_shader_module, map_shader_runtime_checks, map_surface,
+    map_surface_configuration, map_vertex_format, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -307,6 +308,31 @@ impl Drop for WGPUPipelineCacheImpl {
     fn drop(&mut self) {
         if !thread::panicking() {
             self.context.pipeline_cache_drop(self.id);
+        }
+    }
+}
+
+pub struct WGPUBlasImpl {
+    context: Arc<Context>,
+    id: id::BlasId,
+    handle: Option<u64>,
+}
+impl Drop for WGPUBlasImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.blas_drop(self.id);
+        }
+    }
+}
+
+pub struct WGPUTlasImpl {
+    context: Arc<Context>,
+    id: id::TlasId,
+}
+impl Drop for WGPUTlasImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.tlas_drop(self.id);
         }
     }
 }
@@ -2004,7 +2030,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         .iter()
         .map(|entry| {
             follow_chain!(map_bind_group_layout_entry((entry),
-                WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras)
+                WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras,
+                WGPUSType_AccelerationStructureBindingLayout => native::WGPUAccelerationStructureBindingLayout)
             )
         })
         .collect::<Vec<_>>();
@@ -5440,5 +5467,385 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderWriteTimestamp(
             None,
             "wgpuRenderPassEncoderWriteTimestamp",
         ),
+    }
+}
+
+// Blas methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBlasAddRef(blas: native::WGPUBlas) {
+    assert!(!blas.is_null(), "invalid blas");
+    Arc::increment_strong_count(blas);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBlasRelease(blas: native::WGPUBlas) {
+    assert!(!blas.is_null(), "invalid blas");
+    Arc::decrement_strong_count(blas);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBlasGetHandle(blas: native::WGPUBlas) -> u64 {
+    blas.as_ref().expect("invalid blas").handle.unwrap_or(0)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBlasPrepareCompactAsync(
+    blas: native::WGPUBlas,
+    callback_info: native::WGPUBlasCompactCallbackInfo,
+) {
+    let blas = blas.as_ref().expect("invalid blas");
+    let blas_id = blas.id;
+    let context = &blas.context;
+
+    let callback = match callback_info.callback {
+        Some(cb) => cb,
+        None => return,
+    };
+    let userdata = new_userdata!(callback_info);
+
+    let closure: wgc::resource::BlasCompactCallback = Box::new(move |result| {
+        let success = result.is_ok() as native::WGPUBool;
+        callback(success, userdata.get_1(), userdata.get_2());
+    });
+
+    if let Err(cause) = context.blas_prepare_compact_async(blas_id, Some(closure)) {
+        log::error!("wgpuBlasPrepareCompactAsync error: {:?}", cause);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBlasReadyForCompaction(blas: native::WGPUBlas) -> native::WGPUBool {
+    let blas = blas.as_ref().expect("invalid blas");
+    blas.context
+        .ready_for_compaction(blas.id)
+        .unwrap_or(false) as native::WGPUBool
+}
+
+// Tlas methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTlasAddRef(tlas: native::WGPUTlas) {
+    assert!(!tlas.is_null(), "invalid tlas");
+    Arc::increment_strong_count(tlas);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuTlasRelease(tlas: native::WGPUTlas) {
+    assert!(!tlas.is_null(), "invalid tlas");
+    Arc::decrement_strong_count(tlas);
+}
+
+// Device methods (Blas/Tlas/InternalCounters)
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateBlas(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUBlasDescriptor>,
+    sizes: native::WGPUBlasSizeDescriptors,
+) -> native::WGPUBlas {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid blas descriptor");
+
+    let desc = wgc::resource::BlasDescriptor {
+        label: string_view_into_label(descriptor.label),
+        flags: map_acceleration_structure_flags(descriptor.flags),
+        update_mode: map_acceleration_structure_update_mode(descriptor.updateMode),
+    };
+
+    assert_eq!(
+        sizes.kind,
+        native::WGPUBlasGeometryKind_Triangles,
+        "only triangle geometry is supported for BLAS creation"
+    );
+    let tri_descs = make_slice(sizes.triangleDescriptors, sizes.triangleDescriptorCount)
+        .iter()
+        .map(|sd| {
+            let (index_format, index_count) =
+                if sd.indexFormat == native::WGPUIndexFormat_Undefined {
+                    (None, None)
+                } else {
+                    (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
+                };
+            wgt::BlasTriangleGeometrySizeDescriptor {
+                vertex_format: map_vertex_format(sd.vertexFormat)
+                    .expect("invalid vertex format for blas size"),
+                vertex_count: sd.vertexCount,
+                index_format,
+                index_count,
+                flags: map_acceleration_structure_geometry_flags(sd.flags),
+            }
+        })
+        .collect();
+    let wgt_sizes = wgt::BlasGeometrySizeDescriptors::Triangles { descriptors: tri_descs };
+
+    let (blas_id, handle, error) = context.device_create_blas(device_id, &desc, wgt_sizes, None);
+    if let Some(cause) = error {
+        handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateBlas");
+    }
+
+    Arc::into_raw(Arc::new(WGPUBlasImpl {
+        context: context.clone(),
+        id: blas_id,
+        handle,
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateTlas(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUTlasDescriptor>,
+) -> native::WGPUTlas {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid tlas descriptor");
+
+    let desc = wgc::resource::TlasDescriptor {
+        label: string_view_into_label(descriptor.label),
+        max_instances: descriptor.maxInstances,
+        flags: map_acceleration_structure_flags(descriptor.flags),
+        update_mode: map_acceleration_structure_update_mode(descriptor.updateMode),
+    };
+
+    let (tlas_id, error) = context.device_create_tlas(device_id, &desc, None);
+    if let Some(cause) = error {
+        handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateTlas");
+    }
+
+    Arc::into_raw(Arc::new(WGPUTlasImpl {
+        context: context.clone(),
+        id: tlas_id,
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetInternalCounters(
+    device: native::WGPUDevice,
+) -> native::WGPUInternalCounters {
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context)
+    };
+
+    let counters = context.device_get_internal_counters(device_id);
+    let hal = &counters.hal;
+    native::WGPUInternalCounters {
+        hal: native::WGPUHalCounters {
+            buffers: hal.buffers.read() as i64,
+            textures: hal.textures.read() as i64,
+            textureViews: hal.texture_views.read() as i64,
+            bindGroups: hal.bind_groups.read() as i64,
+            bindGroupLayouts: hal.bind_group_layouts.read() as i64,
+            renderPipelines: hal.render_pipelines.read() as i64,
+            computePipelines: hal.compute_pipelines.read() as i64,
+            pipelineLayouts: hal.pipeline_layouts.read() as i64,
+            samplers: hal.samplers.read() as i64,
+            commandEncoders: hal.command_encoders.read() as i64,
+            shaderModules: hal.shader_modules.read() as i64,
+            querySets: hal.query_sets.read() as i64,
+            fences: hal.fences.read() as i64,
+            bufferMemory: hal.buffer_memory.read() as i64,
+            textureMemory: hal.texture_memory.read() as i64,
+            accelerationStructureMemory: hal.acceleration_structure_memory.read() as i64,
+            memoryAllocations: hal.memory_allocations.read() as i64,
+        },
+    }
+}
+
+// Queue methods (compact blas)
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuQueueCompactBlas(
+    queue: native::WGPUQueue,
+    blas: native::WGPUBlas,
+) -> native::WGPUBlas {
+    let (queue_id, context) = {
+        let queue = queue.as_ref().expect("invalid queue");
+        (queue.queue.id, &queue.queue.context)
+    };
+    let blas_id = blas.as_ref().expect("invalid blas").id;
+
+    let (new_blas_id, handle, error) = context.queue_compact_blas(queue_id, blas_id, None);
+    if let Some(cause) = error {
+        log::error!("wgpuQueueCompactBlas error: {:?}", cause);
+    }
+
+    Arc::into_raw(Arc::new(WGPUBlasImpl {
+        context: context.clone(),
+        id: new_blas_id,
+        handle,
+    }))
+}
+
+// CommandEncoder acceleration structure methods
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderMarkAccelerationStructuresBuilt(
+    encoder: native::WGPUCommandEncoder,
+    blas_count: usize,
+    blases: *const native::WGPUBlas,
+    tlas_count: usize,
+    tlases: *const native::WGPUTlas,
+) {
+    let encoder = encoder.as_ref().expect("invalid command encoder");
+    let error_sink = &encoder.error_sink;
+
+    let blas_ids: Vec<id::BlasId> = make_slice(blases, blas_count)
+        .iter()
+        .map(|b| b.as_ref().expect("invalid blas in mark built").id)
+        .collect();
+    let tlas_ids: Vec<id::TlasId> = make_slice(tlases, tlas_count)
+        .iter()
+        .map(|t| t.as_ref().expect("invalid tlas in mark built").id)
+        .collect();
+
+    if let Err(cause) = encoder
+        .context
+        .command_encoder_mark_acceleration_structures_built(encoder.id, &blas_ids, &tlas_ids)
+    {
+        handle_error(
+            error_sink,
+            cause,
+            None,
+            "wgpuCommandEncoderMarkAccelerationStructuresBuilt",
+        );
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
+    encoder: native::WGPUCommandEncoder,
+    blas_entry_count: usize,
+    blas_entries: *const native::WGPUBlasBuildEntry,
+    tlas_pkg_count: usize,
+    tlas_pkgs: *const native::WGPUTlasPackage,
+) {
+    let encoder = encoder.as_ref().expect("invalid command encoder");
+    let encoder_id = encoder.id;
+    let context = &encoder.context;
+    let error_sink = &encoder.error_sink;
+
+    let blas_raw = make_slice(blas_entries, blas_entry_count);
+    let tlas_raw = make_slice(tlas_pkgs, tlas_pkg_count);
+
+    // Pre-allocate owned size descriptors so we can hand out references with a named lifetime.
+    let tri_size_storage: Vec<Vec<wgt::BlasTriangleGeometrySizeDescriptor>> = blas_raw
+        .iter()
+        .map(|entry| {
+            make_slice(entry.triangleGeometries, entry.triangleGeometryCount)
+                .iter()
+                .map(|tg| {
+                    let sd = tg.size.as_ref().expect("invalid tri size descriptor");
+                    let (index_format, index_count) =
+                        if sd.indexFormat == native::WGPUIndexFormat_Undefined {
+                            (None, None)
+                        } else {
+                            (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
+                        };
+                    wgt::BlasTriangleGeometrySizeDescriptor {
+                        vertex_format: map_vertex_format(sd.vertexFormat)
+                            .expect("invalid vertex format in build entry"),
+                        vertex_count: sd.vertexCount,
+                        index_format,
+                        index_count,
+                        flags: map_acceleration_structure_geometry_flags(sd.flags),
+                    }
+                })
+                .collect()
+        })
+        .collect();
+
+    // Pre-allocate owned TLAS instance data so we can hand out transform references.
+    let tlas_inst_storage: Vec<Vec<Option<(id::BlasId, [f32; 12], u32, u8)>>> = tlas_raw
+        .iter()
+        .map(|pkg| {
+            make_slice(pkg.instances, pkg.instanceCount)
+                .iter()
+                .map(|inst| {
+                    inst.blas.as_ref().map(|blas| {
+                        (blas.id, inst.transform, inst.customData, inst.mask)
+                    })
+                })
+                .collect()
+        })
+        .collect();
+
+    let blas_iter = blas_raw
+        .iter()
+        .zip(tri_size_storage.iter())
+        .map(|(entry, tri_sizes)| {
+            let blas_id = entry.blas.as_ref().expect("invalid blas in build entry").id;
+            let tg_raw = make_slice(entry.triangleGeometries, entry.triangleGeometryCount);
+            let tgs: Vec<wgc::ray_tracing::BlasTriangleGeometry<'_>> = tg_raw
+                .iter()
+                .zip(tri_sizes.iter())
+                .map(|(tg, size)| wgc::ray_tracing::BlasTriangleGeometry {
+                    size,
+                    vertex_buffer: tg.vertexBuffer.as_ref().expect("invalid vertex buffer").id,
+                    index_buffer: tg.indexBuffer.as_ref().map(|b| b.id),
+                    transform_buffer: tg.transformBuffer.as_ref().map(|b| b.id),
+                    first_vertex: tg.firstVertex,
+                    vertex_stride: tg.vertexStride,
+                    first_index: if tg.indexBuffer.is_null() {
+                        None
+                    } else {
+                        Some(tg.firstIndex)
+                    },
+                    transform_buffer_offset: if tg.transformBuffer.is_null() {
+                        None
+                    } else {
+                        Some(tg.transformBufferOffset)
+                    },
+                })
+                .collect();
+            wgc::ray_tracing::BlasBuildEntry {
+                blas_id,
+                geometries: wgc::ray_tracing::BlasGeometries::TriangleGeometries(
+                    Box::new(tgs.into_iter()),
+                ),
+            }
+        });
+
+    let tlas_iter = tlas_raw
+        .iter()
+        .zip(tlas_inst_storage.iter())
+        .map(|(pkg, owned_insts)| {
+            let tlas_id = pkg.tlas.as_ref().expect("invalid tlas in package").id;
+            let instances: Vec<Option<wgc::ray_tracing::TlasInstance<'_>>> = owned_insts
+                .iter()
+                .map(|inst| {
+                    inst.as_ref().map(|(blas_id, transform, custom_data, mask)| {
+                        wgc::ray_tracing::TlasInstance {
+                            blas_id: *blas_id,
+                            transform,
+                            custom_data: *custom_data,
+                            mask: *mask,
+                        }
+                    })
+                })
+                .collect();
+            wgc::ray_tracing::TlasPackage {
+                tlas_id,
+                instances: Box::new(instances.into_iter()),
+                lowest_unmodified: pkg.lowestUnmodified,
+            }
+        });
+
+    if let Err(cause) = context.command_encoder_build_acceleration_structures(
+        encoder_id,
+        blas_iter,
+        tlas_iter,
+    ) {
+        handle_error(
+            error_sink,
+            cause,
+            None,
+            "wgpuCommandEncoderBuildAccelerationStructures",
+        );
     }
 }

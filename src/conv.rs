@@ -1658,6 +1658,11 @@ pub fn map_bind_group_entry<'a>(
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::BufferArray(arr),
             };
+        } else if let Some(tlas) = unsafe { extras.tlas.as_ref() } {
+            return wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::AccelerationStructure(tlas.id),
+            };
         }
     }
 
@@ -1668,6 +1673,7 @@ pub fn map_bind_group_entry<'a>(
 pub fn map_bind_group_layout_entry(
     entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
+    as_layout: Option<&native::WGPUAccelerationStructureBindingLayout>,
 ) -> wgt::BindGroupLayoutEntry {
     let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_BindingNotUsed;
     let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_BindingNotUsed;
@@ -1766,6 +1772,10 @@ pub fn map_bind_group_layout_entry(
 
                 NonZeroU64::new(entry.buffer.minBindingSize)
             },
+        }
+    } else if let Some(as_layout) = as_layout {
+        wgt::BindingType::AccelerationStructure {
+            vertex_return: as_layout.vertexReturn != 0,
         }
     } else {
         panic!("invalid bind group layout entry for bind group layout descriptor");
@@ -2086,4 +2096,59 @@ pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
     }
 
     T::from_bits(value as u32)
+}
+
+#[inline]
+pub fn map_acceleration_structure_flags(
+    flags: native::WGPUAccelerationStructureFlags,
+) -> wgt::AccelerationStructureFlags {
+    let mut out = wgt::AccelerationStructureFlags::empty();
+    if (flags & native::WGPUAccelerationStructureFlags_AllowUpdate) != 0 {
+        out |= wgt::AccelerationStructureFlags::ALLOW_UPDATE;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_AllowCompaction) != 0 {
+        out |= wgt::AccelerationStructureFlags::ALLOW_COMPACTION;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_PreferFastTrace) != 0 {
+        out |= wgt::AccelerationStructureFlags::PREFER_FAST_TRACE;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_PreferFastBuild) != 0 {
+        out |= wgt::AccelerationStructureFlags::PREFER_FAST_BUILD;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_LowMemory) != 0 {
+        out |= wgt::AccelerationStructureFlags::LOW_MEMORY;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_UseTransform) != 0 {
+        out |= wgt::AccelerationStructureFlags::USE_TRANSFORM;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_AllowRayHitVertexReturn) != 0 {
+        out |= wgt::AccelerationStructureFlags::ALLOW_RAY_HIT_VERTEX_RETURN;
+    }
+    out
+}
+
+#[inline]
+pub fn map_acceleration_structure_update_mode(
+    mode: native::WGPUAccelerationStructureUpdateMode,
+) -> wgt::AccelerationStructureUpdateMode {
+    match mode {
+        native::WGPUAccelerationStructureUpdateMode_PreferUpdate => {
+            wgt::AccelerationStructureUpdateMode::PreferUpdate
+        }
+        _ => wgt::AccelerationStructureUpdateMode::Build,
+    }
+}
+
+#[inline]
+pub fn map_acceleration_structure_geometry_flags(
+    flags: native::WGPUAccelerationStructureGeometryFlags,
+) -> wgt::AccelerationStructureGeometryFlags {
+    let mut out = wgt::AccelerationStructureGeometryFlags::empty();
+    if (flags & native::WGPUAccelerationStructureGeometryFlags_Opaque) != 0 {
+        out |= wgt::AccelerationStructureGeometryFlags::OPAQUE;
+    }
+    if (flags & native::WGPUAccelerationStructureGeometryFlags_NoDuplicateAnyHitInvocation) != 0 {
+        out |= wgt::AccelerationStructureGeometryFlags::NO_DUPLICATE_ANY_HIT_INVOCATION;
+    }
+    out
 }
