@@ -1029,7 +1029,7 @@ pub unsafe extern "C" fn wgpuBufferDestroy(buffer: native::WGPUBuffer) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuBufferGetConstMappedRange(
+pub unsafe extern "C-unwind" fn wgpuBufferGetConstMappedRange(
     buffer: native::WGPUBuffer,
     offset: usize,
     size: usize,
@@ -1055,7 +1055,7 @@ pub unsafe extern "C" fn wgpuBufferGetConstMappedRange(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuBufferGetMappedRange(
+pub unsafe extern "C-unwind" fn wgpuBufferGetMappedRange(
     buffer: native::WGPUBuffer,
     offset: usize,
     size: usize,
@@ -2314,7 +2314,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateQuerySet(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
+pub unsafe extern "C-unwind" fn wgpuDeviceCreateRenderBundleEncoder(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPURenderBundleEncoderDescriptor>,
 ) -> native::WGPURenderBundleEncoder {
@@ -2355,7 +2355,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderBundleEncoder(
         multiview,
     };
 
-    match wgc::command::RenderBundleEncoder::new(&desc, device_id) {
+    match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
         Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
             context: context.clone(),
             encoder: Box::into_raw(Box::new(Some(Box::into_raw(Box::new(encoder))))),
@@ -2421,30 +2421,30 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             buffers: Cow::Owned(
                 make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
                     .iter()
-                    .map(|buffer| wgc::pipeline::VertexBufferLayout {
-                        array_stride: buffer.arrayStride,
-                        step_mode: match buffer.stepMode {
-                            native::WGPUVertexStepMode_Undefined if buffer.attributeCount > 0 => {
-                                wgt::VertexStepMode::Vertex
-                            }
-                            native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
-                            native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
-                            | native::WGPUVertexStepMode_Undefined => {
-                                panic!("Unused vertex buffers are currently not supported in vertex buffer layout. Instead, use a vertex buffer with no attributes and a defined vertex step mode.")
-                            }
-                            _ => panic!("invalid vertex step mode for vertex buffer layout"),
-                        },
-                        attributes: Cow::Owned(
-                            make_slice(buffer.attributes, buffer.attributeCount)
-                                .iter()
-                                .map(|attribute| wgt::VertexAttribute {
-                                    format: conv::map_vertex_format(attribute.format)
-                                        .expect("invalid vertex format for vertex attribute"),
-                                    offset: attribute.offset,
-                                    shader_location: attribute.shaderLocation,
-                                })
-                                .collect(),
-                        ),
+                    .map(|buffer| {
+                        match buffer.stepMode {
+                            native::WGPUVertexStepMode_Undefined if buffer.attributeCount == 0 => None,
+                            _ => Some(wgc::pipeline::VertexBufferLayout {
+                                array_stride: buffer.arrayStride,
+                                step_mode: match buffer.stepMode {
+                                    native::WGPUVertexStepMode_Undefined => wgt::VertexStepMode::Vertex,
+                                    native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
+                                    native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
+                                    _ => panic!("invalid vertex step mode for vertex buffer layout"),
+                                },
+                                attributes: Cow::Owned(
+                                    make_slice(buffer.attributes, buffer.attributeCount)
+                                        .iter()
+                                        .map(|attribute| wgt::VertexAttribute {
+                                            format: conv::map_vertex_format(attribute.format)
+                                                .expect("invalid vertex format for vertex attribute"),
+                                            offset: attribute.offset,
+                                            shader_location: attribute.shaderLocation,
+                                        })
+                                        .collect(),
+                                ),
+                            }),
+                        }
                     })
                     .collect(),
             ),
@@ -2863,13 +2863,35 @@ unsafe fn create_shader_module_impl(
     let (shader_module_id, error) =
         context.device_create_shader_module(device_id, &desc, source, None);
     let compilation_messages = if let Some(ref cause) = error {
+        let (line_num, line_pos, offset, length): (u64, u64, u64, u64) = {
+            #[cfg(feature = "wgsl")]
+            {
+                if let wgc::pipeline::CreateShaderModuleError::Parsing(e) = cause {
+                    e.inner
+                        .location(&e.source)
+                        .map(|l| {
+                            (
+                                l.line_number as u64,
+                                l.line_position as u64,
+                                l.offset as u64,
+                                l.length as u64,
+                            )
+                        })
+                        .unwrap_or((0, 0, 0, 0))
+                } else {
+                    (0, 0, 0, 0)
+                }
+            }
+            #[cfg(not(feature = "wgsl"))]
+            (0, 0, 0, 0)
+        };
         vec![CompilationMessage {
             message: format!("{cause}"),
             message_type: native::WGPUCompilationMessageType_Error,
-            line_num: 0,
-            line_pos: 0,
-            offset: 0,
-            length: 0,
+            line_num,
+            line_pos,
+            offset,
+            length,
         }]
     } else {
         vec![]
@@ -3164,7 +3186,7 @@ pub unsafe extern "C" fn wgpuDeviceAddRef(device: native::WGPUDevice) {
     Arc::increment_strong_count(device);
 }
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceRelease(device: native::WGPUDevice) {
+pub unsafe extern "C-unwind" fn wgpuDeviceRelease(device: native::WGPUDevice) {
     assert!(!device.is_null(), "invalid device");
     Arc::decrement_strong_count(device);
 }
@@ -3172,7 +3194,7 @@ pub unsafe extern "C" fn wgpuDeviceRelease(device: native::WGPUDevice) {
 // Instance methods
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuInstanceCreateSurface(
+pub unsafe extern "C-unwind" fn wgpuInstanceCreateSurface(
     instance: native::WGPUInstance,
     descriptor: Option<&native::WGPUSurfaceDescriptor>,
 ) -> native::WGPUSurface {
@@ -3222,7 +3244,7 @@ pub unsafe extern "C" fn wgpuInstanceCreateSurface(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuInstanceProcessEvents(instance: native::WGPUInstance) {
+pub unsafe extern "C-unwind" fn wgpuInstanceProcessEvents(instance: native::WGPUInstance) {
     let instance = instance.as_ref().expect("invalid instance");
     let context = &instance.context;
 
@@ -3256,6 +3278,7 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 },
                 force_fallback_adapter: options.forceFallbackAdapter != 0,
                 compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
+                apply_limit_buckets: false,
             },
             match options.backendType {
                 native::WGPUBackendType_Undefined => wgt::Backends::all(),
@@ -3336,7 +3359,7 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
         None => wgt::Backends::all(),
     };
 
-    let result = context.enumerate_adapters(inputs);
+    let result = context.enumerate_adapters(inputs, false);
     let count = result.len();
 
     if !adapters.is_null() {
@@ -3372,7 +3395,7 @@ pub unsafe extern "C" fn wgpuInstanceRelease(instance: native::WGPUInstance) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuInstancePollAllDevices(
+pub unsafe extern "C-unwind" fn wgpuInstancePollAllDevices(
     instance: native::WGPUInstance,
     wait: bool,
 ) -> bool {
@@ -3499,14 +3522,14 @@ pub unsafe extern "C" fn wgpuQueueOnSubmittedWorkDone(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuQueueSubmit(
+pub unsafe extern "C-unwind" fn wgpuQueueSubmit(
     queue: native::WGPUQueue,
     command_count: usize,
     commands: *const native::WGPUCommandBuffer,
 ) {
-    let (queue_id, context) = {
+    let (queue_id, context, error_sink) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.queue.id, &queue.queue.context)
+        (queue.queue.id, &queue.queue.context, &queue.error_sink)
     };
 
     let command_buffers = make_slice(commands, command_count)
@@ -3519,7 +3542,7 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
         .collect::<SmallVec<[_; 4]>>();
 
     if let Err(cause) = context.queue_submit(queue_id, &command_buffers) {
-        handle_error_fatal(cause.1, "wgpuQueueSubmit");
+        handle_error(error_sink, cause.1, None, "wgpuQueueSubmit");
     }
 }
 
@@ -3717,7 +3740,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
+pub unsafe extern "C-unwind" fn wgpuRenderBundleEncoderFinish(
     bundle: native::WGPURenderBundleEncoder,
     descriptor: Option<&native::WGPURenderBundleDescriptor>,
 ) -> native::WGPURenderBundle {
@@ -3734,7 +3757,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderFinish(
         None => wgt::RenderBundleDescriptor::default(),
     };
 
-    let (render_bundle_id, error) = context.render_bundle_encoder_finish(*encoder, &desc, None);
+    let (render_bundle_id, error) = context.render_bundle_encoder_finish(encoder, &desc, None);
     if let Some(cause) = error {
         handle_error_fatal(cause, "wgpuRenderBundleEncoderFinish");
     }
@@ -3874,7 +3897,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
         encoder,
         slot,
-        buffer_id,
+        Some(buffer_id),
         offset,
         match size {
             0 => panic!("invalid size"),
@@ -4327,7 +4350,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     match pass.context.render_pass_set_vertex_buffer(
         encoder,
         slot,
-        buffer_id,
+        Some(buffer_id),
         offset,
         match size {
             0 => panic!("invalid size"),
@@ -4508,7 +4531,7 @@ pub unsafe extern "C" fn wgpuShaderModuleRelease(shader_module: native::WGPUShad
 // Surface methods
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceConfigure(
+pub unsafe extern "C-unwind" fn wgpuSurfaceConfigure(
     surface: native::WGPUSurface,
     config: Option<&native::WGPUSurfaceConfiguration>,
 ) {
@@ -4633,7 +4656,7 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
+pub unsafe extern "C-unwind" fn wgpuSurfaceGetCurrentTexture(
     surface: native::WGPUSurface,
     surface_texture: Option<&mut native::WGPUSurfaceTexture>,
 ) {
@@ -4899,7 +4922,7 @@ pub unsafe extern "C" fn wgpuTextureAddRef(texture: native::WGPUTexture) {
     Arc::increment_strong_count(texture);
 }
 #[no_mangle]
-pub unsafe extern "C" fn wgpuTextureRelease(texture: native::WGPUTexture) {
+pub unsafe extern "C-unwind" fn wgpuTextureRelease(texture: native::WGPUTexture) {
     assert!(!texture.is_null(), "invalid texture");
     Arc::decrement_strong_count(texture);
 }
@@ -4930,14 +4953,14 @@ pub unsafe extern "C" fn wgpuGenerateReport(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
+pub unsafe extern "C-unwind" fn wgpuQueueSubmitForIndex(
     queue: native::WGPUQueue,
     command_count: usize,
     commands: *const native::WGPUCommandBuffer,
 ) -> native::WGPUSubmissionIndex {
-    let (queue_id, context) = {
+    let (queue_id, context, error_sink) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.queue.id, &queue.queue.context)
+        (queue.queue.id, &queue.queue.context, &queue.error_sink)
     };
 
     let command_buffers = make_slice(commands, command_count)
@@ -4951,13 +4974,16 @@ pub unsafe extern "C" fn wgpuQueueSubmitForIndex(
 
     match context.queue_submit(queue_id, &command_buffers) {
         Ok(submission_index) => submission_index,
-        Err(cause) => handle_error_fatal(cause.1, "wgpuQueueSubmitForIndex"),
+        Err(cause) => {
+            handle_error(error_sink, cause.1, None, "wgpuQueueSubmitForIndex");
+            0
+        }
     }
 }
 
 // FIXME: rework this function to match how wgpu v27 handles polling devices
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDevicePoll(
+pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     device: native::WGPUDevice,
     wait: bool,
     submission_index: Option<&native::WGPUSubmissionIndex>,

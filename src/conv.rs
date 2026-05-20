@@ -193,46 +193,47 @@ map_enum!(
     map_vertex_format,
     WGPUVertexFormat,
     wgt::VertexFormat,
-    Uint8,
-    Uint8x2,
-    Uint8x4,
-    Sint8,
-    Sint8x2,
-    Sint8x4,
-    Unorm8,
-    Unorm8x2,
-    Unorm8x4,
-    Snorm8,
-    Snorm8x2,
-    Snorm8x4,
-    Uint16,
-    Uint16x2,
-    Uint16x4,
-    Sint16,
-    Sint16x2,
-    Sint16x4,
-    Unorm16,
-    Unorm16x2,
-    Unorm16x4,
-    Snorm16,
-    Snorm16x2,
-    Snorm16x4,
-    Float16,
-    Float16x2,
-    Float16x4,
-    Float32,
-    Float32x2,
-    Float32x3,
-    Float32x4,
-    Uint32,
-    Uint32x2,
-    Uint32x3,
-    Uint32x4,
-    Sint32,
-    Sint32x2,
-    Sint32x3,
-    Sint32x4,
-    Unorm10_10_10_2
+    Uint8:Uint8,
+    Uint8x2:Uint8x2,
+    Uint8x4:Uint8x4,
+    Sint8:Sint8,
+    Sint8x2:Sint8x2,
+    Sint8x4:Sint8x4,
+    Unorm8:Unorm8,
+    Unorm8x2:Unorm8x2,
+    Unorm8x4:Unorm8x4,
+    Snorm8:Snorm8,
+    Snorm8x2:Snorm8x2,
+    Snorm8x4:Snorm8x4,
+    Uint16:Uint16,
+    Uint16x2:Uint16x2,
+    Uint16x4:Uint16x4,
+    Sint16:Sint16,
+    Sint16x2:Sint16x2,
+    Sint16x4:Sint16x4,
+    Unorm16:Unorm16,
+    Unorm16x2:Unorm16x2,
+    Unorm16x4:Unorm16x4,
+    Snorm16:Snorm16,
+    Snorm16x2:Snorm16x2,
+    Snorm16x4:Snorm16x4,
+    Float16:Float16,
+    Float16x2:Float16x2,
+    Float16x4:Float16x4,
+    Float32:Float32,
+    Float32x2:Float32x2,
+    Float32x3:Float32x3,
+    Float32x4:Float32x4,
+    Uint32:Uint32,
+    Uint32x2:Uint32x2,
+    Uint32x3:Uint32x3,
+    Uint32x4:Uint32x4,
+    Sint32:Sint32,
+    Sint32x2:Sint32x2,
+    Sint32x3:Sint32x3,
+    Sint32x4:Sint32x4,
+    Unorm10_10_10_2:Unorm10_10_10_2,
+    Unorm8x4BGRA:Unorm8x4Bgra
 );
 
 #[cfg(feature = "glsl")]
@@ -267,15 +268,24 @@ map_enum!(
     Version2
 );
 
-map_enum_with_undefined!(
-    map_storage_texture_access,
-    WGPUStorageTextureAccess,
-    wgt::StorageTextureAccess,
-    "Unknown storage texture access",
-    WriteOnly,
-    ReadOnly,
-    ReadWrite
-);
+// Native extension value for atomic storage texture access (not in standard WebGPU).
+pub const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAccess = 0x00030001;
+
+// Native extension texture format for R64Uint (not in standard WebGPU; after P010 = 0x00030008).
+pub const WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT: native::WGPUTextureFormat = 0x00030009;
+
+pub fn map_storage_texture_access(
+    value: native::WGPUStorageTextureAccess,
+) -> Option<wgt::StorageTextureAccess> {
+    match value {
+        native::WGPUStorageTextureAccess_Undefined => None,
+        native::WGPUStorageTextureAccess_WriteOnly => Some(wgt::StorageTextureAccess::WriteOnly),
+        native::WGPUStorageTextureAccess_ReadOnly => Some(wgt::StorageTextureAccess::ReadOnly),
+        native::WGPUStorageTextureAccess_ReadWrite => Some(wgt::StorageTextureAccess::ReadWrite),
+        WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC => Some(wgt::StorageTextureAccess::Atomic),
+        x => panic!("Unknown storage texture access: {x}"),
+    }
+}
 
 // These are defined as UINT64_MAX in the header, but bindgen currently can't process that define.
 // See https://github.com/rust-lang/rust-bindgen/issues/2822
@@ -554,7 +564,12 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         })
         .collect::<Vec<_>>();
 
-    let immediate_size = extras.map_or(0, |extras| extras.immediateDataSize);
+    // immediateSize was added to the main descriptor; fall back to the legacy extras chain.
+    let immediate_size = if des.immediateSize != 0 {
+        des.immediateSize
+    } else {
+        extras.map_or(0, |extras| extras.immediateDataSize)
+    };
 
     wgc::binding_model::PipelineLayoutDescriptor {
         label: string_view_into_label(des.label),
@@ -1037,6 +1052,8 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUNativeTextureFormat_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
         native::WGPUNativeTextureFormat_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
+        native::WGPUNativeTextureFormat_P010  => Some(wgt::TextureFormat::P010),
+        WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT   => Some(wgt::TextureFormat::R64Uint),
         _ => panic!("Unknown texture format"),
     }
 }
@@ -1155,7 +1172,8 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUNativeTextureFormat_Rgba16Unorm),
         wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUNativeTextureFormat_Rgba16Snorm),
         wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
-        wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010)
+        wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010),
+        wgt::TextureFormat::R64Uint => Some(WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT),
     }
 }
 
@@ -1862,6 +1880,11 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     if (flags & native::WGPUTextureUsage_TransientAttachment) != 0 {
         temp.insert(wgt::TextureUsages::TRANSIENT);
     }
+    // STORAGE_ATOMIC (1 << 16) is a wgpu-native extension not in the standard WebGPU C API.
+    // We pass the raw wgpu-types bit value through the C API and recognize it here.
+    if (flags & wgt::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage) != 0 {
+        temp.insert(wgt::TextureUsages::STORAGE_ATOMIC);
+    }
     temp
 }
 
@@ -1885,6 +1908,9 @@ pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUT
     }
     if flags.contains(wgt::TextureUsages::TRANSIENT) {
         flag |= native::WGPUTextureUsage_TransientAttachment;
+    }
+    if flags.contains(wgt::TextureUsages::STORAGE_ATOMIC) {
+        flag |= wgt::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage;
     }
     flag
 }

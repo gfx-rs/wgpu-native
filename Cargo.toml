@@ -24,19 +24,19 @@ default-members = ["."]
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-version = "29.0.1"
+version = "29.0.0"
 
 [workspace.dependencies.naga]
 package = "naga"
-version = "29.0.1"
+version = "29.0.0"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-version = "29.0.1"
+version = "29.0.0"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-version = "29.0.1"
+version = "29.0.0"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
