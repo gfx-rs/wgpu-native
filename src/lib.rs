@@ -2355,7 +2355,7 @@ pub unsafe extern "C-unwind" fn wgpuDeviceCreateRenderBundleEncoder(
         multiview,
     };
 
-    match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
+    match wgc::command::RenderBundleEncoder::new(&desc, device_id) {
         Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
             context: context.clone(),
             encoder: Box::into_raw(Box::new(Some(Box::into_raw(Box::new(encoder))))),
@@ -2423,8 +2423,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .iter()
                     .map(|buffer| {
                         match buffer.stepMode {
-                            native::WGPUVertexStepMode_Undefined if buffer.attributeCount == 0 => None,
-                            _ => Some(wgc::pipeline::VertexBufferLayout {
+                            native::WGPUVertexStepMode_Undefined if buffer.attributeCount == 0 => {
+                                wgc::pipeline::VertexBufferLayout::default()
+                            }
+                            _ => wgc::pipeline::VertexBufferLayout {
                                 array_stride: buffer.arrayStride,
                                 step_mode: match buffer.stepMode {
                                     native::WGPUVertexStepMode_Undefined => wgt::VertexStepMode::Vertex,
@@ -2443,7 +2445,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                                         })
                                         .collect(),
                                 ),
-                            }),
+                            },
                         }
                     })
                     .collect(),
@@ -3278,7 +3280,6 @@ pub unsafe extern "C" fn wgpuInstanceRequestAdapter(
                 },
                 force_fallback_adapter: options.forceFallbackAdapter != 0,
                 compatible_surface: options.compatibleSurface.as_ref().map(|surface| surface.id),
-                apply_limit_buckets: false,
             },
             match options.backendType {
                 native::WGPUBackendType_Undefined => wgt::Backends::all(),
@@ -3359,7 +3360,7 @@ pub unsafe extern "C" fn wgpuInstanceEnumerateAdapters(
         None => wgt::Backends::all(),
     };
 
-    let result = context.enumerate_adapters(inputs, false);
+    let result = context.enumerate_adapters(inputs);
     let count = result.len();
 
     if !adapters.is_null() {
@@ -3757,7 +3758,7 @@ pub unsafe extern "C-unwind" fn wgpuRenderBundleEncoderFinish(
         None => wgt::RenderBundleDescriptor::default(),
     };
 
-    let (render_bundle_id, error) = context.render_bundle_encoder_finish(encoder, &desc, None);
+    let (render_bundle_id, error) = context.render_bundle_encoder_finish(*encoder, &desc, None);
     if let Some(cause) = error {
         handle_error_fatal(cause, "wgpuRenderBundleEncoderFinish");
     }
@@ -3897,7 +3898,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
         encoder,
         slot,
-        Some(buffer_id),
+        buffer_id,
         offset,
         match size {
             0 => panic!("invalid size"),
@@ -4350,7 +4351,7 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetVertexBuffer(
     match pass.context.render_pass_set_vertex_buffer(
         encoder,
         slot,
-        Some(buffer_id),
+        buffer_id,
         offset,
         match size {
             0 => panic!("invalid size"),
