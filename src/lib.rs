@@ -2424,7 +2424,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                     .map(|buffer| {
                         match buffer.stepMode {
                             native::WGPUVertexStepMode_Undefined if buffer.attributeCount == 0 => {
-                                Some(wgc::pipeline::VertexBufferLayout::default())
+                                None
                             }
                             _ => Some(wgc::pipeline::VertexBufferLayout {
                                 array_stride: buffer.arrayStride,
