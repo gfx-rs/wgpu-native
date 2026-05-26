@@ -3,11 +3,11 @@
 use conv::{
     from_u64_bits, map_acceleration_structure_flags, map_acceleration_structure_geometry_flags,
     map_acceleration_structure_update_mode, map_adapter_type, map_backend_type,
-    map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor,
-    map_index_format, map_instance_backend_flags, map_instance_descriptor,
-    map_pipeline_layout_descriptor, map_query_set_descriptor, map_query_set_index,
-    map_sampler_extras, map_shader_module, map_shader_runtime_checks, map_surface,
-    map_surface_configuration, map_vertex_format, CreateSurfaceParams,
+    map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor, map_index_format,
+    map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
+    map_query_set_descriptor, map_query_set_index, map_sampler_extras, map_shader_module,
+    map_shader_runtime_checks, map_surface, map_surface_configuration, map_vertex_format,
+    CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -846,11 +846,9 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
         ..
     }) = unsafe { info.nextInChain.as_ref() }
     {
-        let extras =
-            unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
+        let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
         extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
-        extras.devicePciBusId =
-            utils::str_into_owned_string_view(&result.device_pci_bus_id);
+        extras.devicePciBusId = utils::str_into_owned_string_view(&result.device_pci_bus_id);
     }
 
     native::WGPUStatus_Success
@@ -887,9 +885,8 @@ pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAd
         ..
     }) = unsafe { adapter_info.nextInChain.as_ref() }
     {
-        let extras = unsafe {
-            &mut *(adapter_info.nextInChain as *mut native::WGPUAdapterInfoExtras)
-        };
+        let extras =
+            unsafe { &mut *(adapter_info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
         utils::drop_string_view(extras.devicePciBusId);
         extras.devicePciBusId = EMPTY_STRING;
     }
@@ -2421,32 +2418,30 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
             buffers: Cow::Owned(
                 make_slice(descriptor.vertex.buffers, descriptor.vertex.bufferCount)
                     .iter()
-                    .map(|buffer| {
-                        match buffer.stepMode {
-                            native::WGPUVertexStepMode_Undefined if buffer.attributeCount == 0 => {
-                                None
-                            }
-                            _ => Some(wgc::pipeline::VertexBufferLayout {
-                                array_stride: buffer.arrayStride,
-                                step_mode: match buffer.stepMode {
-                                    native::WGPUVertexStepMode_Undefined => wgt::VertexStepMode::Vertex,
-                                    native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
-                                    native::WGPUVertexStepMode_Instance => wgt::VertexStepMode::Instance,
-                                    _ => panic!("invalid vertex step mode for vertex buffer layout"),
-                                },
-                                attributes: Cow::Owned(
-                                    make_slice(buffer.attributes, buffer.attributeCount)
-                                        .iter()
-                                        .map(|attribute| wgt::VertexAttribute {
-                                            format: conv::map_vertex_format(attribute.format)
-                                                .expect("invalid vertex format for vertex attribute"),
-                                            offset: attribute.offset,
-                                            shader_location: attribute.shaderLocation,
-                                        })
-                                        .collect(),
-                                ),
-                            }),
-                        }
+                    .map(|buffer| match buffer.stepMode {
+                        native::WGPUVertexStepMode_Undefined if buffer.attributeCount == 0 => None,
+                        _ => Some(wgc::pipeline::VertexBufferLayout {
+                            array_stride: buffer.arrayStride,
+                            step_mode: match buffer.stepMode {
+                                native::WGPUVertexStepMode_Undefined => wgt::VertexStepMode::Vertex,
+                                native::WGPUVertexStepMode_Vertex => wgt::VertexStepMode::Vertex,
+                                native::WGPUVertexStepMode_Instance => {
+                                    wgt::VertexStepMode::Instance
+                                }
+                                _ => panic!("invalid vertex step mode for vertex buffer layout"),
+                            },
+                            attributes: Cow::Owned(
+                                make_slice(buffer.attributes, buffer.attributeCount)
+                                    .iter()
+                                    .map(|attribute| wgt::VertexAttribute {
+                                        format: conv::map_vertex_format(attribute.format)
+                                            .expect("invalid vertex format for vertex attribute"),
+                                        offset: attribute.offset,
+                                        shader_location: attribute.shaderLocation,
+                                    })
+                                    .collect(),
+                            ),
+                        }),
                     })
                     .collect(),
             ),
@@ -5545,9 +5540,7 @@ pub unsafe extern "C" fn wgpuBlasPrepareCompactAsync(
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBlasReadyForCompaction(blas: native::WGPUBlas) -> native::WGPUBool {
     let blas = blas.as_ref().expect("invalid blas");
-    blas.context
-        .ready_for_compaction(blas.id)
-        .unwrap_or(false) as native::WGPUBool
+    blas.context.ready_for_compaction(blas.id).unwrap_or(false) as native::WGPUBool
 }
 
 // Tlas methods
@@ -5592,12 +5585,12 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
     let tri_descs = make_slice(sizes.triangleDescriptors, sizes.triangleDescriptorCount)
         .iter()
         .map(|sd| {
-            let (index_format, index_count) =
-                if sd.indexFormat == native::WGPUIndexFormat_Undefined {
-                    (None, None)
-                } else {
-                    (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
-                };
+            let (index_format, index_count) = if sd.indexFormat == native::WGPUIndexFormat_Undefined
+            {
+                (None, None)
+            } else {
+                (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
+            };
             wgt::BlasTriangleGeometrySizeDescriptor {
                 vertex_format: map_vertex_format(sd.vertexFormat)
                     .expect("invalid vertex format for blas size"),
@@ -5608,7 +5601,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
             }
         })
         .collect();
-    let wgt_sizes = wgt::BlasGeometrySizeDescriptors::Triangles { descriptors: tri_descs };
+    let wgt_sizes = wgt::BlasGeometrySizeDescriptors::Triangles {
+        descriptors: tri_descs,
+    };
 
     let (blas_id, handle, error) = context.device_create_blas(device_id, &desc, wgt_sizes, None);
     if let Some(cause) = error {
@@ -5795,9 +5790,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
             make_slice(pkg.instances, pkg.instanceCount)
                 .iter()
                 .map(|inst| {
-                    inst.blas.as_ref().map(|blas| {
-                        (blas.id, inst.transform, inst.customData, inst.mask)
-                    })
+                    inst.blas
+                        .as_ref()
+                        .map(|blas| (blas.id, inst.transform, inst.customData, inst.mask))
                 })
                 .collect()
         })
@@ -5833,9 +5828,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                 .collect();
             wgc::ray_tracing::BlasBuildEntry {
                 blas_id,
-                geometries: wgc::ray_tracing::BlasGeometries::TriangleGeometries(
-                    Box::new(tgs.into_iter()),
-                ),
+                geometries: wgc::ray_tracing::BlasGeometries::TriangleGeometries(Box::new(
+                    tgs.into_iter(),
+                )),
             }
         });
 
@@ -5847,14 +5842,15 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
             let instances: Vec<Option<wgc::ray_tracing::TlasInstance<'_>>> = owned_insts
                 .iter()
                 .map(|inst| {
-                    inst.as_ref().map(|(blas_id, transform, custom_data, mask)| {
-                        wgc::ray_tracing::TlasInstance {
-                            blas_id: *blas_id,
-                            transform,
-                            custom_data: *custom_data,
-                            mask: *mask,
-                        }
-                    })
+                    inst.as_ref()
+                        .map(|(blas_id, transform, custom_data, mask)| {
+                            wgc::ray_tracing::TlasInstance {
+                                blas_id: *blas_id,
+                                transform,
+                                custom_data: *custom_data,
+                                mask: *mask,
+                            }
+                        })
                 })
                 .collect();
             wgc::ray_tracing::TlasPackage {
@@ -5864,11 +5860,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
             }
         });
 
-    if let Err(cause) = context.command_encoder_build_acceleration_structures(
-        encoder_id,
-        blas_iter,
-        tlas_iter,
-    ) {
+    if let Err(cause) =
+        context.command_encoder_build_acceleration_structures(encoder_id, blas_iter, tlas_iter)
+    {
         handle_error(
             error_sink,
             cause,

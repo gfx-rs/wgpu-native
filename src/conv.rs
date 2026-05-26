@@ -59,7 +59,9 @@ pub fn map_address_mode_native(value: native::WGPUAddressMode) -> Option<wgt::Ad
 #[inline]
 pub fn map_sampler_border_color(color: native::WGPUSamplerBorderColor) -> wgt::SamplerBorderColor {
     match color {
-        native::WGPUSamplerBorderColor_TransparentBlack => wgt::SamplerBorderColor::TransparentBlack,
+        native::WGPUSamplerBorderColor_TransparentBlack => {
+            wgt::SamplerBorderColor::TransparentBlack
+        }
         native::WGPUSamplerBorderColor_OpaqueBlack => wgt::SamplerBorderColor::OpaqueBlack,
         native::WGPUSamplerBorderColor_OpaqueWhite => wgt::SamplerBorderColor::OpaqueWhite,
         native::WGPUSamplerBorderColor_Zero => wgt::SamplerBorderColor::Zero,
