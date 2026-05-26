@@ -5034,11 +5034,10 @@ pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     }
 }
 
-// FIXME: wgpu has generic shader passthrough now, we should be doing something similar
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModulePassthrough(
     device: native::WGPUDevice,
-    descriptor: Option<&native::WGPUShaderModuleDescriptorSpirV>,
+    descriptor: Option<&native::WGPUShaderModuleDescriptorPassthrough>,
 ) -> native::WGPUShaderModule {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
@@ -5046,17 +5045,54 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let source = Cow::Borrowed(make_slice(
-        descriptor.source,
-        descriptor.sourceSize as usize,
-    ));
-
     let desc_label = string_view_into_label(descriptor.label);
+
+    let entry_points: Vec<wgt::PassthroughShaderEntryPoint<'_>> =
+        make_slice(descriptor.entryPoints, descriptor.entryPointCount)
+            .iter()
+            .map(|ep| wgt::PassthroughShaderEntryPoint {
+                name: Cow::Borrowed(string_view_into_str(ep.name).unwrap_or("")),
+                workgroup_size: (ep.workgroupSizeX, ep.workgroupSizeY, ep.workgroupSizeZ),
+            })
+            .collect();
+
+    let spirv = if descriptor.spirvSize > 0 {
+        Some(Cow::Borrowed(make_slice(
+            descriptor.spirv,
+            descriptor.spirvSize as usize,
+        )))
+    } else {
+        None
+    };
+
+    let dxil = if descriptor.dxilSize > 0 {
+        Some(Cow::Borrowed(make_slice(
+            descriptor.dxil,
+            descriptor.dxilSize,
+        )))
+    } else {
+        None
+    };
+
+    let metallib = if descriptor.metallibSize > 0 {
+        Some(Cow::Borrowed(make_slice(
+            descriptor.metallib,
+            descriptor.metallibSize,
+        )))
+    } else {
+        None
+    };
 
     let desc = wgc::pipeline::ShaderModuleDescriptorPassthrough {
         label: desc_label.to_owned(),
-        spirv: Some(source),
-        ..Default::default()
+        entry_points: Cow::Owned(entry_points),
+        spirv,
+        dxil,
+        hlsl: string_view_into_str(descriptor.hlsl).map(Cow::Borrowed),
+        metallib,
+        msl: string_view_into_str(descriptor.msl).map(Cow::Borrowed),
+        glsl: None,
+        wgsl: None,
     };
 
     let (shader_module_id, error) =
@@ -5078,7 +5114,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleSpirV(
             error_sink,
             cause,
             desc_label,
-            "wgpuDeviceCreateShaderModuleSpirV",
+            "wgpuDeviceCreateShaderModulePassthrough",
         );
     }
 

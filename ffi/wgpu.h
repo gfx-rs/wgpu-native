@@ -1413,13 +1413,43 @@ typedef struct WGPUShaderSourceGLSL
     WGPUShaderDefine const *defines;
 } WGPUShaderSourceGLSL;
 
-typedef struct WGPUShaderModuleDescriptorSpirV
+typedef struct WGPUPassthroughShaderEntryPoint
+{
+    /** Entry point name. Required for GLSL and DXIL; used for identification in others. */
+    WGPUStringView name;
+    /** Workgroup size for compute shaders (Metal only). Ignored for other stages. */
+    uint32_t workgroupSizeX;
+    uint32_t workgroupSizeY;
+    uint32_t workgroupSizeZ;
+} WGPUPassthroughShaderEntryPoint;
+
+/**
+ * Descriptor for a shader module created from native/backend-specific sources.
+ * At least one source appropriate for the active backend must be provided.
+ *
+ * This type is unique to wgpu-native; there is no analogue in the
+ * WebGPU specification.
+ */
+typedef struct WGPUShaderModuleDescriptorPassthrough
 {
     WGPUStringView label;
-    /** Number of 32-bit words in @c source. */
-    uint32_t sourceSize;
-    uint32_t const *source;
-} WGPUShaderModuleDescriptorSpirV;
+    /** Number of entries in @c entryPoints. */
+    size_t entryPointCount;
+    WGPUPassthroughShaderEntryPoint const *entryPoints;
+    /** Number of 32-bit words in @c spirv. 0 if unused. */
+    uint32_t spirvSize;
+    uint32_t const *spirv;
+    /** Byte count of @c dxil. 0 if unused. */
+    size_t dxilSize;
+    uint8_t const *dxil;
+    /** HLSL source. @ref WGPUStringView_null if unused. */
+    WGPUStringView hlsl;
+    /** Byte count of @c metallib. 0 if unused. */
+    size_t metallibSize;
+    uint8_t const *metallib;
+    /** MSL source. @ref WGPUStringView_null if unused. */
+    WGPUStringView msl;
+} WGPUShaderModuleDescriptorPassthrough;
 
 typedef struct WGPURegistryReport
 {
@@ -2113,7 +2143,7 @@ extern "C"
 
     // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
     WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex);
-    WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const *descriptor);
+    WGPUShaderModule wgpuDeviceCreateShaderModulePassthrough(WGPUDevice device, WGPUShaderModuleDescriptorPassthrough const *descriptor);
 
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
 
