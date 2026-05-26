@@ -2055,6 +2055,36 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_TaskShaderDispatchT
  */
 static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp = 0x0000000000000010;
 
+/**
+ * Bitmask of texture format feature flags returned by
+ * @ref wgpuAdapterGetTextureFormatCapabilities.
+ *
+ * Bit values match those of @c wgpu_types::TextureFormatFeatureFlags.
+ */
+typedef uint32_t WGPUNativeTextureFormatFeatureFlags;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_None = 0x00000000;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Filterable = 0x00000001;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX2 = 0x00000002;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX4 = 0x00000004;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX8 = 0x00000008;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX16 = 0x00000010;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleResolve = 0x00000020;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadOnly = 0x00000040;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageWriteOnly = 0x00000080;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadWrite = 0x00000100;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageAtomic = 0x00000200;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Blendable = 0x00000400;
+
+/**
+ * Texture format capabilities returned by @ref wgpuAdapterGetTextureFormatCapabilities.
+ */
+typedef struct WGPUNativeTextureFormatCapabilities {
+    /** The set of @ref WGPUTextureUsage bits supported for this format on this adapter. */
+    WGPUTextureUsage allowedUsages;
+    /** Feature flags for this format (see @ref WGPUNativeTextureFormatFeatureFlags). */
+    WGPUNativeTextureFormatFeatureFlags flags;
+} WGPUNativeTextureFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -2062,6 +2092,14 @@ extern "C"
 
     void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
     size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
+
+    /**
+     * Query the actual texture format capabilities supported by this adapter.
+     *
+     * Fills @p capabilities with the allowed usages and feature flags for @p format.
+     * Returns @ref WGPUStatus_Error if @p format is not recognized.
+     */
+    WGPUStatus wgpuAdapterGetTextureFormatCapabilities(WGPUAdapter adapter, WGPUTextureFormat format, WGPUNativeTextureFormatCapabilities *capabilities);
     /**
      * Poll all devices owned by this instance.
      *

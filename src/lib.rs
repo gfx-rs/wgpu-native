@@ -975,6 +975,30 @@ pub unsafe extern "C" fn wgpuAdapterRequestDevice(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetTextureFormatCapabilities(
+    adapter: native::WGPUAdapter,
+    format: native::WGPUTextureFormat,
+    capabilities: Option<&mut native::WGPUNativeTextureFormatCapabilities>,
+) -> native::WGPUStatus {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, Arc::clone(&adapter.context))
+    };
+    let capabilities = capabilities.expect("invalid capabilities pointer");
+
+    let wgt_format = match conv::map_texture_format(format) {
+        Some(f) => f,
+        None => return native::WGPUStatus_Error,
+    };
+    let feats = context.adapter_get_texture_format_features(adapter_id, wgt_format);
+
+    capabilities.allowedUsages = feats.allowed_usages.bits() as native::WGPUTextureUsage;
+    capabilities.flags = feats.flags.bits() as native::WGPUNativeTextureFormatFeatureFlags;
+
+    native::WGPUStatus_Success
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterAddRef(adapter: native::WGPUAdapter) {
     assert!(!adapter.is_null(), "invalid adapter");
     Arc::increment_strong_count(adapter);
