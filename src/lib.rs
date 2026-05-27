@@ -6044,10 +6044,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
     let blas_raw = make_slice(blas_entries, blas_entry_count);
     let tlas_raw = make_slice(tlas_pkgs, tlas_pkg_count);
 
-    // Pre-allocate owned size descriptors so we can hand out references with a named lifetime.
+    // Pre-allocate triangle size descriptors (empty for non-triangle entries).
     let tri_size_storage: Vec<Vec<wgt::BlasTriangleGeometrySizeDescriptor>> = blas_raw
         .iter()
         .map(|entry| {
+            if entry.geometryKind != native::WGPUBlasGeometryKind_Triangles {
+                return Vec::new();
+            }
             make_slice(entry.triangleGeometries, entry.triangleGeometryCount)
                 .iter()
                 .map(|tg| {
@@ -6064,6 +6067,26 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                         vertex_count: sd.vertexCount,
                         index_format,
                         index_count,
+                        flags: map_acceleration_structure_geometry_flags(sd.flags),
+                    }
+                })
+                .collect()
+        })
+        .collect();
+
+    // Pre-allocate AABB size descriptors (empty for non-AABB entries).
+    let aabb_size_storage: Vec<Vec<wgt::BlasAABBGeometrySizeDescriptor>> = blas_raw
+        .iter()
+        .map(|entry| {
+            if entry.geometryKind != native::WGPUBlasGeometryKind_AABBs {
+                return Vec::new();
+            }
+            make_slice(entry.aabbGeometries, entry.aabbGeometryCount)
+                .iter()
+                .map(|ag| {
+                    let sd = ag.size.as_ref().expect("invalid aabb size descriptor");
+                    wgt::BlasAABBGeometrySizeDescriptor {
+                        primitive_count: sd.primitiveCount,
                         flags: map_acceleration_structure_geometry_flags(sd.flags),
                     }
                 })
@@ -6090,37 +6113,50 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
     let blas_iter = blas_raw
         .iter()
         .zip(tri_size_storage.iter())
-        .map(|(entry, tri_sizes)| {
+        .zip(aabb_size_storage.iter())
+        .map(|((entry, tri_sizes), aabb_sizes)| {
             let blas_id = entry.blas.as_ref().expect("invalid blas in build entry").id;
-            let tg_raw = make_slice(entry.triangleGeometries, entry.triangleGeometryCount);
-            let tgs: Vec<wgc::ray_tracing::BlasTriangleGeometry<'_>> = tg_raw
-                .iter()
-                .zip(tri_sizes.iter())
-                .map(|(tg, size)| wgc::ray_tracing::BlasTriangleGeometry {
-                    size,
-                    vertex_buffer: tg.vertexBuffer.as_ref().expect("invalid vertex buffer").id,
-                    index_buffer: tg.indexBuffer.as_ref().map(|b| b.id),
-                    transform_buffer: tg.transformBuffer.as_ref().map(|b| b.id),
-                    first_vertex: tg.firstVertex,
-                    vertex_stride: tg.vertexStride,
-                    first_index: if tg.indexBuffer.is_null() {
-                        None
-                    } else {
-                        Some(tg.firstIndex)
-                    },
-                    transform_buffer_offset: if tg.transformBuffer.is_null() {
-                        None
-                    } else {
-                        Some(tg.transformBufferOffset)
-                    },
-                })
-                .collect();
-            wgc::ray_tracing::BlasBuildEntry {
-                blas_id,
-                geometries: wgc::ray_tracing::BlasGeometries::TriangleGeometries(Box::new(
-                    tgs.into_iter(),
-                )),
-            }
+            let geometries = if entry.geometryKind == native::WGPUBlasGeometryKind_Triangles {
+                let tg_raw = make_slice(entry.triangleGeometries, entry.triangleGeometryCount);
+                let tgs: Vec<wgc::ray_tracing::BlasTriangleGeometry<'_>> = tg_raw
+                    .iter()
+                    .zip(tri_sizes.iter())
+                    .map(|(tg, size)| wgc::ray_tracing::BlasTriangleGeometry {
+                        size,
+                        vertex_buffer: tg.vertexBuffer.as_ref().expect("invalid vertex buffer").id,
+                        index_buffer: tg.indexBuffer.as_ref().map(|b| b.id),
+                        transform_buffer: tg.transformBuffer.as_ref().map(|b| b.id),
+                        first_vertex: tg.firstVertex,
+                        vertex_stride: tg.vertexStride,
+                        first_index: if tg.indexBuffer.is_null() {
+                            None
+                        } else {
+                            Some(tg.firstIndex)
+                        },
+                        transform_buffer_offset: if tg.transformBuffer.is_null() {
+                            None
+                        } else {
+                            Some(tg.transformBufferOffset)
+                        },
+                    })
+                    .collect();
+                wgc::ray_tracing::BlasGeometries::TriangleGeometries(Box::new(tgs.into_iter()))
+            } else {
+                // WGPUBlasGeometryKind_AABBs
+                let ag_raw = make_slice(entry.aabbGeometries, entry.aabbGeometryCount);
+                let ags: Vec<wgc::ray_tracing::BlasAabbGeometry<'_>> = ag_raw
+                    .iter()
+                    .zip(aabb_sizes.iter())
+                    .map(|(ag, size)| wgc::ray_tracing::BlasAabbGeometry {
+                        size,
+                        stride: ag.stride,
+                        aabb_buffer: ag.aabbBuffer.as_ref().expect("invalid aabb buffer").id,
+                        primitive_offset: ag.primitiveOffset,
+                    })
+                    .collect();
+                wgc::ray_tracing::BlasGeometries::AabbGeometries(Box::new(ags.into_iter()))
+            };
+            wgc::ray_tracing::BlasBuildEntry { blas_id, geometries }
         });
 
     let tlas_iter = tlas_raw
