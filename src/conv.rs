@@ -2336,3 +2336,38 @@ pub fn map_acceleration_structure_geometry_flags(
     }
     out
 }
+
+pub fn map_downlevel_capabilities(
+    caps: &wgt::DownlevelCapabilities,
+) -> native::WGPUDownlevelCapabilities {
+    let mut flags = native::WGPUDownlevelFlags_None;
+    macro_rules! flag {
+        ($wgt:ident => $native:ident) => {
+            if caps.flags.contains(wgt::DownlevelFlags::$wgt) {
+                flags |= native::$native;
+            }
+        };
+    }
+    flag!(COMPUTE_SHADERS => WGPUDownlevelFlags_ComputeShaders);
+    flag!(FRAGMENT_WRITABLE_STORAGE => WGPUDownlevelFlags_FragmentWritableStorage);
+    flag!(INDIRECT_EXECUTION => WGPUDownlevelFlags_IndirectExecution);
+    flag!(BASE_VERTEX => WGPUDownlevelFlags_BaseVertex);
+    flag!(READ_ONLY_DEPTH_STENCIL => WGPUDownlevelFlags_ReadOnlyDepthStencil);
+    flag!(CUBE_ARRAY_TEXTURES => WGPUDownlevelFlags_CubeArrayTextures);
+    flag!(COMPARISON_SAMPLERS => WGPUDownlevelFlags_ComparisonSamplers);
+    flag!(VERTEX_STORAGE => WGPUDownlevelFlags_VertexStorage);
+    flag!(ANISOTROPIC_FILTERING => WGPUDownlevelFlags_AnisotropicFiltering);
+    flag!(FRAGMENT_STORAGE => WGPUDownlevelFlags_FragmentStorage);
+    flag!(MULTISAMPLED_SHADING => WGPUDownlevelFlags_MultisampledShading);
+    flag!(UNRESTRICTED_INDEX_BUFFER => WGPUDownlevelFlags_UnrestrictedIndexBuffer);
+    flag!(DEPTH_BIAS_CLAMP => WGPUDownlevelFlags_DepthBiasClamp);
+    flag!(UNRESTRICTED_EXTERNAL_TEXTURE_COPIES => WGPUDownlevelFlags_UnrestrictedExternalTextureCopies);
+
+    let shader_model = match caps.shader_model {
+        wgt::ShaderModel::Sm2 => native::WGPUShaderModel_Sm2,
+        wgt::ShaderModel::Sm4 => native::WGPUShaderModel_Sm4,
+        wgt::ShaderModel::Sm5 => native::WGPUShaderModel_Sm5,
+    };
+
+    native::WGPUDownlevelCapabilities { flags, shaderModel: shader_model }
+}

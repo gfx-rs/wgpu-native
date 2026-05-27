@@ -1524,6 +1524,50 @@ typedef struct WGPUGlobalReport
     WGPUHubReport hub;
 } WGPUGlobalReport;
 
+/** Describes a single GPU memory allocation within a memory block. */
+typedef struct WGPUAllocationReport
+{
+    /** Name given to the allocation at creation time. */
+    WGPUStringView name;
+    /** Byte offset within the containing memory block. */
+    uint64_t offset;
+    /** Size of the allocation in bytes. */
+    uint64_t size;
+} WGPUAllocationReport WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Describes a GPU memory block and the range of allocations it contains. */
+typedef struct WGPUMemoryBlockReport
+{
+    /** Total size of the memory block in bytes. */
+    uint64_t size;
+    /** Index into the allocations array of the first allocation in this block. */
+    size_t allocationStart;
+    /** One past the index of the last allocation in this block. */
+    size_t allocationEnd;
+} WGPUMemoryBlockReport WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * A snapshot of the GPU memory allocator's state, returned by
+ * @ref wgpuDeviceGetAllocatorReport.
+ *
+ * Must be freed with @ref wgpuAllocatorReportFreeMembers when no longer needed.
+ */
+typedef struct WGPUAllocatorReport
+{
+    /** True if the backend exposes allocator information; false otherwise. */
+    WGPUBool available;
+    /** Array of live allocations. Length is @p allocationCount. */
+    WGPUAllocationReport *allocations;
+    size_t allocationCount;
+    /** Array of memory blocks. Length is @p blockCount. */
+    WGPUMemoryBlockReport *blocks;
+    size_t blockCount;
+    /** Total bytes currently occupied by live allocations. */
+    uint64_t totalAllocatedBytes;
+    /** Total bytes reserved by all memory blocks (including unused padding). */
+    uint64_t totalReservedBytes;
+} WGPUAllocatorReport WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef struct WGPUInstanceEnumerateAdapterOptions
 {
     WGPUChainedStruct const *nextInChain;
@@ -2232,6 +2276,54 @@ static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerD
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_PointerCompositeAccess = 0x00000004;
 
 /**
+ * Bitmask of downlevel capabilities returned by
+ * @ref wgpuAdapterGetDownlevelCapabilities.
+ *
+ * Bit values match those of @c wgpu_types::DownlevelFlags.
+ */
+typedef uint32_t WGPUDownlevelFlags;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_None = 0x00000000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ComputeShaders = 0x00000001;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentWritableStorage = 0x00000002;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_IndirectExecution = 0x00000004;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_BaseVertex = 0x00000008;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ReadOnlyDepthStencil = 0x00000010;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_CubeArrayTextures = 0x00000040;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ComparisonSamplers = 0x00000080;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_VertexStorage = 0x00000200;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_AnisotropicFiltering = 0x00000400;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentStorage = 0x00000800;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_MultisampledShading = 0x00001000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedIndexBuffer = 0x00010000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthBiasClamp = 0x00040000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedExternalTextureCopies = 0x00100000;
+
+/** Shader model supported by the adapter. */
+typedef enum WGPUShaderModel
+{
+    /** Extremely limited shaders (legacy GPUs). */
+    WGPUShaderModel_Sm2 = 2,
+    /** Shader model 4 — missing storage images. */
+    WGPUShaderModel_Sm4 = 4,
+    /** Shader model 5 — the WebGPU baseline. */
+    WGPUShaderModel_Sm5 = 5,
+    WGPUShaderModel_Force32 = 0x7FFFFFFF
+} WGPUShaderModel;
+
+/**
+ * Capabilities of adapters that fall below the WebGPU baseline.
+ *
+ * Returned by @ref wgpuAdapterGetDownlevelCapabilities.
+ */
+typedef struct WGPUDownlevelCapabilities
+{
+    /** Set of @ref WGPUDownlevelFlags bits this adapter supports. */
+    WGPUDownlevelFlags flags;
+    /** Highest shader model this adapter can compile. */
+    WGPUShaderModel shaderModel;
+} WGPUDownlevelCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
  * Texture format capabilities returned by @ref wgpuAdapterGetTextureFormatCapabilities.
  */
 typedef struct WGPUNativeTextureFormatCapabilities {
@@ -2380,6 +2472,22 @@ extern "C"
     /** Query internal wgpu-core/HAL resource counters for debugging. */
     WGPUInternalCounters wgpuDeviceGetInternalCounters(WGPUDevice device);
 
+    /**
+     * Returns a snapshot of the GPU memory allocator's state for this device.
+     *
+     * The returned @ref WGPUAllocatorReport must be freed with
+     * @ref wgpuAllocatorReportFreeMembers when no longer needed.
+     * If the backend does not expose allocator information, @p available will
+     * be false and all other fields will be zero/null.
+     */
+    WGPUAllocatorReport wgpuDeviceGetAllocatorReport(WGPUDevice device);
+
+    /**
+     * Free the memory owned by a @ref WGPUAllocatorReport returned by
+     * @ref wgpuDeviceGetAllocatorReport.
+     */
+    void wgpuAllocatorReportFreeMembers(WGPUAllocatorReport report);
+
     /** Build acceleration structures on the command encoder. */
     void wgpuCommandEncoderBuildAccelerationStructures(
         WGPUCommandEncoder commandEncoder,
@@ -2413,6 +2521,14 @@ extern "C"
 
     /** Returns true if this surface can be presented by this adapter. */
     WGPUBool wgpuAdapterIsSurfaceSupported(WGPUAdapter adapter, WGPUSurface surface);
+
+    /**
+     * Returns the downlevel capabilities of this adapter.
+     *
+     * These describe capabilities that fall below the WebGPU baseline, such as
+     * whether compute shaders and storage images are available.
+     */
+    WGPUDownlevelCapabilities wgpuAdapterGetDownlevelCapabilities(WGPUAdapter adapter);
 
     /**
      * Returns a monotonically increasing timestamp in nanoseconds for the current

@@ -1038,6 +1038,15 @@ pub unsafe extern "C" fn wgpuAdapterGetPresentationTimestamp(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetDownlevelCapabilities(
+    adapter: native::WGPUAdapter,
+) -> native::WGPUDownlevelCapabilities {
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    let caps = adapter.context.adapter_downlevel_capabilities(adapter.id);
+    conv::map_downlevel_capabilities(&caps)
+}
+
 fn map_cooperative_scalar_type(
     t: wgt::CooperativeScalarType,
 ) -> native::WGPUNativeCooperativeScalarType {
@@ -5852,6 +5861,83 @@ pub unsafe extern "C" fn wgpuDeviceGetInternalCounters(
             accelerationStructureMemory: hal.acceleration_structure_memory.read() as i64,
             memoryAllocations: hal.memory_allocations.read() as i64,
         },
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetAllocatorReport(
+    device: native::WGPUDevice,
+) -> native::WGPUAllocatorReport {
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, Arc::clone(&device.context))
+    };
+
+    match context.device_generate_allocator_report(device_id) {
+        None => native::WGPUAllocatorReport {
+            available: 0,
+            allocations: std::ptr::null_mut(),
+            allocationCount: 0,
+            blocks: std::ptr::null_mut(),
+            blockCount: 0,
+            totalAllocatedBytes: 0,
+            totalReservedBytes: 0,
+        },
+        Some(report) => {
+            let allocations: Vec<native::WGPUAllocationReport> = report
+                .allocations
+                .iter()
+                .map(|a| native::WGPUAllocationReport {
+                    name: utils::str_into_owned_string_view(&a.name),
+                    offset: a.offset,
+                    size: a.size,
+                })
+                .collect();
+            let blocks: Vec<native::WGPUMemoryBlockReport> = report
+                .blocks
+                .iter()
+                .map(|b| native::WGPUMemoryBlockReport {
+                    size: b.size,
+                    allocationStart: b.allocations.start,
+                    allocationEnd: b.allocations.end,
+                })
+                .collect();
+
+            let alloc_count = allocations.len();
+            let block_count = blocks.len();
+            let alloc_ptr = Box::into_raw(allocations.into_boxed_slice()).cast();
+            let block_ptr = Box::into_raw(blocks.into_boxed_slice()).cast();
+
+            native::WGPUAllocatorReport {
+                available: 1,
+                allocations: alloc_ptr,
+                allocationCount: alloc_count,
+                blocks: block_ptr,
+                blockCount: block_count,
+                totalAllocatedBytes: report.total_allocated_bytes,
+                totalReservedBytes: report.total_reserved_bytes,
+            }
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAllocatorReportFreeMembers(report: native::WGPUAllocatorReport) {
+    if !report.allocations.is_null() && report.allocationCount > 0 {
+        let slice = std::slice::from_raw_parts(report.allocations, report.allocationCount);
+        for alloc in slice {
+            utils::drop_string_view(alloc.name);
+        }
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            report.allocations,
+            report.allocationCount,
+        )));
+    }
+    if !report.blocks.is_null() && report.blockCount > 0 {
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            report.blocks,
+            report.blockCount,
+        )));
     }
 }
 
