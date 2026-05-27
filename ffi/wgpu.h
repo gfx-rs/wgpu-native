@@ -1389,9 +1389,9 @@ typedef struct WGPUNativeLimits
     uint32_t maxMeshOutputLayers;
     uint32_t maxMeshMultiviewViewCount;
     /* Ray tracing limits */
-    uint64_t maxBlasPrimitiveCount;
-    uint64_t maxBlasGeometryCount;
-    uint64_t maxTlasInstanceCount;
+    uint32_t maxBlasPrimitiveCount;
+    uint32_t maxBlasGeometryCount;
+    uint32_t maxTlasInstanceCount;
     uint32_t maxAccelerationStructuresPerShaderStage;
 } WGPUNativeLimits;
 

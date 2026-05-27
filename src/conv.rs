@@ -672,9 +672,9 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
             (*native_limits).maxMeshOutputPrimitives = wgt_limits.max_mesh_output_primitives;
             (*native_limits).maxMeshOutputLayers = wgt_limits.max_mesh_output_layers;
             (*native_limits).maxMeshMultiviewViewCount = wgt_limits.max_mesh_multiview_view_count;
-            (*native_limits).maxBlasPrimitiveCount = wgt_limits.max_blas_primitive_count as u64;
-            (*native_limits).maxBlasGeometryCount = wgt_limits.max_blas_geometry_count as u64;
-            (*native_limits).maxTlasInstanceCount = wgt_limits.max_tlas_instance_count as u64;
+            (*native_limits).maxBlasPrimitiveCount = wgt_limits.max_blas_primitive_count;
+            (*native_limits).maxBlasGeometryCount = wgt_limits.max_blas_geometry_count;
+            (*native_limits).maxTlasInstanceCount = wgt_limits.max_tlas_instance_count;
             (*native_limits).maxAccelerationStructuresPerShaderStage =
                 wgt_limits.max_acceleration_structures_per_shader_stage;
         }
@@ -847,14 +847,14 @@ pub fn map_required_limits(
         if limits.maxMeshMultiviewViewCount != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_mesh_multiview_view_count = limits.maxMeshMultiviewViewCount;
         }
-        if limits.maxBlasPrimitiveCount != WGPU_LIMIT_U64_UNDEFINED {
-            wgt_limits.max_blas_primitive_count = limits.maxBlasPrimitiveCount as u32;
+        if limits.maxBlasPrimitiveCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_blas_primitive_count = limits.maxBlasPrimitiveCount;
         }
-        if limits.maxBlasGeometryCount != WGPU_LIMIT_U64_UNDEFINED {
-            wgt_limits.max_blas_geometry_count = limits.maxBlasGeometryCount as u32;
+        if limits.maxBlasGeometryCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_blas_geometry_count = limits.maxBlasGeometryCount;
         }
-        if limits.maxTlasInstanceCount != WGPU_LIMIT_U64_UNDEFINED {
-            wgt_limits.max_tlas_instance_count = limits.maxTlasInstanceCount as u32;
+        if limits.maxTlasInstanceCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_tlas_instance_count = limits.maxTlasInstanceCount;
         }
         if limits.maxAccelerationStructuresPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_acceleration_structures_per_shader_stage =

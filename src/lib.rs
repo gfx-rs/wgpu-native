@@ -4604,7 +4604,7 @@ pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
         .iter()
         .map(|m| native::WGPUCompilationMessage {
             nextInChain: std::ptr::null_mut(),
-            message: str_into_string_view(&m.message),
+            message: utils::str_into_owned_string_view(&m.message),
             type_: m.message_type,
             lineNum: m.line_num,
             linePos: m.line_pos,
@@ -4630,6 +4630,10 @@ pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
             callback_info.userdata1,
             callback_info.userdata2,
         );
+    }
+
+    for msg in &c_messages {
+        utils::drop_string_view(msg.message);
     }
 
     native::WGPUFuture { id: 0 }
@@ -5720,18 +5724,17 @@ pub unsafe extern "C" fn wgpuBlasPrepareCompactAsync(
     let context = &blas.context;
     let error_sink = &blas.error_sink;
 
-    let callback = match callback_info.callback {
-        Some(cb) => cb,
-        None => return,
-    };
-    let userdata = new_userdata!(callback_info);
+    let closure: Option<wgc::resource::BlasCompactCallback> =
+        callback_info.callback.map(|callback| {
+            let userdata = new_userdata!(callback_info);
+            let closure: wgc::resource::BlasCompactCallback = Box::new(move |result| {
+                let success = result.is_ok() as native::WGPUBool;
+                callback(success, userdata.get_1(), userdata.get_2());
+            });
+            closure
+        });
 
-    let closure: wgc::resource::BlasCompactCallback = Box::new(move |result| {
-        let success = result.is_ok() as native::WGPUBool;
-        callback(success, userdata.get_1(), userdata.get_2());
-    });
-
-    if let Err(cause) = context.blas_prepare_compact_async(blas_id, Some(closure)) {
+    if let Err(cause) = context.blas_prepare_compact_async(blas_id, closure) {
         handle_error(error_sink, cause, None, "wgpuBlasPrepareCompactAsync");
     }
 }
@@ -6234,8 +6237,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                     })
                     .collect();
                 wgc::ray_tracing::BlasGeometries::TriangleGeometries(Box::new(tgs.into_iter()))
-            } else {
-                // WGPUBlasGeometryKind_AABBs
+            } else if entry.geometryKind == native::WGPUBlasGeometryKind_AABBs {
                 let ag_raw = make_slice(entry.aabbGeometries, entry.aabbGeometryCount);
                 let ags: Vec<wgc::ray_tracing::BlasAabbGeometry<'_>> = ag_raw
                     .iter()
@@ -6248,6 +6250,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                     })
                     .collect();
                 wgc::ray_tracing::BlasGeometries::AabbGeometries(Box::new(ags.into_iter()))
+            } else {
+                panic!("unknown WGPUBlasGeometryKind: {}", entry.geometryKind)
             };
             wgc::ray_tracing::BlasBuildEntry { blas_id, geometries }
         });
