@@ -1541,6 +1541,9 @@ typedef struct WGPUBindGroupEntryExtras
     size_t textureViewCount;
     /** For AccelerationStructure bindings. NULL for non-AS bindings. */
     WGPU_NULLABLE WGPUTlas tlas;
+    /** For AccelerationStructure array bindings. NULL for non-array AS bindings. */
+    WGPUTlas const *tlases;
+    size_t tlasCount;
 } WGPUBindGroupEntryExtras;
 
 typedef struct WGPUBindGroupLayoutEntryExtras
@@ -2218,6 +2221,17 @@ static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureF
 static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Blendable = 0x00000400;
 
 /**
+ * Bitmask of implemented WGSL language features.
+ *
+ * Returned by @ref wgpuGetWgslLanguageFeatures.
+ */
+typedef uint32_t WGPUWgslLanguageFeatures;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_None = 0x00000000;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures = 0x00000001;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct = 0x00000002;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_PointerCompositeAccess = 0x00000004;
+
+/**
  * Texture format capabilities returned by @ref wgpuAdapterGetTextureFormatCapabilities.
  */
 typedef struct WGPUNativeTextureFormatCapabilities {
@@ -2380,6 +2394,22 @@ extern "C"
         WGPUCommandEncoder commandEncoder,
         size_t blasCount, WGPUBlas const *blases,
         size_t tlasCount, WGPUTlas const *tlases);
+
+    /**
+     * Returns a bitmask of implemented WGSL language features for this build.
+     *
+     * The returned @ref WGPUWgslLanguageFeatures value reflects which language
+     * extensions the bundled naga WGSL frontend actually supports.
+     */
+    WGPUWgslLanguageFeatures wgpuGetWgslLanguageFeatures(void);
+
+    /**
+     * Discard the current surface texture without presenting it.
+     *
+     * Call this instead of @ref wgpuSurfacePresent when you want to
+     * abandon the frame (e.g. on resize or minimise).
+     */
+    void wgpuSurfaceDiscardTexture(WGPUSurface surface);
 
     /** Returns true if this surface can be presented by this adapter. */
     WGPUBool wgpuAdapterIsSurfaceSupported(WGPUAdapter adapter, WGPUSurface surface);

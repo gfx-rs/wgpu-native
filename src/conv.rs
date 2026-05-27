@@ -1824,6 +1824,21 @@ pub fn map_bind_group_entry<'a>(
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::AccelerationStructure(tlas.id),
             };
+        } else if let Some(tlases) = unsafe { extras.tlases.as_ref() } {
+            let arr: Vec<_> = make_slice(tlases, extras.tlasCount)
+                .iter()
+                .map(|v| {
+                    unsafe { v.as_ref() }
+                        .expect("invalid tlas for bind group entry extras")
+                        .id
+                })
+                .collect();
+            return wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::AccelerationStructureArray(
+                    std::borrow::Cow::Owned(arr),
+                ),
+            };
         }
     }
 

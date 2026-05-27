@@ -4826,6 +4826,19 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceDiscardTexture(surface: native::WGPUSurface) {
+    let surface = surface.as_ref().expect("invalid surface");
+    match surface.context.surface_texture_discard(surface.id) {
+        Ok(_) => (),
+        Err(cause) => handle_error_fatal(cause, "wgpuSurfaceDiscardTexture"),
+    }
+    // Mark as presented so the texture drop doesn't attempt a second discard.
+    surface
+        .has_surface_presented
+        .store(true, atomic::Ordering::SeqCst);
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuSurfaceUnconfigure(surface: native::WGPUSurface) {
     let surface = surface.as_ref().expect("invalid surface");
     let mut surface_data_guard = surface.data.lock();
@@ -5045,6 +5058,34 @@ pub unsafe extern "C" fn wgpuGenerateReport(
     let context = &instance.as_ref().expect("invalid instance").context;
     let native_report = native_report.expect("invalid return pointer \"native_report\"");
     conv::write_global_report(native_report, &context.generate_report());
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuGetWgslLanguageFeatures() -> native::WGPUWgslLanguageFeatures {
+    #[cfg(feature = "wgsl")]
+    {
+        use naga::front::wgsl::ImplementedLanguageExtension;
+        ImplementedLanguageExtension::all().iter().copied().fold(
+            native::WGPUWgslLanguageFeatures_None,
+            |acc, ext| {
+                acc | match ext {
+                    ImplementedLanguageExtension::ReadOnlyAndReadWriteStorageTextures => {
+                        native::WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures
+                    }
+                    ImplementedLanguageExtension::Packed4x8IntegerDotProduct => {
+                        native::WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct
+                    }
+                    ImplementedLanguageExtension::PointerCompositeAccess => {
+                        native::WGPUWgslLanguageFeatures_PointerCompositeAccess
+                    }
+                }
+            },
+        )
+    }
+    #[cfg(not(feature = "wgsl"))]
+    {
+        native::WGPUWgslLanguageFeatures_None
+    }
 }
 
 #[no_mangle]
