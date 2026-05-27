@@ -2344,6 +2344,36 @@ typedef struct WGPUNativeTextureFormatCapabilities {
     WGPUNativeTextureFormatFeatureFlags flags;
 } WGPUNativeTextureFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
 
+/** Format of the plane(s) backing an external texture. */
+typedef enum WGPUExternalTextureFormat {
+    WGPUExternalTextureFormat_Rgba  = 0x00000000,
+    WGPUExternalTextureFormat_Nv12  = 0x00000001,
+    WGPUExternalTextureFormat_Yu12  = 0x00000002,
+    WGPUExternalTextureFormat_Force32 = 0x7FFFFFFF,
+} WGPUExternalTextureFormat;
+
+/** Gamma-encoding transfer function parameters: tf = k*x (x<b) or a*pow(x,1/g)-(a-1) (x>=b). */
+typedef struct WGPUExternalTextureTransferFunction {
+    float a;
+    float b;
+    float g;
+    float k;
+} WGPUExternalTextureTransferFunction;
+
+/** Descriptor passed to @ref wgpuDeviceCreateExternalTexture. */
+typedef struct WGPUExternalTextureDescriptor {
+    WGPUStringView label;
+    uint32_t width;
+    uint32_t height;
+    WGPUExternalTextureFormat format;
+    float yuvConversionMatrix[16];
+    float gamutConversionMatrix[9];
+    WGPUExternalTextureTransferFunction srcTransferFunction;
+    WGPUExternalTextureTransferFunction dstTransferFunction;
+    float sampleTransform[6];
+    float loadTransform[6];
+} WGPUExternalTextureDescriptor;
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -2450,6 +2480,18 @@ extern "C"
     size_t wgpuPipelineCacheGetData(WGPUPipelineCache cache, void * data);
     void wgpuPipelineCacheAddRef(WGPUPipelineCache cache);
     void wgpuPipelineCacheRelease(WGPUPipelineCache cache);
+
+    // ── External textures ─────────────────────────────────────────────────────
+
+    /** Create an external texture. @p planes must point to @p planeCount texture views. */
+    WGPUExternalTexture wgpuDeviceCreateExternalTexture(
+        WGPUDevice device,
+        WGPUExternalTextureDescriptor const *descriptor,
+        WGPUTextureView const *planes,
+        size_t planeCount);
+
+    void wgpuExternalTextureAddRef(WGPUExternalTexture externalTexture);
+    void wgpuExternalTextureRelease(WGPUExternalTexture externalTexture);
 
     // ── Acceleration structures ───────────────────────────────────────────────
 

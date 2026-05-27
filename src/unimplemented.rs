@@ -225,23 +225,6 @@ pub extern "C" fn wgpuInstanceWaitAny(
     unimplemented!();
 }
 
-#[no_mangle]
-pub extern "C" fn wgpuExternalTextureSetLabel(
-    _external_texture: native::WGPUExternalTexture,
-    _label: native::WGPUStringView,
-) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuExternalTextureAddRef(_external_texture: native::WGPUExternalTexture) {
-    unimplemented!();
-}
-
-#[no_mangle]
-pub extern "C" fn wgpuExternalTextureRelease(_external_texture: native::WGPUExternalTexture) {
-    unimplemented!();
-}
 
 #[no_mangle]
 pub extern "C" fn wgpuTextureGetTextureBindingViewDimension(

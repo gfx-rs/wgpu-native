@@ -328,6 +328,18 @@ impl Drop for WGPUBlasImpl {
     }
 }
 
+pub struct WGPUExternalTextureImpl {
+    context: Arc<Context>,
+    id: id::ExternalTextureId,
+}
+impl Drop for WGPUExternalTextureImpl {
+    fn drop(&mut self) {
+        if !thread::panicking() {
+            self.context.external_texture_drop(self.id);
+        }
+    }
+}
+
 pub struct WGPUTlasImpl {
     context: Arc<Context>,
     id: id::TlasId,
@@ -2094,7 +2106,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroup(
         .iter()
         .map(|entry| {
             follow_chain!(map_bind_group_entry((entry),
-                WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras)
+                WGPUSType_BindGroupEntryExtras => native::WGPUBindGroupEntryExtras,
+                WGPUSType_ExternalTextureBindingEntry => native::WGPUExternalTextureBindingEntry)
             )
         })
         .collect::<Vec<_>>();
@@ -5852,6 +5865,86 @@ pub unsafe extern "C" fn wgpuDeviceCreateTlas(
         context: context.clone(),
         id: tlas_id,
     }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateExternalTexture(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUExternalTextureDescriptor>,
+    planes: *const native::WGPUTextureView,
+    plane_count: usize,
+) -> native::WGPUExternalTexture {
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid external texture descriptor");
+
+    let format = match descriptor.format {
+        native::WGPUExternalTextureFormat_Rgba => wgt::ExternalTextureFormat::Rgba,
+        native::WGPUExternalTextureFormat_Nv12 => wgt::ExternalTextureFormat::Nv12,
+        native::WGPUExternalTextureFormat_Yu12 => wgt::ExternalTextureFormat::Yu12,
+        f => panic!("unknown WGPUExternalTextureFormat: {f}"),
+    };
+
+    let desc = wgc::resource::ExternalTextureDescriptor {
+        label: string_view_into_label(descriptor.label),
+        width: descriptor.width,
+        height: descriptor.height,
+        format,
+        yuv_conversion_matrix: descriptor.yuvConversionMatrix,
+        gamut_conversion_matrix: descriptor.gamutConversionMatrix,
+        src_transfer_function: wgt::ExternalTextureTransferFunction {
+            a: descriptor.srcTransferFunction.a,
+            b: descriptor.srcTransferFunction.b,
+            g: descriptor.srcTransferFunction.g,
+            k: descriptor.srcTransferFunction.k,
+        },
+        dst_transfer_function: wgt::ExternalTextureTransferFunction {
+            a: descriptor.dstTransferFunction.a,
+            b: descriptor.dstTransferFunction.b,
+            g: descriptor.dstTransferFunction.g,
+            k: descriptor.dstTransferFunction.k,
+        },
+        sample_transform: descriptor.sampleTransform,
+        load_transform: descriptor.loadTransform,
+    };
+
+    let plane_ids: Vec<id::TextureViewId> = make_slice(planes, plane_count)
+        .iter()
+        .map(|tv| tv.as_ref().expect("invalid texture view plane").id)
+        .collect();
+
+    let (et_id, error) =
+        context.device_create_external_texture(device_id, &desc, &plane_ids, None);
+    if let Some(cause) = error {
+        handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateExternalTexture");
+    }
+
+    Arc::into_raw(Arc::new(WGPUExternalTextureImpl {
+        context: context.clone(),
+        id: et_id,
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureAddRef(et: native::WGPUExternalTexture) {
+    assert!(!et.is_null(), "invalid external texture");
+    Arc::increment_strong_count(et);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureRelease(et: native::WGPUExternalTexture) {
+    assert!(!et.is_null(), "invalid external texture");
+    Arc::decrement_strong_count(et);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureSetLabel(
+    _et: native::WGPUExternalTexture,
+    _label: native::WGPUStringView,
+) {
+    // wgpu-core has no external_texture_set_label; no-op.
 }
 
 #[no_mangle]

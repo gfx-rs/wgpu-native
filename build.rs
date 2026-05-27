@@ -23,6 +23,7 @@ fn main() {
     #[rustfmt::skip]
     let types_to_rename = vec![
         ("WGPUBlas", "WGPUBlasImpl"),
+        ("WGPUExternalTexture", "WGPUExternalTextureImpl"),
         ("WGPUTlas", "WGPUTlasImpl"),
         ("WGPUAdapter", "WGPUAdapterImpl"),
         ("WGPUBindGroup", "WGPUBindGroupImpl"),

@@ -1747,6 +1747,7 @@ pub fn to_native_composite_alpha_mode(
 pub fn map_bind_group_entry<'a>(
     entry: &'a native::WGPUBindGroupEntry,
     extras: Option<&native::WGPUBindGroupEntryExtras>,
+    et_binding: Option<&native::WGPUExternalTextureBindingEntry>,
 ) -> wgc::binding_model::BindGroupEntry<'a> {
     if let Some(buffer) = unsafe { entry.buffer.as_ref() } {
         return wgc::binding_model::BindGroupEntry {
@@ -1840,6 +1841,15 @@ pub fn map_bind_group_entry<'a>(
                 ),
             };
         }
+    }
+
+    if let Some(et) = et_binding {
+        let et_ref = unsafe { et.externalTexture.as_ref() }
+            .expect("invalid external texture in bind group entry");
+        return wgc::binding_model::BindGroupEntry {
+            binding: entry.binding,
+            resource: wgc::binding_model::BindingResource::ExternalTexture(et_ref.id),
+        };
     }
 
     panic!("invalid bind group entry for bind group descriptor");
