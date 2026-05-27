@@ -2353,15 +2353,26 @@ pub fn map_downlevel_capabilities(
     flag!(INDIRECT_EXECUTION => WGPUDownlevelFlags_IndirectExecution);
     flag!(BASE_VERTEX => WGPUDownlevelFlags_BaseVertex);
     flag!(READ_ONLY_DEPTH_STENCIL => WGPUDownlevelFlags_ReadOnlyDepthStencil);
+    flag!(NON_POWER_OF_TWO_MIPMAPPED_TEXTURES => WGPUDownlevelFlags_NonPowerOfTwoMipmappedTextures);
     flag!(CUBE_ARRAY_TEXTURES => WGPUDownlevelFlags_CubeArrayTextures);
     flag!(COMPARISON_SAMPLERS => WGPUDownlevelFlags_ComparisonSamplers);
+    flag!(INDEPENDENT_BLEND => WGPUDownlevelFlags_IndependentBlend);
     flag!(VERTEX_STORAGE => WGPUDownlevelFlags_VertexStorage);
     flag!(ANISOTROPIC_FILTERING => WGPUDownlevelFlags_AnisotropicFiltering);
     flag!(FRAGMENT_STORAGE => WGPUDownlevelFlags_FragmentStorage);
     flag!(MULTISAMPLED_SHADING => WGPUDownlevelFlags_MultisampledShading);
+    flag!(DEPTH_TEXTURE_AND_BUFFER_COPIES => WGPUDownlevelFlags_DepthTextureAndBufferCopies);
+    flag!(WEBGPU_TEXTURE_FORMAT_SUPPORT => WGPUDownlevelFlags_WebGpuTextureFormatSupport);
+    flag!(BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED => WGPUDownlevelFlags_BufferBindingsNot16ByteAligned);
     flag!(UNRESTRICTED_INDEX_BUFFER => WGPUDownlevelFlags_UnrestrictedIndexBuffer);
+    flag!(FULL_DRAW_INDEX_UINT32 => WGPUDownlevelFlags_FullDrawIndexUint32);
     flag!(DEPTH_BIAS_CLAMP => WGPUDownlevelFlags_DepthBiasClamp);
+    flag!(VIEW_FORMATS => WGPUDownlevelFlags_ViewFormats);
     flag!(UNRESTRICTED_EXTERNAL_TEXTURE_COPIES => WGPUDownlevelFlags_UnrestrictedExternalTextureCopies);
+    flag!(SURFACE_VIEW_FORMATS => WGPUDownlevelFlags_SurfaceViewFormats);
+    flag!(NONBLOCKING_QUERY_RESOLVE => WGPUDownlevelFlags_NonblockingQueryResolve);
+    flag!(SHADER_F16_IN_F32 => WGPUDownlevelFlags_ShaderF16InF32);
+    flag!(MSL2_1 => WGPUDownlevelFlags_Msl21);
 
     let shader_model = match caps.shader_model {
         wgt::ShaderModel::Sm2 => native::WGPUShaderModel_Sm2,

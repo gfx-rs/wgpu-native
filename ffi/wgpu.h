@@ -2288,15 +2288,26 @@ static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentWritableStorage = 0x0
 static const WGPUDownlevelFlags WGPUDownlevelFlags_IndirectExecution = 0x00000004;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_BaseVertex = 0x00000008;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_ReadOnlyDepthStencil = 0x00000010;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_NonPowerOfTwoMipmappedTextures = 0x00000020;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_CubeArrayTextures = 0x00000040;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_ComparisonSamplers = 0x00000080;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_IndependentBlend = 0x00000100;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_VertexStorage = 0x00000200;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_AnisotropicFiltering = 0x00000400;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentStorage = 0x00000800;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_MultisampledShading = 0x00001000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthTextureAndBufferCopies = 0x00002000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_WebGpuTextureFormatSupport = 0x00004000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_BufferBindingsNot16ByteAligned = 0x00008000;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedIndexBuffer = 0x00010000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FullDrawIndexUint32 = 0x00020000;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthBiasClamp = 0x00040000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ViewFormats = 0x00080000;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedExternalTextureCopies = 0x00100000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_SurfaceViewFormats = 0x00200000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_NonblockingQueryResolve = 0x00400000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ShaderF16InF32 = 0x00800000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_Msl21 = 0x01000000;
 
 /** Shader model supported by the adapter. */
 typedef enum WGPUShaderModel
