@@ -1011,6 +1011,73 @@ pub unsafe extern "C" fn wgpuAdapterRelease(adapter: native::WGPUAdapter) {
     Arc::decrement_strong_count(adapter);
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterIsSurfaceSupported(
+    adapter: native::WGPUAdapter,
+    surface: native::WGPUSurface,
+) -> native::WGPUBool {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, Arc::clone(&adapter.context))
+    };
+    let surface_id = surface.as_ref().expect("invalid surface").id;
+    context.adapter_is_surface_supported(adapter_id, surface_id) as native::WGPUBool
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetPresentationTimestamp(
+    adapter: native::WGPUAdapter,
+) -> native::WGPUPresentationTimestamp {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, Arc::clone(&adapter.context))
+    };
+    let ts = context.adapter_get_presentation_timestamp(adapter_id);
+    native::WGPUPresentationTimestamp {
+        nanoseconds: ts.0 as u64,
+    }
+}
+
+fn map_cooperative_scalar_type(
+    t: wgt::CooperativeScalarType,
+) -> native::WGPUNativeCooperativeScalarType {
+    match t {
+        wgt::CooperativeScalarType::F32 => native::WGPUNativeCooperativeScalarType_F32,
+        wgt::CooperativeScalarType::F16 => native::WGPUNativeCooperativeScalarType_F16,
+        wgt::CooperativeScalarType::I32 => native::WGPUNativeCooperativeScalarType_I32,
+        wgt::CooperativeScalarType::U32 => native::WGPUNativeCooperativeScalarType_U32,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetCooperativeMatrixProperties(
+    adapter: native::WGPUAdapter,
+    properties_out: *mut native::WGPUCooperativeMatrixProperties,
+    properties_capacity: usize,
+) -> usize {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, Arc::clone(&adapter.context))
+    };
+    let props = context.adapter_cooperative_matrix_properties(adapter_id);
+    let count = props.len();
+    if !properties_out.is_null() && properties_capacity > 0 {
+        let fill = properties_capacity.min(count);
+        let out_slice = unsafe { std::slice::from_raw_parts_mut(properties_out, fill) };
+        for (dst, src) in out_slice.iter_mut().zip(props.iter()) {
+            *dst = native::WGPUCooperativeMatrixProperties {
+                mSize: src.m_size,
+                nSize: src.n_size,
+                kSize: src.k_size,
+                abType: map_cooperative_scalar_type(src.ab_type),
+                crType: map_cooperative_scalar_type(src.cr_type),
+                saturatingAccumulation: src.saturating_accumulation as native::WGPUBool,
+            };
+        }
+    }
+    count
+}
+
 // BindGroup methods
 
 #[no_mangle]

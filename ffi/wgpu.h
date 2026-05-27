@@ -2123,6 +2123,43 @@ typedef enum WGPUNativeTextureFormat
     WGPUNativeTextureFormat_Astc12x12Sfloat = 0x00030017,
 } WGPUNativeTextureFormat;
 
+/**
+ * Timestamp in nanoseconds, returned by @ref wgpuAdapterGetPresentationTimestamp.
+ * Stored as uint64_t; the underlying Rust value is u128 but timestamps will not
+ * exceed 2^64 nanoseconds (roughly 584 years) in practice.
+ */
+typedef struct WGPUPresentationTimestamp {
+    uint64_t nanoseconds;
+} WGPUPresentationTimestamp;
+
+/** Element type for cooperative matrix inputs/outputs. */
+typedef enum WGPUNativeCooperativeScalarType {
+    WGPUNativeCooperativeScalarType_F32 = 0x00000000,
+    WGPUNativeCooperativeScalarType_F16 = 0x00000001,
+    WGPUNativeCooperativeScalarType_I32 = 0x00000002,
+    WGPUNativeCooperativeScalarType_U32 = 0x00000003,
+    WGPUNativeCooperativeScalarType_Force32 = 0x7FFFFFFF
+} WGPUNativeCooperativeScalarType;
+
+/**
+ * One supported cooperative matrix configuration, returned by
+ * @ref wgpuAdapterGetCooperativeMatrixProperties.
+ */
+typedef struct WGPUCooperativeMatrixProperties {
+    /** Rows in A and C (M dimension). */
+    uint32_t mSize;
+    /** Columns in B and C (N dimension). */
+    uint32_t nSize;
+    /** Columns in A / rows in B (K dimension). */
+    uint32_t kSize;
+    /** Element type of input matrices A and B. */
+    WGPUNativeCooperativeScalarType abType;
+    /** Element type of accumulator matrix C and the result. */
+    WGPUNativeCooperativeScalarType crType;
+    /** Whether saturating accumulation (clamping on overflow) is supported. */
+    WGPUBool saturatingAccumulation;
+} WGPUCooperativeMatrixProperties;
+
 typedef struct WGPUImageSubresourceRange {
     WGPUTextureAspect aspect;
     uint32_t baseMipLevel;
@@ -2343,6 +2380,26 @@ extern "C"
         WGPUCommandEncoder commandEncoder,
         size_t blasCount, WGPUBlas const *blases,
         size_t tlasCount, WGPUTlas const *tlases);
+
+    /** Returns true if this surface can be presented by this adapter. */
+    WGPUBool wgpuAdapterIsSurfaceSupported(WGPUAdapter adapter, WGPUSurface surface);
+
+    /**
+     * Returns a monotonically increasing timestamp in nanoseconds for the current
+     * frame. Used to synchronize presentation timing across multiple outputs.
+     */
+    WGPUPresentationTimestamp wgpuAdapterGetPresentationTimestamp(WGPUAdapter adapter);
+
+    /**
+     * Returns the number of supported cooperative matrix configurations on this adapter.
+     *
+     * If @p propertiesOut is NULL, only the count is returned.
+     * Otherwise, up to @p propertiesCapacity entries are written.
+     */
+    size_t wgpuAdapterGetCooperativeMatrixProperties(
+        WGPUAdapter adapter,
+        WGPUCooperativeMatrixProperties *propertiesOut,
+        size_t propertiesCapacity);
 
 #ifdef __cplusplus
 } // extern "C"
