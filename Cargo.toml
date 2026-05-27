@@ -2,11 +2,11 @@
 name = "wgpu-native"
 version = "0.0.0"
 authors = [
-  "Dzmitry Malyshau <kvark@mozilla.com>",
-  "Joshua Groves <josh@joshgroves.com>",
-  "Noah Charlton <ncharlton002@gmail.com>",
-  "Almar Klein <almar@almarklein.org>",
-  "Rajesh Malviya <rajveer0malviya@gmail.com>",
+	"Dzmitry Malyshau <kvark@mozilla.com>",
+	"Joshua Groves <josh@joshgroves.com>",
+	"Noah Charlton <ncharlton002@gmail.com>",
+	"Almar Klein <almar@almarklein.org>",
+	"Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
 rust-version = "1.87"
@@ -18,9 +18,9 @@ categories = ["graphics", "rendering"]
 license = "MIT OR Apache-2.0"
 
 [workspace]
-resolver = "2"
 members = ["."]
 default-members = ["."]
+resolver = "2"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
@@ -81,7 +81,7 @@ hal = { workspace = true, features = ["renderdoc"] }
 hal = { workspace = true, features = ["dx12", "renderdoc"] }
 
 [features]
-default = ["dx12", "gles", "glsl", "metal", "spirv", "vulkan", "wgsl"]
+default = ["wgsl", "spirv", "glsl", "dx12", "metal", "vulkan", "gles"]
 
 ## Enables the DX12 backend on Windows.
 dx12 = ["wgc/dx12"]
@@ -92,10 +92,10 @@ metal = ["wgc/metal"]
 ## Enables the GLES backend via [ANGLE](https://github.com/google/angle) on macOS using.
 angle = ["wgc/gles"]
 
-## Enables the OpenGL/GLES backend on Windows, Linux, Android.
-gles = ["wgc/gles"]
 ## Enables the Vulkan backend on Windows, Linux, and Android.
 vulkan = ["wgc/vulkan"]
+## Enables the OpenGL/GLES backend on Windows, Linux, Android.
+gles = ["wgc/gles"]
 
 ## Enables the Vulkan backend on macOS & iOS.
 vulkan-portability = ["wgc/vulkan"]
