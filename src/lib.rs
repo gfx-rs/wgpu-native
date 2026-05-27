@@ -6,8 +6,8 @@ use conv::{
     map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor, map_index_format,
     map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
     map_query_set_descriptor, map_query_set_index, map_sampler_extras, map_shader_module,
-    map_shader_runtime_checks, map_surface, map_surface_configuration, map_vertex_format,
-    CreateSurfaceParams,
+    map_shader_module_extras, map_shader_runtime_checks, map_surface, map_surface_configuration,
+    map_vertex_format, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -2875,6 +2875,11 @@ unsafe fn create_shader_module_impl(
             }));
         }
     };
+
+    let runtime_checks = follow_chain!(
+        map_shader_module_extras((descriptor),
+        WGPUSType_ShaderModuleDescriptorExtras => native::WGPUShaderModuleDescriptorExtras)
+    );
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: desc_label,

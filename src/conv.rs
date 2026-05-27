@@ -77,6 +77,23 @@ pub(crate) unsafe fn map_sampler_extras(
     extras.map(|e| map_sampler_border_color(e.borderColor))
 }
 
+#[inline]
+pub(crate) fn map_shader_module_extras(
+    _descriptor: &native::WGPUShaderModuleDescriptor,
+    extras: Option<&native::WGPUShaderModuleDescriptorExtras>,
+) -> wgt::ShaderRuntimeChecks {
+    match extras {
+        None => wgt::ShaderRuntimeChecks::default(),
+        Some(e) => wgt::ShaderRuntimeChecks {
+            bounds_checks: e.boundsChecks != 0,
+            force_loop_bounding: e.forceLoopBounding != 0,
+            ray_query_initialization_tracking: e.rayQueryInitializationTracking != 0,
+            task_shader_dispatch_tracking: e.taskShaderDispatchTracking != 0,
+            mesh_shader_primitive_indices_clamp: e.meshShaderPrimitiveIndicesClamp != 0,
+        },
+    }
+}
+
 map_enum_with_undefined!(
     map_filter_mode,
     WGPUFilterMode,
