@@ -5763,32 +5763,53 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         update_mode: map_acceleration_structure_update_mode(descriptor.updateMode),
     };
 
-    assert_eq!(
-        sizes.kind,
-        native::WGPUBlasGeometryKind_Triangles,
-        "only triangle geometry is supported for BLAS creation"
-    );
-    let tri_descs = make_slice(sizes.triangleDescriptors, sizes.triangleDescriptorCount)
-        .iter()
-        .map(|sd| {
-            let (index_format, index_count) = if sd.indexFormat == native::WGPUIndexFormat_Undefined
-            {
-                (None, None)
-            } else {
-                (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
-            };
-            wgt::BlasTriangleGeometrySizeDescriptor {
-                vertex_format: map_vertex_format(sd.vertexFormat)
-                    .expect("invalid vertex format for blas size"),
-                vertex_count: sd.vertexCount,
-                index_format,
-                index_count,
+    let wgt_sizes = if sizes.kind == native::WGPUBlasGeometryKind_Triangles {
+        let tri_descs = make_slice(sizes.triangleDescriptors, sizes.triangleDescriptorCount)
+            .iter()
+            .map(|sd| {
+                // Preserve None vs Some(0) distinction for index_count:
+                // C API uses 0 to mean "not provided" when format is undefined,
+                // and format!=Undefined with count==0 means "format without count" (mismatch).
+                let (index_format, index_count) =
+                    if sd.indexFormat == native::WGPUIndexFormat_Undefined {
+                        if sd.indexCount > 0 {
+                            // count provided but no format — pass through for wgpu-core validation
+                            (None, Some(sd.indexCount))
+                        } else {
+                            (None, None)
+                        }
+                    } else if sd.indexCount == 0 {
+                        // format provided but no count — pass through for wgpu-core validation
+                        (map_index_format(sd.indexFormat).ok(), None)
+                    } else {
+                        (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
+                    };
+                wgt::BlasTriangleGeometrySizeDescriptor {
+                    vertex_format: map_vertex_format(sd.vertexFormat)
+                        .expect("invalid vertex format for blas size"),
+                    vertex_count: sd.vertexCount,
+                    index_format,
+                    index_count,
+                    flags: map_acceleration_structure_geometry_flags(sd.flags),
+                }
+            })
+            .collect();
+        wgt::BlasGeometrySizeDescriptors::Triangles {
+            descriptors: tri_descs,
+        }
+    } else if sizes.kind == native::WGPUBlasGeometryKind_AABBs {
+        let aabb_descs = make_slice(sizes.aabbDescriptors, sizes.aabbDescriptorCount)
+            .iter()
+            .map(|sd| wgt::BlasAABBGeometrySizeDescriptor {
+                primitive_count: sd.primitiveCount,
                 flags: map_acceleration_structure_geometry_flags(sd.flags),
-            }
-        })
-        .collect();
-    let wgt_sizes = wgt::BlasGeometrySizeDescriptors::Triangles {
-        descriptors: tri_descs,
+            })
+            .collect();
+        wgt::BlasGeometrySizeDescriptors::AABBs {
+            descriptors: aabb_descs,
+        }
+    } else {
+        panic!("unknown WGPUBlasGeometryKind: {}", sizes.kind);
     };
 
     let (blas_id, handle, error) = context.device_create_blas(device_id, &desc, wgt_sizes, None);
