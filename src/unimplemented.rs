@@ -225,7 +225,6 @@ pub extern "C" fn wgpuInstanceWaitAny(
     unimplemented!();
 }
 
-
 #[no_mangle]
 pub extern "C" fn wgpuTextureGetTextureBindingViewDimension(
     _texture: native::WGPUTexture,

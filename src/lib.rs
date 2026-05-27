@@ -5918,10 +5918,14 @@ pub unsafe extern "C" fn wgpuDeviceCreateExternalTexture(
         .map(|tv| tv.as_ref().expect("invalid texture view plane").id)
         .collect();
 
-    let (et_id, error) =
-        context.device_create_external_texture(device_id, &desc, &plane_ids, None);
+    let (et_id, error) = context.device_create_external_texture(device_id, &desc, &plane_ids, None);
     if let Some(cause) = error {
-        handle_error(error_sink, cause, desc.label, "wgpuDeviceCreateExternalTexture");
+        handle_error(
+            error_sink,
+            cause,
+            desc.label,
+            "wgpuDeviceCreateExternalTexture",
+        );
     }
 
     Arc::into_raw(Arc::new(WGPUExternalTextureImpl {
@@ -6253,7 +6257,10 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
             } else {
                 panic!("unknown WGPUBlasGeometryKind: {}", entry.geometryKind)
             };
-            wgc::ray_tracing::BlasBuildEntry { blas_id, geometries }
+            wgc::ray_tracing::BlasBuildEntry {
+                blas_id,
+                geometries,
+            }
         });
 
     let tlas_iter = tlas_raw

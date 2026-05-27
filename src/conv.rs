@@ -2392,5 +2392,8 @@ pub fn map_downlevel_capabilities(
         wgt::ShaderModel::Sm5 => native::WGPUShaderModel_Sm5,
     };
 
-    native::WGPUDownlevelCapabilities { flags, shaderModel: shader_model }
+    native::WGPUDownlevelCapabilities {
+        flags,
+        shaderModel: shader_model,
+    }
 }
