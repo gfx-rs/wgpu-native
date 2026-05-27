@@ -1612,6 +1612,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_FD) {
         temp.push(native::WGPUNativeFeature_VulkanExternalMemoryFd);
     }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf);
+    }
 
     temp
 }
@@ -1702,6 +1705,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_MemoryDecorationCoherent => Some(Features::MEMORY_DECORATION_COHERENT),
         native::WGPUNativeFeature_MemoryDecorationVolatile => Some(Features::MEMORY_DECORATION_VOLATILE),
         native::WGPUNativeFeature_VulkanExternalMemoryFd => Some(Features::VULKAN_EXTERNAL_MEMORY_FD),
+        native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf => Some(Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF),
         // fallback, probably not available in wgpu-core
         _ => None,
     }

@@ -826,6 +826,12 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_VulkanExternalMemoryFd = 0x00030041,
+    /**
+     * Enables Vulkan external memory for Linux DMA-BUF handles.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanExternalMemoryDmaBuf = 0x00030042,
 
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
