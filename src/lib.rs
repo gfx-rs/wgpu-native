@@ -42,6 +42,8 @@ pub mod native {
     #![allow(non_camel_case_types)]
     #![allow(non_snake_case)]
     #![allow(dead_code)]
+    #![allow(rustdoc::broken_intra_doc_links)]
+    #![allow(rustdoc::invalid_html_tags)]
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
@@ -2164,7 +2166,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateComputePipeline(
             extras
                 .and_then(|e| unsafe { e.cache.as_ref() })
                 .map(|c| c.id),
-            extras.map_or(false, |e| e.zeroInitializeWorkgroupMemory != 0),
+            extras.is_some_and(|e| e.zeroInitializeWorkgroupMemory != 0),
         )
     }
     let (compute_cache, zero_init_workgroup) = follow_chain!(get_compute_extras(
@@ -2407,7 +2409,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateRenderPipeline(
                 .and_then(|e| unsafe { e.cache.as_ref() })
                 .map(|c| c.id),
             extras.and_then(|e| NonZeroU32::new(e.multiviewMask)),
-            extras.map_or(false, |e| e.zeroInitializeWorkgroupMemory != 0),
+            extras.is_some_and(|e| e.zeroInitializeWorkgroupMemory != 0),
         )
     }
     let (render_cache, multiview_mask, zero_init_workgroup) = follow_chain!(get_render_extras(
@@ -2601,7 +2603,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateMeshPipeline(
                 .and_then(|e| unsafe { e.cache.as_ref() })
                 .map(|c| c.id),
             extras.and_then(|e| NonZeroU32::new(e.multiviewMask)),
-            extras.map_or(false, |e| e.zeroInitializeWorkgroupMemory != 0),
+            extras.is_some_and(|e| e.zeroInitializeWorkgroupMemory != 0),
         )
     }
     let (mesh_cache, mesh_multiview, zero_init_workgroup) = follow_chain!(get_mesh_extras(
@@ -5848,8 +5850,9 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
         })
         .collect();
 
+    type TlasInstEntry = Option<(id::BlasId, [f32; 12], u32, u8)>;
     // Pre-allocate owned TLAS instance data so we can hand out transform references.
-    let tlas_inst_storage: Vec<Vec<Option<(id::BlasId, [f32; 12], u32, u8)>>> = tlas_raw
+    let tlas_inst_storage: Vec<Vec<TlasInstEntry>> = tlas_raw
         .iter()
         .map(|pkg| {
             make_slice(pkg.instances, pkg.instanceCount)
