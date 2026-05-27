@@ -1288,10 +1288,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         // wgpu.h extended
         wgt::TextureFormat::R16Unorm => Some(native::WGPUNativeTextureFormat_R16Unorm),
         wgt::TextureFormat::R16Snorm => Some(native::WGPUNativeTextureFormat_R16Snorm),
-        wgt::TextureFormat::Rg16Unorm => Some(native::WGPUNativeTextureFormat_Rg16Unorm),
-        wgt::TextureFormat::Rg16Snorm => Some(native::WGPUNativeTextureFormat_Rg16Snorm),
-        wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUNativeTextureFormat_Rgba16Unorm),
-        wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUNativeTextureFormat_Rgba16Snorm),
         wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
         wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010),
         wgt::TextureFormat::R64Uint => Some(WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT),
