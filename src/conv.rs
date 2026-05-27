@@ -651,6 +651,26 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
             (*native_limits).maxBindingArraySamplerElementsPerShaderStage =
                 wgt_limits.max_binding_array_sampler_elements_per_shader_stage;
             (*native_limits).maxMultiviewViewCount = wgt_limits.max_multiview_view_count;
+            (*native_limits).maxBindingArrayAccelerationStructureElementsPerShaderStage =
+                wgt_limits.max_binding_array_acceleration_structure_elements_per_shader_stage;
+            (*native_limits).maxTaskWorkgroupTotalCount = wgt_limits.max_task_workgroup_total_count;
+            (*native_limits).maxTaskWorkgroupsPerDimension = wgt_limits.max_task_workgroups_per_dimension;
+            (*native_limits).maxMeshWorkgroupTotalCount = wgt_limits.max_mesh_workgroup_total_count;
+            (*native_limits).maxMeshWorkgroupsPerDimension = wgt_limits.max_mesh_workgroups_per_dimension;
+            (*native_limits).maxTaskInvocationsPerWorkgroup = wgt_limits.max_task_invocations_per_workgroup;
+            (*native_limits).maxTaskInvocationsPerDimension = wgt_limits.max_task_invocations_per_dimension;
+            (*native_limits).maxMeshInvocationsPerWorkgroup = wgt_limits.max_mesh_invocations_per_workgroup;
+            (*native_limits).maxMeshInvocationsPerDimension = wgt_limits.max_mesh_invocations_per_dimension;
+            (*native_limits).maxTaskPayloadSize = wgt_limits.max_task_payload_size;
+            (*native_limits).maxMeshOutputVertices = wgt_limits.max_mesh_output_vertices;
+            (*native_limits).maxMeshOutputPrimitives = wgt_limits.max_mesh_output_primitives;
+            (*native_limits).maxMeshOutputLayers = wgt_limits.max_mesh_output_layers;
+            (*native_limits).maxMeshMultiviewViewCount = wgt_limits.max_mesh_multiview_view_count;
+            (*native_limits).maxBlasPrimitiveCount = wgt_limits.max_blas_primitive_count as u64;
+            (*native_limits).maxBlasGeometryCount = wgt_limits.max_blas_geometry_count as u64;
+            (*native_limits).maxTlasInstanceCount = wgt_limits.max_tlas_instance_count as u64;
+            (*native_limits).maxAccelerationStructuresPerShaderStage =
+                wgt_limits.max_acceleration_structures_per_shader_stage;
         }
     };
 }
@@ -775,6 +795,62 @@ pub fn map_required_limits(
         }
         if limits.maxMultiviewViewCount != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_multiview_view_count = limits.maxMultiviewViewCount;
+        }
+        if limits.maxBindingArrayAccelerationStructureElementsPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_binding_array_acceleration_structure_elements_per_shader_stage =
+                limits.maxBindingArrayAccelerationStructureElementsPerShaderStage;
+        }
+        if limits.maxTaskWorkgroupTotalCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_workgroup_total_count = limits.maxTaskWorkgroupTotalCount;
+        }
+        if limits.maxTaskWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_workgroups_per_dimension = limits.maxTaskWorkgroupsPerDimension;
+        }
+        if limits.maxMeshWorkgroupTotalCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_workgroup_total_count = limits.maxMeshWorkgroupTotalCount;
+        }
+        if limits.maxMeshWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_workgroups_per_dimension = limits.maxMeshWorkgroupsPerDimension;
+        }
+        if limits.maxTaskInvocationsPerWorkgroup != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_invocations_per_workgroup = limits.maxTaskInvocationsPerWorkgroup;
+        }
+        if limits.maxTaskInvocationsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_invocations_per_dimension = limits.maxTaskInvocationsPerDimension;
+        }
+        if limits.maxMeshInvocationsPerWorkgroup != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_invocations_per_workgroup = limits.maxMeshInvocationsPerWorkgroup;
+        }
+        if limits.maxMeshInvocationsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_invocations_per_dimension = limits.maxMeshInvocationsPerDimension;
+        }
+        if limits.maxTaskPayloadSize != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_payload_size = limits.maxTaskPayloadSize;
+        }
+        if limits.maxMeshOutputVertices != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_output_vertices = limits.maxMeshOutputVertices;
+        }
+        if limits.maxMeshOutputPrimitives != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_output_primitives = limits.maxMeshOutputPrimitives;
+        }
+        if limits.maxMeshOutputLayers != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_output_layers = limits.maxMeshOutputLayers;
+        }
+        if limits.maxMeshMultiviewViewCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_multiview_view_count = limits.maxMeshMultiviewViewCount;
+        }
+        if limits.maxBlasPrimitiveCount != WGPU_LIMIT_U64_UNDEFINED {
+            wgt_limits.max_blas_primitive_count = limits.maxBlasPrimitiveCount as u32;
+        }
+        if limits.maxBlasGeometryCount != WGPU_LIMIT_U64_UNDEFINED {
+            wgt_limits.max_blas_geometry_count = limits.maxBlasGeometryCount as u32;
+        }
+        if limits.maxTlasInstanceCount != WGPU_LIMIT_U64_UNDEFINED {
+            wgt_limits.max_tlas_instance_count = limits.maxTlasInstanceCount as u32;
+        }
+        if limits.maxAccelerationStructuresPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_acceleration_structures_per_shader_stage =
+                limits.maxAccelerationStructuresPerShaderStage;
         }
     }
     wgt_limits
@@ -1073,6 +1149,20 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
         native::WGPUNativeTextureFormat_P010  => Some(wgt::TextureFormat::P010),
         WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT   => Some(wgt::TextureFormat::R64Uint),
+        native::WGPUNativeTextureFormat_Astc4x4Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B4x4, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc5x4Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B5x4, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc5x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B5x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc6x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B6x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc6x6Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B6x6, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc8x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B8x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc8x6Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B8x6, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc8x8Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B8x8, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x6Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x8Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x10Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc12x10Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc12x12Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Hdr }),
         _ => panic!("Unknown texture format"),
     }
 }
@@ -1083,10 +1173,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
     use wgt::{AstcBlock, AstcChannel};
 
     match rs_type {
-        // unimplemented in webgpu.h
-        wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
-        wgt::TextureFormat::R64Uint => None,
-
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
         wgt::TextureFormat::R8Snorm => Some(native::WGPUTextureFormat_R8Snorm),
         wgt::TextureFormat::R8Uint => Some(native::WGPUTextureFormat_R8Uint),
@@ -1193,6 +1279,20 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
         wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010),
         wgt::TextureFormat::R64Uint => Some(WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT),
+        wgt::TextureFormat::Astc { block: AstcBlock::B4x4,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc4x4Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x4,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc5x4Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x5,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc5x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x5,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc6x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x6,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc6x6Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x5,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc8x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x6,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc8x6Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x8,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc8x8Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x6Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x8Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x10Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc12x10Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc12x12Sfloat),
     }
 }
 
@@ -1501,6 +1601,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::MEMORY_DECORATION_VOLATILE) {
         temp.push(native::WGPUNativeFeature_MemoryDecorationVolatile);
     }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_FD) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryFd);
+    }
 
     temp
 }
@@ -1590,6 +1693,7 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_AccelerationStructureBindingArray => Some(Features::ACCELERATION_STRUCTURE_BINDING_ARRAY),
         native::WGPUNativeFeature_MemoryDecorationCoherent => Some(Features::MEMORY_DECORATION_COHERENT),
         native::WGPUNativeFeature_MemoryDecorationVolatile => Some(Features::MEMORY_DECORATION_VOLATILE),
+        native::WGPUNativeFeature_VulkanExternalMemoryFd => Some(Features::VULKAN_EXTERNAL_MEMORY_FD),
         // fallback, probably not available in wgpu-core
         _ => None,
     }

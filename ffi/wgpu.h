@@ -820,6 +820,12 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_MemoryDecorationVolatile = 0x00030040,
+    /**
+     * Enables Vulkan external memory for POSIX file descriptor handles.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanExternalMemoryFd = 0x00030041,
 
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
@@ -1358,6 +1364,29 @@ typedef struct WGPUNativeLimits
      * The maximum number of views that can be used in multiview rendering.
      */
     uint32_t maxMultiviewViewCount;
+    /**
+     * Maximum number of acceleration structures within binding arrays per shader stage.
+     */
+    uint32_t maxBindingArrayAccelerationStructureElementsPerShaderStage;
+    /* Mesh shader limits */
+    uint32_t maxTaskWorkgroupTotalCount;
+    uint32_t maxTaskWorkgroupsPerDimension;
+    uint32_t maxMeshWorkgroupTotalCount;
+    uint32_t maxMeshWorkgroupsPerDimension;
+    uint32_t maxTaskInvocationsPerWorkgroup;
+    uint32_t maxTaskInvocationsPerDimension;
+    uint32_t maxMeshInvocationsPerWorkgroup;
+    uint32_t maxMeshInvocationsPerDimension;
+    uint32_t maxTaskPayloadSize;
+    uint32_t maxMeshOutputVertices;
+    uint32_t maxMeshOutputPrimitives;
+    uint32_t maxMeshOutputLayers;
+    uint32_t maxMeshMultiviewViewCount;
+    /* Ray tracing limits */
+    uint64_t maxBlasPrimitiveCount;
+    uint64_t maxBlasGeometryCount;
+    uint64_t maxTlasInstanceCount;
+    uint32_t maxAccelerationStructuresPerShaderStage;
 } WGPUNativeLimits;
 
 #define WGPU_NATIVE_LIMITS_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeLimits, { \
@@ -2071,6 +2100,21 @@ typedef enum WGPUNativeTextureFormat
      * chrominance (UV) at half width and half height.
      */
     WGPUNativeTextureFormat_P010 = 0x00030008,
+    /* ASTC HDR (floating-point) compressed formats */
+    WGPUNativeTextureFormat_Astc4x4Sfloat = 0x0003000A,
+    WGPUNativeTextureFormat_Astc5x4Sfloat = 0x0003000B,
+    WGPUNativeTextureFormat_Astc5x5Sfloat = 0x0003000C,
+    WGPUNativeTextureFormat_Astc6x5Sfloat = 0x0003000D,
+    WGPUNativeTextureFormat_Astc6x6Sfloat = 0x0003000E,
+    WGPUNativeTextureFormat_Astc8x5Sfloat = 0x0003000F,
+    WGPUNativeTextureFormat_Astc8x6Sfloat = 0x00030010,
+    WGPUNativeTextureFormat_Astc8x8Sfloat = 0x00030011,
+    WGPUNativeTextureFormat_Astc10x5Sfloat = 0x00030012,
+    WGPUNativeTextureFormat_Astc10x6Sfloat = 0x00030013,
+    WGPUNativeTextureFormat_Astc10x8Sfloat = 0x00030014,
+    WGPUNativeTextureFormat_Astc10x10Sfloat = 0x00030015,
+    WGPUNativeTextureFormat_Astc12x10Sfloat = 0x00030016,
+    WGPUNativeTextureFormat_Astc12x12Sfloat = 0x00030017,
 } WGPUNativeTextureFormat;
 
 typedef struct WGPUImageSubresourceRange {
