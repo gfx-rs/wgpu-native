@@ -318,6 +318,7 @@ pub struct WGPUBlasImpl {
     context: Arc<Context>,
     id: id::BlasId,
     handle: Option<u64>,
+    error_sink: ErrorSink,
 }
 impl Drop for WGPUBlasImpl {
     fn drop(&mut self) {
@@ -5704,6 +5705,7 @@ pub unsafe extern "C" fn wgpuBlasPrepareCompactAsync(
     let blas = blas.as_ref().expect("invalid blas");
     let blas_id = blas.id;
     let context = &blas.context;
+    let error_sink = &blas.error_sink;
 
     let callback = match callback_info.callback {
         Some(cb) => cb,
@@ -5717,7 +5719,7 @@ pub unsafe extern "C" fn wgpuBlasPrepareCompactAsync(
     });
 
     if let Err(cause) = context.blas_prepare_compact_async(blas_id, Some(closure)) {
-        log::error!("wgpuBlasPrepareCompactAsync error: {:?}", cause);
+        handle_error(error_sink, cause, None, "wgpuBlasPrepareCompactAsync");
     }
 }
 
@@ -5798,6 +5800,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         context: context.clone(),
         id: blas_id,
         handle,
+        error_sink: error_sink.clone(),
     }))
 }
 
@@ -5952,17 +5955,20 @@ pub unsafe extern "C" fn wgpuQueueCompactBlas(
         let queue = queue.as_ref().expect("invalid queue");
         (queue.queue.id, &queue.queue.context)
     };
-    let blas_id = blas.as_ref().expect("invalid blas").id;
+    let blas = blas.as_ref().expect("invalid blas");
+    let blas_id = blas.id;
+    let error_sink = &blas.error_sink;
 
     let (new_blas_id, handle, error) = context.queue_compact_blas(queue_id, blas_id, None);
     if let Some(cause) = error {
-        log::error!("wgpuQueueCompactBlas error: {:?}", cause);
+        handle_error(error_sink, cause, None, "wgpuQueueCompactBlas");
     }
 
     Arc::into_raw(Arc::new(WGPUBlasImpl {
         context: context.clone(),
         id: new_blas_id,
         handle,
+        error_sink: error_sink.clone(),
     }))
 }
 
