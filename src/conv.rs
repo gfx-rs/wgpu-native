@@ -1962,7 +1962,9 @@ pub fn map_bind_group_layout_entry(
         binding: entry.binding,
         visibility: from_u64_bits(entry.visibility)
             .expect("invalid visibility for bind group layout entry"),
-        count: extras.and_then(|v| NonZeroU32::new(v.count)),
+        count: extras
+            .and_then(|v| NonZeroU32::new(v.count))
+            .or_else(|| NonZeroU32::new(entry.bindingArraySize)),
     }
 }
 
