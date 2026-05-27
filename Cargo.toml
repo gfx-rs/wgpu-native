@@ -24,19 +24,23 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-version = "29.0.1"
+git = "https://github.com/inner-daemons/wgpu.git"
+branch = "c-backend"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-version = "29.0.1"
+git = "https://github.com/inner-daemons/wgpu.git"
+branch = "c-backend"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-version = "29.0.1"
+git = "https://github.com/inner-daemons/wgpu.git"
+branch = "c-backend"
 
 [workspace.dependencies.naga]
 package = "naga"
-version = "29.0.1"
+git = "https://github.com/inner-daemons/wgpu.git"
+branch = "c-backend"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
