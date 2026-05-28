@@ -8,9 +8,6 @@ homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
 license = "MIT OR Apache-2.0"
 
-[lib]
-crate-type = ["dylib"]
-
 [features]
 default = ["wgsl"]
 wgsl = ["wgpu/wgsl"]
@@ -20,7 +17,7 @@ spirv = ["wgpu/spirv"]
 ctor = "1.0"
 log = "0.4"
 wgpu = { workspace = true, features = ["custom"] }
-wgpu-native = { package = "wgpu-native", git = "https://github.com/inner-daemons/wgpu-native", branch = "wgpu-native-complete", features = [
+wgpu-native = { path = "../",features = [
     "vulkan-portability",
     "angle",
 ] }
