@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
                      (const WGPUBufferMapCallbackInfo){
                          .callback = handle_buffer_map
                      });
-  wgpuDevicePoll(device, true, NULL);
+  wgpuDevicePoll(device, true, NULL, 0);
 
   uint32_t *buf =
       (uint32_t *)wgpuBufferGetMappedRange(staging_buffer, 0, numbers_size);
