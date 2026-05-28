@@ -50,7 +50,7 @@ def copy_c_backend():
     if dest.exists():
         print(f"Removing existing {dest}")
         shutil.rmtree(dest)
-    print(f"Copying {WGPU_C_BACKEND_SRC} → {dest}")
+    print(f"Copying {WGPU_C_BACKEND_SRC} -> {dest}")
     shutil.copytree(str(WGPU_C_BACKEND_SRC), str(dest))
 
 
@@ -95,7 +95,7 @@ def patch_add_c_backend():
             else:
                 content += f"\n[dependencies]\n{dep_line}"
             cargo_toml.write_text(content)
-            print(f"  + wgpu-c-backend dep → {cargo_toml}")
+            print(f"  + wgpu-c-backend dep -> {cargo_toml}")
 
         for rs_name in ("main.rs", "lib.rs"):
             rs_path = cargo_toml.parent / "src" / rs_name
@@ -128,7 +128,7 @@ def patch_add_c_backend():
                         break
                 lines.insert(insert_at, "extern crate wgpu_c_backend;\n")
                 rs_path.write_text("".join(lines))
-                print(f"  + extern crate wgpu_c_backend → {rs_path}")
+                print(f"  + extern crate wgpu_c_backend -> {rs_path}")
 
 
 def main():

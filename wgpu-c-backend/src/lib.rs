@@ -183,13 +183,10 @@ impl InstanceInterface for CInstance {
                 }
                 #[cfg(target_os = "windows")]
                 RawWindowHandle::Win32(h) => {
-                    let hinstance = match raw_display_handle {
-                        Some(RawDisplayHandle::Windows(d)) => d
-                            .hinstance
-                            .map(|p| p.get() as *mut _)
-                            .unwrap_or(std::ptr::null_mut()),
-                        _ => std::ptr::null_mut(),
-                    };
+                    let hinstance = h
+                        .hinstance
+                        .map(|p| p.get() as *mut _)
+                        .unwrap_or(std::ptr::null_mut());
                     let mut src = native::WGPUSurfaceSourceWindowsHWND {
                         chain: native::WGPUChainedStruct {
                             next: std::ptr::null_mut(),
@@ -268,7 +265,7 @@ impl InstanceInterface for CInstance {
                             sType: native::WGPUSType_SurfaceSourceXlibWindow,
                         },
                         display,
-                        window: h.window.get(),
+                        window: h.window,
                     };
                     let c_desc = native::WGPUSurfaceDescriptor {
                         nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
