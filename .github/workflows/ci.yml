@@ -399,6 +399,10 @@ jobs:
         with:
           version: ${{ env.CI_RUST_VERSION }}
           targets: ${{ matrix.target }}
+      - name: Install `cargo-nextest`
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - name: Set up Python
         uses: actions/setup-python@v6
       - name: Setup caching
@@ -407,5 +411,6 @@ jobs:
           key: wgpu-tests-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
       - name: Setup Environment
         run: ${{ matrix.setup_env }}
+
       - name: Run wgpu integration tests
         run: python run-wgpu-tests.py
