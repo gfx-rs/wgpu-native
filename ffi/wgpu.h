@@ -2402,6 +2402,8 @@ extern "C"
 
     // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
     WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex);
+    // Like wgpuDevicePoll but with a nanosecond timeout. Pass timeout_ns=0 for no timeout (identical to wgpuDevicePoll).
+    WGPUBool wgpuDevicePollWithTimeout(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex, uint64_t timeout_ns);
     WGPUShaderModule wgpuDeviceCreateShaderModulePassthrough(WGPUDevice device, WGPUShaderModuleDescriptorPassthrough const *descriptor);
 
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
