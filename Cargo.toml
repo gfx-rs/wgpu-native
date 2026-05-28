@@ -55,7 +55,7 @@ dx12 = ["wgc/dx12"]
 metal = ["wgc/metal"]
 
 ## Enables the GLES backend via [ANGLE](https://github.com/google/angle) on macOS using.
-angle = ["wgc/gles"]
+angle = ["wgc/angle"]
 
 ## Enables the Vulkan backend on Windows, Linux, and Android.
 vulkan = ["wgc/vulkan"]
@@ -63,7 +63,7 @@ vulkan = ["wgc/vulkan"]
 gles = ["wgc/gles"]
 
 ## Enables the Vulkan backend on macOS & iOS.
-vulkan-portability = ["wgc/vulkan"]
+vulkan-portability = ["wgc/vulkan-portability"]
 
 #! **Note:** In the documentation, if you see that an item depends on a backend,
 #! it means that the item is only available when that backend is enabled _and_ the backend

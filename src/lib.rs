@@ -95,6 +95,7 @@ pub struct WGPUBufferImpl {
     id: id::BufferId,
     error_sink: ErrorSink,
     data: BufferData,
+    map_state: Arc<atomic::AtomicU32>,
 }
 impl Drop for WGPUBufferImpl {
     fn drop(&mut self) {
@@ -1215,12 +1216,20 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     size: usize,
     callback_info: native::WGPUBufferMapCallbackInfo,
 ) -> native::WGPUFuture {
-    let (buffer_id, context, error_sink) = {
+    let (buffer_id, context, error_sink, map_state) = {
         let buffer = buffer.as_ref().expect("invalid buffer");
-        (buffer.id, &buffer.context, &buffer.error_sink)
+        (
+            buffer.id,
+            &buffer.context,
+            &buffer.error_sink,
+            Arc::clone(&buffer.map_state),
+        )
     };
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
+
+    map_state.store(native::WGPUBufferMapState_Pending, atomic::Ordering::SeqCst);
+    let map_state_cb = Arc::clone(&map_state);
 
     let operation = wgc::resource::BufferMapOperation {
         host: match mode as native::WGPUMapMode {
@@ -1230,8 +1239,15 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         },
         callback: Some(Box::new(move |result: resource::BufferAccessResult| {
             let (status, message) = match result {
-                Ok(()) => (native::WGPUMapAsyncStatus_Success, String::default()),
+                Ok(()) => {
+                    map_state_cb.store(native::WGPUBufferMapState_Mapped, atomic::Ordering::SeqCst);
+                    (native::WGPUMapAsyncStatus_Success, String::default())
+                }
                 Err(cause) => {
+                    map_state_cb.store(
+                        native::WGPUBufferMapState_Unmapped,
+                        atomic::Ordering::SeqCst,
+                    );
                     let code = match cause {
                         resource::BufferAccessError::MapAborted => {
                             native::WGPUMapAsyncStatus_Aborted
@@ -1258,6 +1274,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         Some(size as wgt::BufferAddress),
         operation,
     ) {
+        map_state.store(
+            native::WGPUBufferMapState_Unmapped,
+            atomic::Ordering::SeqCst,
+        );
         handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
     };
 
@@ -1267,14 +1287,16 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
 
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
-    let (buffer_id, context, error_sink) = {
-        let buffer = buffer.as_ref().expect("invalid buffer");
-        (buffer.id, &buffer.context, &buffer.error_sink)
-    };
+    let buffer = buffer.as_ref().expect("invalid buffer");
+    let (buffer_id, context, error_sink) = (buffer.id, &buffer.context, &buffer.error_sink);
 
     if let Err(cause) = context.buffer_unmap(buffer_id) {
         handle_error(error_sink, cause, None, "wgpuBufferUnmap");
     }
+    buffer.map_state.store(
+        native::WGPUBufferMapState_Unmapped,
+        atomic::Ordering::SeqCst,
+    );
 }
 
 #[no_mangle]
@@ -2204,6 +2226,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
             usage: descriptor.usage,
             size: descriptor.size,
         },
+        map_state: Arc::new(atomic::AtomicU32::new(
+            if descriptor.mappedAtCreation != 0 {
+                native::WGPUBufferMapState_Mapped
+            } else {
+                native::WGPUBufferMapState_Unmapped
+            },
+        )),
     }))
 }
 
@@ -6315,4 +6344,238 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
             "wgpuCommandEncoderBuildAccelerationStructures",
         );
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuBufferGetMapState(
+    buffer: native::WGPUBuffer,
+) -> native::WGPUBufferMapState {
+    let buffer = buffer.as_ref().expect("invalid buffer");
+    buffer.map_state.load(atomic::Ordering::SeqCst)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceGetAdapterInfo(
+    device: native::WGPUDevice,
+    info: Option<&mut native::WGPUAdapterInfo>,
+) -> native::WGPUStatus {
+    let device = device.as_ref().expect("invalid device");
+    let info = info.expect("invalid return pointer \"info\"");
+
+    let result = device.context.device_adapter_info(device.id);
+
+    info.vendor = utils::str_into_owned_string_view(&result.driver);
+    info.architecture = EMPTY_STRING;
+    info.device = utils::str_into_owned_string_view(&result.name);
+    info.description = utils::str_into_owned_string_view(&result.driver_info);
+    info.backendType = map_backend_type(result.backend);
+    info.adapterType = map_adapter_type(result.device_type);
+    info.vendorID = result.vendor;
+    info.deviceID = result.device;
+    info.subgroupMaxSize = result.subgroup_max_size;
+    info.subgroupMinSize = result.subgroup_min_size;
+
+    if let Some(native::WGPUChainedStruct {
+        sType: native::WGPUSType_AdapterInfoExtras,
+        ..
+    }) = unsafe { info.nextInChain.as_ref() }
+    {
+        let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
+        extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
+        extras.devicePciBusId = utils::str_into_owned_string_view(&result.device_pci_bus_id);
+    }
+
+    native::WGPUStatus_Success
+}
+
+fn wgsl_feature_name_to_native_bit(
+    feature: native::WGPUWGSLLanguageFeatureName,
+) -> native::WGPUWgslLanguageFeatures {
+    match feature {
+        native::WGPUWGSLLanguageFeatureName_ReadonlyAndReadwriteStorageTextures => {
+            native::WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures
+        }
+        native::WGPUWGSLLanguageFeatureName_Packed4x8IntegerDotProduct => {
+            native::WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct
+        }
+        native::WGPUWGSLLanguageFeatureName_PointerCompositeAccess => {
+            native::WGPUWgslLanguageFeatures_PointerCompositeAccess
+        }
+        _ => native::WGPUWgslLanguageFeatures_None,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuInstanceGetWGSLLanguageFeatures(
+    _instance: native::WGPUInstance,
+    features: *mut native::WGPUSupportedWGSLLanguageFeatures,
+) {
+    let features = features.as_mut().expect("invalid features pointer");
+    let bitmask = wgpuGetWgslLanguageFeatures();
+
+    let candidates: &[native::WGPUWGSLLanguageFeatureName] = &[
+        native::WGPUWGSLLanguageFeatureName_ReadonlyAndReadwriteStorageTextures,
+        native::WGPUWGSLLanguageFeatureName_Packed4x8IntegerDotProduct,
+        native::WGPUWGSLLanguageFeatureName_PointerCompositeAccess,
+    ];
+
+    let supported: Vec<native::WGPUWGSLLanguageFeatureName> = candidates
+        .iter()
+        .copied()
+        .filter(|&f| (bitmask & wgsl_feature_name_to_native_bit(f)) != 0)
+        .collect();
+
+    let boxed = supported.into_boxed_slice();
+    features.featureCount = boxed.len();
+    features.features = Box::into_raw(boxed) as *const _;
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuInstanceHasWGSLLanguageFeature(
+    _instance: native::WGPUInstance,
+    feature: native::WGPUWGSLLanguageFeatureName,
+) -> native::WGPUBool {
+    let bitmask = wgpuGetWgslLanguageFeatures();
+    let bit = wgsl_feature_name_to_native_bit(feature);
+    (bit != native::WGPUWgslLanguageFeatures_None && (bitmask & bit) != 0) as native::WGPUBool
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
+    features: native::WGPUSupportedWGSLLanguageFeatures,
+) {
+    if !features.features.is_null() {
+        drop(Box::from_raw(std::slice::from_raw_parts_mut(
+            features.features as *mut native::WGPUWGSLLanguageFeatureName,
+            features.featureCount,
+        )));
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBindGroupSetLabel(
+    _bind_group: native::WGPUBindGroup,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBindGroupLayoutSetLabel(
+    _bind_group_layout: native::WGPUBindGroupLayout,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuBufferSetLabel(_buffer: native::WGPUBuffer, _label: native::WGPUStringView) {}
+
+#[no_mangle]
+pub extern "C" fn wgpuCommandBufferSetLabel(
+    _command_buffer: native::WGPUCommandBuffer,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuCommandEncoderSetLabel(
+    _command_encoder: native::WGPUCommandEncoder,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuComputePassEncoderSetLabel(
+    _compute_pass_encoder: native::WGPUComputePassEncoder,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuComputePipelineSetLabel(
+    _compute_pipeline: native::WGPUComputePipeline,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuDeviceSetLabel(_device: native::WGPUDevice, _label: native::WGPUStringView) {}
+
+#[no_mangle]
+pub extern "C" fn wgpuPipelineLayoutSetLabel(
+    _pipeline_layout: native::WGPUPipelineLayout,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuQuerySetSetLabel(
+    _query_set: native::WGPUQuerySet,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuQueueSetLabel(_queue: native::WGPUQueue, _label: native::WGPUStringView) {}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderBundleSetLabel(
+    _render_bundle: native::WGPURenderBundle,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderBundleEncoderSetLabel(
+    _render_bundle_encoder: native::WGPURenderBundleEncoder,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderPassEncoderSetLabel(
+    _render_pass_encoder: native::WGPURenderPassEncoder,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuRenderPipelineSetLabel(
+    _render_pipeline: native::WGPURenderPipeline,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuSamplerSetLabel(
+    _sampler: native::WGPUSampler,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuShaderModuleSetLabel(
+    _shader_module: native::WGPUShaderModule,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuSurfaceSetLabel(
+    _surface: native::WGPUSurface,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuTextureSetLabel(
+    _texture: native::WGPUTexture,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub extern "C" fn wgpuTextureViewSetLabel(
+    _texture_view: native::WGPUTextureView,
+    _label: native::WGPUStringView,
+) {
 }
