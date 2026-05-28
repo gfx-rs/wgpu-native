@@ -1224,7 +1224,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     let callback = callback_info.callback.expect("invalid callback");
     let userdata = new_userdata!(callback_info);
 
-    map_state.store(native::WGPUBufferMapState_Pending as u32, atomic::Ordering::SeqCst);
+    map_state.store(
+        native::WGPUBufferMapState_Pending as u32,
+        atomic::Ordering::SeqCst,
+    );
     let map_state_cb = Arc::clone(&map_state);
 
     let operation = wgc::resource::BufferMapOperation {
@@ -1236,7 +1239,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         callback: Some(Box::new(move |result: resource::BufferAccessResult| {
             let (status, message) = match result {
                 Ok(()) => {
-                    map_state_cb.store(native::WGPUBufferMapState_Mapped as u32, atomic::Ordering::SeqCst);
+                    map_state_cb.store(
+                        native::WGPUBufferMapState_Mapped as u32,
+                        atomic::Ordering::SeqCst,
+                    );
                     (native::WGPUMapAsyncStatus_Success, String::default())
                 }
                 Err(cause) => {
