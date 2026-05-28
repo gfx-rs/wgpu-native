@@ -5179,6 +5179,54 @@ pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     }
 }
 
+/// Like `wgpuDevicePoll` but accepts an optional timeout.
+///
+/// `timeout_ns` — maximum nanoseconds to wait when `wait` is `true`.
+/// Pass `0` for no timeout (equivalent to `wgpuDevicePoll`).
+/// Returns `true` when the queue is empty, `false` otherwise (timed out or
+/// non-blocking poll returned before the queue drained).
+#[no_mangle]
+pub unsafe extern "C-unwind" fn wgpuDevicePollWithTimeout(
+    device: native::WGPUDevice,
+    wait: bool,
+    submission_index: Option<&native::WGPUSubmissionIndex>,
+    timeout_ns: u64,
+) -> bool {
+    let (device_id, context) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context)
+    };
+
+    let maintain = match wait {
+        true => {
+            let timeout = if timeout_ns == 0 {
+                None
+            } else {
+                Some(std::time::Duration::from_nanos(timeout_ns))
+            };
+            match submission_index {
+                Some(&index) => wgt::PollType::Wait {
+                    submission_index: Some(index),
+                    timeout,
+                },
+                None => wgt::PollType::Wait {
+                    submission_index: None,
+                    timeout,
+                },
+            }
+        }
+        false => wgt::PollType::Poll,
+    };
+
+    match context.device_poll(device_id, maintain) {
+        Ok(wgt::PollStatus::QueueEmpty) => true,
+        Ok(_) => false,
+        Err(cause) => {
+            handle_error_fatal(cause, "wgpuDevicePollWithTimeout");
+        }
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateShaderModulePassthrough(
     device: native::WGPUDevice,
