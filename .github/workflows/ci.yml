@@ -333,3 +333,79 @@ jobs:
           make run-example-compute-release
           make run-example-enumerate_adapters-release
           make run-example-immediates-release
+
+  wgpu-tests:
+    name: wgpu integration tests (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            shell: bash
+            setup_env: |
+              set -x;
+              sudo apt update -y
+              sudo apt install -y \
+                cmake ninja-build clang \
+                xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols \
+                libegl1-mesa-dev mesa-vulkan-drivers
+          - name: Macos
+            os: macos-14
+            target: aarch64-apple-darwin
+            shell: bash
+            setup_env: brew install cmake ninja
+          - name: Windows gnu
+            os: windows-latest
+            target: x86_64-pc-windows-gnu
+            shell: msys2 {0}
+          - name: Windows msvc
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            shell: cmd
+            setup_env: choco install -y make
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - if: contains(matrix.target, 'windows-msvc')
+        name: Setup msvc
+        uses: ilammy/msvc-dev-cmd@v1
+      - if: contains(matrix.target, 'windows-gnu')
+        name: Setup msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            make
+            git
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
+            rust:p
+      - if: "!contains(matrix.target, 'windows-gnu')"
+        name: Install Rust toolchain
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
+        with:
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
+      - name: Set up Python
+        uses: actions/setup-python@v6
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wgpu-tests-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+      - name: Setup Environment
+        run: ${{ matrix.setup_env }}
+      - name: Run wgpu integration tests
+        run: python run-wgpu-tests.py
