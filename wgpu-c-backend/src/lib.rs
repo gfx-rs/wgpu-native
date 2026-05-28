@@ -155,7 +155,7 @@ impl InstanceInterface for CInstance {
         #[allow(unused_imports)]
         use wgpu::rwh::{RawDisplayHandle, RawWindowHandle};
 
-        let ptr = match target {
+        let ptr: native::WGPUSurface = match target {
             #[allow(unused_variables)]
             wgpu::SurfaceTargetUnsafe::RawHandle {
                 raw_display_handle,
@@ -243,7 +243,7 @@ impl InstanceInterface for CInstance {
                             sType: native::WGPUSType_SurfaceSourceXCBWindow,
                         },
                         connection,
-                        window: h.window,
+                        window: h.window.get(),
                     };
                     let c_desc = native::WGPUSurfaceDescriptor {
                         nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
@@ -268,7 +268,7 @@ impl InstanceInterface for CInstance {
                             sType: native::WGPUSType_SurfaceSourceXlibWindow,
                         },
                         display,
-                        window: h.window,
+                        window: h.window.get(),
                     };
                     let c_desc = native::WGPUSurfaceDescriptor {
                         nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
@@ -283,6 +283,7 @@ impl InstanceInterface for CInstance {
             _ => panic!("wgpu-c-backend: unsupported surface target type"),
         };
 
+        #[allow(unreachable_code)]
         if ptr.is_null() {
             panic!("wgpuInstanceCreateSurface returned null");
         }
