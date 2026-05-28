@@ -1204,6 +1204,13 @@ pub unsafe extern "C" fn wgpuBufferGetUsage(buffer: native::WGPUBuffer) -> nativ
     buffer.data.usage
 }
 
+// WGPUBufferMapState is u32 on Linux/macOS but i32 on Windows (MSVC bindgen generates signed
+// enums). These helpers centralise the cross-platform casts so call sites stay clean.
+#[allow(clippy::unnecessary_cast)]
+fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
+    s as u32
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferMapAsync(
     buffer: native::WGPUBuffer,
@@ -1225,7 +1232,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     let userdata = new_userdata!(callback_info);
 
     map_state.store(
-        native::WGPUBufferMapState_Pending as u32,
+        map_state_to_u32(native::WGPUBufferMapState_Pending),
         atomic::Ordering::SeqCst,
     );
     let map_state_cb = Arc::clone(&map_state);
@@ -1240,14 +1247,14 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
             let (status, message) = match result {
                 Ok(()) => {
                     map_state_cb.store(
-                        native::WGPUBufferMapState_Mapped as u32,
+                        map_state_to_u32(native::WGPUBufferMapState_Mapped),
                         atomic::Ordering::SeqCst,
                     );
                     (native::WGPUMapAsyncStatus_Success, String::default())
                 }
                 Err(cause) => {
                     map_state_cb.store(
-                        native::WGPUBufferMapState_Unmapped as u32,
+                        map_state_to_u32(native::WGPUBufferMapState_Unmapped),
                         atomic::Ordering::SeqCst,
                     );
                     let code = match cause {
@@ -1277,7 +1284,7 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
         operation,
     ) {
         map_state.store(
-            native::WGPUBufferMapState_Unmapped as u32,
+            map_state_to_u32(native::WGPUBufferMapState_Unmapped),
             atomic::Ordering::SeqCst,
         );
         handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
@@ -1296,7 +1303,7 @@ pub unsafe extern "C" fn wgpuBufferUnmap(buffer: native::WGPUBuffer) {
         handle_error(error_sink, cause, None, "wgpuBufferUnmap");
     }
     buffer.map_state.store(
-        native::WGPUBufferMapState_Unmapped as u32,
+        map_state_to_u32(native::WGPUBufferMapState_Unmapped),
         atomic::Ordering::SeqCst,
     );
 }
@@ -2230,9 +2237,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
         },
         map_state: Arc::new(atomic::AtomicU32::new(
             if descriptor.mappedAtCreation != 0 {
-                native::WGPUBufferMapState_Mapped as u32
+                map_state_to_u32(native::WGPUBufferMapState_Mapped)
             } else {
-                native::WGPUBufferMapState_Unmapped as u32
+                map_state_to_u32(native::WGPUBufferMapState_Unmapped)
             },
         )),
     }))
