@@ -855,10 +855,8 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.subgroupMaxSize = result.subgroup_max_size;
     info.subgroupMinSize = result.subgroup_min_size;
 
-    if let Some(native::WGPUChainedStruct {
-        sType: native::WGPUSType_AdapterInfoExtras,
-        ..
-    }) = unsafe { info.nextInChain.as_ref() }
+    if !info.nextInChain.is_null()
+        && unsafe { (*info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
     {
         let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
         extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
@@ -894,10 +892,8 @@ pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAd
     utils::drop_string_view(adapter_info.device);
     utils::drop_string_view(adapter_info.description);
 
-    if let Some(native::WGPUChainedStruct {
-        sType: native::WGPUSType_AdapterInfoExtras,
-        ..
-    }) = unsafe { adapter_info.nextInChain.as_ref() }
+    if !adapter_info.nextInChain.is_null()
+        && unsafe { (*adapter_info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
     {
         let extras =
             unsafe { &mut *(adapter_info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
@@ -4655,6 +4651,10 @@ pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
         },
     };
 
+    // TODO: Properly handle futures and callback modes. For now the callback is
+    // always invoked synchronously regardless of callback_info.mode, and a null
+    // future is returned. This is consistent with other async functions in this
+    // file that have the same limitation (e.g. wgpuBufferMapAsync).
     if let Some(callback) = callback_info.callback {
         callback(
             native::WGPUCompilationInfoRequestStatus_Success,
@@ -4668,7 +4668,7 @@ pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
         utils::drop_string_view(msg.message);
     }
 
-    native::WGPUFuture { id: 0 }
+    NULL_FUTURE
 }
 
 #[no_mangle]
@@ -6202,7 +6202,13 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                     let sd = tg.size.as_ref().expect("invalid tri size descriptor");
                     let (index_format, index_count) =
                         if sd.indexFormat == native::WGPUIndexFormat_Undefined {
-                            (None, None)
+                            if sd.indexCount > 0 {
+                                (None, Some(sd.indexCount))
+                            } else {
+                                (None, None)
+                            }
+                        } else if sd.indexCount == 0 {
+                            (map_index_format(sd.indexFormat).ok(), None)
                         } else {
                             (map_index_format(sd.indexFormat).ok(), Some(sd.indexCount))
                         };
@@ -6375,10 +6381,8 @@ pub unsafe extern "C" fn wgpuDeviceGetAdapterInfo(
     info.subgroupMaxSize = result.subgroup_max_size;
     info.subgroupMinSize = result.subgroup_min_size;
 
-    if let Some(native::WGPUChainedStruct {
-        sType: native::WGPUSType_AdapterInfoExtras,
-        ..
-    }) = unsafe { info.nextInChain.as_ref() }
+    if !info.nextInChain.is_null()
+        && unsafe { (*info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
     {
         let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
         extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
