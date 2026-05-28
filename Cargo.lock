@@ -167,6 +167,8 @@ version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
+ "serde",
+ "termcolor",
  "unicode-width",
 ]
 
@@ -175,6 +177,16 @@ name = "crunchy"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
+
+[[package]]
+name = "ctor"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d765eb1c0bda10d31e0ea185f5ee15da532d60b0912d2bd1441783439e749c5"
+dependencies = [
+ "link-section",
+ "linktime-proc-macro",
+]
 
 [[package]]
 name = "dispatch2"
@@ -233,6 +245,30 @@ name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
+
+[[package]]
+name = "futures-core"
+version = "0.3.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e3450815272ef58cec6d564423f6e755e25379b217b0bc688e295ba24df6b1d"
+
+[[package]]
+name = "futures-task"
+version = "0.3.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "037711b3d59c33004d3856fbdc83b99d4ff37a24768fa1be9ce3538a1cde4393"
+
+[[package]]
+name = "futures-util"
+version = "0.3.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "389ca41296e6190b48053de0321d02a77f32f8a5d2461dd38762c0593805c6d6"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "pin-project-lite",
+ "slab",
+]
 
 [[package]]
 name = "gl_generator"
@@ -382,6 +418,8 @@ version = "0.3.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2964e92d1d9dc3364cae4d718d93f227e3abb088e747d92e0395bfdedf1c12ca"
 dependencies = [
+ "cfg-if",
+ "futures-util",
  "once_cell",
  "wasm-bindgen",
 ]
@@ -424,6 +462,18 @@ name = "libm"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
+
+[[package]]
+name = "link-section"
+version = "0.17.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d1e908a416d6e9f725743b84a36feea40c4c131e805fbc26d61f9f451f36080"
+
+[[package]]
+name = "linktime-proc-macro"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a44cd706ff0d503ee32b2071166510ca27e281228de10cd3aa8d35ff94560f81"
 
 [[package]]
 name = "litrs"
@@ -477,7 +527,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "naga"
 version = "29.0.0"
-source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -496,6 +546,32 @@ dependencies = [
  "pp-rs",
  "rustc-hash 1.1.0",
  "serde",
+ "spirv",
+ "thiserror",
+ "unicode-ident",
+]
+
+[[package]]
+name = "naga"
+version = "29.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
+dependencies = [
+ "arrayvec",
+ "bit-set",
+ "bitflags",
+ "cfg-if",
+ "cfg_aliases",
+ "codespan-reporting",
+ "half",
+ "hashbrown 0.16.1",
+ "indexmap",
+ "libm",
+ "log",
+ "num-traits",
+ "once_cell",
+ "petgraph",
+ "pp-rs",
+ "rustc-hash 1.1.0",
  "spirv",
  "thiserror",
  "unicode-ident",
@@ -648,10 +724,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "pin-project-lite"
+version = "0.2.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
+
+[[package]]
 name = "pkg-config"
 version = "0.3.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
+
+[[package]]
+name = "portable-atomic"
+version = "1.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
+
+[[package]]
+name = "portable-atomic-util"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a106d1259c23fac8e543272398ae0e3c0b8d33c88ed73d0cc71b0f1d902618"
+dependencies = [
+ "portable-atomic",
+]
 
 [[package]]
 name = "pp-rs"
@@ -831,6 +928,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "slab"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
+
+[[package]]
 name = "slotmap"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -872,6 +975,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]
@@ -932,6 +1044,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm-bindgen-futures"
+version = "0.4.68"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f371d383f2fb139252e0bfac3b81b265689bf45b6874af544ffa4c975ac1ebf8"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "wasm-bindgen-macro"
 version = "0.2.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -986,6 +1108,80 @@ dependencies = [
 ]
 
 [[package]]
+name = "wgpu"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "bytemuck",
+ "cfg-if",
+ "cfg_aliases",
+ "document-features",
+ "hashbrown 0.16.1",
+ "js-sys",
+ "log",
+ "naga 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "parking_lot",
+ "portable-atomic",
+ "profiling",
+ "raw-window-handle",
+ "smallvec",
+ "static_assertions",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu-core 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-hal 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-types 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+]
+
+[[package]]
+name = "wgpu-c-backend"
+version = "0.0.0"
+dependencies = [
+ "ctor",
+ "log",
+ "raw-window-metal",
+ "wgpu",
+ "wgpu-native 0.0.0 (git+https://github.com/inner-daemons/wgpu-native?branch=wgpu-native-complete)",
+]
+
+[[package]]
+name = "wgpu-core"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "arrayvec",
+ "bit-set",
+ "bit-vec",
+ "bitflags",
+ "bytemuck",
+ "cfg_aliases",
+ "document-features",
+ "hashbrown 0.16.1",
+ "indexmap",
+ "log",
+ "macro_rules_attribute",
+ "naga 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "once_cell",
+ "parking_lot",
+ "portable-atomic",
+ "profiling",
+ "raw-window-handle",
+ "rustc-hash 1.1.0",
+ "serde",
+ "smallvec",
+ "thiserror",
+ "wgpu-core-deps-apple 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-core-deps-emscripten 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-core-deps-windows-linux-android 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-hal 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-naga-bridge 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-types 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+]
+
+[[package]]
 name = "wgpu-core"
 version = "29.0.0"
 source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
@@ -1000,22 +1196,28 @@ dependencies = [
  "hashbrown 0.16.1",
  "indexmap",
  "log",
- "macro_rules_attribute",
- "naga",
+ "naga 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
  "once_cell",
  "parking_lot",
  "profiling",
  "raw-window-handle",
  "rustc-hash 1.1.0",
- "serde",
  "smallvec",
  "thiserror",
- "wgpu-core-deps-apple",
- "wgpu-core-deps-emscripten",
- "wgpu-core-deps-windows-linux-android",
- "wgpu-hal",
- "wgpu-naga-bridge",
- "wgpu-types",
+ "wgpu-core-deps-apple 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-core-deps-emscripten 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-core-deps-windows-linux-android 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-hal 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-naga-bridge 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-types 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+]
+
+[[package]]
+name = "wgpu-core-deps-apple"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "wgpu-hal 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
 ]
 
 [[package]]
@@ -1023,7 +1225,15 @@ name = "wgpu-core-deps-apple"
 version = "29.0.0"
 source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
- "wgpu-hal",
+ "wgpu-hal 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+]
+
+[[package]]
+name = "wgpu-core-deps-emscripten"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "wgpu-hal 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
 ]
 
 [[package]]
@@ -1031,7 +1241,15 @@ name = "wgpu-core-deps-emscripten"
 version = "29.0.0"
 source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
- "wgpu-hal",
+ "wgpu-hal 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+]
+
+[[package]]
+name = "wgpu-core-deps-windows-linux-android"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "wgpu-hal 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
 ]
 
 [[package]]
@@ -1039,7 +1257,59 @@ name = "wgpu-core-deps-windows-linux-android"
 version = "29.0.0"
 source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
- "wgpu-hal",
+ "wgpu-hal 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+]
+
+[[package]]
+name = "wgpu-hal"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "android_system_properties",
+ "arrayvec",
+ "ash",
+ "bit-set",
+ "bitflags",
+ "block2",
+ "bytemuck",
+ "cfg-if",
+ "cfg_aliases",
+ "glow",
+ "glutin_wgl_sys",
+ "gpu-allocator",
+ "hashbrown 0.16.1",
+ "js-sys",
+ "khronos-egl",
+ "libc",
+ "libloading",
+ "log",
+ "naga 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "ndk-sys",
+ "objc2",
+ "objc2-core-foundation",
+ "objc2-foundation",
+ "objc2-metal",
+ "objc2-quartz-core",
+ "once_cell",
+ "ordered-float",
+ "parking_lot",
+ "portable-atomic",
+ "portable-atomic-util",
+ "profiling",
+ "range-alloc",
+ "raw-window-handle",
+ "raw-window-metal",
+ "renderdoc-sys",
+ "smallvec",
+ "thiserror",
+ "wasm-bindgen",
+ "wayland-sys",
+ "web-sys",
+ "wgpu-naga-bridge 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-types 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "windows",
+ "windows-core",
+ "windows-result",
 ]
 
 [[package]]
@@ -1065,7 +1335,7 @@ dependencies = [
  "libc",
  "libloading",
  "log",
- "naga",
+ "naga 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
  "ndk-sys",
  "objc2",
  "objc2-core-foundation",
@@ -1086,8 +1356,8 @@ dependencies = [
  "wasm-bindgen",
  "wayland-sys",
  "web-sys",
- "wgpu-naga-bridge",
- "wgpu-types",
+ "wgpu-naga-bridge 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-types 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
  "windows",
  "windows-core",
  "windows-result",
@@ -1096,10 +1366,19 @@ dependencies = [
 [[package]]
 name = "wgpu-naga-bridge"
 version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "naga 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-types 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+]
+
+[[package]]
+name = "wgpu-naga-bridge"
+version = "29.0.0"
 source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
- "naga",
- "wgpu-types",
+ "naga 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-types 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
 ]
 
 [[package]]
@@ -1109,16 +1388,50 @@ dependencies = [
  "bindgen",
  "bitflags",
  "log",
- "naga",
+ "naga 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
  "parking_lot",
  "paste",
  "raw-window-handle",
  "serde",
  "smallvec",
  "thiserror",
- "wgpu-core",
- "wgpu-hal",
- "wgpu-types",
+ "wgpu-core 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-hal 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+ "wgpu-types 29.0.0 (git+https://github.com/inner-daemons/wgpu.git?branch=c-backend)",
+]
+
+[[package]]
+name = "wgpu-native"
+version = "0.0.0"
+source = "git+https://github.com/inner-daemons/wgpu-native?branch=wgpu-native-complete#e136a915578458617f1bf0c31cfeaf574e9d1595"
+dependencies = [
+ "bindgen",
+ "bitflags",
+ "log",
+ "naga 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "parking_lot",
+ "paste",
+ "raw-window-handle",
+ "smallvec",
+ "thiserror",
+ "wgpu-core 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-hal 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+ "wgpu-types 29.0.0 (git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91)",
+]
+
+[[package]]
+name = "wgpu-types"
+version = "29.0.0"
+source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#b6fb18d885dd96de5f9d78f6f854e3e069099512"
+dependencies = [
+ "bitflags",
+ "bytemuck",
+ "js-sys",
+ "log",
+ "raw-window-handle",
+ "serde",
+ "static_assertions",
+ "web-sys",
 ]
 
 [[package]]
@@ -1131,9 +1444,17 @@ dependencies = [
  "js-sys",
  "log",
  "raw-window-handle",
- "serde",
  "static_assertions",
  "web-sys",
+]
+
+[[package]]
+name = "winapi-util"
+version = "0.1.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
+dependencies = [
+ "windows-sys",
 ]
 
 [[package]]
@@ -1233,6 +1554,15 @@ name = "windows-strings"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091"
+dependencies = [
+ "windows-link",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.61.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
 ]

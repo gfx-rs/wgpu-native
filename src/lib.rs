@@ -6449,7 +6449,7 @@ pub unsafe extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
     features: native::WGPUSupportedWGSLLanguageFeatures,
 ) {
     if !features.features.is_null() {
-        drop(Box::from_raw(std::slice::from_raw_parts_mut(
+        drop(Box::from_raw(std::ptr::slice_from_raw_parts_mut(
             features.features as *mut native::WGPUWGSLLanguageFeatureName,
             features.featureCount,
         )));

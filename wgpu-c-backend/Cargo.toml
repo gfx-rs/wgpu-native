@@ -1,0 +1,29 @@
+[package]
+name = "wgpu-c-backend"
+version = "0.0.0"
+authors = ["Magnus Larsson <magnus.larsson.mn@gmail.com>"]
+edition = "2021"
+rust-version = "1.87"
+homepage = "https://github.com/gfx-rs/wgpu-native"
+repository = "https://github.com/gfx-rs/wgpu-native"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["dylib"]
+
+[features]
+default = ["wgsl"]
+wgsl = ["wgpu/wgsl"]
+spirv = ["wgpu/spirv"]
+
+[dependencies]
+ctor = "1.0"
+log = "0.4"
+wgpu = { workspace = true, features = ["custom"] }
+wgpu-native = { package = "wgpu-native", git = "https://github.com/inner-daemons/wgpu-native", branch = "wgpu-native-complete", features = [
+    "vulkan-portability",
+    "angle",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+raw-window-metal = "1.1.0"

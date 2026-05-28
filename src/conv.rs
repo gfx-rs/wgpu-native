@@ -452,6 +452,8 @@ pub unsafe fn map_instance_descriptor(
                     ..Default::default()
                 },
                 noop: Default::default(),
+                // Noop on wgpu-core
+                skip_custom_backend_library: true,
             },
             flags: map_instance_flags(extras.flags),
             memory_budget_thresholds: wgt::MemoryBudgetThresholds {
