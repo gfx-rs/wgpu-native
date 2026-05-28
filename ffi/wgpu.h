@@ -1458,7 +1458,7 @@ typedef struct WGPUPassthroughShaderEntryPoint
     uint32_t workgroupSizeX;
     uint32_t workgroupSizeY;
     uint32_t workgroupSizeZ;
-} WGPUPassthroughShaderEntryPoint;
+} WGPUPassthroughShaderEntryPoint WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Descriptor for a shader module created from native/backend-specific sources.
@@ -1950,7 +1950,7 @@ typedef struct WGPUBlasTriangleGeometrySizeDescriptor
     /** Ignored when @ref indexFormat is @ref WGPUIndexFormat_Undefined. */
     uint32_t indexCount;
     WGPUAccelerationStructureGeometryFlags flags;
-} WGPUBlasTriangleGeometrySizeDescriptor;
+} WGPUBlasTriangleGeometrySizeDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Size attributes for one group of AABB geometry in a BLAS.
@@ -1960,7 +1960,7 @@ typedef struct WGPUBlasAABBGeometrySizeDescriptor
 {
     uint32_t primitiveCount;
     WGPUAccelerationStructureGeometryFlags flags;
-} WGPUBlasAABBGeometrySizeDescriptor;
+} WGPUBlasAABBGeometrySizeDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Size descriptors for a BLAS.
@@ -1977,7 +1977,7 @@ typedef struct WGPUBlasSizeDescriptors
     /** AABB geometry descriptors (used when kind == AABBs). */
     WGPUBlasAABBGeometrySizeDescriptor const *aabbDescriptors;
     size_t aabbDescriptorCount;
-} WGPUBlasSizeDescriptors;
+} WGPUBlasSizeDescriptors WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Triangle geometry for a BLAS build entry.
@@ -1998,7 +1998,7 @@ typedef struct WGPUBlasTriangleGeometry
     uint32_t firstIndex;
     /** Ignored when @ref transformBuffer is NULL. */
     uint64_t transformBufferOffset;
-} WGPUBlasTriangleGeometry;
+} WGPUBlasTriangleGeometry WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * AABB geometry for a BLAS build entry.
@@ -2011,7 +2011,7 @@ typedef struct WGPUBlasAABBGeometry
     uint64_t stride;
     WGPUBuffer aabbBuffer;
     uint32_t primitiveOffset;
-} WGPUBlasAABBGeometry;
+} WGPUBlasAABBGeometry WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Describes one BLAS and its geometries to build.
@@ -2029,7 +2029,7 @@ typedef struct WGPUBlasBuildEntry
     /** AABB geometries (used when geometryKind == AABBs). */
     WGPUBlasAABBGeometry const *aabbGeometries;
     size_t aabbGeometryCount;
-} WGPUBlasBuildEntry;
+} WGPUBlasBuildEntry WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * One instance slot in a @ref WGPUTlasPackage.
@@ -2045,7 +2045,7 @@ typedef struct WGPUTlasInstance
     uint32_t customData;
     /** Visibility mask for ray filtering. */
     uint8_t mask;
-} WGPUTlasInstance;
+} WGPUTlasInstance WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Describes one TLAS and its instances to build.
@@ -2058,7 +2058,7 @@ typedef struct WGPUTlasPackage
     size_t instanceCount;
     /** First unmodified instance index (for partial updates). */
     uint32_t lowestUnmodified;
-} WGPUTlasPackage;
+} WGPUTlasPackage WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Internal counters from the HAL layer, returned by @ref wgpuDeviceGetInternalCounters.
@@ -2082,7 +2082,7 @@ typedef struct WGPUHalCounters
     int64_t textureMemory;
     int64_t accelerationStructureMemory;
     int64_t memoryAllocations;
-} WGPUHalCounters;
+} WGPUHalCounters WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * All internal counters, returned by @ref wgpuDeviceGetInternalCounters.
@@ -2090,7 +2090,7 @@ typedef struct WGPUHalCounters
 typedef struct WGPUInternalCounters
 {
     WGPUHalCounters hal;
-} WGPUInternalCounters;
+} WGPUInternalCounters WGPU_STRUCTURE_ATTRIBUTE;
 
 /** Callback invoked when a BLAS compaction is ready. */
 typedef void (*WGPUBlasCompactCallback)(WGPUBool success, void *userdata1, void *userdata2);
@@ -2102,7 +2102,7 @@ typedef struct WGPUBlasCompactCallbackInfo
     WGPUBlasCompactCallback callback;
     void *userdata1;
     void *userdata2;
-} WGPUBlasCompactCallbackInfo;
+} WGPUBlasCompactCallbackInfo WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
 
@@ -2177,7 +2177,7 @@ typedef enum WGPUNativeTextureFormat
  */
 typedef struct WGPUPresentationTimestamp {
     uint64_t nanoseconds;
-} WGPUPresentationTimestamp;
+} WGPUPresentationTimestamp WGPU_STRUCTURE_ATTRIBUTE;
 
 /** Element type for cooperative matrix inputs/outputs. */
 typedef enum WGPUNativeCooperativeScalarType {
@@ -2205,7 +2205,7 @@ typedef struct WGPUCooperativeMatrixProperties {
     WGPUNativeCooperativeScalarType crType;
     /** Whether saturating accumulation (clamping on overflow) is supported. */
     WGPUBool saturatingAccumulation;
-} WGPUCooperativeMatrixProperties;
+} WGPUCooperativeMatrixProperties WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef struct WGPUImageSubresourceRange {
     WGPUTextureAspect aspect;
@@ -2358,7 +2358,7 @@ typedef struct WGPUExternalTextureTransferFunction {
     float b;
     float g;
     float k;
-} WGPUExternalTextureTransferFunction;
+} WGPUExternalTextureTransferFunction WGPU_STRUCTURE_ATTRIBUTE;
 
 /** Descriptor passed to @ref wgpuDeviceCreateExternalTexture. */
 typedef struct WGPUExternalTextureDescriptor {
@@ -2372,7 +2372,7 @@ typedef struct WGPUExternalTextureDescriptor {
     WGPUExternalTextureTransferFunction dstTransferFunction;
     float sampleTransform[6];
     float loadTransform[6];
-} WGPUExternalTextureDescriptor;
+} WGPUExternalTextureDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
 #ifdef __cplusplus
 extern "C"

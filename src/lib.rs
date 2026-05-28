@@ -1046,6 +1046,11 @@ pub unsafe extern "C" fn wgpuAdapterGetPresentationTimestamp(
         (adapter.id, Arc::clone(&adapter.context))
     };
     let ts = context.adapter_get_presentation_timestamp(adapter_id);
+    assert!(
+        ts.0 <= u64::MAX as u128,
+        "presentation timestamp {0} ns overflows u64",
+        ts.0
+    );
     native::WGPUPresentationTimestamp {
         nanoseconds: ts.0 as u64,
     }
