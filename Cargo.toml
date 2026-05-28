@@ -24,23 +24,23 @@ resolver = "2"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-git = "https://github.com/inner-daemons/wgpu.git"
-branch = "c-backend"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-git = "https://github.com/inner-daemons/wgpu.git"
-branch = "c-backend"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-git = "https://github.com/inner-daemons/wgpu.git"
-branch = "c-backend"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 
 [workspace.dependencies.naga]
 package = "naga"
-git = "https://github.com/inner-daemons/wgpu.git"
-branch = "c-backend"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]

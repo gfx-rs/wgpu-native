@@ -477,7 +477,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 [[package]]
 name = "naga"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -988,7 +988,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -1021,7 +1021,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-apple"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "wgpu-hal",
 ]
@@ -1029,7 +1029,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-emscripten"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "wgpu-hal",
 ]
@@ -1037,7 +1037,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-windows-linux-android"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "wgpu-hal",
 ]
@@ -1045,7 +1045,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1081,6 +1081,7 @@ dependencies = [
  "raw-window-metal",
  "renderdoc-sys",
  "smallvec",
+ "static_assertions",
  "thiserror",
  "wasm-bindgen",
  "wayland-sys",
@@ -1095,7 +1096,7 @@ dependencies = [
 [[package]]
 name = "wgpu-naga-bridge"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "naga",
  "wgpu-types",
@@ -1123,7 +1124,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#275f9bc864a064f5da8e24f544fcd9d01b9ed0f4"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=43f076a46f8aa89ebb4cc618afe3258a740a7c91#43f076a46f8aa89ebb4cc618afe3258a740a7c91"
 dependencies = [
  "bitflags",
  "bytemuck",
