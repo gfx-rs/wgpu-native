@@ -39,19 +39,12 @@ unsafe impl Sync for CDevice {}
 
 impl Drop for CDevice {
     fn drop(&mut self) {
-        // wgpu-native's WGPUDeviceImpl::drop calls device_poll which can panic via
-        // handle_error_fatal if the device is in an error state. Catch that here so it
-        // doesn't abort during Drop (re-panicking in Drop causes an immediate abort).
-        if let Err(payload) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| unsafe {
-            wgpuDeviceRelease(self.ptr);
-        })) {
-            let msg = payload
-                .downcast_ref::<String>()
-                .map(String::as_str)
-                .or_else(|| payload.downcast_ref::<&str>().copied())
-                .unwrap_or("(non-string panic payload)");
-            log::error!("wgpu-c-backend: panic in wgpuDeviceRelease during drop: {msg}");
-        }
+        // NOTE: wgpu-native's WGPUDeviceImpl::drop may call handle_error_fatal, which
+        // panics inside an extern "C" function. Since Rust 1.71 (RFC 2945) panics in
+        // extern "C" abort the process via a compiler-inserted landing pad — catch_unwind
+        // on our side cannot intercept them. If device release fails fatally, the process
+        // aborts. This requires extern "C-unwind" in wgpu-native to become catchable.
+        unsafe { wgpuDeviceRelease(self.ptr) };
     }
 }
 
@@ -1480,6 +1473,7 @@ impl DeviceInterface for CDevice {
                 plane_ptrs.len(),
             )
         };
+        crate::resume_callback_panic();
         DispatchExternalTexture::custom(CExternalTexture { ptr })
     }
 
@@ -1998,6 +1992,7 @@ impl QueueInterface for CQueue {
         unsafe {
             wgpuQueueWriteBuffer(self.ptr, buf_ptr, offset, data.as_ptr().cast(), data.len())
         };
+        crate::resume_callback_panic();
     }
 
     fn create_staging_buffer(&self, size: wgpu::BufferSize) -> Option<DispatchQueueWriteBuffer> {
@@ -2046,6 +2041,7 @@ impl QueueInterface for CQueue {
                 wb.data.len(),
             )
         };
+        crate::resume_callback_panic();
     }
 
     fn write_texture(
@@ -2077,6 +2073,7 @@ impl QueueInterface for CQueue {
                 Some(&c_size),
             )
         };
+        crate::resume_callback_panic();
     }
 
     fn submit(&self, command_buffers: &mut dyn Iterator<Item = DispatchCommandBuffer>) -> u64 {
@@ -2099,16 +2096,12 @@ impl QueueInterface for CQueue {
                 cb.ptr
             })
             .collect();
-        // wgpu-native's wgpuQueueSubmitForIndex calls handle_error_fatal (which panics)
-        // for fatal validation errors. Catch those panics here so they re-raise cleanly
-        // in Rust context instead of aborting due to unwinding through extern "C" frames.
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| unsafe {
-            wgpuQueueSubmitForIndex(self.ptr, ptrs.len(), ptrs.as_ptr())
-        }));
-        match result {
-            Ok(idx) => idx,
-            Err(payload) => std::panic::resume_unwind(payload),
-        }
+        // NOTE: wgpu-native routes submit errors through handle_error (→ uncaptured error
+        // callback) for validation errors, and handle_error_fatal for fatal ones. Fatal
+        // errors panic inside extern "C" → process aborts before any catch_unwind on our
+        // side can fire. Validation errors surface via resume_callback_panic() at the next
+        // device operation.
+        unsafe { wgpuQueueSubmitForIndex(self.ptr, ptrs.len(), ptrs.as_ptr()) }
     }
 
     fn get_timestamp_period(&self) -> f32 {
