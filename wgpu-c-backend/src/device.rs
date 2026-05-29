@@ -598,7 +598,7 @@ impl DeviceInterface for CDevice {
             entries.push(entry);
         }
 
-        // Wire chain pointers after entries Vec is finalized.
+        // Wire chain pointers after entries Vec is finalized; Box keeps inner T in place.
         for (idx, storage) in &extras_by_entry {
             entries[*idx].nextInChain =
                 std::ptr::from_ref::<native::WGPUChainedStruct>(&storage.extras.chain) as *mut _;
@@ -682,7 +682,6 @@ impl DeviceInterface for CDevice {
             );
         }
 
-        // Vertex state.
         let v_module = v_shader.ptr;
         let v_ep_owned = desc.vertex.entry_point.map(|s| s.to_owned());
         let v_ep_sv = v_ep_owned
@@ -773,7 +772,6 @@ impl DeviceInterface for CDevice {
             },
         };
 
-        // Primitive state.
         let prim = &desc.primitive;
         let mut primitive_extras = native::WGPUPrimitiveStateExtras {
             chain: native::WGPUChainedStruct {
@@ -797,7 +795,6 @@ impl DeviceInterface for CDevice {
             unclippedDepth: prim.unclipped_depth as u32,
         };
 
-        // Depth stencil.
         let ds_state: Option<native::WGPUDepthStencilState> =
             desc.depth_stencil
                 .as_ref()
@@ -825,7 +822,6 @@ impl DeviceInterface for CDevice {
             .map(std::ptr::from_ref)
             .unwrap_or(std::ptr::null());
 
-        // Multisample.
         let ms = &desc.multisample;
         let c_multisample = native::WGPUMultisampleState {
             nextInChain: std::ptr::null_mut(),
@@ -881,7 +877,6 @@ impl DeviceInterface for CDevice {
             .map(|l| l.as_custom::<CPipelineLayout>().unwrap().ptr)
             .unwrap_or(std::ptr::null_mut());
 
-        // Task stage (optional).
         let task_ep_owned: Option<String>;
         let task_constants: Vec<native::WGPUConstantEntry>;
         let task_state: Option<native::WGPUTaskState>;
@@ -920,7 +915,6 @@ impl DeviceInterface for CDevice {
             task_state = None;
         }
 
-        // Mesh stage (required).
         let mesh_module = desc.mesh.module.as_custom::<CShaderModule>().unwrap().ptr;
         let mesh_ep_owned = desc.mesh.entry_point.map(|s| s.to_owned());
         let mesh_ep_sv = mesh_ep_owned
@@ -950,7 +944,6 @@ impl DeviceInterface for CDevice {
             },
         };
 
-        // Primitive state.
         let prim = &desc.primitive;
         let mut primitive_extras = native::WGPUPrimitiveStateExtras {
             chain: native::WGPUChainedStruct {
@@ -974,7 +967,6 @@ impl DeviceInterface for CDevice {
             unclippedDepth: prim.unclipped_depth as u32,
         };
 
-        // Depth stencil.
         let ds_state: Option<native::WGPUDepthStencilState> =
             desc.depth_stencil
                 .as_ref()
@@ -1002,7 +994,6 @@ impl DeviceInterface for CDevice {
             .map(std::ptr::from_ref)
             .unwrap_or(std::ptr::null());
 
-        // Multisample.
         let ms = &desc.multisample;
         let c_multisample = native::WGPUMultisampleState {
             nextInChain: std::ptr::null_mut(),
@@ -1131,7 +1122,7 @@ impl DeviceInterface for CDevice {
     fn create_buffer(&self, desc: &wgpu::BufferDescriptor<'_>) -> DispatchBuffer {
         let label_sv = conv::opt_str_to_string_view(desc.label);
         // Any bits not in KNOWN_BUFFER_USAGE_BITS cannot be represented in the C API.
-        // Pass usage=0 so wgpu-core generates a validation error (empty usage is always
+        // Pass usage=0 so wgpu-native generates a validation error (empty usage is always
         // invalid) captured by any active error scope — matching expected wgpu semantics.
         let native_usage = if (desc.usage.bits() & !conv::KNOWN_BUFFER_USAGE_BITS.bits()) == 0 {
             conv::buffer_usage_to_native(desc.usage)
@@ -1454,9 +1445,13 @@ impl DeviceInterface for CDevice {
         DispatchRenderBundleEncoder::custom(CRenderBundleEncoder { ptr })
     }
 
+    /// Note: GPU-initiated loss (driver crash, device timeout) will NOT trigger this
+    /// callback. Only `Device::destroy()` fires it. See `adapter.rs` `device_lost_cb`
+    /// for the underlying reason (wgpu-native doesn't wire device_lost_closure to
+    /// wgpu-core for GPU-initiated events).
     fn set_device_lost_callback(&self, device_lost_callback: BoxDeviceLostCallback) {
+        // Runtime warning so callers are alerted even without reading this doc.
         // GPU-initiated loss never fires this; only Device::destroy() does.
-        // See adapter.rs device_lost_cb for details.
         log::warn!(
             "wgpu-c-backend: device-lost callback registered; GPU-initiated loss \
              (driver crash, timeout) will NOT trigger it — only Device::destroy() does."
@@ -1763,9 +1758,9 @@ pub struct CQueue {
     pub(crate) ptr: native::WGPUQueue,
     /// Used to detect cross-device submission.
     pub(crate) device_ptr: native::WGPUDevice,
-    /// Shared with CDevice. Active error scope count.
+    /// Shared with CDevice; see CDevice::error_scope_depth for semantics.
     pub(crate) error_scope_depth: Arc<AtomicU32>,
-    /// Shared with CDevice. Set true on drop.
+    /// Shared with CDevice; see CDevice::queue_dropped for semantics.
     pub(crate) queue_dropped: Arc<AtomicBool>,
 }
 
@@ -1795,6 +1790,8 @@ impl QueueInterface for CQueue {
     }
 
     fn create_staging_buffer(&self, size: wgpu::BufferSize) -> Option<DispatchQueueWriteBuffer> {
+        // Allocate a CPU-side Vec<u8> as the staging buffer; flushed to the GPU
+        // by write_staging_buffer via wgpuQueueWriteBuffer. See CQueueWriteBuffer.
         Some(DispatchQueueWriteBuffer::custom(CQueueWriteBuffer {
             data: vec![0u8; size.get() as usize],
         }))

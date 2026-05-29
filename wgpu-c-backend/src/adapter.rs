@@ -156,7 +156,10 @@ impl AdapterInterface for CAdapter {
             });
         }
 
-        // Box for stable heap address: Arc::as_ptr returns *const inner T, not *const Arc.
+        // Box for stable heap address: handler_ptr is passed as userdata1 to the C
+        // callback, which must point to the ErrorHandler (Arc<Mutex<...>>) itself.
+        // Arc::as_ptr returns *const inner T (the Mutex), not *const Arc, so we
+        // wrap in Box to obtain a stable pointer to the Arc.
         let error_handler: Box<ErrorHandler> = Box::new(Arc::new(Mutex::new(None)));
         let handler_ptr = error_handler.as_ref() as *const ErrorHandler;
 
@@ -184,8 +187,11 @@ impl AdapterInterface for CAdapter {
                 nextInChain: std::ptr::null_mut(),
                 label: conv::null_string_view(),
             },
-            // SAFETY: both pointers are into Box heap allocations stored in CDevice,
-            // which outlives the device. wgpu-native won't call them after wgpuDeviceRelease.
+            // SAFETY: handler_ptr and device_lost_ptr point into local Box heap allocations.
+            // On success these Boxes are moved into CDevice (below), so the pointers remain
+            // valid for the device's lifetime. wgpu-native won't invoke these callbacks after
+            // wgpuDeviceRelease, which fires in CDevice::drop. On failure the device is null
+            // so neither callback can be invoked, and the Boxes are safely dropped here.
             deviceLostCallbackInfo: native::WGPUDeviceLostCallbackInfo {
                 nextInChain: std::ptr::null_mut(),
                 mode: native::WGPUCallbackMode_AllowSpontaneous,

@@ -89,6 +89,8 @@ impl SurfaceInterface for CSurface {
             } else {
                 view_formats.as_ptr()
             },
+            // present_mode_to_native returns None for modes wgpu-native can't represent;
+            // fall back to Fifo (guaranteed supported) rather than panicking.
             presentMode: conv::present_mode_to_native(config.present_mode)
                 .unwrap_or(native::WGPUPresentMode_Fifo),
             alphaMode: conv::composite_alpha_to_native(config.alpha_mode),

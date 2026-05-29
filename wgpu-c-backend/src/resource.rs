@@ -136,8 +136,11 @@ impl BufferInterface for CBuffer {
             )
         };
 
-        // Spin up to ~50 ms: if GPU work is done, poll() drives the callback
-        // synchronously so catch_unwind in test frameworks can observe panics.
+        // Spin-poll up to ~50 ms to drive the map callback synchronously. This
+        // semi-blocks the caller but allows wgpu test suites (which use catch_unwind)
+        // to observe panics from the callback. The 50 ms cap prevents stalling when
+        // the GPU isn't yet done; callers must not rely on the map completing within
+        // this window.
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(50);
         while !self.is_mapped.load(Ordering::Acquire)
             && !crate::has_callback_panic()
@@ -164,8 +167,9 @@ impl BufferInterface for CBuffer {
 
         let ptr = unsafe { wgpuBufferGetMappedRange(self.ptr, offset, size) };
         let (ptr, read_only) = if ptr.is_null() {
-            // wgpuBufferGetMappedRange returns null for MapMode::Read buffers.
-            // Fall back to the const variant; write_slice will panic if called.
+            // wgpuBufferGetMappedRange returns null for MapMode::Read buffers (observed
+            // behavior, not a specified API contract). Fall back to the const variant;
+            // write_slice will panic if called.
             let cp = unsafe { wgpuBufferGetConstMappedRange(self.ptr, offset, size) };
             if cp.is_null() {
                 panic!("wgpu-native: buffer mapped range pointer is null");

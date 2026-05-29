@@ -5975,14 +5975,6 @@ pub unsafe extern "C" fn wgpuExternalTextureRelease(et: native::WGPUExternalText
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuExternalTextureSetLabel(
-    _et: native::WGPUExternalTexture,
-    _label: native::WGPUStringView,
-) {
-    // wgpu-core has no external_texture_set_label; no-op.
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceGetInternalCounters(
     device: native::WGPUDevice,
 ) -> native::WGPUInternalCounters {
@@ -6439,7 +6431,7 @@ pub unsafe extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
     }
 }
 
-// wgpu-core does not expose a set-label API for most resource types, so these are permanent no-ops.
+// wgpu-core does not expose a set-label API for these resource types, so these are permanent no-ops.
 #[no_mangle]
 pub extern "C" fn wgpuBindGroupSetLabel(
     _bind_group: native::WGPUBindGroup,
@@ -6564,6 +6556,13 @@ pub extern "C" fn wgpuTextureSetLabel(
 #[no_mangle]
 pub extern "C" fn wgpuTextureViewSetLabel(
     _texture_view: native::WGPUTextureView,
+    _label: native::WGPUStringView,
+) {
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuExternalTextureSetLabel(
+    _et: native::WGPUExternalTexture,
     _label: native::WGPUStringView,
 ) {
 }

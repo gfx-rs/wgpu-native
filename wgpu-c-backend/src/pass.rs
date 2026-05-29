@@ -25,6 +25,8 @@ unsafe impl Sync for CComputePass {}
 
 impl Drop for CComputePass {
     fn drop(&mut self) {
+        // wgpu ends the pass by dropping the ComputePass object; translate that
+        // to an explicit End call before releasing the encoder handle.
         unsafe {
             wgpuComputePassEncoderEnd(self.ptr);
             wgpuComputePassEncoderRelease(self.ptr);
@@ -121,7 +123,8 @@ impl ComputePassInterface for CComputePass {
             Item = wgpu::wgt::TextureTransition<&'a DispatchTextureView>,
         >,
     ) {
-        // The underlying backends handle resource transitions automatically.
+        // The underlying backends (Metal, Vulkan, etc.) handle resource transitions
+        // automatically; no explicit API call is needed.
     }
 }
 
@@ -144,6 +147,8 @@ unsafe impl Sync for CRenderPass {}
 
 impl Drop for CRenderPass {
     fn drop(&mut self) {
+        // wgpu ends the pass by dropping the RenderPass object; translate that
+        // to an explicit End call before releasing the encoder handle.
         unsafe {
             wgpuRenderPassEncoderEnd(self.ptr);
             wgpuRenderPassEncoderRelease(self.ptr);
