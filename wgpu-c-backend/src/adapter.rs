@@ -124,8 +124,10 @@ impl AdapterInterface for CAdapter {
                     handler(error);
                 } else {
                     drop(guard);
-                    // No handler registered. Matches wgpu-core's default_error_handler.
-                    panic!("wgpu error (no handler): {msg}");
+                    // No handler registered — silently ignore. Unlike wgpu-native's default
+                    // uncaptured error handler (which aborts), we let the caller decide whether
+                    // to care. Tests and users that want errors surfaced should register a
+                    // handler or use push_error_scope/pop_error_scope.
                 }
             });
         }
