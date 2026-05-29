@@ -17,28 +17,36 @@ use std::pin::Pin;
 // checks `resume_callback_panic()` after the C function returns to re-raise it
 // on the Rust side where it can propagate normally.
 //
-// We use a global `Mutex` rather than `thread_local!` so that panics from
-// callbacks that fire spontaneously on wgpu-native's background threads
-// (WGPUCallbackMode_AllowSpontaneous) are visible when `resume_callback_panic`
-// is called on the test/calling thread. Only the first panic is kept; subsequent
-// ones are silently dropped (matching the previous per-thread behaviour).
-pub(crate) static CALLBACK_PANIC: std::sync::Mutex<
-    Option<Box<dyn std::any::Any + Send + 'static>>,
-> = std::sync::Mutex::new(None);
+// Thread-local storage gives each thread its own slot: no mutex, no cross-thread
+// collision, and no risk of one thread's panic being silently stolen by another.
+// Spontaneous callbacks that fire on wgpu-native background threads keep their
+// panic on that thread; relaying them to a calling thread via a global is
+// inherently racy and misattributes panics across unrelated operations.
+thread_local! {
+    static CALLBACK_PANIC: std::cell::RefCell<Option<Box<dyn std::any::Any + Send + 'static>>> =
+        std::cell::RefCell::new(None);
+}
 
 pub(crate) fn catch_callback_panic<F: FnOnce()>(f: F) {
     if let Err(payload) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
-        let mut guard = CALLBACK_PANIC.lock().unwrap();
-        if guard.is_none() {
-            *guard = Some(payload);
-        }
+        CALLBACK_PANIC.with(|cell| {
+            let mut slot = cell.borrow_mut();
+            if slot.is_none() {
+                *slot = Some(payload);
+            }
+        });
     }
 }
 
 pub(crate) fn resume_callback_panic() {
-    if let Some(payload) = CALLBACK_PANIC.lock().unwrap().take() {
+    let payload = CALLBACK_PANIC.with(|cell| cell.borrow_mut().take());
+    if let Some(payload) = payload {
         std::panic::resume_unwind(payload);
     }
+}
+
+pub(crate) fn has_callback_panic() -> bool {
+    CALLBACK_PANIC.with(|cell| cell.borrow().is_some())
 }
 
 use wgpu::custom::*;

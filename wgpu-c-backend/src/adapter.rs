@@ -101,28 +101,33 @@ impl AdapterInterface for CAdapter {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let handler_arc = unsafe { &*(userdata1 as *const ErrorHandler) };
-            let guard = handler_arc.lock().unwrap();
-            let msg = unsafe { crate::conv::string_view_to_string(message) };
-            if let Some(handler) = guard.as_ref() {
-                let error = match type_ {
-                    native::WGPUErrorType_Validation => wgpu::Error::Validation {
-                        source: Box::new(std::io::Error::other(msg.clone())),
-                        description: msg,
-                    },
-                    native::WGPUErrorType_OutOfMemory => wgpu::Error::OutOfMemory {
-                        source: Box::new(std::io::Error::other(msg)),
-                    },
-                    _ => wgpu::Error::Internal {
-                        source: Box::new(std::io::Error::other(msg.clone())),
-                        description: msg,
-                    },
-                };
-                let handler = Arc::clone(handler);
-                drop(guard);
-                crate::catch_callback_panic(|| handler(error));
-            }
-            // If no handler set, silently ignore (don't abort like wgpu-native's default).
+            crate::catch_callback_panic(|| {
+                let handler_arc = unsafe { &*(userdata1 as *const ErrorHandler) };
+                let guard = handler_arc.lock().unwrap();
+                let msg = unsafe { crate::conv::string_view_to_string(message) };
+                if let Some(handler) = guard.as_ref() {
+                    let error = match type_ {
+                        native::WGPUErrorType_Validation => wgpu::Error::Validation {
+                            source: Box::new(std::io::Error::other(msg.clone())),
+                            description: msg,
+                        },
+                        native::WGPUErrorType_OutOfMemory => wgpu::Error::OutOfMemory {
+                            source: Box::new(std::io::Error::other(msg)),
+                        },
+                        _ => wgpu::Error::Internal {
+                            source: Box::new(std::io::Error::other(msg.clone())),
+                            description: msg,
+                        },
+                    };
+                    let handler = Arc::clone(handler);
+                    drop(guard);
+                    handler(error);
+                } else {
+                    drop(guard);
+                    // No handler registered. Matches wgpu-core's default_error_handler.
+                    panic!("wgpu error (no handler): {msg}");
+                }
+            });
         }
 
         // Device lost callback registered with wgpu-native at device creation time.
@@ -147,18 +152,20 @@ impl AdapterInterface for CAdapter {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let handler = unsafe { &*(userdata1 as *const DeviceLostHandler) };
-            // .take() ensures at most one fire: if this runs, CDevice::destroy()'s fallback
-            // will see None and skip its manual invocation.
-            let callback = handler.lock().unwrap().take();
-            if let Some(callback) = callback {
-                let reason_wgpu = match reason {
-                    native::WGPUDeviceLostReason_Destroyed => wgpu::DeviceLostReason::Destroyed,
-                    _ => wgpu::DeviceLostReason::Unknown,
-                };
-                let msg = unsafe { crate::conv::string_view_to_string(message) };
-                crate::catch_callback_panic(|| callback(reason_wgpu, msg));
-            }
+            crate::catch_callback_panic(|| {
+                let handler = unsafe { &*(userdata1 as *const DeviceLostHandler) };
+                // .take() ensures at most one fire: if this runs, CDevice::destroy()'s fallback
+                // will see None and skip its manual invocation.
+                let callback = handler.lock().unwrap().take();
+                if let Some(callback) = callback {
+                    let reason_wgpu = match reason {
+                        native::WGPUDeviceLostReason_Destroyed => wgpu::DeviceLostReason::Destroyed,
+                        _ => wgpu::DeviceLostReason::Unknown,
+                    };
+                    let msg = unsafe { crate::conv::string_view_to_string(message) };
+                    callback(reason_wgpu, msg);
+                }
+            });
         }
 
         // Box gives a stable heap address for the Arc itself. We pass
@@ -231,10 +238,12 @@ impl AdapterInterface for CAdapter {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let out = &mut *(userdata1 as *mut Out);
-            out.status = status;
-            out.device = device;
-            out.message = unsafe { crate::conv::string_view_to_string(message) };
+            crate::catch_callback_panic(|| {
+                let out = &mut *(userdata1 as *mut Out);
+                out.status = status;
+                out.device = device;
+                out.message = unsafe { crate::conv::string_view_to_string(message) };
+            });
         }
 
         let callback_info = native::WGPURequestDeviceCallbackInfo {

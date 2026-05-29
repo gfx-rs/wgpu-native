@@ -59,6 +59,7 @@ impl DeviceInterface for CDevice {
     fn features(&self) -> wgpu::Features {
         let mut supported: native::WGPUSupportedFeatures = unsafe { std::mem::zeroed() };
         unsafe { wgpuDeviceGetFeatures(self.ptr, Some(&mut supported)) };
+        crate::resume_callback_panic();
         let result = conv::map_supported_features(&supported);
         unsafe { wgpuSupportedFeaturesFreeMembers(supported) };
         result
@@ -74,6 +75,7 @@ impl DeviceInterface for CDevice {
         limits.nextInChain =
             std::ptr::from_mut::<native::WGPUChainedStruct>(&mut native_limits.chain);
         unsafe { wgpuDeviceGetLimits(self.ptr, Some(&mut limits)) };
+        crate::resume_callback_panic();
         conv::map_limits(&limits, Some(&native_limits))
     }
 
@@ -124,6 +126,7 @@ impl DeviceInterface for CDevice {
                     label: label_sv,
                 };
                 let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,
                     is_passthrough: false,
@@ -146,6 +149,7 @@ impl DeviceInterface for CDevice {
                     label: label_sv,
                 };
                 let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,
                     is_passthrough: false,
@@ -192,6 +196,7 @@ impl DeviceInterface for CDevice {
                     label: label_sv,
                 };
                 let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,
                     is_passthrough: false,
@@ -221,6 +226,7 @@ impl DeviceInterface for CDevice {
                 label: label_sv,
             };
             let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+            crate::resume_callback_panic();
             return DispatchShaderModule::custom(CShaderModule {
                 ptr,
                 is_passthrough: true,
@@ -286,6 +292,7 @@ impl DeviceInterface for CDevice {
                 .unwrap_or_else(conv::null_string_view),
         };
         let ptr = unsafe { wgpuDeviceCreateShaderModulePassthrough(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchShaderModule::custom(CShaderModule {
             ptr,
             is_passthrough: true,
@@ -400,6 +407,7 @@ impl DeviceInterface for CDevice {
             },
         };
         let ptr = unsafe { wgpuDeviceCreateBindGroupLayout(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchBindGroupLayout::custom(CBindGroupLayout {
             ptr,
             device_ptr: self.ptr,
@@ -661,6 +669,7 @@ impl DeviceInterface for CDevice {
             },
         };
         let ptr = unsafe { wgpuDeviceCreateBindGroup(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchBindGroup::custom(CBindGroup { ptr })
     }
 
@@ -694,6 +703,7 @@ impl DeviceInterface for CDevice {
             immediateSize: desc.immediate_size,
         };
         let ptr = unsafe { wgpuDeviceCreatePipelineLayout(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchPipelineLayout::custom(CPipelineLayout { ptr })
     }
 
@@ -1001,6 +1011,7 @@ impl DeviceInterface for CDevice {
         };
 
         let ptr = unsafe { wgpuDeviceCreateRenderPipeline(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchRenderPipeline::custom(CRenderPipeline { ptr })
     }
 
@@ -1274,6 +1285,7 @@ impl DeviceInterface for CDevice {
         };
 
         let ptr = unsafe { wgpuDeviceCreateMeshPipeline(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchRenderPipeline::custom(CRenderPipeline { ptr })
     }
 
@@ -1337,6 +1349,7 @@ impl DeviceInterface for CDevice {
             },
         };
         let ptr = unsafe { wgpuDeviceCreateComputePipeline(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchComputePipeline::custom(CComputePipeline { ptr })
     }
 
@@ -1357,6 +1370,7 @@ impl DeviceInterface for CDevice {
             fallback: desc.fallback as u32,
         };
         let ptr = unsafe { wgpuDeviceCreatePipelineCache(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchPipelineCache::custom(CPipelineCache { ptr })
     }
 
@@ -1382,6 +1396,7 @@ impl DeviceInterface for CDevice {
             mappedAtCreation: desc.mapped_at_creation as u32,
         };
         let ptr = unsafe { wgpuDeviceCreateBuffer(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         let buf = if desc.mapped_at_creation {
             CBuffer::new_mapped_at_creation(ptr, self.ptr)
         } else {
@@ -1419,6 +1434,7 @@ impl DeviceInterface for CDevice {
             },
         };
         let ptr = unsafe { wgpuDeviceCreateTexture(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchTexture::custom(CTexture { ptr })
     }
 
@@ -1509,7 +1525,9 @@ impl DeviceInterface for CDevice {
                     aabbDescriptors: std::ptr::null(),
                     aabbDescriptorCount: 0,
                 };
-                unsafe { wgpuDeviceCreateBlas(self.ptr, Some(&c_desc), c_sizes) }
+                let ptr = unsafe { wgpuDeviceCreateBlas(self.ptr, Some(&c_desc), c_sizes) };
+                crate::resume_callback_panic();
+                ptr
             }
             wgpu::BlasGeometrySizeDescriptors::AABBs { ref descriptors } => {
                 let c_aabbs: Vec<native::WGPUBlasAABBGeometrySizeDescriptor> = descriptors
@@ -1530,7 +1548,9 @@ impl DeviceInterface for CDevice {
                     },
                     aabbDescriptorCount: c_aabbs.len(),
                 };
-                unsafe { wgpuDeviceCreateBlas(self.ptr, Some(&c_desc), c_sizes) }
+                let ptr = unsafe { wgpuDeviceCreateBlas(self.ptr, Some(&c_desc), c_sizes) };
+                crate::resume_callback_panic();
+                ptr
             }
         };
         let raw_handle = unsafe { wgpuBlasGetHandle(ptr) };
@@ -1556,6 +1576,7 @@ impl DeviceInterface for CDevice {
             updateMode: conv::acceleration_structure_update_mode_to_native(desc.update_mode),
         };
         let ptr = unsafe { wgpuDeviceCreateTlas(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchTlas::custom(CTlas { ptr })
     }
 
@@ -1595,6 +1616,7 @@ impl DeviceInterface for CDevice {
             maxAnisotropy: desc.anisotropy_clamp,
         };
         let ptr = unsafe { wgpuDeviceCreateSampler(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchSampler::custom(CSampler { ptr })
     }
 
@@ -1638,6 +1660,7 @@ impl DeviceInterface for CDevice {
             count: desc.count,
         };
         let ptr = unsafe { wgpuDeviceCreateQuerySet(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         let _ = ps_names; // ensure Vec stays alive until after the call
         DispatchQuerySet::custom(CQuerySet { ptr })
     }
@@ -1659,6 +1682,7 @@ impl DeviceInterface for CDevice {
             label: label_sv,
         };
         let ptr = unsafe { wgpuDeviceCreateCommandEncoder(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchCommandEncoder::custom(CCommandEncoder {
             ptr,
             device_ptr: self.ptr,
@@ -1707,6 +1731,7 @@ impl DeviceInterface for CDevice {
                 .unwrap_or(0),
         };
         let ptr = unsafe { wgpuDeviceCreateRenderBundleEncoder(self.ptr, Some(&c_desc)) };
+        crate::resume_callback_panic();
         DispatchRenderBundleEncoder::custom(CRenderBundleEncoder { ptr })
     }
 
@@ -1745,33 +1770,35 @@ impl DeviceInterface for CDevice {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let out = &mut *(userdata1 as *mut Out);
-            if status != native::WGPUPopErrorScopeStatus_Success {
-                out.error = Some(None);
-                return;
-            }
-            out.error = Some(match type_ {
-                native::WGPUErrorType_NoError => None,
-                native::WGPUErrorType_Validation => {
-                    let msg = unsafe { conv::string_view_to_string(message) };
-                    Some(wgpu::Error::Validation {
-                        source: Box::new(std::io::Error::other(msg.clone())),
-                        description: msg,
-                    })
+            crate::catch_callback_panic(|| {
+                let out = &mut *(userdata1 as *mut Out);
+                if status != native::WGPUPopErrorScopeStatus_Success {
+                    out.error = Some(None);
+                    return;
                 }
-                native::WGPUErrorType_OutOfMemory => {
-                    let msg = unsafe { conv::string_view_to_string(message) };
-                    Some(wgpu::Error::OutOfMemory {
-                        source: Box::new(std::io::Error::other(msg)),
-                    })
-                }
-                _ => {
-                    let msg = unsafe { conv::string_view_to_string(message) };
-                    Some(wgpu::Error::Internal {
-                        source: Box::new(std::io::Error::other(msg.clone())),
-                        description: msg,
-                    })
-                }
+                out.error = Some(match type_ {
+                    native::WGPUErrorType_NoError => None,
+                    native::WGPUErrorType_Validation => {
+                        let msg = unsafe { conv::string_view_to_string(message) };
+                        Some(wgpu::Error::Validation {
+                            source: Box::new(std::io::Error::other(msg.clone())),
+                            description: msg,
+                        })
+                    }
+                    native::WGPUErrorType_OutOfMemory => {
+                        let msg = unsafe { conv::string_view_to_string(message) };
+                        Some(wgpu::Error::OutOfMemory {
+                            source: Box::new(std::io::Error::other(msg)),
+                        })
+                    }
+                    _ => {
+                        let msg = unsafe { conv::string_view_to_string(message) };
+                        Some(wgpu::Error::Internal {
+                            source: Box::new(std::io::Error::other(msg.clone())),
+                            description: msg,
+                        })
+                    }
+                });
             });
         }
 
@@ -1831,6 +1858,7 @@ impl DeviceInterface for CDevice {
 
     fn get_internal_counters(&self) -> wgpu::InternalCounters {
         let c = unsafe { wgpuDeviceGetInternalCounters(self.ptr) };
+        crate::resume_callback_panic();
         let hal = c.hal;
         let make = |v: i64| {
             let c = wgpu::wgt::InternalCounter::new();
@@ -1863,6 +1891,7 @@ impl DeviceInterface for CDevice {
 
     fn generate_allocator_report(&self) -> Option<wgpu::AllocatorReport> {
         let report = unsafe { wgpuDeviceGetAllocatorReport(self.ptr) };
+        crate::resume_callback_panic();
         if report.available == 0 {
             unsafe { wgpuAllocatorReportFreeMembers(report) };
             return None;
@@ -2097,10 +2126,12 @@ impl QueueInterface for CQueue {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let out = unsafe { Box::from_raw(userdata1 as *mut Out) };
-            if let Some(cb) = out.callback {
-                cb();
-            }
+            crate::catch_callback_panic(|| {
+                let out = unsafe { Box::from_raw(userdata1 as *mut Out) };
+                if let Some(cb) = out.callback {
+                    cb();
+                }
+            });
         }
 
         let out = Box::new(Out {

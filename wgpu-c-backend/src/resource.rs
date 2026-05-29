@@ -98,17 +98,19 @@ impl BufferInterface for CBuffer {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let out = unsafe { Box::from_raw(userdata1 as *mut Out) };
-            let result = match status {
-                native::WGPUMapAsyncStatus_Success => {
-                    out.is_mapped.store(true, Ordering::Release);
-                    Ok(())
+            crate::catch_callback_panic(|| {
+                let out = unsafe { Box::from_raw(userdata1 as *mut Out) };
+                let result = match status {
+                    native::WGPUMapAsyncStatus_Success => {
+                        out.is_mapped.store(true, Ordering::Release);
+                        Ok(())
+                    }
+                    _ => Err(wgpu::BufferAsyncError),
+                };
+                if let Some(callback) = out.callback {
+                    callback(result);
                 }
-                _ => Err(wgpu::BufferAsyncError),
-            };
-            if let Some(callback) = out.callback {
-                crate::catch_callback_panic(|| callback(result));
-            }
+            });
         }
 
         let c_mode = match mode {
@@ -139,17 +141,14 @@ impl BufferInterface for CBuffer {
         };
 
         // With AllowSpontaneous the callback may fire on a wgpu-native background
-        // thread.  Spin briefly (up to ~50 ms) so that if the GPU work was already
-        // done the callback completes before we return.  This lets catch_unwind in
-        // the test framework observe the panic — matching wgpu-core's behaviour
-        // where the callback fires synchronously when the buffer is already ready.
-        // For buffers that genuinely need more time we give up and let the callback
-        // settle later; any panic that arrives after we return is stored in the
-        // global CALLBACK_PANIC and will be picked up by the next resume_callback_panic
-        // call (e.g. inside device.poll()).
+        // thread. Spin briefly (up to ~50 ms) so that if the GPU work is already
+        // done, poll() drives the callback synchronously on this thread — letting
+        // catch_unwind in the test framework observe the panic. If the buffer
+        // genuinely needs more time we give up; the callback will fire later on
+        // whichever thread wgpu-native uses, and that panic stays on that thread.
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(50);
         while !self.is_mapped.load(Ordering::Acquire)
-            && crate::CALLBACK_PANIC.lock().unwrap().is_none()
+            && !crate::has_callback_panic()
             && std::time::Instant::now() < deadline
         {
             unsafe { wgpuDevicePoll(self.device_ptr, false, None, 0) };
@@ -341,45 +340,47 @@ impl ShaderModuleInterface for CShaderModule {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let out = &mut *(userdata1 as *mut Out);
-            if info.is_null() {
-                return;
-            }
-            let info = &*info;
-            let messages_slice = if info.messageCount == 0 || info.messages.is_null() {
-                &[]
-            } else {
-                std::slice::from_raw_parts(info.messages, info.messageCount)
-            };
-            out.messages = messages_slice
-                .iter()
-                .map(|m| {
-                    let message_type = match m.type_ {
-                        native::WGPUCompilationMessageType_Warning => {
-                            wgpu::CompilationMessageType::Warning
+            crate::catch_callback_panic(|| {
+                let out = &mut *(userdata1 as *mut Out);
+                if info.is_null() {
+                    return;
+                }
+                let info = &*info;
+                let messages_slice = if info.messageCount == 0 || info.messages.is_null() {
+                    &[]
+                } else {
+                    std::slice::from_raw_parts(info.messages, info.messageCount)
+                };
+                out.messages = messages_slice
+                    .iter()
+                    .map(|m| {
+                        let message_type = match m.type_ {
+                            native::WGPUCompilationMessageType_Warning => {
+                                wgpu::CompilationMessageType::Warning
+                            }
+                            native::WGPUCompilationMessageType_Info => {
+                                wgpu::CompilationMessageType::Info
+                            }
+                            _ => wgpu::CompilationMessageType::Error,
+                        };
+                        let location = if m.lineNum > 0 {
+                            Some(wgpu::SourceLocation {
+                                line_number: m.lineNum as u32,
+                                line_position: m.linePos as u32,
+                                offset: m.offset as u32,
+                                length: m.length as u32,
+                            })
+                        } else {
+                            None
+                        };
+                        wgpu::CompilationMessage {
+                            message: crate::conv::string_view_to_string(m.message),
+                            message_type,
+                            location,
                         }
-                        native::WGPUCompilationMessageType_Info => {
-                            wgpu::CompilationMessageType::Info
-                        }
-                        _ => wgpu::CompilationMessageType::Error,
-                    };
-                    let location = if m.lineNum > 0 {
-                        Some(wgpu::SourceLocation {
-                            line_number: m.lineNum as u32,
-                            line_position: m.linePos as u32,
-                            offset: m.offset as u32,
-                            length: m.length as u32,
-                        })
-                    } else {
-                        None
-                    };
-                    wgpu::CompilationMessage {
-                        message: crate::conv::string_view_to_string(m.message),
-                        message_type,
-                        location,
-                    }
-                })
-                .collect();
+                    })
+                    .collect();
+            });
         }
 
         let mut out = Out { messages: vec![] };
@@ -557,12 +558,14 @@ impl BlasInterface for CBlas {
             userdata1: *mut std::ffi::c_void,
             _userdata2: *mut std::ffi::c_void,
         ) {
-            let cb = unsafe { *Box::from_raw(userdata1 as *mut BlasCompactCallback) };
-            if success != 0 {
-                cb(Ok(()));
-            } else {
-                cb(Err(wgpu::BlasAsyncError));
-            }
+            crate::catch_callback_panic(|| {
+                let cb = unsafe { *Box::from_raw(userdata1 as *mut BlasCompactCallback) };
+                if success != 0 {
+                    cb(Ok(()));
+                } else {
+                    cb(Err(wgpu::BlasAsyncError));
+                }
+            });
         }
         let boxed: Box<BlasCompactCallback> = Box::new(callback);
         let callback_info = native::WGPUBlasCompactCallbackInfo {
