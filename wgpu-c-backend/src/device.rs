@@ -131,21 +131,67 @@ impl DeviceInterface for CDevice {
             }
             #[cfg(feature = "spirv")]
             wgpu::ShaderSource::SpirV(words) => {
-                let c_desc = native::WGPUShaderModuleDescriptorPassthrough {
-                    label: label_sv,
-                    entryPointCount: 0,
-                    entryPoints: std::ptr::null(),
-                    spirvSize: words.len() as u32,
-                    spirv: words.as_ptr(),
-                    dxilSize: 0,
-                    dxil: std::ptr::null(),
-                    hlsl: conv::null_string_view(),
-                    metallibSize: 0,
-                    metallib: std::ptr::null(),
-                    msl: conv::null_string_view(),
+                let mut spirv_chain = native::WGPUShaderSourceSPIRV {
+                    chain: native::WGPUChainedStruct {
+                        next: std::ptr::null_mut(),
+                        sType: native::WGPUSType_ShaderSourceSPIRV,
+                    },
+                    codeSize: words.len() as u32,
+                    code: words.as_ptr(),
                 };
-                let ptr =
-                    unsafe { wgpuDeviceCreateShaderModulePassthrough(self.ptr, Some(&c_desc)) };
+                extras.chain.next =
+                    std::ptr::from_mut::<native::WGPUChainedStruct>(&mut spirv_chain.chain);
+                let c_desc = native::WGPUShaderModuleDescriptor {
+                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
+                    label: label_sv,
+                };
+                let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                DispatchShaderModule::custom(CShaderModule {
+                    ptr,
+                    is_passthrough: false,
+                })
+            }
+            #[cfg(feature = "glsl")]
+            wgpu::ShaderSource::Glsl {
+                shader,
+                stage,
+                defines,
+            } => {
+                let stage = match stage {
+                    wgpu::naga::ShaderStage::Vertex => native::WGPUShaderStage_Vertex,
+                    wgpu::naga::ShaderStage::Fragment => native::WGPUShaderStage_Fragment,
+                    wgpu::naga::ShaderStage::Compute => native::WGPUShaderStage_Compute,
+                    _ => unimplemented!("GLSL does not support this shader stage"),
+                };
+                let c_defines: Vec<native::WGPUShaderDefine> = defines
+                    .iter()
+                    .map(|(name, value)| native::WGPUShaderDefine {
+                        name: conv::str_to_string_view(name),
+                        value: conv::str_to_string_view(value),
+                    })
+                    .collect();
+                let code_sv = conv::str_to_string_view(shader.as_ref());
+                let mut glsl_chain = native::WGPUShaderSourceGLSL {
+                    chain: native::WGPUChainedStruct {
+                        next: std::ptr::null_mut(),
+                        sType: native::WGPUSType_ShaderSourceGLSL,
+                    },
+                    stage,
+                    code: code_sv,
+                    defineCount: c_defines.len() as u32,
+                    defines: if c_defines.is_empty() {
+                        std::ptr::null()
+                    } else {
+                        c_defines.as_ptr()
+                    },
+                };
+                extras.chain.next =
+                    std::ptr::from_mut::<native::WGPUChainedStruct>(&mut glsl_chain.chain);
+                let c_desc = native::WGPUShaderModuleDescriptor {
+                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
+                    label: label_sv,
+                };
+                let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,
                     is_passthrough: false,
@@ -187,10 +233,9 @@ impl DeviceInterface for CDevice {
             && desc.hlsl.is_none()
             && desc.metallib.is_none()
             && desc.msl.is_none()
+            && desc.glsl.is_none()
         {
-            unimplemented!(
-                "wgpu-native: passthrough descriptor has no supported shader format (GLSL not supported)"
-            );
+            unimplemented!("wgpu-native: passthrough descriptor has no supported shader format");
         }
         let native_eps: Vec<native::WGPUPassthroughShaderEntryPoint> = desc
             .entry_points
@@ -231,6 +276,11 @@ impl DeviceInterface for CDevice {
                 .unwrap_or(std::ptr::null()),
             msl: desc
                 .msl
+                .as_deref()
+                .map(conv::str_to_string_view)
+                .unwrap_or_else(conv::null_string_view),
+            glsl: desc
+                .glsl
                 .as_deref()
                 .map(conv::str_to_string_view)
                 .unwrap_or_else(conv::null_string_view),

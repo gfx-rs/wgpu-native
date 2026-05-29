@@ -9,9 +9,10 @@ repository = "https://github.com/gfx-rs/wgpu-native"
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["wgsl"]
+default = ["wgsl", "glsl", "spirv"]
 wgsl = ["wgpu/wgsl"]
 spirv = ["wgpu/spirv"]
+glsl = ["wgpu/glsl"]
 
 [dependencies]
 ctor = "1.0"

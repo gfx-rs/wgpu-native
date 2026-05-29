@@ -5291,7 +5291,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModulePassthrough(
         hlsl: string_view_into_str(descriptor.hlsl).map(Cow::Borrowed),
         metallib,
         msl: string_view_into_str(descriptor.msl).map(Cow::Borrowed),
-        glsl: None,
+        glsl: string_view_into_str(descriptor.glsl).map(Cow::Borrowed),
         wgsl: None,
     };
 

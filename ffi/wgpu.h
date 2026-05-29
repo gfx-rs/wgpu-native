@@ -1486,6 +1486,8 @@ typedef struct WGPUShaderModuleDescriptorPassthrough
     uint8_t const *metallib;
     /** MSL source. @ref WGPUStringView_null if unused. */
     WGPUStringView msl;
+    /** GLSL source (GL backend only). @ref WGPUStringView_null if unused. Exactly one entry point must be provided. */
+    WGPUStringView glsl;
 } WGPUShaderModuleDescriptorPassthrough;
 
 typedef struct WGPURegistryReport
