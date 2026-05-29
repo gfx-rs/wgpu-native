@@ -401,6 +401,10 @@ jobs:
           targets: ${{ matrix.target }}
 
       # Required for wgpu's test suite
+      - name: Setup wgpu patch
+        # Some later steps install stuff into the .local-wgpu/target folder
+        # so we need to set it up before.
+        run: python run-wgpu-tests.py --no-run
       - name: Install `cargo-nextest`
         uses: taiki-e/install-action@v2
         with:
@@ -446,4 +450,4 @@ jobs:
         run: ${{ matrix.setup_env }}
 
       - name: Run wgpu integration tests
-        run: python run-wgpu-tests.py
+        run: python run-wgpu-tests.py --no-setup

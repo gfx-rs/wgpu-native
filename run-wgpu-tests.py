@@ -130,50 +130,51 @@ def patch_add_c_backend():
 
 
 def main():
-    commit = get_wgpu_commit()
-    print(f"wgpu commit from Cargo.lock: {commit[:12]}")
-    clone_at_commit(commit)
-    copy_c_backend()
-    patch_file(
-        ".local-wgpu/Cargo.toml", "members = [\n", 'members = ["wgpu-c-backend",\n'
-    )
-    patch_file(
-        ".local-wgpu/Cargo.toml",
-        "default-members = [\n",
-        'default-members = ["wgpu-c-backend",\n',
-    )
-    patch_file(
-        ".local-wgpu/wgpu-c-backend/Cargo.toml",
-        'wgpu-native = { path = "../"',
-        'wgpu-native = { path = "../../"',
-    )
-    append_file(".local-wgpu/Cargo.toml", patches)
-    patch_add_c_backend()
+    if "--no-setup" not in sys.argv:
+        commit = get_wgpu_commit()
+        print(f"wgpu commit from Cargo.lock: {commit[:12]}")
+        clone_at_commit(commit)
+        copy_c_backend()
+        patch_file(
+            ".local-wgpu/Cargo.toml", "members = [\n", 'members = ["wgpu-c-backend",\n'
+        )
+        patch_file(
+            ".local-wgpu/Cargo.toml",
+            "default-members = [\n",
+            'default-members = ["wgpu-c-backend",\n',
+        )
+        patch_file(
+            ".local-wgpu/wgpu-c-backend/Cargo.toml",
+            'wgpu-native = { path = "../"',
+            'wgpu-native = { path = "../../"',
+        )
+        append_file(".local-wgpu/Cargo.toml", patches)
+        patch_add_c_backend()
 
-    print("+ cargo run --bin wgpu-examples hello_workgroups")
-    proc = subprocess.Popen(
-        ("cargo", "run", "--bin", "wgpu-examples", "hello_workgroups"),
-        cwd=".local-wgpu",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-    )
-    lines = []
-    for line in proc.stdout:
-        print(line, end="", flush=True)
-        lines.append(line)
-    proc.wait()
-    combined = "".join(lines)
-    needle = "Creating instance through wgpu-c-backend"
-    if needle not in combined:
-        sys.exit(f"ERROR: expected '{needle}' in hello_workgroups output")
-    if proc.returncode != 0:
-        sys.exit(f"ERROR: hello_workgroups exited with code {proc.returncode}")
-
-    try:
-        run("cargo", "xtask", "test", cwd=".local-wgpu")
-    except subprocess.CalledProcessError as e:
-        sys.exit(e.returncode)
+    if "--no-run" not in sys.argv:
+        print("+ cargo run --bin wgpu-examples hello_workgroups")
+        proc = subprocess.Popen(
+            ("cargo", "run", "--bin", "wgpu-examples", "hello_workgroups"),
+            cwd=".local-wgpu",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        lines = []
+        for line in proc.stdout:
+            print(line, end="", flush=True)
+            lines.append(line)
+        proc.wait()
+        combined = "".join(lines)
+        needle = "Creating instance through wgpu-c-backend"
+        if needle not in combined:
+            sys.exit(f"ERROR: expected '{needle}' in hello_workgroups output")
+        if proc.returncode != 0:
+            sys.exit(f"ERROR: hello_workgroups exited with code {proc.returncode}")
+        try:
+            run("cargo", "xtask", "test", cwd=".local-wgpu")
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.returncode)
     print("Done.")
 
 
