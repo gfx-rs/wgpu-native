@@ -3,11 +3,12 @@
 use conv::{
     from_u64_bits, map_acceleration_structure_flags, map_acceleration_structure_geometry_flags,
     map_acceleration_structure_update_mode, map_adapter_type, map_backend_type,
-    map_bind_group_entry, map_bind_group_layout_entry, map_device_descriptor, map_index_format,
-    map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
-    map_query_set_descriptor, map_query_set_index, map_sampler_extras, map_shader_module,
-    map_shader_module_extras, map_shader_runtime_checks, map_surface, map_surface_configuration,
-    map_vertex_format, CreateSurfaceParams,
+    map_bind_group_entry, map_bind_group_layout_entry, map_cooperative_scalar_type,
+    map_device_descriptor, map_index_format, map_instance_backend_flags, map_instance_descriptor,
+    map_pipeline_layout_descriptor, map_query_set_descriptor, map_query_set_index,
+    map_sampler_extras, map_shader_module, map_shader_module_extras, map_shader_runtime_checks,
+    map_state_to_u32, map_surface, map_surface_configuration, map_vertex_format,
+    CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -1060,17 +1061,6 @@ pub unsafe extern "C" fn wgpuAdapterGetDownlevelCapabilities(
     conv::map_downlevel_capabilities(&caps)
 }
 
-fn map_cooperative_scalar_type(
-    t: wgt::CooperativeScalarType,
-) -> native::WGPUNativeCooperativeScalarType {
-    match t {
-        wgt::CooperativeScalarType::F32 => native::WGPUNativeCooperativeScalarType_F32,
-        wgt::CooperativeScalarType::F16 => native::WGPUNativeCooperativeScalarType_F16,
-        wgt::CooperativeScalarType::I32 => native::WGPUNativeCooperativeScalarType_I32,
-        wgt::CooperativeScalarType::U32 => native::WGPUNativeCooperativeScalarType_U32,
-    }
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetCooperativeMatrixProperties(
     adapter: native::WGPUAdapter,
@@ -1207,10 +1197,6 @@ pub unsafe extern "C" fn wgpuBufferGetUsage(buffer: native::WGPUBuffer) -> nativ
 // WGPUBufferMapState is u32 on Linux/macOS but i32 on Windows (MSVC bindgen generates signed
 // enums). These helpers centralise the cross-platform casts so call sites stay clean.
 #[allow(clippy::unnecessary_cast)]
-fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
-    s as u32
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn wgpuBufferMapAsync(
     buffer: native::WGPUBuffer,
@@ -5189,7 +5175,6 @@ pub unsafe extern "C-unwind" fn wgpuQueueSubmitForIndex(
     }
 }
 
-// FIXME: rework this function to match how wgpu v27 handles polling devices
 #[no_mangle]
 /// `timeout_ns`: max nanoseconds to wait when `wait` is true; `0` means no timeout.
 /// Returns `true` when the queue is empty.
@@ -6469,6 +6454,7 @@ pub unsafe extern "C" fn wgpuSupportedWGSLLanguageFeaturesFreeMembers(
     }
 }
 
+// wgpu-core does not expose a set-label API for most resource types, so these are permanent no-ops.
 #[no_mangle]
 pub extern "C" fn wgpuBindGroupSetLabel(
     _bind_group: native::WGPUBindGroup,

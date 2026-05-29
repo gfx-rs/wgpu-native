@@ -203,7 +203,8 @@ impl DeviceInterface for CDevice {
         &self,
         desc: &wgpu::ShaderModuleDescriptorPassthrough<'_>,
     ) -> DispatchShaderModule {
-        // Try WGSL first, then SpirV.
+        // WGSL is routed through the standard validated path; wgpu-native has no unvalidated
+        // WGSL concept. Binary formats (SPIRV, DXIL, MSL, HLSL) use the passthrough descriptor.
         let label_sv = conv::opt_str_to_string_view(desc.label);
         if let Some(wgsl) = &desc.wgsl {
             let code_sv = conv::str_to_string_view(wgsl.as_ref());

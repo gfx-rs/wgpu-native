@@ -2395,3 +2395,18 @@ pub fn map_downlevel_capabilities(
         shaderModel: shader_model,
     }
 }
+
+pub fn map_cooperative_scalar_type(
+    t: wgt::CooperativeScalarType,
+) -> native::WGPUNativeCooperativeScalarType {
+    match t {
+        wgt::CooperativeScalarType::F32 => native::WGPUNativeCooperativeScalarType_F32,
+        wgt::CooperativeScalarType::F16 => native::WGPUNativeCooperativeScalarType_F16,
+        wgt::CooperativeScalarType::I32 => native::WGPUNativeCooperativeScalarType_I32,
+        wgt::CooperativeScalarType::U32 => native::WGPUNativeCooperativeScalarType_U32,
+    }
+}
+
+pub fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
+    s as u32
+}
