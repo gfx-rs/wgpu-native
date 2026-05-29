@@ -1807,10 +1807,10 @@ pub fn map_bind_group_entry<'a>(
                         .expect("invalid buffers for bind group entry extras")
                         .id,
                     offset: entry.offset,
-                    size: if entry.size == 0 {
-                        None
-                    } else {
-                        Some(entry.size)
+                    size: match entry.size {
+                        0 => panic!("invalid size"),
+                        WGPU_WHOLE_SIZE => None,
+                        s => Some(s),
                     },
                 })
                 .collect();
