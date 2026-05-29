@@ -13,7 +13,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ### Feature parity with wgpu
 
-Wgpu-native has reached feature-parity with upstream wgpu. This introduces many new features including ray tracing, mesh shaders, passthrough shaders, and more. Additionally, wgpu-native was tested using wgpu's test suite, ironing out many more bugs.
+Wgpu-native has reached feature-parity with upstream wgpu. This introduces ray tracing, mesh shaders, passthrough shaders, and more. Now tested against wgpu's test suite.
 
 By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
 

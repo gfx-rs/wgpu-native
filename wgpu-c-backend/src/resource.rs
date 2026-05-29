@@ -35,12 +35,8 @@ macro_rules! c_resource {
 
 pub struct CBuffer {
     pub(crate) ptr: native::WGPUBuffer,
-    // Device that owns this buffer — used to poll for pending map callbacks.
     pub(crate) device_ptr: native::WGPUDevice,
-    // Tracks whether the buffer is currently mapped. Set to true by a
-    // successful map_async callback; reset to false by unmap(). Prevents
-    // calling wgpuBufferGetMappedRange on an unmapped buffer, which would
-    // cause handle_error_fatal to panic inside extern "C" → SIGSEGV.
+    // Set true on successful map_async; false on unmap. Guards get_mapped_range.
     is_mapped: Arc<AtomicBool>,
 }
 impl std::fmt::Debug for CBuffer {
@@ -140,12 +136,8 @@ impl BufferInterface for CBuffer {
             )
         };
 
-        // With AllowSpontaneous the callback may fire on a wgpu-native background
-        // thread. Spin briefly (up to ~50 ms) so that if the GPU work is already
-        // done, poll() drives the callback synchronously on this thread — letting
-        // catch_unwind in the test framework observe the panic. If the buffer
-        // genuinely needs more time we give up; the callback will fire later on
-        // whichever thread wgpu-native uses, and that panic stays on that thread.
+        // Spin up to ~50 ms: if GPU work is done, poll() drives the callback
+        // synchronously so catch_unwind in test frameworks can observe panics.
         let deadline = std::time::Instant::now() + std::time::Duration::from_millis(50);
         while !self.is_mapped.load(Ordering::Acquire)
             && !crate::has_callback_panic()
@@ -165,9 +157,7 @@ impl BufferInterface for CBuffer {
         let offset = sub_range.start as usize;
         let size = (sub_range.end - sub_range.start) as usize;
 
-        // Guard against calling wgpuBufferGetMappedRange on an unmapped buffer:
-        // that function calls handle_error_fatal which panics inside extern "C",
-        // causing UB / SIGSEGV. Panic in Rust instead.
+        // wgpuBufferGetMappedRange on unmapped buffer → handle_error_fatal → extern "C" panic.
         if !self.is_mapped.load(Ordering::Acquire) {
             panic!("get_mapped_range called on unmapped buffer");
         }
@@ -207,10 +197,7 @@ impl BufferInterface for CBuffer {
 pub struct CBufferMappedRange {
     pub(crate) ptr: *mut u8,
     pub(crate) len: usize,
-    // True when the buffer was mapped MapMode::Read: wgpuBufferGetMappedRange returns
-    // null for read-only mappings, so ptr comes from wgpuBufferGetConstMappedRange.
-    // write_slice on a read-only pointer is UB; we panic here as a dispatch-layer guard
-    // (the wgpu public API should have prevented this via MapMode checks already).
+    // MapMode::Read: ptr is from wgpuBufferGetConstMappedRange; write_slice panics.
     read_only: bool,
 }
 impl std::fmt::Debug for CBufferMappedRange {
@@ -248,11 +235,7 @@ c_resource!(CTexture, native::WGPUTexture, wgpuTextureRelease);
 
 impl TextureInterface for CTexture {
     fn create_view(&self, desc: &wgpu::TextureViewDescriptor<'_>) -> DispatchTextureView {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let c_desc = native::WGPUTextureViewDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
@@ -605,10 +588,7 @@ impl ExternalTextureInterface for CExternalTexture {
 }
 
 // ── CQueueWriteBuffer ─────────────────────────────────────────────────────────
-//
-// wgpu-native has no GPU staging buffer API, so we use a CPU Vec that is
-// flushed to the GPU via wgpuQueueWriteBuffer in write_staging_buffer.
-// This lets Queue::write_buffer_with work correctly.
+// CPU staging fallback; flushed via wgpuQueueWriteBuffer in write_staging_buffer.
 
 pub struct CQueueWriteBuffer {
     pub(crate) data: Vec<u8>,

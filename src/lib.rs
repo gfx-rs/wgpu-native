@@ -4650,10 +4650,8 @@ pub unsafe extern "C" fn wgpuShaderModuleGetCompilationInfo(
         },
     };
 
-    // TODO: Properly handle futures and callback modes. For now the callback is
-    // always invoked synchronously regardless of callback_info.mode, and a null
-    // future is returned. This is consistent with other async functions in this
-    // file that have the same limitation (e.g. wgpuBufferMapAsync).
+    // TODO: Properly handle futures/callback modes. Callback is always invoked
+    // synchronously for now; same limitation as wgpuBufferMapAsync.
     if let Some(callback) = callback_info.callback {
         callback(
             native::WGPUCompilationInfoRequestStatus_Success,
@@ -5175,9 +5173,9 @@ pub unsafe extern "C-unwind" fn wgpuQueueSubmitForIndex(
     }
 }
 
-#[no_mangle]
 /// `timeout_ns`: max nanoseconds to wait when `wait` is true; `0` means no timeout.
 /// Returns `true` when the queue is empty.
+#[no_mangle]
 pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     device: native::WGPUDevice,
     wait: bool,
@@ -5190,23 +5188,10 @@ pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     };
 
     let maintain = match wait {
-        true => {
-            let timeout = if timeout_ns == 0 {
-                None
-            } else {
-                Some(std::time::Duration::from_nanos(timeout_ns))
-            };
-            match submission_index {
-                Some(&index) => wgt::PollType::Wait {
-                    submission_index: Some(index),
-                    timeout,
-                },
-                None => wgt::PollType::Wait {
-                    submission_index: None,
-                    timeout,
-                },
-            }
-        }
+        true => wgt::PollType::Wait {
+            submission_index: submission_index.copied(),
+            timeout: (timeout_ns != 0).then(|| std::time::Duration::from_nanos(timeout_ns)),
+        },
         false => wgt::PollType::Poll,
     };
 

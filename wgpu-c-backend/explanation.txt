@@ -1,3 +1,0 @@
-There is an inner and outer folder here so that wgpu-c-backend can depend on "wgpu-native" that is 2 folders out.
-Then we can clone wgpu and copy wgpu-c-backend into wgpu's folder and it will properly connect to wgpu-native as
-well as the local version of wgpu.

@@ -39,11 +39,8 @@ unsafe impl Sync for CDevice {}
 
 impl Drop for CDevice {
     fn drop(&mut self) {
-        // NOTE: wgpu-native's WGPUDeviceImpl::drop may call handle_error_fatal, which
-        // panics inside an extern "C" function. Since Rust 1.71 (RFC 2945) panics in
-        // extern "C" abort the process via a compiler-inserted landing pad — catch_unwind
-        // on our side cannot intercept them. If device release fails fatally, the process
-        // aborts. This requires extern "C-unwind" in wgpu-native to become catchable.
+        // Panics from wgpuDeviceRelease abort (extern "C" + Rust 1.71 RFC 2945).
+        // Needs extern "C-unwind" in wgpu-native to become catchable.
         unsafe { wgpuDeviceRelease(self.ptr) };
     }
 }
@@ -81,11 +78,7 @@ impl DeviceInterface for CDevice {
         desc: wgpu::ShaderModuleDescriptor<'_>,
         shader_bound_checks: wgpu::ShaderRuntimeChecks,
     ) -> DispatchShaderModule {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
         let mut extras = native::WGPUShaderModuleDescriptorExtras {
             chain: native::WGPUChainedStruct {
@@ -275,18 +268,12 @@ impl DeviceInterface for CDevice {
         &self,
         desc: &wgpu::BindGroupLayoutDescriptor<'_>,
     ) -> DispatchBindGroupLayout {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
-        // AccelerationStructure entries require a chained WGPUAccelerationStructureBindingLayout.
-        // We Box each chain struct for a stable heap address, then set nextInChain after the
-        // entries Vec is finalized (so Vec reallocation can't invalidate the entry addresses).
+        // AccelerationStructure entries need a chained layout. Box for stable heap address;
+        // nextInChain is set after the entries Vec is finalized to avoid invalidation.
         let mut entries: Vec<native::WGPUBindGroupLayoutEntry> =
             Vec::with_capacity(desc.entries.len());
-        // (entry_index, Box<chain>) — Box gives stable address even if this Vec reallocates.
         let mut as_chains: Vec<(usize, Box<native::WGPUAccelerationStructureBindingLayout>)> =
             Vec::new();
 
@@ -358,9 +345,7 @@ impl DeviceInterface for CDevice {
             entries.push(entry);
         }
 
-        // Wire AccelerationStructure chain pointers now that entries is finalized.
-        // Box<T> guarantees the inner T doesn't move, so the raw pointer stays valid
-        // for the duration of the wgpuDeviceCreateBindGroupLayout call below.
+        // Wire chain pointers after entries is finalized; Box keeps inner T in place.
         for (idx, chain) in &as_chains {
             entries[*idx].nextInChain = std::ptr::from_ref::<
                 native::WGPUAccelerationStructureBindingLayout,
@@ -387,11 +372,7 @@ impl DeviceInterface for CDevice {
     }
 
     fn create_bind_group(&self, desc: &wgpu::BindGroupDescriptor<'_>) -> DispatchBindGroup {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let layout = desc.layout.as_custom::<CBindGroupLayout>().unwrap();
         if !layout.device_ptr.is_null() && layout.device_ptr != self.ptr {
             panic!("bind group layout was created from a different device");
@@ -617,9 +598,7 @@ impl DeviceInterface for CDevice {
             entries.push(entry);
         }
 
-        // Wire chain pointers now that entries Vec is finalized (no more reallocation).
-        // Box<ExtrasStorage> guarantees the extras struct and its backing Vecs don't move,
-        // so the raw pointers into _buffers/_samplers/_texture_views remain valid.
+        // Wire chain pointers after entries Vec is finalized.
         for (idx, storage) in &extras_by_entry {
             entries[*idx].nextInChain =
                 std::ptr::from_ref::<native::WGPUChainedStruct>(&storage.extras.chain) as *mut _;
@@ -649,11 +628,7 @@ impl DeviceInterface for CDevice {
         &self,
         desc: &wgpu::PipelineLayoutDescriptor<'_>,
     ) -> DispatchPipelineLayout {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let layouts: Vec<native::WGPUBindGroupLayout> = desc
             .bind_group_layouts
             .iter()
@@ -679,16 +654,11 @@ impl DeviceInterface for CDevice {
         DispatchPipelineLayout::custom(CPipelineLayout { ptr })
     }
 
-    #[allow(unused_assignments)] // else-branch initializes storage vecs required by definite-assignment
     fn create_render_pipeline(
         &self,
         desc: &wgpu::RenderPipelineDescriptor<'_>,
     ) -> DispatchRenderPipeline {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
         let layout_ptr = desc
             .layout
@@ -864,92 +834,7 @@ impl DeviceInterface for CDevice {
             alphaToCoverageEnabled: ms.alpha_to_coverage_enabled as u32,
         };
 
-        // Fragment state — storage kept alive until after wgpuDeviceCreateRenderPipeline.
-        // WGPUFragmentState holds raw pointers into these vecs and owned strings.
-        let frag_ep_owned: Option<String>;
-        let frag_constants: Vec<native::WGPUConstantEntry>;
-        let frag_blend_states: Vec<Option<native::WGPUBlendState>>;
-        let frag_targets_raw: Vec<native::WGPUColorTargetState>;
-        let fragment_state: Option<native::WGPUFragmentState>;
-
-        if let Some(frag) = &desc.fragment {
-            let frag_module = frag.module.as_custom::<CShaderModule>().unwrap().ptr;
-            frag_ep_owned = frag.entry_point.map(|s| s.to_owned());
-            let frag_ep_sv = frag_ep_owned
-                .as_deref()
-                .map(conv::str_to_string_view)
-                .unwrap_or(conv::null_string_view());
-            frag_constants = frag
-                .compilation_options
-                .constants
-                .iter()
-                .map(|(k, v)| native::WGPUConstantEntry {
-                    nextInChain: std::ptr::null_mut(),
-                    key: conv::str_to_string_view(k),
-                    value: *v,
-                })
-                .collect();
-            frag_blend_states = frag
-                .targets
-                .iter()
-                .map(|opt_t| {
-                    opt_t.as_ref().and_then(|t| t.blend.as_ref()).map(|blend| {
-                        native::WGPUBlendState {
-                            color: blend_component_to_native(blend.color),
-                            alpha: blend_component_to_native(blend.alpha),
-                        }
-                    })
-                })
-                .collect();
-            frag_targets_raw = frag
-                .targets
-                .iter()
-                .zip(frag_blend_states.iter())
-                .map(|(opt_t, opt_blend)| {
-                    if let Some(t) = opt_t {
-                        native::WGPUColorTargetState {
-                            nextInChain: std::ptr::null_mut(),
-                            format: conv::texture_format_to_native(t.format),
-                            blend: opt_blend
-                                .as_ref()
-                                .map(std::ptr::from_ref)
-                                .unwrap_or(std::ptr::null()),
-                            writeMask: conv::color_writes_to_native(t.write_mask),
-                        }
-                    } else {
-                        native::WGPUColorTargetState {
-                            nextInChain: std::ptr::null_mut(),
-                            format: native::WGPUTextureFormat_Undefined,
-                            blend: std::ptr::null(),
-                            writeMask: native::WGPUColorWriteMask_None,
-                        }
-                    }
-                })
-                .collect();
-            fragment_state = Some(native::WGPUFragmentState {
-                nextInChain: std::ptr::null_mut(),
-                module: frag_module,
-                entryPoint: frag_ep_sv,
-                constantCount: frag_constants.len(),
-                constants: if frag_constants.is_empty() {
-                    std::ptr::null()
-                } else {
-                    frag_constants.as_ptr()
-                },
-                targetCount: frag_targets_raw.len(),
-                targets: if frag_targets_raw.is_empty() {
-                    std::ptr::null()
-                } else {
-                    frag_targets_raw.as_ptr()
-                },
-            });
-        } else {
-            frag_ep_owned = None;
-            frag_constants = vec![];
-            frag_blend_states = vec![];
-            frag_targets_raw = vec![];
-            fragment_state = None;
-        }
+        let frag_storage = build_fragment_state(desc.fragment.as_ref());
 
         let render_cache_ptr = desc
             .cache
@@ -976,10 +861,7 @@ impl DeviceInterface for CDevice {
             primitive: c_primitive,
             depthStencil: ds_ptr,
             multisample: c_multisample,
-            fragment: fragment_state
-                .as_ref()
-                .map(std::ptr::from_ref)
-                .unwrap_or(std::ptr::null()),
+            fragment: frag_storage.state.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()),
         };
 
         let ptr = unsafe { wgpuDeviceCreateRenderPipeline(self.ptr, Some(&c_desc)) };
@@ -987,16 +869,12 @@ impl DeviceInterface for CDevice {
         DispatchRenderPipeline::custom(CRenderPipeline { ptr })
     }
 
-    #[allow(unused_assignments)]
+    #[allow(unused_assignments)] // task_ep_owned/task_constants keep raw pointers valid in else-branch
     fn create_mesh_pipeline(
         &self,
         desc: &wgpu::MeshPipelineDescriptor<'_>,
     ) -> DispatchRenderPipeline {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
         let layout_ptr = desc
             .layout
@@ -1133,92 +1011,7 @@ impl DeviceInterface for CDevice {
             alphaToCoverageEnabled: ms.alpha_to_coverage_enabled as u32,
         };
 
-        // Fragment state.
-        #[allow(unused_assignments)]
-        let frag_ep_owned: Option<String>;
-        let frag_constants: Vec<native::WGPUConstantEntry>;
-        let frag_blend_states: Vec<Option<native::WGPUBlendState>>;
-        let frag_targets_raw: Vec<native::WGPUColorTargetState>;
-        let fragment_state: Option<native::WGPUFragmentState>;
-
-        if let Some(frag) = &desc.fragment {
-            let frag_module = frag.module.as_custom::<CShaderModule>().unwrap().ptr;
-            frag_ep_owned = frag.entry_point.map(|s| s.to_owned());
-            let frag_ep_sv = frag_ep_owned
-                .as_deref()
-                .map(conv::str_to_string_view)
-                .unwrap_or(conv::null_string_view());
-            frag_constants = frag
-                .compilation_options
-                .constants
-                .iter()
-                .map(|(k, v)| native::WGPUConstantEntry {
-                    nextInChain: std::ptr::null_mut(),
-                    key: conv::str_to_string_view(k),
-                    value: *v,
-                })
-                .collect();
-            frag_blend_states = frag
-                .targets
-                .iter()
-                .map(|opt_t| {
-                    opt_t.as_ref().and_then(|t| t.blend.as_ref()).map(|blend| {
-                        native::WGPUBlendState {
-                            color: blend_component_to_native(blend.color),
-                            alpha: blend_component_to_native(blend.alpha),
-                        }
-                    })
-                })
-                .collect();
-            frag_targets_raw = frag
-                .targets
-                .iter()
-                .zip(frag_blend_states.iter())
-                .map(|(opt_t, opt_blend)| {
-                    if let Some(t) = opt_t {
-                        native::WGPUColorTargetState {
-                            nextInChain: std::ptr::null_mut(),
-                            format: conv::texture_format_to_native(t.format),
-                            blend: opt_blend
-                                .as_ref()
-                                .map(std::ptr::from_ref)
-                                .unwrap_or(std::ptr::null()),
-                            writeMask: conv::color_writes_to_native(t.write_mask),
-                        }
-                    } else {
-                        native::WGPUColorTargetState {
-                            nextInChain: std::ptr::null_mut(),
-                            format: native::WGPUTextureFormat_Undefined,
-                            blend: std::ptr::null(),
-                            writeMask: native::WGPUColorWriteMask_None,
-                        }
-                    }
-                })
-                .collect();
-            fragment_state = Some(native::WGPUFragmentState {
-                nextInChain: std::ptr::null_mut(),
-                module: frag_module,
-                entryPoint: frag_ep_sv,
-                constantCount: frag_constants.len(),
-                constants: if frag_constants.is_empty() {
-                    std::ptr::null()
-                } else {
-                    frag_constants.as_ptr()
-                },
-                targetCount: frag_targets_raw.len(),
-                targets: if frag_targets_raw.is_empty() {
-                    std::ptr::null()
-                } else {
-                    frag_targets_raw.as_ptr()
-                },
-            });
-        } else {
-            frag_ep_owned = None;
-            frag_constants = vec![];
-            frag_blend_states = vec![];
-            frag_targets_raw = vec![];
-            fragment_state = None;
-        }
+        let frag_storage = build_fragment_state(desc.fragment.as_ref());
 
         let mesh_cache_ptr = desc
             .cache
@@ -1250,10 +1043,7 @@ impl DeviceInterface for CDevice {
             primitive: c_primitive,
             depthStencil: ds_ptr,
             multisample: c_multisample,
-            fragment: fragment_state
-                .as_ref()
-                .map(std::ptr::from_ref)
-                .unwrap_or(std::ptr::null()),
+            fragment: frag_storage.state.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()),
         };
 
         let ptr = unsafe { wgpuDeviceCreateMeshPipeline(self.ptr, Some(&c_desc)) };
@@ -1265,11 +1055,7 @@ impl DeviceInterface for CDevice {
         &self,
         desc: &wgpu::ComputePipelineDescriptor<'_>,
     ) -> DispatchComputePipeline {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let layout_ptr = desc
             .layout
             .map(|l| l.as_custom::<CPipelineLayout>().unwrap().ptr)
@@ -1329,11 +1115,7 @@ impl DeviceInterface for CDevice {
         &self,
         desc: &wgpu::PipelineCacheDescriptor<'_>,
     ) -> DispatchPipelineCache {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let c_desc = native::WGPUPipelineCacheDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
@@ -1347,11 +1129,7 @@ impl DeviceInterface for CDevice {
     }
 
     fn create_buffer(&self, desc: &wgpu::BufferDescriptor<'_>) -> DispatchBuffer {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         // Any bits not in KNOWN_BUFFER_USAGE_BITS cannot be represented in the C API.
         // Pass usage=0 so wgpu-core generates a validation error (empty usage is always
         // invalid) captured by any active error scope — matching expected wgpu semantics.
@@ -1378,11 +1156,7 @@ impl DeviceInterface for CDevice {
     }
 
     fn create_texture(&self, desc: &wgpu::TextureDescriptor<'_>) -> DispatchTexture {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let size = conv::extent3d_to_native(desc.size);
         let view_formats: Vec<native::WGPUTextureFormat> = desc
             .view_formats
@@ -1415,11 +1189,7 @@ impl DeviceInterface for CDevice {
         desc: &wgpu::ExternalTextureDescriptor<'_>,
         planes: &[&wgpu::TextureView],
     ) -> DispatchExternalTexture {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let plane_ptrs: Vec<native::WGPUTextureView> = planes
             .iter()
             .map(|tv| tv.as_custom::<CTextureView>().unwrap().ptr)
@@ -1461,11 +1231,7 @@ impl DeviceInterface for CDevice {
         desc: &wgpu::CreateBlasDescriptor<'_>,
         sizes: wgpu::BlasGeometrySizeDescriptors,
     ) -> (Option<u64>, DispatchBlas) {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let c_desc = native::WGPUBlasDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
@@ -1536,11 +1302,7 @@ impl DeviceInterface for CDevice {
     }
 
     fn create_tlas(&self, desc: &wgpu::CreateTlasDescriptor<'_>) -> DispatchTlas {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let c_desc = native::WGPUTlasDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
@@ -1554,11 +1316,7 @@ impl DeviceInterface for CDevice {
     }
 
     fn create_sampler(&self, desc: &wgpu::SamplerDescriptor<'_>) -> DispatchSampler {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let mut extras = desc
             .border_color
             .map(|bc| native::WGPUSamplerDescriptorExtras {
@@ -1594,11 +1352,7 @@ impl DeviceInterface for CDevice {
     }
 
     fn create_query_set(&self, desc: &wgpu::QuerySetDescriptor<'_>) -> DispatchQuerySet {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
         // PipelineStatistics queries require WGPUQuerySetDescriptorExtras listing the
         // specific statistics to collect.
@@ -1645,11 +1399,7 @@ impl DeviceInterface for CDevice {
         if self.queue_dropped.load(Ordering::Acquire) {
             panic!("device's queue has been dropped");
         }
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let c_desc = native::WGPUCommandEncoderDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
@@ -1666,11 +1416,7 @@ impl DeviceInterface for CDevice {
         &self,
         desc: &wgpu::RenderBundleEncoderDescriptor<'_>,
     ) -> DispatchRenderBundleEncoder {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let color_formats: Vec<native::WGPUTextureFormat> = desc
             .color_formats
             .iter()
@@ -1709,14 +1455,11 @@ impl DeviceInterface for CDevice {
     }
 
     fn set_device_lost_callback(&self, device_lost_callback: BoxDeviceLostCallback) {
-        // KNOWN LIMITATION: this callback only fires for explicit Device::destroy().
-        // wgpu-native does not wire WGPUDeviceLostCallbackInfo to wgpu-core's
-        // spontaneous loss path, so GPU-initiated loss (driver crash, timeout, etc.)
-        // will never invoke this callback via the C backend.
+        // GPU-initiated loss never fires this; only Device::destroy() does.
+        // See adapter.rs device_lost_cb for details.
         log::warn!(
-            "wgpu-c-backend: device-lost callback registered; note that GPU-initiated \
-             device loss (driver crash, timeout) will NOT trigger this callback — \
-             only explicit Device::destroy() does. See adapter.rs device_lost_cb."
+            "wgpu-c-backend: device-lost callback registered; GPU-initiated loss \
+             (driver crash, timeout) will NOT trigger it — only Device::destroy() does."
         );
         *self.device_lost_handler.lock().unwrap() = Some(device_lost_callback);
     }
@@ -1899,16 +1642,8 @@ impl DeviceInterface for CDevice {
 
     fn destroy(&self) {
         unsafe { wgpuDeviceDestroy(self.ptr) };
-        // wgpu-native currently does not fire WGPUDeviceLostCallbackInfo from
-        // wgpuDeviceDestroy (the callback is registered but not wired to wgpu-core's
-        // device_lost_closure), so we fire it manually here.
-        //
-        // If wgpu-native is fixed to fire the C callback, device_lost_cb in adapter.rs
-        // will have already called .take() on the handler, and this block sees None and
-        // skips — no double-fire.
-        //
-        // KNOWN LIMITATION: GPU-initiated device loss (driver crash, GPU hang, timeout)
-        // never reaches here. Only explicit Device::destroy() fires the callback.
+        // wgpu-native doesn't wire device_lost_closure from wgpuDeviceDestroy, so fire
+        // the callback manually. .take() prevents double-fire if wgpu-native is fixed later.
         if let Some(callback) = self.device_lost_handler.lock().unwrap().take() {
             crate::catch_callback_panic(|| {
                 callback(wgpu::DeviceLostReason::Destroyed, String::new())
@@ -1919,6 +1654,91 @@ impl DeviceInterface for CDevice {
 }
 
 // ── Helper conversion functions ───────────────────────────────────────────────
+
+/// Keeps fragment state data alive while WGPUFragmentState holds raw pointers into it.
+struct FragmentStateStorage {
+    _ep_owned: Option<String>,
+    _constants: Vec<native::WGPUConstantEntry>,
+    _blend_states: Vec<Option<native::WGPUBlendState>>,
+    _targets_raw: Vec<native::WGPUColorTargetState>,
+    state: Option<native::WGPUFragmentState>,
+}
+
+fn build_fragment_state(frag: Option<&wgpu::FragmentState<'_>>) -> FragmentStateStorage {
+    let Some(frag) = frag else {
+        return FragmentStateStorage {
+            _ep_owned: None,
+            _constants: vec![],
+            _blend_states: vec![],
+            _targets_raw: vec![],
+            state: None,
+        };
+    };
+    let frag_module = frag.module.as_custom::<CShaderModule>().unwrap().ptr;
+    let ep_owned = frag.entry_point.map(|s| s.to_owned());
+    let ep_sv = ep_owned
+        .as_deref()
+        .map(conv::str_to_string_view)
+        .unwrap_or(conv::null_string_view());
+    let constants: Vec<native::WGPUConstantEntry> = frag
+        .compilation_options
+        .constants
+        .iter()
+        .map(|(k, v)| native::WGPUConstantEntry {
+            nextInChain: std::ptr::null_mut(),
+            key: conv::str_to_string_view(k),
+            value: *v,
+        })
+        .collect();
+    let blend_states: Vec<Option<native::WGPUBlendState>> = frag
+        .targets
+        .iter()
+        .map(|opt_t| {
+            opt_t.as_ref().and_then(|t| t.blend.as_ref()).map(|blend| native::WGPUBlendState {
+                color: blend_component_to_native(blend.color),
+                alpha: blend_component_to_native(blend.alpha),
+            })
+        })
+        .collect();
+    let targets_raw: Vec<native::WGPUColorTargetState> = frag
+        .targets
+        .iter()
+        .zip(blend_states.iter())
+        .map(|(opt_t, opt_blend)| {
+            if let Some(t) = opt_t {
+                native::WGPUColorTargetState {
+                    nextInChain: std::ptr::null_mut(),
+                    format: conv::texture_format_to_native(t.format),
+                    blend: opt_blend.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()),
+                    writeMask: conv::color_writes_to_native(t.write_mask),
+                }
+            } else {
+                native::WGPUColorTargetState {
+                    nextInChain: std::ptr::null_mut(),
+                    format: native::WGPUTextureFormat_Undefined,
+                    blend: std::ptr::null(),
+                    writeMask: native::WGPUColorWriteMask_None,
+                }
+            }
+        })
+        .collect();
+    let state = native::WGPUFragmentState {
+        nextInChain: std::ptr::null_mut(),
+        module: frag_module,
+        entryPoint: ep_sv,
+        constantCount: constants.len(),
+        constants: if constants.is_empty() { std::ptr::null() } else { constants.as_ptr() },
+        targetCount: targets_raw.len(),
+        targets: if targets_raw.is_empty() { std::ptr::null() } else { targets_raw.as_ptr() },
+    };
+    FragmentStateStorage {
+        _ep_owned: ep_owned,
+        _constants: constants,
+        _blend_states: blend_states,
+        _targets_raw: targets_raw,
+        state: Some(state),
+    }
+}
 
 fn stencil_face_to_native(sf: wgpu::StencilFaceState) -> native::WGPUStencilFaceState {
     native::WGPUStencilFaceState {
@@ -1941,11 +1761,11 @@ fn blend_component_to_native(bc: wgpu::BlendComponent) -> native::WGPUBlendCompo
 
 pub struct CQueue {
     pub(crate) ptr: native::WGPUQueue,
-    /// Device this queue belongs to. Used to detect cross-device command buffer submission.
+    /// Used to detect cross-device submission.
     pub(crate) device_ptr: native::WGPUDevice,
-    /// Shared with the owning CDevice. Mirrors the active error scope count.
+    /// Shared with CDevice. Active error scope count.
     pub(crate) error_scope_depth: Arc<AtomicU32>,
-    /// Shared with the owning CDevice. Set to true when this queue is dropped.
+    /// Shared with CDevice. Set true on drop.
     pub(crate) queue_dropped: Arc<AtomicBool>,
 }
 

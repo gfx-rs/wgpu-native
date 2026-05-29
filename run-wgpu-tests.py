@@ -47,10 +47,9 @@ def clone_at_commit(commit: str):
 
 def copy_c_backend():
     dest = LOCAL_WGPU / WGPU_C_BACKEND_SRC.name
+    print(f"Syncing wgpu-c-backend -> {dest}")
     if dest.exists():
-        print(f"Removing existing {dest}")
         shutil.rmtree(dest)
-    print(f"Copying {WGPU_C_BACKEND_SRC} -> {dest}")
     shutil.copytree(str(WGPU_C_BACKEND_SRC), str(dest))
 
 

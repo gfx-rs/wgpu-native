@@ -4,7 +4,7 @@ use wgpu::custom::*;
 use wgpu_native::{native, *};
 
 use crate::conv;
-use crate::resource::{CBindGroup, CComputePipeline, CQuerySet, CRenderBundle, CRenderPipeline};
+use crate::resource::{CBindGroup, CBuffer, CComputePipeline, CQuerySet, CRenderBundle, CRenderPipeline};
 
 // ── CComputePass ──────────────────────────────────────────────────────────────
 
@@ -104,7 +104,7 @@ impl ComputePassInterface for CComputePass {
         indirect_offset: wgpu::BufferAddress,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {
@@ -184,7 +184,7 @@ impl RenderPassInterface for CRenderPass {
         offset: wgpu::BufferAddress,
         size: Option<wgpu::BufferSize>,
     ) {
-        let buf_ptr = buffer.as_custom::<crate::resource::CBuffer>().unwrap().ptr;
+        let buf_ptr = buffer.as_custom::<CBuffer>().unwrap().ptr;
         let c_format = conv::index_format_to_native(index_format);
         let c_size = size.map(|s| s.get()).unwrap_or(u64::MAX);
         unsafe { wgpuRenderPassEncoderSetIndexBuffer(self.ptr, buf_ptr, c_format, offset, c_size) };
@@ -198,7 +198,7 @@ impl RenderPassInterface for CRenderPass {
         size: Option<wgpu::BufferSize>,
     ) {
         let buf_ptr = buffer
-            .map(|b| b.as_custom::<crate::resource::CBuffer>().unwrap().ptr)
+            .map(|b| b.as_custom::<CBuffer>().unwrap().ptr)
             .unwrap_or(std::ptr::null_mut());
         let c_size = size.map(|s| s.get()).unwrap_or(u64::MAX);
         unsafe { wgpuRenderPassEncoderSetVertexBuffer(self.ptr, slot, buf_ptr, offset, c_size) };
@@ -279,7 +279,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_offset: wgpu::BufferAddress,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe { wgpuRenderPassEncoderDrawIndirect(self.ptr, buf_ptr, indirect_offset) };
@@ -291,7 +291,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_offset: wgpu::BufferAddress,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe { wgpuRenderPassEncoderDrawIndexedIndirect(self.ptr, buf_ptr, indirect_offset) };
@@ -303,7 +303,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_offset: wgpu::BufferAddress,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe { wgpuRenderPassEncoderDrawMeshTasksIndirect(self.ptr, buf_ptr, indirect_offset) };
@@ -316,7 +316,7 @@ impl RenderPassInterface for CRenderPass {
         count: u32,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {
@@ -331,7 +331,7 @@ impl RenderPassInterface for CRenderPass {
         count: u32,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {
@@ -348,11 +348,11 @@ impl RenderPassInterface for CRenderPass {
         max_count: u32,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         let cnt_ptr = count_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {
@@ -374,7 +374,7 @@ impl RenderPassInterface for CRenderPass {
         count: u32,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {
@@ -396,11 +396,11 @@ impl RenderPassInterface for CRenderPass {
         max_count: u32,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         let cnt_ptr = count_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {
@@ -424,11 +424,11 @@ impl RenderPassInterface for CRenderPass {
         max_count: u32,
     ) {
         let buf_ptr = indirect_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         let cnt_ptr = count_buffer
-            .as_custom::<crate::resource::CBuffer>()
+            .as_custom::<CBuffer>()
             .unwrap()
             .ptr;
         unsafe {

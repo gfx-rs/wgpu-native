@@ -76,11 +76,8 @@ impl AdapterInterface for CAdapter {
         &self,
         desc: &wgpu::DeviceDescriptor<'_>,
     ) -> Pin<Box<dyn RequestDeviceFuture>> {
-        // Build the feature list from required_features.
         let mut required_features = conv::features_to_native(desc.required_features);
 
-        // Build the limits structs. The standard WGPULimits covers WebGPU core limits;
-        // WGPUNativeLimits covers extended wgpu-native limits (BLAS, mesh shaders, etc.).
         let mut c_native_limits = conv::native_limits_from_wgpu(&desc.required_limits);
         let mut c_limits = conv::limits_to_native(&desc.required_limits);
         c_limits.nextInChain =
@@ -132,21 +129,10 @@ impl AdapterInterface for CAdapter {
             });
         }
 
-        // Device lost callback registered with wgpu-native at device creation time.
-        //
-        // CURRENT STATE: wgpu-native does not invoke this callback — it does not wire
-        // WGPUDeviceLostCallbackInfo to wgpu-core's device_lost_closure, so neither
-        // wgpuDeviceDestroy nor a GPU-initiated loss (driver crash, timeout) triggers it.
-        // The explicit-destroy case is handled by CDevice::destroy() as a Rust-side fallback.
-        //
-        // FORWARD COMPAT: The registration is kept so that if wgpu-native is fixed to fire
-        // this callback (for either destroy or GPU loss), the `.take()` below prevents
-        // double-firing with CDevice::destroy()'s fallback.  GPU-initiated loss would then
-        // work automatically without any change here.
-        //
-        // KNOWN LIMITATION: GPU-initiated device loss (driver crash, GPU hang, timeout)
-        // never fires the wgpu device-lost callback via this backend. That requires
-        // wgpu-native to wire the spontaneous callback path.
+        // Registered at device creation; wgpu-native doesn't currently wire this to
+        // wgpu-core's device_lost_closure, so GPU-initiated loss never fires it.
+        // CDevice::destroy() fires it manually as a fallback; .take() here prevents
+        // double-firing if wgpu-native is later fixed to invoke the callback.
         unsafe extern "C" fn device_lost_cb(
             _device: *const native::WGPUDevice,
             reason: native::WGPUDeviceLostReason,
@@ -170,11 +156,7 @@ impl AdapterInterface for CAdapter {
             });
         }
 
-        // Box gives a stable heap address for the Arc itself. We pass
-        // a *const Arc<Mutex<...>> (= *const ErrorHandler) as userdata1 so
-        // the callback can safely reconstruct &ErrorHandler via a pointer cast.
-        // Arc::as_ptr would return *const Mutex<...> (the inner T), not a pointer
-        // to the Arc struct — casting that to *const Arc would be UB / SIGSEGV.
+        // Box for stable heap address: Arc::as_ptr returns *const inner T, not *const Arc.
         let error_handler: Box<ErrorHandler> = Box::new(Arc::new(Mutex::new(None)));
         let handler_ptr = error_handler.as_ref() as *const ErrorHandler;
 
@@ -202,21 +184,18 @@ impl AdapterInterface for CAdapter {
                 nextInChain: std::ptr::null_mut(),
                 label: conv::null_string_view(),
             },
+            // SAFETY: both pointers are into Box heap allocations stored in CDevice,
+            // which outlives the device. wgpu-native won't call them after wgpuDeviceRelease.
             deviceLostCallbackInfo: native::WGPUDeviceLostCallbackInfo {
                 nextInChain: std::ptr::null_mut(),
                 mode: native::WGPUCallbackMode_AllowSpontaneous,
                 callback: Some(device_lost_cb),
-                // SAFETY: device_lost_ptr points into the Box heap allocation, which is
-                // stored in CDevice and outlives the device.
                 userdata1: device_lost_ptr as *mut _,
                 userdata2: std::ptr::null_mut(),
             },
             uncapturedErrorCallbackInfo: native::WGPUUncapturedErrorCallbackInfo {
                 nextInChain: std::ptr::null_mut(),
                 callback: Some(uncaptured_error_cb),
-                // SAFETY: handler_ptr points into the Box heap allocation, which is
-                // stored in CDevice and outlives the device. wgpu-native will not call
-                // the callback after wgpuDeviceRelease.
                 userdata1: handler_ptr as *mut _,
                 userdata2: std::ptr::null_mut(),
             },
@@ -256,7 +235,6 @@ impl AdapterInterface for CAdapter {
             userdata2: std::ptr::null_mut(),
         };
 
-        // Capture adapter info before creating device (needed for device.adapter_info()).
         let info = get_adapter_info(self.ptr);
 
         unsafe { wgpuAdapterRequestDevice(self.ptr, Some(&c_desc), callback_info) };

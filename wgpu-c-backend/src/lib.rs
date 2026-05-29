@@ -18,10 +18,8 @@ use std::pin::Pin;
 // on the Rust side where it can propagate normally.
 //
 // Thread-local storage gives each thread its own slot: no mutex, no cross-thread
-// collision, and no risk of one thread's panic being silently stolen by another.
-// Spontaneous callbacks that fire on wgpu-native background threads keep their
-// panic on that thread; relaying them to a calling thread via a global is
-// inherently racy and misattributes panics across unrelated operations.
+// collision. Spontaneous callbacks on wgpu-native background threads keep their
+// panic on that thread.
 thread_local! {
     static CALLBACK_PANIC: std::cell::RefCell<Option<Box<dyn std::any::Any + Send + 'static>>> =
         std::cell::RefCell::new(None);
@@ -72,10 +70,7 @@ const WGPU_NATIVE_BACKENDS: wgpu::Backends = wgpu::Backends::VULKAN
 
 #[expect(clippy::result_large_err)]
 pub fn instance_factory(desc: InstanceDescriptor) -> Result<wgpu::Instance, InstanceDescriptor> {
-    // Pass through to wgpu-core's built-in factory when the requested backends
-    // don't include anything wgpu-native can handle (e.g. Backends::empty(),
-    // Backends::NOOP, Backends::BROWSER_WEBGPU). wgpu-core will generate the
-    // correct "not requested" / "not compiled in" error messages.
+    // Defer to wgpu-core for backends wgpu-native doesn't handle.
     if desc.backends.intersection(WGPU_NATIVE_BACKENDS).is_empty() {
         return Err(desc);
     }
@@ -106,7 +101,7 @@ impl InstanceInterface for CInstance {
     where
         Self: Sized,
     {
-        println!("Creating instance through wgpu-c-backend");
+        log::debug!("Creating instance through wgpu-c-backend");
         let backends = conv::backends_to_native(desc.backends);
         let flags = conv::instance_flags_to_native(desc.flags);
         let dx12_compiler =
@@ -304,6 +299,17 @@ impl InstanceInterface for CInstance {
             result: Option<Result<DispatchAdapter, wgpu::wgt::RequestAdapterError>>,
         }
 
+        fn not_found() -> wgpu::wgt::RequestAdapterError {
+            wgpu::wgt::RequestAdapterError::NotFound {
+                active_backends: wgpu::wgt::Backends::empty(),
+                requested_backends: wgpu::wgt::Backends::empty(),
+                supported_backends: wgpu::wgt::Backends::empty(),
+                no_fallback_backends: wgpu::wgt::Backends::empty(),
+                no_adapter_backends: wgpu::wgt::Backends::empty(),
+                incompatible_surface_backends: wgpu::wgt::Backends::empty(),
+            }
+        }
+
         unsafe extern "C" fn cb(
             status: native::WGPURequestAdapterStatus,
             adapter: native::WGPUAdapter,
@@ -316,14 +322,7 @@ impl InstanceInterface for CInstance {
                 native::WGPURequestAdapterStatus_Success => {
                     Ok(DispatchAdapter::custom(adapter::CAdapter { ptr: adapter }))
                 }
-                _ => Err(wgpu::wgt::RequestAdapterError::NotFound {
-                    active_backends: wgpu::wgt::Backends::empty(),
-                    requested_backends: wgpu::wgt::Backends::empty(),
-                    supported_backends: wgpu::wgt::Backends::empty(),
-                    no_fallback_backends: wgpu::wgt::Backends::empty(),
-                    no_adapter_backends: wgpu::wgt::Backends::empty(),
-                    incompatible_surface_backends: wgpu::wgt::Backends::empty(),
-                }),
+                _ => Err(not_found()),
             });
         }
 
@@ -355,15 +354,7 @@ impl InstanceInterface for CInstance {
         };
 
         unsafe { wgpuInstanceRequestAdapter(self.ptr, Some(&c_options), callback_info) };
-        let not_found = wgpu::wgt::RequestAdapterError::NotFound {
-            active_backends: wgpu::wgt::Backends::empty(),
-            requested_backends: wgpu::wgt::Backends::empty(),
-            supported_backends: wgpu::wgt::Backends::empty(),
-            no_fallback_backends: wgpu::wgt::Backends::empty(),
-            no_adapter_backends: wgpu::wgt::Backends::empty(),
-            incompatible_surface_backends: wgpu::wgt::Backends::empty(),
-        };
-        Box::pin(future::ready(out.result.unwrap_or(Err(not_found))))
+        Box::pin(future::ready(out.result.unwrap_or(Err(not_found()))))
     }
 
     fn poll_all_devices(&self, force_wait: bool) -> bool {

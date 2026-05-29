@@ -38,7 +38,6 @@ impl CommandEncoderInterface for CCommandEncoder {
     ) {
         let src_ptr = source.as_custom::<CBuffer>().unwrap().ptr;
         let dst_ptr = destination.as_custom::<CBuffer>().unwrap().ptr;
-        // None means "copy to end": use remaining size. We pass WGPU_WHOLE_SIZE sentinel for None.
         let size = copy_size.unwrap_or(u64::MAX);
         unsafe {
             wgpuCommandEncoderCopyBufferToBuffer(
@@ -116,13 +115,8 @@ impl CommandEncoderInterface for CCommandEncoder {
     }
 
     fn begin_compute_pass(&self, desc: &wgpu::ComputePassDescriptor<'_>) -> DispatchComputePass {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
-        // Convert optional timestamp writes.
         let ts_writes = desc.timestamp_writes.as_ref().map(|tw| {
             let qs_ptr = tw.query_set.as_custom::<CQuerySet>().unwrap().ptr;
             native::WGPUPassTimestampWrites {
@@ -151,13 +145,8 @@ impl CommandEncoderInterface for CCommandEncoder {
     }
 
     fn begin_render_pass(&self, desc: &wgpu::RenderPassDescriptor<'_>) -> DispatchRenderPass {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
 
-        // Color attachments.
         let color_attachments: Vec<native::WGPURenderPassColorAttachment> = desc
             .color_attachments
             .iter()
@@ -181,7 +170,6 @@ impl CommandEncoderInterface for CCommandEncoder {
                         clearValue: clear_value,
                     }
                 } else {
-                    // Hole in color attachments array.
                     native::WGPURenderPassColorAttachment {
                         nextInChain: std::ptr::null_mut(),
                         view: std::ptr::null(),
@@ -200,7 +188,6 @@ impl CommandEncoderInterface for CCommandEncoder {
             })
             .collect();
 
-        // Depth stencil attachment.
         let ds_attach = desc.depth_stencil_attachment.as_ref().map(|ds| {
             let view_ptr = ds.view.as_custom::<CTextureView>().unwrap().ptr;
             let (depth_load_op, depth_clear) = ds
@@ -241,7 +228,6 @@ impl CommandEncoderInterface for CCommandEncoder {
             .map(std::ptr::from_ref)
             .unwrap_or(std::ptr::null());
 
-        // Timestamp writes.
         let ts_writes = desc.timestamp_writes.as_ref().map(|tw| {
             let qs_ptr = tw.query_set.as_custom::<CQuerySet>().unwrap().ptr;
             native::WGPUPassTimestampWrites {
@@ -260,7 +246,6 @@ impl CommandEncoderInterface for CCommandEncoder {
             .map(std::ptr::from_ref)
             .unwrap_or(std::ptr::null());
 
-        // Occlusion query set.
         let occlusion_qs = desc
             .occlusion_query_set
             .map(|qs| qs.as_custom::<CQuerySet>().unwrap().ptr)
@@ -508,7 +493,6 @@ impl CommandEncoderInterface for CCommandEncoder {
             c_entries.push(c_entry);
         }
 
-        // Build TLAS packages. Each Tlas carries its instance list and lowest_unmodified.
         // instances_storage keeps the WGPUTlasInstance Vecs alive across the C call.
         let mut instances_storage: Vec<Vec<native::WGPUTlasInstance>> = Vec::new();
         let mut c_tlas_packages: Vec<native::WGPUTlasPackage> = Vec::new();
@@ -719,11 +703,7 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
     where
         Self: Sized,
     {
-        let label = desc.label.map(|s| s.to_owned());
-        let label_sv = label
-            .as_deref()
-            .map(conv::str_to_string_view)
-            .unwrap_or(conv::null_string_view());
+        let label_sv = conv::opt_str_to_string_view(desc.label);
         let c_desc = native::WGPURenderBundleDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,

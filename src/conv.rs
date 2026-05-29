@@ -287,10 +287,10 @@ map_enum!(
     Version2
 );
 
-// Native extension value for atomic storage texture access (not in standard WebGPU).
+// 0x00030001: native extension, after standard StorageTextureAccess range.
 pub const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAccess = 0x00030001;
 
-// Native extension texture format for R64Uint (not in standard WebGPU; after P010 = 0x00030008).
+// 0x00030009: native extension, immediately after P010 = 0x00030008.
 pub const WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT: native::WGPUTextureFormat = 0x00030009;
 
 pub fn map_storage_texture_access(
