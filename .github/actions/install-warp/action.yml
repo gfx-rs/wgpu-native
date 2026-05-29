@@ -1,0 +1,14 @@
+name: "Install WARP"
+description: "Install WARP"
+inputs:
+  target-dir:
+    description: "The directory into which to install the WARP DLL."
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        set -e
+        cd .local-wgpu
+        cargo xtask install-warp --target-dir ${{ inputs.target-dir }}

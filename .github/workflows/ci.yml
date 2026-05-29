@@ -399,10 +399,43 @@ jobs:
         with:
           version: ${{ env.CI_RUST_VERSION }}
           targets: ${{ matrix.target }}
+
+      # Required for wgpu's test suite
       - name: Install `cargo-nextest`
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
+      - name: (Windows) Install DXC
+        if: matrix.os == 'windows-latest'
+        uses: ./.github/actions/install-dxc
+
+      - name: (Windows) Install WARP
+        if: matrix.os == 'windows-latest'
+        uses: ./.github/actions/install-warp
+
+      - name: (Windows) Install Agility SDK
+        if: matrix.os == 'windows-latest'
+        uses: ./.github/actions/install-agility-sdk
+
+      - name: (Windows) Install Mesa
+        if: matrix.os == 'windows-latest'
+        uses: ./.github/actions/install-mesa
+
+      - name: (Windows) Install Vulkan SDK
+        if: matrix.os == 'windows-latest'
+        uses: ./.github/actions/install-vulkan-sdk
+
+      - name: (Mac) Install Vulkan SDK
+        if: matrix.os == 'macos-14'
+        uses: ./.github/actions/install-vulkan-sdk
+
+      - name: (Linux) Install Vulkan SDK
+        if: matrix.os == 'ubuntu-latest'
+        uses: ./.github/actions/install-vulkan-sdk
+
+      - name: (Linux) Install Mesa
+        if: matrix.os == 'ubuntu-latest'
+        uses: ./.github/actions/install-mesa
       - name: Set up Python
         uses: actions/setup-python@v6
       - name: Setup caching

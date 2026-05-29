@@ -122,7 +122,7 @@ pub unsafe fn string_view_to_string(sv: native::WGPUStringView) -> String {
     if len == 0 {
         return String::new();
     }
-    let slice = unsafe { std::slice::from_raw_parts(sv.data as *const u8, len) };
+    let slice = unsafe { std::slice::from_raw_parts(sv.data.cast::<u8>(), len) };
     String::from_utf8_lossy(slice).into_owned()
 }
 

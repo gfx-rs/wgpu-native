@@ -55,17 +55,15 @@ def copy_c_backend():
 
 
 def patch_file(file, search_for, replace):
-    contents = None
-    with open(file, "rt") as f:
+    with open(file, "rt", encoding="utf-8") as f:
         contents = f.read()
     new_contents = contents.replace(search_for, replace)
-    with open(file, "wt") as f:
+    with open(file, "wt", encoding="utf-8") as f:
         f.write(new_contents)
-    pass
 
 
 def append_file(file, contents):
-    with open(file, "at") as f:
+    with open(file, "at", encoding="utf-8") as f:
         f.write(contents)
 
 
@@ -78,7 +76,7 @@ def patch_add_c_backend():
         if cargo_toml.parent.resolve() == c_backend_dir:
             continue
 
-        content = cargo_toml.read_text()
+        content = cargo_toml.read_text(encoding="utf-8")
         if not re.search(r"(?m)^wgpu\s*[=.{]", content):
             continue
 
@@ -94,14 +92,14 @@ def patch_add_c_backend():
                 )
             else:
                 content += f"\n[dependencies]\n{dep_line}"
-            cargo_toml.write_text(content)
+            cargo_toml.write_text(content, encoding="utf-8")
             print(f"  + wgpu-c-backend dep -> {cargo_toml}")
 
         for rs_name in ("main.rs", "lib.rs"):
             rs_path = cargo_toml.parent / "src" / rs_name
             if not rs_path.exists():
                 continue
-            rs = rs_path.read_text()
+            rs = rs_path.read_text(encoding="utf-8")
             if "extern crate wgpu_c_backend" not in rs:
                 lines = rs.splitlines(keepends=True)
                 # Inner attributes (#![...]) must precede all items and may
@@ -127,7 +125,7 @@ def patch_add_c_backend():
                     else:
                         break
                 lines.insert(insert_at, "extern crate wgpu_c_backend;\n")
-                rs_path.write_text("".join(lines))
+                rs_path.write_text("".join(lines), encoding="utf-8")
                 print(f"  + extern crate wgpu_c_backend -> {rs_path}")
 
 

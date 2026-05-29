@@ -155,6 +155,7 @@ impl InstanceInterface for CInstance {
         #[allow(unused_imports)]
         use wgpu::rwh::{RawDisplayHandle, RawWindowHandle};
 
+        #[allow(unused_variables)]
         let ptr: native::WGPUSurface = match target {
             #[allow(unused_variables)]
             wgpu::SurfaceTargetUnsafe::RawHandle {
