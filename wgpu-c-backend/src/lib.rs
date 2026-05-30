@@ -101,7 +101,7 @@ impl InstanceInterface for CInstance {
     where
         Self: Sized,
     {
-        log::debug!("Creating instance through wgpu-c-backend");
+        println!("Creating instance through wgpu-c-backend");
         let backends = conv::backends_to_native(desc.backends);
         let flags = conv::instance_flags_to_native(desc.flags);
         let dx12_compiler =
