@@ -100,14 +100,6 @@ int main(int argc, char *argv[]) {
               });
   assert(staging_buffer);
 
-  WGPUPipelineLayoutExtras pipeline_layout_extras = {
-      .chain =
-          {
-              .sType = WGPUSType_PipelineLayoutExtras,
-          },
-      .immediateDataSize = sizeof(uint32_t),
-  };
-
   WGPUBindGroupLayoutEntry bind_group_layout_entries[] = {
       {
           .binding = 0,
@@ -130,9 +122,10 @@ int main(int argc, char *argv[]) {
 
   WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
       .label = {"pipeline_layout", WGPU_STRLEN},
-      .nextInChain = &pipeline_layout_extras.chain,
+      .nextInChain = NULL,
       .bindGroupLayouts = &bind_group_layout,
       .bindGroupLayoutCount = 1,
+      .immediateSize = sizeof(uint32_t),
   };
   WGPUPipelineLayout pipeline_layout =
       wgpuDeviceCreatePipelineLayout(device, &pipeline_layout_desc);

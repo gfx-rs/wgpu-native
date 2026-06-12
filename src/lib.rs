@@ -2113,11 +2113,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let desc = follow_chain!(
-        map_pipeline_layout_descriptor(
-            (descriptor),
-            WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
-    );
+    let desc = map_pipeline_layout_descriptor(descriptor);
     let (pipeline_layout_id, error) = context.device_create_pipeline_layout(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
