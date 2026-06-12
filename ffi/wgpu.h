@@ -39,6 +39,8 @@ typedef enum WGPUNativeSType
     WGPUSType_SurfaceSourceSwapChainPanel = 0x0003000B,
     /** Identifies @ref WGPUPrimitiveStateExtras. */
     WGPUSType_PrimitiveStateExtras = 0x0003000C,
+    /** Identifies @ref WGPUSamplerDescriptorExtras. */
+    WGPUSType_SamplerDescriptorExtras = 0x0003000D,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -335,9 +337,8 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_StorageTextureArrayNonUniformIndexing = 0x00030010,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
-    // WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
+    WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
+    WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
     /**
      * Allows the user to set @ref WGPUPolygonMode_Line in
      * @ref WGPUPrimitiveStateExtras::polygonMode.
@@ -1499,6 +1500,27 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_TaskShaderDispatchT
  * undefined behavior and arbitrary memory access.
  */
 static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp = 0x0000000000000010;
+
+typedef enum WGPUNativeAddressMode
+{
+    WGPUNativeAddressMode_ClampToBorder = 0x00000004,
+    WGPUNativeAddressMode_Force32 = 0x7FFFFFFF
+} WGPUNativeAddressMode WGPU_ENUM_ATTRIBUTE;
+
+typedef enum WGPUSamplerBorderColor
+{
+    WGPUSamplerBorderColor_Undefined = 0x00000000,
+    WGPUSamplerBorderColor_TransparentBlack = 0x00000001,
+    WGPUSamplerBorderColor_OpaqueBlack = 0x00000002,
+    WGPUSamplerBorderColor_OpaqueWhite = 0x00000003,
+    WGPUSamplerBorderColor_Zero = 0x00000004,
+    WGPUSamplerBorderColor_Force32 = 0x7FFFFFFF
+} WGPUSamplerBorderColor;
+
+typedef struct WGPUSamplerDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPUSamplerBorderColor samplerBorderColor;
+} WGPUSamplerDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 #ifdef __cplusplus
 extern "C"
