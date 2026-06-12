@@ -80,19 +80,23 @@ impl DeviceInterface for CDevice {
     ) -> DispatchShaderModule {
         let label_sv = conv::opt_str_to_string_view(desc.label);
 
-        let mut extras = native::WGPUShaderModuleDescriptorExtras {
-            chain: native::WGPUChainedStruct {
-                next: std::ptr::null_mut(),
-                sType: native::WGPUSType_ShaderModuleDescriptorExtras,
-            },
-            boundsChecks: shader_bound_checks.bounds_checks as _,
-            forceLoopBounding: shader_bound_checks.force_loop_bounding as _,
-            rayQueryInitializationTracking: shader_bound_checks.ray_query_initialization_tracking
-                as _,
-            taskShaderDispatchTracking: shader_bound_checks.task_shader_dispatch_tracking as _,
-            meshShaderPrimitiveIndicesClamp: shader_bound_checks.mesh_shader_primitive_indices_clamp
-                as _,
-        };
+        let mut runtime_checks: native::WGPUShaderRuntimeChecks =
+            native::WGPUShaderRuntimeChecks_None;
+        if shader_bound_checks.bounds_checks {
+            runtime_checks |= native::WGPUShaderRuntimeChecks_BoundsChecks;
+        }
+        if shader_bound_checks.force_loop_bounding {
+            runtime_checks |= native::WGPUShaderRuntimeChecks_ForceLoopBounding;
+        }
+        if shader_bound_checks.ray_query_initialization_tracking {
+            runtime_checks |= native::WGPUShaderRuntimeChecks_RayQueryInitializationTracking;
+        }
+        if shader_bound_checks.task_shader_dispatch_tracking {
+            runtime_checks |= native::WGPUShaderRuntimeChecks_TaskShaderDispatchTracking;
+        }
+        if shader_bound_checks.mesh_shader_primitive_indices_clamp {
+            runtime_checks |= native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp;
+        }
 
         match &desc.source {
             wgpu::ShaderSource::Wgsl(code) => {
@@ -104,13 +108,15 @@ impl DeviceInterface for CDevice {
                     },
                     code: code_sv,
                 };
-                extras.chain.next =
-                    std::ptr::from_mut::<native::WGPUChainedStruct>(&mut wgsl_chain.chain);
                 let c_desc = native::WGPUShaderModuleDescriptor {
-                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
+                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                        &mut wgsl_chain.chain,
+                    ),
                     label: label_sv,
                 };
-                let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                let ptr = unsafe {
+                    wgpuDeviceCreateShaderModuleTrusted(self.ptr, Some(&c_desc), runtime_checks)
+                };
                 crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,
@@ -126,13 +132,15 @@ impl DeviceInterface for CDevice {
                     codeSize: words.len() as u32,
                     code: words.as_ptr(),
                 };
-                extras.chain.next =
-                    std::ptr::from_mut::<native::WGPUChainedStruct>(&mut spirv_chain.chain);
                 let c_desc = native::WGPUShaderModuleDescriptor {
-                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
+                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                        &mut spirv_chain.chain,
+                    ),
                     label: label_sv,
                 };
-                let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                let ptr = unsafe {
+                    wgpuDeviceCreateShaderModuleTrusted(self.ptr, Some(&c_desc), runtime_checks)
+                };
                 crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,
@@ -172,13 +180,15 @@ impl DeviceInterface for CDevice {
                         c_defines.as_ptr()
                     },
                 };
-                extras.chain.next =
-                    std::ptr::from_mut::<native::WGPUChainedStruct>(&mut glsl_chain.chain);
                 let c_desc = native::WGPUShaderModuleDescriptor {
-                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
+                    nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                        &mut glsl_chain.chain,
+                    ),
                     label: label_sv,
                 };
-                let ptr = unsafe { wgpuDeviceCreateShaderModule(self.ptr, Some(&c_desc)) };
+                let ptr = unsafe {
+                    wgpuDeviceCreateShaderModuleTrusted(self.ptr, Some(&c_desc), runtime_checks)
+                };
                 crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
                     ptr,

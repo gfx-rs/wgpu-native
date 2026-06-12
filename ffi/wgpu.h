@@ -61,8 +61,6 @@ typedef enum WGPUNativeSType
     WGPUSType_DeviceDescriptorExtras = 0x00030014,
     /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
     WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
-    /** Identifies @ref WGPUShaderModuleDescriptorExtras. */
-    WGPUSType_ShaderModuleDescriptorExtras = 0x00030016,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1763,29 +1761,6 @@ typedef struct WGPUDeviceDescriptorExtras
     /** If true, enables experimental wgpu features on the device. */
     WGPUBool experimentalFeaturesEnabled;
 } WGPUDeviceDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
-
-/**
- * Chained in @ref WGPUShaderModuleDescriptor to control runtime safety checks injected
- * into the shader by wgpu.  All checks are enabled by default; set a field to @c false
- * to disable the corresponding check.
- *
- * Disabling checks is unsafe — the caller must guarantee the shader upholds the
- * invariants that each check enforces.
- */
-typedef struct WGPUShaderModuleDescriptorExtras
-{
-    WGPUChainedStruct chain;
-    /** Enforce buffer bounds checks. */
-    WGPUBool boundsChecks;
-    /** Prevent infinite loops by bounding iteration count. */
-    WGPUBool forceLoopBounding;
-    /** Validate ray-query call ordering. */
-    WGPUBool rayQueryInitializationTracking;
-    /** Validate task-shader dispatch grid dimensions. */
-    WGPUBool taskShaderDispatchTracking;
-    /** Clamp mesh-shader primitive vertex indices. */
-    WGPUBool meshShaderPrimitiveIndicesClamp;
-} WGPUShaderModuleDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Descriptor for creating a pipeline cache object via @ref wgpuDeviceCreatePipelineCache.
