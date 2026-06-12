@@ -95,7 +95,6 @@ impl DeviceInterface for CDevice {
         };
 
         match &desc.source {
-            #[cfg(feature = "wgsl")]
             wgpu::ShaderSource::Wgsl(code) => {
                 let code_sv = conv::str_to_string_view(code.as_ref());
                 let mut wgsl_chain = native::WGPUShaderSourceWGSL {
@@ -118,7 +117,6 @@ impl DeviceInterface for CDevice {
                     is_passthrough: false,
                 })
             }
-            #[cfg(feature = "spirv")]
             wgpu::ShaderSource::SpirV(words) => {
                 let mut spirv_chain = native::WGPUShaderSourceSPIRV {
                     chain: native::WGPUChainedStruct {
@@ -141,7 +139,6 @@ impl DeviceInterface for CDevice {
                     is_passthrough: false,
                 })
             }
-            #[cfg(feature = "glsl")]
             wgpu::ShaderSource::Glsl {
                 shader,
                 stage,
@@ -857,7 +854,11 @@ impl DeviceInterface for CDevice {
             primitive: c_primitive,
             depthStencil: ds_ptr,
             multisample: c_multisample,
-            fragment: frag_storage.state.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()),
+            fragment: frag_storage
+                .state
+                .as_ref()
+                .map(std::ptr::from_ref)
+                .unwrap_or(std::ptr::null()),
         };
 
         let ptr = unsafe { wgpuDeviceCreateRenderPipeline(self.ptr, Some(&c_desc)) };
@@ -1034,7 +1035,11 @@ impl DeviceInterface for CDevice {
             primitive: c_primitive,
             depthStencil: ds_ptr,
             multisample: c_multisample,
-            fragment: frag_storage.state.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()),
+            fragment: frag_storage
+                .state
+                .as_ref()
+                .map(std::ptr::from_ref)
+                .unwrap_or(std::ptr::null()),
         };
 
         let ptr = unsafe { wgpuDeviceCreateMeshPipeline(self.ptr, Some(&c_desc)) };
@@ -1689,10 +1694,13 @@ fn build_fragment_state(frag: Option<&wgpu::FragmentState<'_>>) -> FragmentState
         .targets
         .iter()
         .map(|opt_t| {
-            opt_t.as_ref().and_then(|t| t.blend.as_ref()).map(|blend| native::WGPUBlendState {
-                color: blend_component_to_native(blend.color),
-                alpha: blend_component_to_native(blend.alpha),
-            })
+            opt_t
+                .as_ref()
+                .and_then(|t| t.blend.as_ref())
+                .map(|blend| native::WGPUBlendState {
+                    color: blend_component_to_native(blend.color),
+                    alpha: blend_component_to_native(blend.alpha),
+                })
         })
         .collect();
     let targets_raw: Vec<native::WGPUColorTargetState> = frag
@@ -1704,7 +1712,10 @@ fn build_fragment_state(frag: Option<&wgpu::FragmentState<'_>>) -> FragmentState
                 native::WGPUColorTargetState {
                     nextInChain: std::ptr::null_mut(),
                     format: conv::texture_format_to_native(t.format),
-                    blend: opt_blend.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()),
+                    blend: opt_blend
+                        .as_ref()
+                        .map(std::ptr::from_ref)
+                        .unwrap_or(std::ptr::null()),
                     writeMask: conv::color_writes_to_native(t.write_mask),
                 }
             } else {
@@ -1722,9 +1733,17 @@ fn build_fragment_state(frag: Option<&wgpu::FragmentState<'_>>) -> FragmentState
         module: frag_module,
         entryPoint: ep_sv,
         constantCount: constants.len(),
-        constants: if constants.is_empty() { std::ptr::null() } else { constants.as_ptr() },
+        constants: if constants.is_empty() {
+            std::ptr::null()
+        } else {
+            constants.as_ptr()
+        },
         targetCount: targets_raw.len(),
-        targets: if targets_raw.is_empty() { std::ptr::null() } else { targets_raw.as_ptr() },
+        targets: if targets_raw.is_empty() {
+            std::ptr::null()
+        } else {
+            targets_raw.as_ptr()
+        },
     };
     FragmentStateStorage {
         _ep_owned: ep_owned,

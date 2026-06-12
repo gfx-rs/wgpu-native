@@ -4,6 +4,11 @@ runs:
   using: "composite"
   steps:
     - shell: bash
+      # `cargo xtask` is a host build tool; don't inherit the job's
+      # CARGO_BUILD_TARGET (e.g. x86_64-pc-windows-gnu), which isn't installed
+      # in the rustup toolchain this bash shell uses.
+      env:
+        CARGO_BUILD_TARGET: ""
       run: |
         set -e
 

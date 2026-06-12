@@ -4,7 +4,9 @@ use wgpu::custom::*;
 use wgpu_native::{native, *};
 
 use crate::conv;
-use crate::resource::{CBindGroup, CBuffer, CComputePipeline, CQuerySet, CRenderBundle, CRenderPipeline};
+use crate::resource::{
+    CBindGroup, CBuffer, CComputePipeline, CQuerySet, CRenderBundle, CRenderPipeline,
+};
 
 // ── CComputePass ──────────────────────────────────────────────────────────────
 
@@ -105,10 +107,7 @@ impl ComputePassInterface for CComputePass {
         indirect_buffer: &DispatchBuffer,
         indirect_offset: wgpu::BufferAddress,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuComputePassEncoderDispatchWorkgroupsIndirect(self.ptr, buf_ptr, indirect_offset)
         };
@@ -283,10 +282,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_buffer: &DispatchBuffer,
         indirect_offset: wgpu::BufferAddress,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe { wgpuRenderPassEncoderDrawIndirect(self.ptr, buf_ptr, indirect_offset) };
     }
 
@@ -295,10 +291,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_buffer: &DispatchBuffer,
         indirect_offset: wgpu::BufferAddress,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe { wgpuRenderPassEncoderDrawIndexedIndirect(self.ptr, buf_ptr, indirect_offset) };
     }
 
@@ -307,10 +300,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_buffer: &DispatchBuffer,
         indirect_offset: wgpu::BufferAddress,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe { wgpuRenderPassEncoderDrawMeshTasksIndirect(self.ptr, buf_ptr, indirect_offset) };
     }
 
@@ -320,10 +310,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_offset: wgpu::BufferAddress,
         count: u32,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuRenderPassEncoderMultiDrawIndirect(self.ptr, buf_ptr, indirect_offset, count)
         };
@@ -335,10 +322,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_offset: wgpu::BufferAddress,
         count: u32,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuRenderPassEncoderMultiDrawIndexedIndirect(self.ptr, buf_ptr, indirect_offset, count)
         };
@@ -352,14 +336,8 @@ impl RenderPassInterface for CRenderPass {
         count_buffer_offset: wgpu::BufferAddress,
         max_count: u32,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
-        let cnt_ptr = count_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
+        let cnt_ptr = count_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuRenderPassEncoderMultiDrawIndirectCount(
                 self.ptr,
@@ -378,10 +356,7 @@ impl RenderPassInterface for CRenderPass {
         indirect_offset: wgpu::BufferAddress,
         count: u32,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(
                 self.ptr,
@@ -400,14 +375,8 @@ impl RenderPassInterface for CRenderPass {
         count_buffer_offset: wgpu::BufferAddress,
         max_count: u32,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
-        let cnt_ptr = count_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
+        let cnt_ptr = count_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(
                 self.ptr,
@@ -428,14 +397,8 @@ impl RenderPassInterface for CRenderPass {
         count_buffer_offset: wgpu::BufferAddress,
         max_count: u32,
     ) {
-        let buf_ptr = indirect_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
-        let cnt_ptr = count_buffer
-            .as_custom::<CBuffer>()
-            .unwrap()
-            .ptr;
+        let buf_ptr = indirect_buffer.as_custom::<CBuffer>().unwrap().ptr;
+        let cnt_ptr = count_buffer.as_custom::<CBuffer>().unwrap().ptr;
         unsafe {
             wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(
                 self.ptr,

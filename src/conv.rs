@@ -876,6 +876,13 @@ pub enum ShaderParseError {
     Glsl(#[from] naga::front::glsl::ParseErrors),
 }
 
+impl wgt::error::WebGpuError for ShaderParseError {
+    fn webgpu_error_type(&self) -> wgt::error::ErrorType {
+        // Shader source that fails to parse is a validation error.
+        wgt::error::ErrorType::Validation
+    }
+}
+
 #[inline]
 pub unsafe fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
@@ -2407,6 +2414,7 @@ pub fn map_cooperative_scalar_type(
     }
 }
 
+#[allow(clippy::unnecessary_cast)]
 pub fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
     s as u32
 }

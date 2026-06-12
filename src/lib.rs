@@ -671,39 +671,39 @@ fn handle_error_fatal(
 
 fn handle_error(
     sink_mutex: &Mutex<ErrorSinkRaw>,
-    source: impl error::Error + Send + Sync + 'static,
+    source: impl wgt::error::WebGpuError + Send + Sync + 'static,
     label: Label<'_>,
     fn_ident: &'static str,
 ) {
+    // Classify the error via wgpu-core's `WebGpuError` trait instead of walking the
+    // `source()` chain. Errors that wrap a `DeviceError` in an `#[error(transparent)]`
+    // `#[from]` variant (e.g. `CreateSamplerError::Device`) never expose a concrete
+    // `DeviceError` node through `source()` — `transparent` forwards `source()` to the
+    // inner error's *own* source — so a downcast walk misclassifies out-of-memory and
+    // device-lost errors as validation errors.
+    let error_type = source.webgpu_error_type();
     let error = wgc::error::ContextError {
         fn_ident,
         source: Box::new(source),
         label: label.unwrap_or_default().to_string(),
     };
     let mut sink = sink_mutex.lock();
-    let mut source_opt: Option<&(dyn error::Error + 'static)> = Some(&error);
-    while let Some(source) = source_opt {
-        match source.downcast_ref::<wgc::device::DeviceError>() {
-            Some(wgc::device::DeviceError::Lost) => {
-                return sink.handle_error(crate::Error::DeviceLost {
-                    source: Box::new(error),
-                });
-            }
-            Some(wgc::device::DeviceError::OutOfMemory) => {
-                return sink.handle_error(crate::Error::OutOfMemory {
-                    source: Box::new(error),
-                });
-            }
-            _ => (),
+    match error_type {
+        wgt::error::ErrorType::DeviceLost => sink.handle_error(crate::Error::DeviceLost {
+            source: Box::new(error),
+        }),
+        wgt::error::ErrorType::OutOfMemory => sink.handle_error(crate::Error::OutOfMemory {
+            source: Box::new(error),
+        }),
+        // wgpu-native's error scopes only distinguish OOM / device-lost / validation, so
+        // internal errors are surfaced as validation errors (their prior classification).
+        wgt::error::ErrorType::Validation | wgt::error::ErrorType::Internal => {
+            sink.handle_error(crate::Error::Validation {
+                description: format_error(&error),
+                source: Box::new(error),
+            })
         }
-        source_opt = source.source();
     }
-
-    // Otherwise, it is a validation error
-    sink.handle_error(crate::Error::Validation {
-        description: format_error(&error),
-        source: Box::new(error),
-    });
 }
 
 // webgpu.h functions

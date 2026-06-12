@@ -9,19 +9,13 @@ repository = "https://github.com/gfx-rs/wgpu-native"
 license = "MIT OR Apache-2.0"
 
 [features]
-default = ["wgsl", "glsl", "spirv"]
-wgsl = ["wgpu/wgsl"]
-spirv = ["wgpu/spirv"]
-glsl = ["wgpu/glsl"]
+instance_factory_override = ["ctor"]
 
 [dependencies]
-ctor = "1.0"
+ctor = { version = "1.0", optional = true }
 log = "0.4"
-wgpu = { workspace = true, features = ["custom"] }
-wgpu-native = { path = "../",features = [
-    "vulkan-portability",
-    "angle",
-] }
+wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv"] }
+wgpu-native = { path = "../", features = ["vulkan-portability", "angle"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 raw-window-metal = "1.1.0"

@@ -82,7 +82,7 @@ def patch_add_c_backend():
         rel_path = os.path.relpath(c_backend_dir, cargo_toml.parent.resolve()).replace(
             "\\", "/"
         )
-        dep_line = f'wgpu-c-backend = {{ path = "{rel_path}" }}\n'
+        dep_line = f'wgpu-c-backend = {{ path = "{rel_path}", features = ["instance_factory_override"] }}\n'
 
         if "wgpu-c-backend" not in content:
             if "[dependencies]\n" in content:

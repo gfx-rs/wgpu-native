@@ -90,7 +90,11 @@ impl AdapterInterface for CAdapter {
             .unwrap_or(conv::null_string_view());
 
         // Uncaptured error callback: delegates to the handler registered via
-        // on_uncaptured_error(), or silently ignores if none is set.
+        // on_uncaptured_error(), or, when none is set, treats the error as fatal —
+        // matching wgpu's default `ErrorSinkRaw` behavior (`default_error_handler`
+        // panics). Silently ignoring would diverge from wgpu: `expect_fail` tests
+        // that rely on an uncaptured error surfacing (rather than an error scope)
+        // would see no failure at all.
         unsafe extern "C" fn uncaptured_error_cb(
             _device: *const native::WGPUDevice,
             type_: native::WGPUErrorType,
@@ -102,29 +106,31 @@ impl AdapterInterface for CAdapter {
                 let handler_arc = unsafe { &*(userdata1 as *const ErrorHandler) };
                 let guard = handler_arc.lock().unwrap();
                 let msg = unsafe { crate::conv::string_view_to_string(message) };
+                let error = match type_ {
+                    native::WGPUErrorType_Validation => wgpu::Error::Validation {
+                        source: Box::new(std::io::Error::other(msg.clone())),
+                        description: msg,
+                    },
+                    native::WGPUErrorType_OutOfMemory => wgpu::Error::OutOfMemory {
+                        source: Box::new(std::io::Error::other(msg)),
+                    },
+                    _ => wgpu::Error::Internal {
+                        source: Box::new(std::io::Error::other(msg.clone())),
+                        description: msg,
+                    },
+                };
                 if let Some(handler) = guard.as_ref() {
-                    let error = match type_ {
-                        native::WGPUErrorType_Validation => wgpu::Error::Validation {
-                            source: Box::new(std::io::Error::other(msg.clone())),
-                            description: msg,
-                        },
-                        native::WGPUErrorType_OutOfMemory => wgpu::Error::OutOfMemory {
-                            source: Box::new(std::io::Error::other(msg)),
-                        },
-                        _ => wgpu::Error::Internal {
-                            source: Box::new(std::io::Error::other(msg.clone())),
-                            description: msg,
-                        },
-                    };
                     let handler = Arc::clone(handler);
                     drop(guard);
                     handler(error);
                 } else {
                     drop(guard);
-                    // No handler registered — silently ignore. Unlike wgpu-native's default
-                    // uncaptured error handler (which aborts), we let the caller decide whether
-                    // to care. Tests and users that want errors surfaced should register a
-                    // handler or use push_error_scope/pop_error_scope.
+                    // No handler registered: fatal by default, mirroring wgpu's
+                    // `default_error_handler`. The panic is captured by
+                    // `catch_callback_panic` and re-raised on the Rust side by the
+                    // `resume_callback_panic()` that follows each wgpu-native C call.
+                    log::error!("Handling wgpu errors as fatal by default");
+                    panic!("wgpu error: {error}\n");
                 }
             });
         }

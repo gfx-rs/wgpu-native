@@ -6,8 +6,50 @@ mod pass;
 mod resource;
 mod surface;
 
+pub use adapter::CAdapter;
+pub use command::{CCommandEncoder, CRenderBundleEncoder};
+pub use device::{CDevice, CQueue};
+pub use pass::{CComputePass, CRenderPass};
+pub use resource::{
+    CBindGroup, CBindGroupLayout, CBuffer, CBufferMappedRange, CCommandBuffer, CComputePipeline,
+    CPipelineCache, CPipelineLayout, CQuerySet, CRenderBundle, CRenderPipeline, CSampler,
+    CShaderModule, CTexture, CTextureView,
+};
+pub use surface::{CSurface, CSurfaceOutputDetail};
+
 use std::future;
 use std::pin::Pin;
+
+use wgpu::custom::*;
+use wgpu::InstanceDescriptor;
+use wgpu_native::{native, *};
+
+#[cfg(feature = "instance_factory_override")]
+mod backend_override {
+    use super::CInstance;
+    use wgpu::{custom::InstanceInterface, InstanceDescriptor};
+    // Backends that wgpu-native actually implements.
+    const WGPU_NATIVE_BACKENDS: wgpu::Backends = wgpu::Backends::VULKAN
+        .union(wgpu::Backends::METAL)
+        .union(wgpu::Backends::DX12)
+        .union(wgpu::Backends::GL);
+
+    #[expect(clippy::result_large_err)]
+    pub fn instance_factory(
+        desc: InstanceDescriptor,
+    ) -> Result<wgpu::Instance, InstanceDescriptor> {
+        // Defer to wgpu-core for backends wgpu-native doesn't handle.
+        if desc.backends.intersection(WGPU_NATIVE_BACKENDS).is_empty() {
+            return Err(desc);
+        }
+        Ok(wgpu::Instance::from_custom(CInstance::new(desc)))
+    }
+
+    #[ctor::ctor(unsafe)]
+    fn setup_instance_factory() {
+        wgpu::set_instance_factory(instance_factory);
+    }
+}
 
 // ── Panic propagation for extern "C" callbacks ────────────────────────────────
 //
@@ -45,41 +87,6 @@ pub(crate) fn resume_callback_panic() {
 
 pub(crate) fn has_callback_panic() -> bool {
     CALLBACK_PANIC.with(|cell| cell.borrow().is_some())
-}
-
-use wgpu::custom::*;
-use wgpu::InstanceDescriptor;
-use wgpu_native::{native, *};
-
-pub use adapter::CAdapter;
-pub use command::{CCommandEncoder, CRenderBundleEncoder};
-pub use device::{CDevice, CQueue};
-pub use pass::{CComputePass, CRenderPass};
-pub use resource::{
-    CBindGroup, CBindGroupLayout, CBuffer, CBufferMappedRange, CCommandBuffer, CComputePipeline,
-    CPipelineCache, CPipelineLayout, CQuerySet, CRenderBundle, CRenderPipeline, CSampler,
-    CShaderModule, CTexture, CTextureView,
-};
-pub use surface::{CSurface, CSurfaceOutputDetail};
-
-// Backends that wgpu-native actually implements.
-const WGPU_NATIVE_BACKENDS: wgpu::Backends = wgpu::Backends::VULKAN
-    .union(wgpu::Backends::METAL)
-    .union(wgpu::Backends::DX12)
-    .union(wgpu::Backends::GL);
-
-#[expect(clippy::result_large_err)]
-pub fn instance_factory(desc: InstanceDescriptor) -> Result<wgpu::Instance, InstanceDescriptor> {
-    // Defer to wgpu-core for backends wgpu-native doesn't handle.
-    if desc.backends.intersection(WGPU_NATIVE_BACKENDS).is_empty() {
-        return Err(desc);
-    }
-    Ok(wgpu::Instance::from_custom(CInstance::new(desc)))
-}
-
-#[ctor::ctor(unsafe)]
-fn setup_instance_factory() {
-    wgpu::set_instance_factory(instance_factory);
 }
 
 #[derive(Debug)]
