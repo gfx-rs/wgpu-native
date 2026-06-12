@@ -4564,11 +4564,10 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
     let pass = pass.as_ref().expect("invalid render pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match pass.context.render_pass_set_immediates(
-        encoder,
-        offset,
-        make_slice(data, size as usize),
-    ) {
+    match pass
+        .context
+        .render_pass_set_immediates(encoder, offset, make_slice(data, size as usize))
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -4589,11 +4588,10 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
     let pass = pass.as_ref().expect("invalid compute pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match pass.context.compute_pass_set_immediates(
-        encoder,
-        offset,
-        make_slice(data, size as usize),
-    ) {
+    match pass
+        .context
+        .compute_pass_set_immediates(encoder, offset, make_slice(data, size as usize))
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
