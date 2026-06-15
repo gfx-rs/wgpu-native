@@ -1,5 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>cwfitzgerald/repo-common"],
-  "configMigration": true
+  "configMigration": true,
+  "packageRules": [
+    {
+      "description": "Rust toolchain should be stable - 3 in accordance with maximum-MSRV policy. Suppress branch/PR creation until the release age requirement is met.",
+      "matchManagers": ["rust-toolchain"],
+      "minimumReleaseAge": "18 weeks",
+      "prCreation": "not-pending",
+      "internalChecksFilter": "strict"
+    }
+  ]
 }
