@@ -13,6 +13,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 
 ### Changed
+- `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h with `size_bytes` renamed to `size`. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
 - Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
 - Updated all wgpu crates to v29
 - MSRV bumped from 1.82 to 1.87.
