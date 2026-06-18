@@ -11,6 +11,8 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased
 
+- moved 16bit norm textures into spec and out of wgpu.h `WGPUNativeTextureFormat_Rgba16Unorm` -> `WGPUTextureFormat_RGBA16Unorm`. by @Vipitis in [#tbd](tbd)
+
 ### Changed
 
 - Updated all wgpu crates to v29
