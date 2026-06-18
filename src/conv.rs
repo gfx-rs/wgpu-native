@@ -39,15 +39,6 @@ map_enum_with_undefined!(
     Store
 );
 map_enum_with_undefined!(
-    map_address_mode,
-    WGPUAddressMode,
-    wgt::AddressMode,
-    "Unknown address mode",
-    ClampToEdge,
-    Repeat,
-    MirrorRepeat
-);
-map_enum_with_undefined!(
     map_filter_mode,
     WGPUFilterMode,
     wgt::FilterMode,
@@ -249,6 +240,17 @@ map_enum_with_undefined!(
     ReadWrite
 );
 
+map_enum_with_undefined!(
+    map_sampler_border_color,
+    WGPUSamplerBorderColor,
+    wgt::SamplerBorderColor,
+    "Unknown sampler border color",
+    TransparentBlack,
+    OpaqueBlack,
+    OpaqueWhite,
+    Zero
+);
+
 // These are defined as UINT64_MAX in the header, but bindgen currently can't process that define.
 // See https://github.com/rust-lang/rust-bindgen/issues/2822
 pub const WGPU_WHOLE_SIZE: u64 = u64::MAX;
@@ -272,6 +274,18 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
         x: native.x,
         y: native.y,
         z: native.z,
+    }
+}
+
+#[inline]
+pub fn map_address_mode(mode: native::WGPUAddressMode) -> Option<wgt::AddressMode> {
+    match mode {
+        native::WGPUAddressMode_Undefined => None,
+        native::WGPUAddressMode_ClampToEdge => Some(wgt::AddressMode::ClampToEdge),
+        native::WGPUAddressMode_Repeat => Some(wgt::AddressMode::Repeat),
+        native::WGPUAddressMode_MirrorRepeat => Some(wgt::AddressMode::MirrorRepeat),
+        native::WGPUNativeAddressMode_ClampToBorder => Some(wgt::AddressMode::ClampToBorder),
+        _ => panic!("Unknown address mode"),
     }
 }
 
@@ -495,7 +509,6 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
 #[inline]
 pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
-    extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
     let bind_group_layouts = make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount)
         .iter()
@@ -509,7 +522,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         })
         .collect::<Vec<_>>();
 
-    let immediate_size = extras.map_or(0, |extras| extras.immediateDataSize);
+    let immediate_size = des.immediateSize;
 
     wgc::binding_model::PipelineLayoutDescriptor {
         label: string_view_into_label(des.label),
@@ -1287,13 +1300,12 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING) {
         temp.push(native::WGPUNativeFeature_StorageTextureArrayNonUniformIndexing);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
-    //     temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
-    // }
-    // if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
-    //     temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
-    // }
+    if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_ZERO) {
+        temp.push(native::WGPUNativeFeature_AddressModeClampToZero);
+    }
+    if features.contains(wgt::Features::ADDRESS_MODE_CLAMP_TO_BORDER) {
+        temp.push(native::WGPUNativeFeature_AddressModeClampToBorder);
+    }
     if features.contains(wgt::Features::POLYGON_MODE_LINE) {
         temp.push(native::WGPUNativeFeature_PolygonModeLine);
     }
@@ -1470,9 +1482,8 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_MappablePrimaryBuffers => Some(Features::MAPPABLE_PRIMARY_BUFFERS),
         native::WGPUNativeFeature_BufferBindingArray => Some(Features::BUFFER_BINDING_ARRAY),
         native::WGPUNativeFeature_StorageTextureArrayNonUniformIndexing => Some(Features::STORAGE_TEXTURE_ARRAY_NON_UNIFORM_INDEXING),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
-        // native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
+        native::WGPUNativeFeature_AddressModeClampToZero => Some(Features::ADDRESS_MODE_CLAMP_TO_ZERO),
+        native::WGPUNativeFeature_AddressModeClampToBorder => Some(Features::ADDRESS_MODE_CLAMP_TO_BORDER),
         native::WGPUNativeFeature_PolygonModeLine => Some(Features::POLYGON_MODE_LINE),
         native::WGPUNativeFeature_PolygonModePoint => Some(Features::POLYGON_MODE_POINT),
         native::WGPUNativeFeature_ConservativeRasterization => Some(Features::CONSERVATIVE_RASTERIZATION),
@@ -2015,6 +2026,34 @@ pub fn map_primitive_state(
         unclipped_depth: primitive.unclippedDepth != 0,
         polygon_mode,
         conservative,
+    }
+}
+
+pub fn map_shader_runtime_checks(
+    value: native::WGPUShaderRuntimeChecks,
+) -> wgt::ShaderRuntimeChecks {
+    wgt::ShaderRuntimeChecks {
+        bounds_checks: (value & native::WGPUShaderRuntimeChecks_BoundsChecks) != 0,
+        force_loop_bounding: (value & native::WGPUShaderRuntimeChecks_ForceLoopBounding) != 0,
+        ray_query_initialization_tracking: (value
+            & native::WGPUShaderRuntimeChecks_RayQueryInitializationTracking)
+            != 0,
+        task_shader_dispatch_tracking: (value
+            & native::WGPUShaderRuntimeChecks_TaskShaderDispatchTracking)
+            != 0,
+        mesh_shader_primitive_indices_clamp: (value
+            & native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp)
+            != 0,
+    }
+}
+
+pub fn map_sampler_border_color_extras(
+    _descriptor: native::WGPUSamplerDescriptor,
+    extras: Option<&native::WGPUSamplerDescriptorExtras>,
+) -> Option<wgt::SamplerBorderColor> {
+    match extras {
+        Some(extras) => map_sampler_border_color(extras.samplerBorderColor),
+        None => None,
     }
 }
 

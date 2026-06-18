@@ -21,24 +21,24 @@ typedef enum WGPUNativeSType
     WGPUSType_DeviceExtras = 0x00030001,
     /** Identifies @ref WGPUNativeLimits. */
     WGPUSType_NativeLimits = 0x00030002,
-    /** Identifies @ref WGPUPipelineLayoutExtras. */
-    WGPUSType_PipelineLayoutExtras = 0x00030003,
     /** Identifies @ref WGPUShaderSourceGLSL. */
-    WGPUSType_ShaderSourceGLSL = 0x00030004,
+    WGPUSType_ShaderSourceGLSL = 0x00030003,
     /** Identifies @ref WGPUInstanceExtras. */
-    WGPUSType_InstanceExtras = 0x00030006,
+    WGPUSType_InstanceExtras = 0x00030004,
     /** Identifies @ref WGPUBindGroupEntryExtras. */
-    WGPUSType_BindGroupEntryExtras = 0x00030007,
+    WGPUSType_BindGroupEntryExtras = 0x00030005,
     /** Identifies @ref WGPUBindGroupLayoutEntryExtras. */
-    WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
+    WGPUSType_BindGroupLayoutEntryExtras = 0x00030006,
     /** Identifies @ref WGPUQuerySetDescriptorExtras. */
-    WGPUSType_QuerySetDescriptorExtras = 0x00030009,
+    WGPUSType_QuerySetDescriptorExtras = 0x00030007,
     /** Identifies @ref WGPUSurfaceConfigurationExtras. */
-    WGPUSType_SurfaceConfigurationExtras = 0x0003000A,
+    WGPUSType_SurfaceConfigurationExtras = 0x00030008,
     /** Identifies @ref WGPUSurfaceSourceSwapChainPanel. */
-    WGPUSType_SurfaceSourceSwapChainPanel = 0x0003000B,
+    WGPUSType_SurfaceSourceSwapChainPanel = 0x00030009,
     /** Identifies @ref WGPUPrimitiveStateExtras. */
-    WGPUSType_PrimitiveStateExtras = 0x0003000C,
+    WGPUSType_PrimitiveStateExtras = 0x0003000A,
+    /** Identifies @ref WGPUSamplerDescriptorExtras. */
+    WGPUSType_SamplerDescriptorExtras = 0x0003000B,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -96,8 +96,8 @@ typedef enum WGPUNativeFeature
      * Enables @ref wgpuRenderPassEncoderSetImmediates,
      * @ref wgpuComputePassEncoderSetImmediates,
      * @ref wgpuRenderBundleEncoderSetImmediates,
-     * non-zero @c immediateDataSize in @ref WGPUPipelineLayoutExtras,
-     * and non-zero @c maxImmediateSize in @ref WGPUNativeLimits.
+     * non-zero @c immediateSize in @ref WGPUPipelineLayout,
+     * and non-zero @c maxImmediateSize in @ref WGPULimits.
      *
      * A block of immediate data can be declared in WGSL with
      * @c var<immediate>:
@@ -335,9 +335,8 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_StorageTextureArrayNonUniformIndexing = 0x00030010,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
-    // WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
+    WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
+    WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
     /**
      * Allows the user to set @ref WGPUPolygonMode_Line in
      * @ref WGPUPrimitiveStateExtras::polygonMode.
@@ -1231,20 +1230,6 @@ typedef struct WGPUNativeLimits
     /*.maxMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
 })
 
-typedef struct WGPUPipelineLayoutExtras
-{
-    WGPUChainedStruct chain;
-    /**
-     * The number of bytes of immediate data allocated for use in shaders
-     * attached to this pipeline.
-     *
-     * The @c var<immediate> declarations in the shader must be equal or
-     * smaller than this size. If this value is non-zero,
-     * @ref WGPUNativeFeature_Immediates must be enabled.
-     */
-    uint32_t immediateDataSize;
-} WGPUPipelineLayoutExtras;
-
 /**
  * Identifier for a particular call to @ref wgpuQueueSubmitForIndex.
  *
@@ -1439,6 +1424,56 @@ typedef struct WGPUImageSubresourceRange {
     uint32_t arrayLayerCount;
 } WGPUImageSubresourceRange WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Describes how shader bound checks should be performed.
+ */
+typedef WGPUFlags WGPUShaderRuntimeChecks;
+
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_None = 0x0000000000000000;
+/**
+ * Enforce bounds checks in shaders, even if the underlying driver doesn’t support doing so natively.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_BoundsChecks = 0x0000000000000001;
+/**
+ * If not set, the caller MUST ensure that all passed shaders do not contain any infinite loops.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_ForceLoopBounding = 0x0000000000000002;
+/**
+ * If not set, the caller MUST ensure that in all passed shaders every function operating on a ray
+ * query must obey these rules (functions using wgsl naming).
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_RayQueryInitializationTracking = 0x0000000000000004;
+/**
+ * If not set, task shaders will not validate that the mesh shader grid they dispatch is within legal limits.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_TaskShaderDispatchTracking = 0x0000000000000008;
+/**
+ * If not set, mesh shaders won’t clamp the output primitives’ vertex indices, which can lead to
+ * undefined behavior and arbitrary memory access.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp = 0x0000000000000010;
+
+typedef enum WGPUNativeAddressMode
+{
+    WGPUNativeAddressMode_ClampToBorder = 0x00000004,
+    WGPUNativeAddressMode_Force32 = 0x7FFFFFFF
+} WGPUNativeAddressMode WGPU_ENUM_ATTRIBUTE;
+
+typedef enum WGPUSamplerBorderColor
+{
+    WGPUSamplerBorderColor_Undefined = 0x00000000,
+    WGPUSamplerBorderColor_TransparentBlack = 0x00000001,
+    WGPUSamplerBorderColor_OpaqueBlack = 0x00000002,
+    WGPUSamplerBorderColor_OpaqueWhite = 0x00000003,
+    WGPUSamplerBorderColor_Zero = 0x00000004,
+    WGPUSamplerBorderColor_Force32 = 0x7FFFFFFF
+} WGPUSamplerBorderColor;
+
+typedef struct WGPUSamplerDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPUSamplerBorderColor samplerBorderColor;
+} WGPUSamplerDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -1510,6 +1545,8 @@ extern "C"
     void wgpuDeviceStopGraphicsDebuggerCapture(WGPUDevice device);
 
     void wgpuCommandEncoderClearTexture(WGPUCommandEncoder commandEncoder, WGPUTexture texture, WGPUImageSubresourceRange const * range);
+
+    WGPUShaderModule wgpuDeviceCreateShaderModuleTrusted(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor, WGPUShaderRuntimeChecks runtimeChecks);
 
 #ifdef __cplusplus
 } // extern "C"

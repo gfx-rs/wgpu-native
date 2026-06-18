@@ -4,8 +4,8 @@ use conv::{
     from_u64_bits, map_adapter_type, map_backend_type, map_bind_group_entry,
     map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
     map_instance_descriptor, map_pipeline_layout_descriptor, map_query_set_descriptor,
-    map_query_set_index, map_shader_module, map_surface, map_surface_configuration,
-    CreateSurfaceParams,
+    map_query_set_index, map_sampler_border_color_extras, map_shader_module,
+    map_shader_runtime_checks, map_surface, map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -2113,11 +2113,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let desc = follow_chain!(
-        map_pipeline_layout_descriptor(
-            (descriptor),
-            WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
-    );
+    let desc = map_pipeline_layout_descriptor(descriptor);
     let (pipeline_layout_id, error) = context.device_create_pipeline_layout(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
@@ -2418,8 +2414,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
             compare: conv::map_compare_function(descriptor.compare)
                 .expect("Invalid compare function"),
             anisotropy_clamp: descriptor.maxAnisotropy,
-            // TODO(wgpu.h)
-            border_color: None,
+            border_color: follow_chain!(map_sampler_border_color_extras((*descriptor), WGPUSType_SamplerDescriptorExtras => native::WGPUSamplerDescriptorExtras)),
         },
         // wgpu-core doesn't have Default implementation for SamplerDescriptor,
         // use defaults from spec.
@@ -2453,10 +2448,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     }))
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
+unsafe fn create_shader_module_impl(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUShaderModuleDescriptor>,
+    runtime_checks: wgt::ShaderRuntimeChecks,
+    fn_ident: &'static str,
 ) -> native::WGPUShaderModule {
     let (device_id, context, error_sink) = {
         let device = device.as_ref().expect("invalid device");
@@ -2474,12 +2470,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
     ) {
         Ok(source) => source,
         Err(cause) => {
-            handle_error(
-                error_sink,
-                cause,
-                desc_label,
-                "wgpuDeviceCreateShaderModule",
-            );
+            handle_error(error_sink, cause, desc_label, fn_ident);
 
             return Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
                 context: context.clone(),
@@ -2490,24 +2481,46 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
 
     let desc = wgc::pipeline::ShaderModuleDescriptor {
         label: desc_label,
-        runtime_checks: wgt::ShaderRuntimeChecks::default(),
+        runtime_checks,
     };
 
     let (shader_module_id, error) =
         context.device_create_shader_module(device_id, &desc, source, None);
     if let Some(cause) = error {
-        handle_error(
-            error_sink,
-            cause,
-            desc.label,
-            "wgpuDeviceCreateShaderModule",
-        );
+        handle_error(error_sink, cause, desc.label, fn_ident);
     }
 
     Arc::into_raw(Arc::new(WGPUShaderModuleImpl {
         context: context.clone(),
         id: Some(shader_module_id),
     }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModule(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUShaderModuleDescriptor>,
+) -> native::WGPUShaderModule {
+    create_shader_module_impl(
+        device,
+        descriptor,
+        wgt::ShaderRuntimeChecks::default(),
+        "wgpuDeviceCreateShaderModule",
+    )
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateShaderModuleTrusted(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUShaderModuleDescriptor>,
+    runtime_checks: native::WGPUShaderRuntimeChecks,
+) -> native::WGPUShaderModule {
+    create_shader_module_impl(
+        device,
+        descriptor,
+        map_shader_runtime_checks(runtime_checks),
+        "wgpuDeviceCreateShaderModuleTrusted",
+    )
 }
 
 #[no_mangle]
