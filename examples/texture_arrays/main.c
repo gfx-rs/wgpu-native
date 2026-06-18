@@ -381,7 +381,7 @@ int main(int argc, char *argv[]) {
   .mipLevelCount = 1,                                                          \
   .sampleCount = 1,                                                            \
   .dimension = WGPUTextureDimension_2D,                                        \
-  .format = WGPUNativeTextureFormat_Rgba16Unorm,                               \
+  .format = WGPUTextureFormat_RGBA16Unorm,                               \
   .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst
   /* clang-format on */
 
