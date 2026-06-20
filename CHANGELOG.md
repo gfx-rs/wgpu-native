@@ -11,6 +11,8 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased
 
+### Fixed
+- `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
 ### Changed
 - Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
