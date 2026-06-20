@@ -1064,7 +1064,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     if let Err(cause) = context.buffer_map_async(
         buffer_id,
         offset as wgt::BufferAddress,
-        Some(size as wgt::BufferAddress),
+        match size {
+            conv::WGPU_WHOLE_MAP_SIZE => None,
+            _ => Some(size as wgt::BufferAddress),
+        },
         operation,
     ) {
         handle_error(error_sink, cause, None, "wgpuBufferMapAsync");
