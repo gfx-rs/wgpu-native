@@ -115,7 +115,7 @@ static const uint16_t indices[] = {
 
 static const uint8_t red_texture_data[4] = {255, 0, 0, 255};
 static const uint8_t green_texture_data[4] = {0, 255, 0, 255};
-static const uint16_t blue_texture_data[4] = {0, 0, 0xFFFF, 0xFFF};
+static const uint8_t blue_texture_data[4] = {0, 0, 255, 255};
 static const uint8_t white_texture_data[4] = {255, 255, 255, 255};
 
 int main(int argc, char *argv[]) {
@@ -247,17 +247,15 @@ int main(int argc, char *argv[]) {
       adapter_has_optional_features = true;
       break;
     }
-    // TODO: check if the feature is supported by the device... (maybe just count up) 
   }
   assert(
           adapter_has_required_features /* Adapter must support WGPUNativeFeature_TextureBindingArray feature for this example */);
   wgpuSupportedFeaturesFreeMembers(adapter_features);
 
-  WGPUFeatureName required_device_features[3] = {
+  WGPUFeatureName required_device_features[2] = {
       (WGPUFeatureName)WGPUNativeFeature_TextureBindingArray,
-      (WGPUFeatureName)WGPUNativeFeature_TextureFormat16bitNorm,
   };
-  size_t required_device_feature_count = 2;
+  size_t required_device_feature_count = 1;
   if (adapter_has_optional_features) {
     required_device_features[required_device_feature_count] = (WGPUFeatureName)
         WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing;
@@ -375,16 +373,6 @@ int main(int argc, char *argv[]) {
   .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst
   /* clang-format on */
 
-#define COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS_16                                 \
-  /* clang-format off */                                                       \
-  .size = extent_3d_default,                                                   \
-  .mipLevelCount = 1,                                                          \
-  .sampleCount = 1,                                                            \
-  .dimension = WGPUTextureDimension_2D,                                        \
-  .format = WGPUTextureFormat_RGBA16Unorm,                               \
-  .usage = WGPUTextureUsage_TextureBinding | WGPUTextureUsage_CopyDst
-  /* clang-format on */
-
   WGPUTexture red_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
                        COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
@@ -399,8 +387,8 @@ int main(int argc, char *argv[]) {
   assert(green_texture);
   WGPUTexture blue_texture = wgpuDeviceCreateTexture(
       demo.device, &(const WGPUTextureDescriptor){
-                       COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS_16,
-                       .label = {"blue-16", WGPU_STRLEN},
+                       COLOR_TEXTURE_DESCRIPTOR_COMMON_FIELDS,
+                       .label = {"blue", WGPU_STRLEN},
                    });
   assert(blue_texture);
   WGPUTexture white_texture = wgpuDeviceCreateTexture(
@@ -455,12 +443,7 @@ int main(int argc, char *argv[]) {
                             COLOR_IMAGE_COPY_TEXTURE_COMMON_FIELDS,
                         },
                         blue_texture_data, sizeof(blue_texture_data),
-                        &(const WGPUTexelCopyBufferLayout){
-                            .offset = 0,
-                            .bytesPerRow = 8, // this also needs to match 4 channel 16 bit
-                            .rowsPerImage = WGPU_COPY_STRIDE_UNDEFINED,
-                        },
-                        &extent_3d_default);
+                        &texture_data_layout_common, &extent_3d_default);
   wgpuQueueWriteTexture(queue,
                         &(const WGPUTexelCopyTextureInfo){
                             .texture = white_texture,
