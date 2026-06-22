@@ -52,7 +52,7 @@ jobs:
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -174,7 +174,7 @@ jobs:
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -229,7 +229,7 @@ jobs:
       IMAGE: ${{ matrix.image }}
     steps:
       # Common part (same for nearly each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -293,7 +293,7 @@ jobs:
       ARCHIVE_NAME: wgpu-${{ matrix.archive-name }}
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -341,7 +341,7 @@ jobs:
       RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -379,7 +379,7 @@ jobs:
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: set version (which gets used as release name)
         run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV

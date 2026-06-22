@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
   for (uint32_t i = 0; i < numbers_length; i++) {
     uint32_t immediate = i;
     wgpuComputePassEncoderSetImmediates(compute_pass_encoder, 0,
-                                        sizeof(uint32_t), &immediate);
+                                        &immediate, sizeof(uint32_t));
 
     wgpuComputePassEncoderDispatchWorkgroups(compute_pass_encoder,
                                              numbers_length, 1, 1);
