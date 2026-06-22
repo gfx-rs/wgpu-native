@@ -261,9 +261,9 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_PartiallyBoundBindingArray = 0x0003000A,
     /**
      * Enables normalized 16-bit texture formats:
-     * @ref WGPUNativeTextureFormat_R16Unorm, @ref WGPUNativeTextureFormat_R16Snorm,
-     * @ref WGPUNativeTextureFormat_Rg16Unorm, @ref WGPUNativeTextureFormat_Rg16Snorm,
-     * @ref WGPUNativeTextureFormat_Rgba16Unorm, @ref WGPUNativeTextureFormat_Rgba16Snorm.
+     * @ref WGPUTextureFormat_R16Unorm, @ref WGPUTextureFormat_R16Snorm,
+     * @ref WGPUTextureFormat_RG16Unorm, @ref WGPUTextureFormat_RG16Snorm,
+     * @ref WGPUTextureFormat_RGBA16Unorm, @ref WGPUTextureFormat_RGBA16Snorm.
      *
      * Supported platforms:
      * - Vulkan
@@ -1401,38 +1401,6 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void
 
 typedef enum WGPUNativeTextureFormat
 {
-    // From Features::TEXTURE_FORMAT_16BIT_NORM
-    WGPUNativeTextureFormat_R16Unorm = 0x00030001,
-    /**
-     * Red channel only. 16-bit signed integer per channel.
-     * [-32767, 32767] converted to/from float [-1, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_R16Snorm = 0x00030002,
-    /**
-     * Red and green channels. 16-bit unsigned integer per channel.
-     * [0, 65535] converted to/from float [0, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rg16Unorm = 0x00030003,
-    /**
-     * Red and green channels. 16-bit signed integer per channel.
-     * [-32767, 32767] converted to/from float [-1, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rg16Snorm = 0x00030004,
-    /**
-     * Red, green, blue, and alpha channels. 16-bit unsigned integer per channel.
-     * [0, 65535] converted to/from float [0, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rgba16Unorm = 0x00030005,
-    /**
-     * Red, green, blue, and alpha channels. 16-bit signed integer per channel.
-     * [-32767, 32767] converted to/from float [-1, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rgba16Snorm = 0x00030006,
     /**
      * YUV 4:2:0 chroma subsampled format (NV12).
      * Plane 0 contains R8Unorm luminance (Y), Plane 1 contains Rg8Unorm
