@@ -781,428 +781,431 @@ structs:
           TODO
         type: bool
 callbacks: []
-functions:
-  - name: generate_report
-    doc: |
-      TODO
-    args:
-      - name: instance
-        doc: |
-          TODO
-        type: object.instance
-      - name: report
-        doc: |
-          TODO
-        type: struct.global_report
-        pointer: mutable
-  - name: instance_enumerate_adapters
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: usize
-    args:
-      - name: instance
-        doc: |
-          TODO
-        type: object.instance
-      - name: options
-        doc: |
-          TODO
-        type: struct.instance_enumerate_adapter_options
-        pointer: immutable
-        optional: true
-      - name: adapters
-        doc: |
-          TODO
-        type: object.adapter
-        pointer: mutable
-  - name: queue_submit_for_index
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: uint64
-    args:
-      - name: queue
-        doc: |
-          TODO
-        type: object.queue
-      - name: command_count
-        doc: |
-          TODO
-        type: usize
-      - name: commands
-        doc: |
-          TODO
-        type: object.command_buffer
-        pointer: immutable
-  - name: queue_get_timestamp_period
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: float32
-    args:
-      - name: queue
-        doc: |
-          TODO
-        type: object.queue
-  - name: device_poll
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: bool
-    args:
-      - name: device
-        doc: |
-          TODO
-        type: object.device
-      - name: wait
-        doc: |
-          TODO
-        type: bool
-      - name: submission_index
-        doc: |
-          TODO
-        type: uint64
-        pointer: immutable
-        optional: true
-  - name: device_create_shader_module_spir_v
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: object.shader_module
-    args:
-      - name: device
-        doc: |
-          TODO
-        type: object.device
-      - name: descriptor
-        doc: |
-          TODO
-        type: struct.shader_module_descriptor_spir_v
-        pointer: immutable
-  - name: set_log_callback
-    doc: |
-      TODO
-    args:
-      - name: callback
-        doc: |
-          TODO
-        type: c_void
-        pointer: mutable
-      - name: userdata
-        doc: |
-          TODO
-        type: c_void
-        pointer: mutable
-  - name: set_log_level
-    doc: |
-      TODO
-    args:
-      - name: level
-        doc: |
-          TODO
-        type: enum.log_level
-  - name: get_version
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: uint32
-  - name: device_get_native_metal_device
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: c_void
-      pointer: mutable
-    args:
-      - name: device
-        doc: |
-          TODO
-        type: object.device
-  - name: queue_get_native_metal_command_queue
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: c_void
-      pointer: mutable
-    args:
-      - name: queue
-        doc: |
-          TODO
-        type: object.queue
-  - name: texture_get_native_metal_texture
-    doc: |
-      TODO
-    returns:
-      doc: |
-        TODO
-      type: c_void
-      pointer: mutable
-    args:
-      - name: texture
-        doc: |
-          TODO
-        type: object.texture
-  - name: render_pass_encoder_set_push_constants
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: stages
-        doc: |
-          TODO
-        type: enum.shader_stage
-      - name: offset
-        doc: |
-          TODO
-        type: uint32
-      - name: size_bytes
-        doc: |
-          TODO
-        type: uint32
-      - name: data
-        doc: |
-          TODO
-        type: c_void
-        pointer: immutable
-  - name: compute_pass_encoder_set_push_constants
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.compute_pass_encoder
-      - name: offset
-        doc: |
-          TODO
-        type: uint32
-      - name: size_bytes
-        doc: |
-          TODO
-        type: uint32
-      - name: data
-        doc: |
-          TODO
-        type: c_void
-        pointer: immutable
-  - name: render_bundle_encoder_set_push_constants
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.render_bundle_encoder
-      - name: stages
-        doc: |
-          TODO
-        type: enum.shader_stage
-      - name: offset
-        doc: |
-          TODO
-        type: uint32
-      - name: size_bytes
-        doc: |
-          TODO
-        type: uint32
-      - name: data
-        doc: |
-          TODO
-        type: c_void
-        pointer: immutable
-  - name: render_pass_encoder_multi_draw_indirect
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: buffer
-        doc: |
-          TODO
-        type: object.buffer
-      - name: offset
-        doc: |
-          TODO
-        type: uint64
-      - name: count
-        doc: |
-          TODO
-        type: uint32
-  - name: render_pass_encoder_multi_draw_indexed_indirect
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: buffer
-        doc: |
-          TODO
-        type: object.buffer
-      - name: offset
-        doc: |
-          TODO
-        type: uint64
-      - name: count
-        doc: |
-          TODO
-        type: uint32
-  - name: render_pass_encoder_multi_draw_indirect_count
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: buffer
-        doc: |
-          TODO
-        type: object.buffer
-      - name: offset
-        doc: |
-          TODO
-        type: uint64
-      - name: count_buffer
-        doc: |
-          TODO
-        type: object.buffer
-      - name: count_buffer_offset
-        doc: |
-          TODO
-        type: uint64
-      - name: max_count
-        doc: |
-          TODO
-        type: uint32
-  - name: render_pass_encoder_multi_draw_indexed_indirect_count
-    doc: |
-      TODO
-    args:
-      - name: encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: buffer
-        doc: |
-          TODO
-        type: object.buffer
-      - name: offset
-        doc: |
-          TODO
-        type: uint64
-      - name: count_buffer
-        doc: |
-          TODO
-        type: object.buffer
-      - name: count_buffer_offset
-        doc: |
-          TODO
-        type: uint64
-      - name: max_count
-        doc: |
-          TODO
-        type: uint32
-  - name: compute_pass_encoder_begin_pipeline_statistics_query
-    doc: |
-      TODO
-    args:
-      - name: compute_pass_encoder
-        doc: |
-          TODO
-        type: object.compute_pass_encoder
-      - name: query_set
-        doc: |
-          TODO
-        type: object.query_set
-      - name: query_index
-        doc: |
-          TODO
-        type: uint32
-  - name: compute_pass_encoder_end_pipeline_statistics_query
-    doc: |
-      TODO
-    args:
-      - name: compute_pass_encoder
-        doc: |
-          TODO
-        type: object.compute_pass_encoder
-  - name: render_pass_encoder_begin_pipeline_statistics_query
-    doc: |
-      TODO
-    args:
-      - name: render_pass_encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: query_set
-        doc: |
-          TODO
-        type: object.query_set
-      - name: query_index
-        doc: |
-          TODO
-        type: uint32
-  - name: render_pass_encoder_end_pipeline_statistics_query
-    doc: |
-      TODO
-    args:
-      - name: render_pass_encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-  - name: compute_pass_encoder_write_timestamp
-    doc: |
-      TODO
-    args:
-      - name: compute_pass_encoder
-        doc: |
-          TODO
-        type: object.compute_pass_encoder
-      - name: query_set
-        doc: |
-          TODO
-        type: object.query_set
-      - name: query_index
-        doc: |
-          TODO
-        type: uint32
-  - name: render_pass_encoder_write_timestamp
-    doc: |
-      TODO
-    args:
-      - name: render_pass_encoder
-        doc: |
-          TODO
-        type: object.render_pass_encoder
-      - name: query_set
-        doc: |
-          TODO
-        type: object.query_set
-      - name: query_index
-        doc: |
-          TODO
-        type: uint32
+extension-objects:
+  - name: instance
+    functions:
+      - name: generate_report
+        doc: |
+          TODO
+        args:
+          - name: instance
+            doc: |
+              TODO
+            type: object.instance
+          - name: report
+            doc: |
+              TODO
+            type: struct.global_report
+            pointer: mutable
+      - name: instance_enumerate_adapters
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: usize
+        args:
+          - name: instance
+            doc: |
+              TODO
+            type: object.instance
+          - name: options
+            doc: |
+              TODO
+            type: struct.instance_enumerate_adapter_options
+            pointer: immutable
+            optional: true
+          - name: adapters
+            doc: |
+              TODO
+            type: object.adapter
+            pointer: mutable
+  - name: queue
+    functions:
+      - name: queue_submit_for_index
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint64
+        args:
+          - name: queue
+            doc: |
+              TODO
+            type: object.queue
+          - name: command_count
+            doc: |
+              TODO
+            type: usize
+          - name: commands
+            doc: |
+              TODO
+            type: object.command_buffer
+            pointer: immutable
+      - name: queue_get_timestamp_period
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: float32
+        args:
+          - name: queue
+            doc: |
+              TODO
+            type: object.queue
+  - name: device
+    functions:
+      - name: device_poll
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: bool
+        args:
+          - name: device
+            doc: |
+              TODO
+            type: object.device
+          - name: wait
+            doc: |
+              TODO
+            type: bool
+          - name: submission_index
+            doc: |
+              TODO
+            type: uint64
+            pointer: immutable
+            optional: true
+      - name: device_create_shader_module_spir_v
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.shader_module
+        args:
+          - name: device
+            doc: |
+              TODO
+            type: object.device
+          - name: descriptor
+            doc: |
+              TODO
+            type: struct.shader_module_descriptor_spir_v
+            pointer: immutable
+      - name: device_get_native_metal_device
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: c_void
+          pointer: mutable
+        args:
+          - name: device
+            doc: |
+              TODO
+            type: object.device
+  - name: texture
+    functions:
+      - name: texture_get_native_metal_texture
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: c_void
+          pointer: mutable
+        args:
+          - name: texture
+            doc: |
+              TODO
+            type: object.texture
+  - name: render_pass_encoder
+    functions:
+      - name: render_pass_encoder_set_push_constants
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: stages
+            doc: |
+              TODO
+            type: enum.shader_stage
+          - name: offset
+            doc: |
+              TODO
+            type: uint32
+          - name: size_bytes
+            doc: |
+              TODO
+            type: uint32
+          - name: data
+            doc: |
+              TODO
+            type: c_void
+            pointer: immutable
+      - name: render_pass_encoder_multi_draw_indirect
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: count
+            doc: |
+              TODO
+            type: uint32
+      - name: render_pass_encoder_multi_draw_indexed_indirect
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: count
+            doc: |
+              TODO
+            type: uint32
+      - name: render_pass_encoder_multi_draw_indirect_count
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: count_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: count_buffer_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: max_count
+            doc: |
+              TODO
+            type: uint32
+      - name: render_pass_encoder_multi_draw_indexed_indirect_count
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: offset
+            doc: |
+              TODO
+            type: uint64
+          - name: count_buffer
+            doc: |
+              TODO
+            type: object.buffer
+          - name: count_buffer_offset
+            doc: |
+              TODO
+            type: uint64
+          - name: max_count
+            doc: |
+              TODO
+            type: uint32
+      - name: render_pass_encoder_begin_pipeline_statistics_query
+        doc: |
+          TODO
+        args:
+          - name: render_pass_encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: query_set
+            doc: |
+              TODO
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+      - name: render_pass_encoder_end_pipeline_statistics_query
+        doc: |
+          TODO
+        args:
+          - name: render_pass_encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+      - name: render_pass_encoder_write_timestamp
+        doc: |
+          TODO
+        args:
+          - name: render_pass_encoder
+            doc: |
+              TODO
+            type: object.render_pass_encoder
+          - name: query_set
+            doc: |
+              TODO
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+  - name: compute_pass_encoder
+    functions:
+      - name: compute_pass_encoder_set_push_constants
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.compute_pass_encoder
+          - name: offset
+            doc: |
+              TODO
+            type: uint32
+          - name: size_bytes
+            doc: |
+              TODO
+            type: uint32
+          - name: data
+            doc: |
+              TODO
+            type: c_void
+            pointer: immutable
+      - name: compute_pass_encoder_begin_pipeline_statistics_query
+        doc: |
+          TODO
+        args:
+          - name: compute_pass_encoder
+            doc: |
+              TODO
+            type: object.compute_pass_encoder
+          - name: query_set
+            doc: |
+              TODO
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+      - name: compute_pass_encoder_end_pipeline_statistics_query
+        doc: |
+          TODO
+        args:
+          - name: compute_pass_encoder
+            doc: |
+              TODO
+            type: object.compute_pass_encoder
+      - name: compute_pass_encoder_write_timestamp
+        doc: |
+          TODO
+        args:
+          - name: compute_pass_encoder
+            doc: |
+              TODO
+            type: object.compute_pass_encoder
+          - name: query_set
+            doc: |
+              TODO
+            type: object.query_set
+          - name: query_index
+            doc: |
+              TODO
+            type: uint32
+  - name: render_bundle_encoder
+    functions:
+      - name: render_bundle_encoder_set_push_constants
+        doc: |
+          TODO
+        args:
+          - name: encoder
+            doc: |
+              TODO
+            type: object.render_bundle_encoder
+          - name: stages
+            doc: |
+              TODO
+            type: enum.shader_stage
+          - name: offset
+            doc: |
+              TODO
+            type: uint32
+          - name: size_bytes
+            doc: |
+              TODO
+            type: uint32
+          - name: data
+            doc: |
+              TODO
+            type: c_void
+            pointer: immutable
+  - name: global
+    functions:
+      - name: set_log_callback
+        doc: |
+          TODO
+        args:
+          - name: callback
+            doc: |
+              TODO
+            type: c_void
+            pointer: mutable
+          - name: userdata
+            doc: |
+              TODO
+            type: c_void
+            pointer: mutable
+      - name: set_log_level
+        doc: |
+          TODO
+        args:
+          - name: level
+            doc: |
+              TODO
+            type: enum.log_level
+      - name: get_version
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: uint32
 objects: []
