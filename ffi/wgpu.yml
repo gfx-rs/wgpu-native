@@ -6,10 +6,11 @@ name: wgpu
 enum_prefix: '0x0003'
 constants: []
 typedefs: []
+# Core enumerations exposed by the wgpu-native API.
 enums:
   - name: native_stype
     doc: |
-      TODO
+      Type identifiers for wgpu-native extension structs.
     entries:
       - name: device_extras
         doc: |
@@ -46,7 +47,7 @@ enums:
           TODO
   - name: native_feature
     doc: |
-      TODO
+      Native-only device features that extend the WebGPU feature set.
     entries:
       - name: push_constants
         doc: |
@@ -143,7 +144,7 @@ enums:
           TODO
   - name: log_level
     doc: |
-      TODO
+      Logging verbosity levels for wgpu-native.
     entries:
       - name: off
         doc: |
@@ -151,15 +152,15 @@ enums:
         value: 0x00000000
       - name: error
         doc: |
-          TODO
+          Only error messages.
         value: 0x00000001
       - name: warn
         doc: |
-          TODO
+          Errors and warnings.
         value: 0x00000002
       - name: info
         doc: |
-          TODO
+          Errors, warnings, and informational messages.
         value: 0x00000003
       - name: debug
         doc: |
@@ -167,7 +168,7 @@ enums:
         value: 0x00000004
       - name: trace
         doc: |
-          TODO
+          All messages, including very verbose trace-level output.
         value: 0x00000005
   - name: dx12_compiler
     doc: |
@@ -347,7 +348,7 @@ enums:
 bitflags:
   - name: instance_backend
     doc: |
-      TODO
+      Bitflags selecting which graphics backends the instance should enable.
     entries:
       - name: all
         doc: |
@@ -355,19 +356,19 @@ bitflags:
         value: 0x00000000
       - name: vulkan
         doc: |
-          TODO
+          Vulkan backend.
         value: 0x00000001
       - name: gl
         doc: |
-          TODO
+          OpenGL / OpenGL ES backend.
         value: 0x00000002
       - name: metal
         doc: |
-          TODO
+          Metal backend.
         value: 0x00000004
       - name: dx12
         doc: |
-          TODO
+          Direct3D 12 backend.
         value: 0x00000008
       - name: dx11
         doc: |
@@ -375,7 +376,7 @@ bitflags:
         value: 0x00000010
       - name: browser_webgpu
         doc: |
-          TODO
+          Browser WebGPU backend.
         value: 0x00000020
       - name: primary
         doc: |
@@ -397,7 +398,7 @@ bitflags:
         value: 0x7FFFFFFF
   - name: instance_flag
     doc: |
-      TODO
+      Bitflags controlling instance debugging and validation behavior.
     entries:
       - name: default
         doc: |
@@ -409,11 +410,11 @@ bitflags:
         value: 0x00000001
       - name: validation
         doc: |
-          TODO
+          Enable validation in the backend API, if possible.
         value: 0x00000002
       - name: discard_hal_labels
         doc: |
-          TODO
+          Do not pass labels to the backend API.
         value: 0x00000004
       - name: force32
         doc: |
@@ -422,7 +423,7 @@ bitflags:
 structs:
   - name: instance_extras
     doc: |
-      TODO
+      Additional instance creation parameters used by wgpu-native.
     type: extension_in
     members:
       - name: backends
@@ -431,31 +432,31 @@ structs:
         type: bitflag.instance_backend
       - name: flags
         doc: |
-          TODO
+          Flags controlling debug and validation behavior.
         type: bitflag.instance_flag
       - name: dx12_shader_compiler
         doc: |
-          TODO
+          Which DX12 shader compiler to use. Ignored on non-DX12 backends.
         type: enum.dx12_compiler
       - name: gles3_minor_version
         doc: |
-          TODO
+          Which OpenGL ES 3 minor version to request. Ignored on non-GL backends.
         type: enum.gles3_minor_version
       - name: gl_fence_behaviour
         doc: |
-          TODO
+          Controls OpenGL fence synchronization behavior. Ignored on non-GL backends.
         type: enum.gl_fence_behaviour
       - name: dxc_path
         doc: |
-          TODO
+          File system path to dxcompiler.dll for dynamic DXC loading.
         type: string_with_default_empty
       - name: dxc_max_shader_model
         doc: |
-          TODO
+          Maximum HLSL shader model version that DXC should target.
         type: enum.dxc_max_shader_model
       - name: dx12_presentation_system
         doc: |
-          TODO
+          Which DX12 presentation system or swapchain kind to use. Ignored on non-DX12 backends.
         type: enum.dx12_swapchain_kind
       - name: budget_for_device_creation
         doc: |
@@ -471,7 +472,7 @@ structs:
         optional: true
   - name: device_extras
     doc: |
-      TODO
+      Additional device creation parameters used by wgpu-native.
     type: extension_in
     members:
       - name: trace_path
@@ -480,7 +481,7 @@ structs:
         type: string_with_default_empty
   - name: native_limits
     doc: |
-      TODO
+      Native-only limits that extend the standard WebGPU limits.
     type: extension_out
     members:
       - name: max_push_constant_size
@@ -489,15 +490,15 @@ structs:
         type: uint32
       - name: max_non_sampler_bindings
         doc: |
-          TODO
+          Maximum number of live non-sampler bindings. Only meaningful on D3D12.
         type: uint32
       - name: max_binding_array_elements_per_shader_stage
         doc: |
-          TODO
+          Maximum number of individual resources within binding arrays that can be accessed in a single shader stage.
         type: uint32
   - name: push_constant_range
     doc: |
-      TODO
+      A range of push constants within a pipeline layout.
     type: standalone
     members:
       - name: stages
@@ -514,7 +515,7 @@ structs:
         type: uint32
   - name: pipeline_layout_extras
     doc: |
-      TODO
+      Additional pipeline layout information used by wgpu-native.
     type: extension_in
     members:
       - name: push_constant_ranges
@@ -524,7 +525,7 @@ structs:
         pointer: immutable
   - name: shader_define
     doc: |
-      TODO
+      A preprocessor macro definition used by GLSL shader sources.
     type: standalone
     members:
       - name: name
@@ -537,7 +538,7 @@ structs:
         type: string_with_default_empty
   - name: shader_source_glsl
     doc: |
-      TODO
+      GLSL shader source and associated preprocessor definitions.
     type: extension_in
     members:
       - name: stage
@@ -546,11 +547,11 @@ structs:
         type: enum.shader_stage
       - name: code
         doc: |
-          TODO
+          GLSL source code.
         type: string_with_default_empty
       - name: define_count
         doc: |
-          TODO
+          Number of entries in defines.
         type: uint32
       - name: defines
         doc: |
@@ -559,7 +560,7 @@ structs:
         pointer: mutable
   - name: shader_module_descriptor_spir_v
     doc: |
-      TODO
+      Descriptor for creating a SPIR-V shader module.
     type: standalone
     members:
       - name: label
@@ -568,16 +569,16 @@ structs:
         type: string_with_default_empty
       - name: source_size
         doc: |
-          TODO
+          Number of 32-bit words in source.
         type: uint32
       - name: source
         doc: |
-          TODO
+          The SPIR-V source words.
         type: uint32
         pointer: immutable
   - name: registry_report
     doc: |
-      TODO
+      Resource accounting statistics for one registry bucket.
     type: standalone
     members:
       - name: num_allocated
@@ -598,7 +599,7 @@ structs:
         type: usize
   - name: hub_report
     doc: |
-      TODO
+      Resource accounting statistics grouped by backend hub.
     type: standalone
     members:
       - name: adapters
@@ -671,7 +672,7 @@ structs:
         type: struct.registry_report
   - name: global_report
     doc: |
-      TODO
+      Global resource accounting statistics, including surfaces and hub data.
     type: standalone
     members:
       - name: surfaces
@@ -684,7 +685,7 @@ structs:
         type: struct.hub_report
   - name: instance_enumerate_adapter_options
     doc: |
-      TODO
+      Options controlling which adapters are enumerated for an instance.
     type: base_in
     members:
       - name: next_in_chain
@@ -699,7 +700,7 @@ structs:
         type: bitflag.instance_backend
   - name: bind_group_entry_extras
     doc: |
-      TODO
+      Additional bind-group entry resources supported by wgpu-native.
     type: extension_in
     members:
       - name: buffers
@@ -731,7 +732,7 @@ structs:
         type: usize
   - name: bind_group_layout_entry_extras
     doc: |
-      TODO
+      Additional bind-group layout entry information supported by wgpu-native.
     type: extension_in
     members:
       - name: count
@@ -740,7 +741,7 @@ structs:
         type: uint32
   - name: query_set_descriptor_extras
     doc: |
-      TODO
+      Additional query-set descriptor information for pipeline statistics.
     type: extension_in
     members:
       - name: pipeline_statistics
@@ -750,7 +751,7 @@ structs:
         pointer: immutable
   - name: surface_configuration_extras
     doc: |
-      TODO
+      Additional surface configuration parameters used by wgpu-native.
     type: extension_in
     members:
       - name: desired_maximum_frame_latency
@@ -759,7 +760,7 @@ structs:
         type: uint32
   - name: surface_source_swap_chain_panel
     doc: |
-      TODO
+      Chained surface descriptor data for wrapping a WinUI SwapChainPanel.
     type: extension_in
     members:
       - name: panel_native
@@ -769,7 +770,7 @@ structs:
         pointer: mutable
   - name: primitive_state_extras
     doc: |
-      TODO
+      Additional primitive rasterization state used by wgpu-native.
     type: extension_in
     members:
       - name: polygon_mode
@@ -778,9 +779,11 @@ structs:
         type: enum.polygon_mode
       - name: conservative
         doc: |
-          TODO
+          If set to true, the primitives are rendered with conservative overestimation.
         type: bool
+# Callback signatures used by the bindings.
 callbacks: []
+# Extension methods grouped by the object they extend.
 extension-objects:
   - name: instance
     functions:
@@ -824,7 +827,7 @@ extension-objects:
     functions:
       - name: queue_submit_for_index
         doc: |
-          TODO
+          Identifies a particular call to queue_submit_for_index and can be used with device_poll.
         returns:
           doc: |
             TODO
@@ -859,7 +862,7 @@ extension-objects:
     functions:
       - name: device_poll
         doc: |
-          TODO
+          Returns true if the queue is empty, or false if there are more queue submissions still in flight.
         returns:
           doc: |
             TODO
@@ -898,7 +901,7 @@ extension-objects:
             pointer: immutable
       - name: device_get_native_metal_device
         doc: |
-          TODO
+          Returns the backend-native id<MTLDevice> as an opaque pointer.
         returns:
           doc: |
             TODO
@@ -913,7 +916,7 @@ extension-objects:
     functions:
       - name: texture_get_native_metal_texture
         doc: |
-          TODO
+          Returns the backend-native id<MTLTexture> as an opaque pointer.
         returns:
           doc: |
             TODO
@@ -1208,4 +1211,5 @@ extension-objects:
           doc: |
             TODO
           type: uint32
+# Object types exposed by the API.
 objects: []
