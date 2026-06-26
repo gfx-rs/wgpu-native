@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
       device, &(const WGPUComputePipelineDescriptor){
                   .label = {"compute_pipeline", WGPU_STRLEN},
                   .compute =
-                      (const WGPUProgrammableStageDescriptor){
+                      (const WGPUComputeState){
                           .module = shader_module,
                           .entryPoint = {"main", WGPU_STRLEN},
                       },

@@ -262,10 +262,18 @@ int main(int argc, char *argv[]) {
     required_device_feature_count++;
   }
 
+  WGPUNativeLimits required_device_native_limits = WGPU_NATIVE_LIMITS_INIT;
+  required_device_native_limits.maxBindingArrayElementsPerShaderStage = 6;
+  required_device_native_limits.maxBindingArraySamplerElementsPerShaderStage = 2;
+
+  WGPULimits required_device_limits = WGPU_LIMITS_INIT;
+  required_device_limits.nextInChain = (const WGPUChainedStruct *)&required_device_native_limits;
+
   wgpuAdapterRequestDevice(demo.adapter,
                            &(const WGPUDeviceDescriptor){
                                .requiredFeatureCount = required_device_feature_count,
                                .requiredFeatures = required_device_features,
+                               .requiredLimits = &required_device_limits,
                            }, 
                            (const WGPURequestDeviceCallbackInfo){ 
                                .callback = handle_request_device,
@@ -503,16 +511,6 @@ int main(int argc, char *argv[]) {
                   .count = 2,
               },
       },
-      (const WGPUBindGroupLayoutEntry){
-          .binding = 3,
-          .visibility = WGPUShaderStage_Fragment,
-          .buffer =
-              (const WGPUBufferBindingLayout){
-                  .type = WGPUBufferBindingType_Uniform,
-                  .hasDynamicOffset = true,
-                  .minBindingSize = 4,
-              },
-      },
   };
   WGPUBindGroupLayout bind_group_layout = wgpuDeviceCreateBindGroupLayout(
       demo.device, &(const WGPUBindGroupLayoutDescriptor){
@@ -523,11 +521,32 @@ int main(int argc, char *argv[]) {
                    });
   assert(bind_group_layout);
 
+  const WGPUBindGroupLayoutEntry uniforms_bind_group_layout_entries[] = {
+      (const WGPUBindGroupLayoutEntry){
+          .binding = 0,
+          .visibility = WGPUShaderStage_Fragment,
+          .buffer =
+              (const WGPUBufferBindingLayout){
+                  .type = WGPUBufferBindingType_Uniform,
+                  .hasDynamicOffset = true,
+                  .minBindingSize = 4,
+              },
+      },
+  };
+  WGPUBindGroupLayout uniforms_bind_group_layout = wgpuDeviceCreateBindGroupLayout(
+      demo.device, &(const WGPUBindGroupLayoutDescriptor){
+                       .label = {"uniforms bind group layout", WGPU_STRLEN},
+                       .entryCount = sizeof(uniforms_bind_group_layout_entries) /
+                                     sizeof(uniforms_bind_group_layout_entries[0]),
+                       .entries = uniforms_bind_group_layout_entries,
+                   });
+  assert(uniforms_bind_group_layout);
+
   const WGPUBindGroupEntry bind_group_entries[] = {
       (const WGPUBindGroupEntry){
           .binding = 0,
           .nextInChain =
-              (const WGPUChainedStruct *)&(const WGPUBindGroupEntryExtras){
+              (WGPUChainedStruct *)&(WGPUBindGroupEntryExtras){
                   .chain =
                       (const WGPUChainedStruct){
                           .sType = (WGPUSType)WGPUSType_BindGroupEntryExtras,
@@ -543,7 +562,7 @@ int main(int argc, char *argv[]) {
       (const WGPUBindGroupEntry){
           .binding = 1,
           .nextInChain =
-              (const WGPUChainedStruct *)&(const WGPUBindGroupEntryExtras){
+              (WGPUChainedStruct *)&(WGPUBindGroupEntryExtras){
                   .chain =
                       (const WGPUChainedStruct){
                           .sType = (WGPUSType)WGPUSType_BindGroupEntryExtras,
@@ -559,7 +578,7 @@ int main(int argc, char *argv[]) {
       (const WGPUBindGroupEntry){
           .binding = 2,
           .nextInChain =
-              (const WGPUChainedStruct *)&(const WGPUBindGroupEntryExtras){
+              (WGPUChainedStruct *)&(WGPUBindGroupEntryExtras){
                   .chain =
                       (const WGPUChainedStruct){
                           .sType = (WGPUSType)WGPUSType_BindGroupEntryExtras,
@@ -572,12 +591,6 @@ int main(int argc, char *argv[]) {
                       },
               },
       },
-      (const WGPUBindGroupEntry){
-          .binding = 3,
-          .buffer = texture_index_buffer,
-          .offset = 0,
-          .size = 4,
-      },
   };
   WGPUBindGroup bind_group = wgpuDeviceCreateBindGroup(
       demo.device, &(const WGPUBindGroupDescriptor){
@@ -589,13 +602,32 @@ int main(int argc, char *argv[]) {
                    });
   assert(bind_group);
 
+  const WGPUBindGroupEntry uniforms_bind_group_entries[] = {
+      (const WGPUBindGroupEntry){
+          .binding = 0,
+          .buffer = texture_index_buffer,
+          .offset = 0,
+          .size = 4,
+      },
+  };
+  WGPUBindGroup uniforms_bind_group = wgpuDeviceCreateBindGroup(
+      demo.device, &(const WGPUBindGroupDescriptor){
+                       .layout = uniforms_bind_group_layout,
+                       .label = {"uniforms bind group", WGPU_STRLEN},
+                       .entryCount = sizeof(uniforms_bind_group_entries) /
+                                     sizeof(uniforms_bind_group_entries[0]),
+                       .entries = uniforms_bind_group_entries,
+                   });
+  assert(uniforms_bind_group);
+
   WGPUPipelineLayout pipeline_layout = wgpuDeviceCreatePipelineLayout(
       demo.device, &(const WGPUPipelineLayoutDescriptor){
                        .label = {"main", WGPU_STRLEN},
-                       .bindGroupLayoutCount = 1,
+                       .bindGroupLayoutCount = 2,
                        .bindGroupLayouts =
                            (const WGPUBindGroupLayout[]){
                                bind_group_layout,
+                               uniforms_bind_group_layout
                            },
                    });
   assert(pipeline_layout);
@@ -672,8 +704,7 @@ int main(int argc, char *argv[]) {
       }
       continue;
     }
-    case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
-    case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
+    
     case WGPUSurfaceGetCurrentTextureStatus_Force32:
       // Fatal error
       printf(LOG_PREFIX " get_current_texture status=%#.8x\n",
@@ -724,14 +755,16 @@ int main(int argc, char *argv[]) {
     wgpuRenderPassEncoderSetIndexBuffer(render_pass_encoder, index_buffer,
                                         index_format, 0, WGPU_WHOLE_SIZE);
     if (use_uniform_workaround) {
-      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0, bind_group, 1,
+      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0, bind_group, 0, NULL);
+      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 1, uniforms_bind_group, 1,
                                         (const uint32_t[]){0});
       wgpuRenderPassEncoderDrawIndexed(render_pass_encoder, 6, 1, 0, 0, 0);
-      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0, bind_group, 1,
+      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 1, uniforms_bind_group, 1,
                                         (const uint32_t[]){256});
       wgpuRenderPassEncoderDrawIndexed(render_pass_encoder, 6, 1, 6, 0, 0);
     } else {
-      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0, bind_group, 1,
+      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 0, bind_group, 0, NULL);
+      wgpuRenderPassEncoderSetBindGroup(render_pass_encoder, 1, uniforms_bind_group, 1,
                                         (const uint32_t[]){0});
       wgpuRenderPassEncoderDrawIndexed(render_pass_encoder, 12, 1, 0, 0, 0);
     }

@@ -10,7 +10,7 @@ on:
 
 env:
   CI_RUST_VERSION: "1.91"
-  CI_RUST_MSRV: "1.82"
+  CI_RUST_MSRV: "1.87"
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
@@ -25,7 +25,7 @@ jobs:
     name: Code integrity checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Install Rust toolchain
@@ -57,7 +57,7 @@ jobs:
       RUSTDOCFLAGS: ""
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Install Rust toolchain
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - uses: taiki-e/install-action@cargo-deny
@@ -111,9 +111,9 @@ jobs:
           - name: Windows msvc x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-          - name: Windows gnu i686
-            os: windows-latest
-            target: i686-pc-windows-gnu
+          # - name: Windows gnu i686
+          #   os: windows-latest
+          #   target: i686-pc-windows-gnu
           - name: Windows msvc i686
             os: windows-latest
             target: i686-pc-windows-msvc
@@ -124,7 +124,10 @@ jobs:
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
-              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang
+              ANDROID_TARGET=aarch64-linux-android21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
               echo "CXX=$CC++" >> $GITHUB_ENV
@@ -132,14 +135,17 @@ jobs:
               echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: Android armv7
             os: ubuntu-latest
             target: armv7-linux-androideabi
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
-              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
+              ANDROID_TARGET=armv7a-linux-androideabi21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
               echo "CXX=$CC++" >> $GITHUB_ENV
@@ -147,22 +153,67 @@ jobs:
               echo "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7-linux-androideabi=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi=$BINDGEN_ARGS" >> $GITHUB_ENV
           # iOS
           - name: iOS stable
             os: macos-14
             target: aarch64-apple-ios
+            setup_env: |
+              set -x
+              DEVELOPER_DIR=$(xcode-select -p)
+              SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path 2>/dev/null || xcrun --show-sdk-path)
+              CC=$(xcrun --sdk iphoneos --find clang)
+
+              if [ ! -d "$SDKROOT" ]; then
+                echo "Warning: SDKROOT ($SDKROOT) does not exist"
+                ls -la /Applications || true
+              fi
+
+              echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
+              echo "SDKROOT=$SDKROOT" >> $GITHUB_ENV
+              echo "CC=$CC" >> $GITHUB_ENV
+              echo "CARGO_TARGET_AARCH64_APPLE_IOS_LINKER=$CC" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $SDKROOT" >> $GITHUB_ENV
+              echo "CFLAGS=-isysroot $SDKROOT" >> $GITHUB_ENV
+              echo "LDFLAGS=-isysroot $SDKROOT" >> $GITHUB_ENV
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
+      - if: matrix.target == 'i686-pc-windows-gnu'
+        name: Setup msys2 (i686)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          pacboy: >-
+            toolchain:p
       - name: Install Rust toolchain
         uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
           version: ${{ env.CI_RUST_VERSION }}
           components: clippy
           targets: ${{ matrix.target }}
+      # - if: matrix.target == 'i686-pc-windows-gnu'
+      #   name: Setup bindgen env (i686 gnu)
+      #   run: |
+      #     BINDGEN_TARGET=i686-pc-windows-gnu
+      #     MINGW32_ROOT=C:/msys64/mingw32
+      #     MINGW32_INCLUDE=$MINGW32_ROOT/include
+      #     MINGW32_TRIPLE_INCLUDE=$MINGW32_ROOT/i686-w64-mingw32/include
+      #     BINDGEN_ARGS="--target=$BINDGEN_TARGET --sysroot=$MINGW32_ROOT -isystem $MINGW32_INCLUDE -isystem $MINGW32_TRIPLE_INCLUDE"
+
+      #     echo "LIBCLANG_PATH=C:/Program Files/LLVM/bin" >> $GITHUB_ENV
+      #     echo "CLANG_PATH=C:/Program Files/LLVM/bin/clang.exe" >> $GITHUB_ENV
+      #     echo "C_INCLUDE_PATH=$MINGW32_INCLUDE:$MINGW32_TRIPLE_INCLUDE" >> $GITHUB_ENV
+      #     echo "CPLUS_INCLUDE_PATH=$MINGW32_INCLUDE:$MINGW32_TRIPLE_INCLUDE" >> $GITHUB_ENV
+      #     echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+      #     echo "BINDGEN_EXTRA_CLANG_ARGS_i686-pc-windows-gnu=$BINDGEN_ARGS" >> $GITHUB_ENV
+      #     echo "BINDGEN_EXTRA_CLANG_ARGS_i686_pc_windows_gnu=$BINDGEN_ARGS" >> $GITHUB_ENV
+      #   shell: bash
       - name: Setup caching
         uses: Swatinem/rust-cache@v2
         with:
@@ -220,7 +271,7 @@ jobs:
             setup_env: choco install -y make
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - if: contains(matrix.target, 'windows-msvc')
@@ -261,13 +312,13 @@ jobs:
           make example-triangle
           make example-enumerate_adapters
           make example-texture_arrays
-          make example-push_constants
+          make example-immediates
       - name: Run examples debug
         run: |
           make run-example-capture
           make run-example-compute
           make run-example-enumerate_adapters
-          make run-example-push_constants
+          make run-example-immediates
       - name: Build examples release
         run: |
           make example-capture-release
@@ -275,10 +326,10 @@ jobs:
           make example-triangle-release
           make example-enumerate_adapters-release
           make example-texture_arrays-release
-          make example-push_constants-release
+          make example-immediates-release
       - name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
           make run-example-enumerate_adapters-release
-          make run-example-push_constants-release
+          make run-example-immediates-release

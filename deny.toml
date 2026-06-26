@@ -17,9 +17,8 @@ skip = [
     # Upstream wgpu dependency tree hasn't fully migrated yet
     { crate = "foldhash@0.1", reason = "hashbrown 0.15 vs 0.16 in wgpu deps" },
     { crate = "hashbrown@0.15", reason = "gpu-descriptor and petgraph lag behind" },
+    { crate = "hashbrown@0.16", reason = "gpu-allocator and naga lag behind" },
     { crate = "rustc-hash@1", reason = "wgpu deps still use v1" },
-    { crate = "thiserror@1", reason = "wgpu deps still use v1" },
-    { crate = "thiserror-impl@1", reason = "wgpu deps still use v1" },
 ]
 
 [sources]

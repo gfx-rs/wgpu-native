@@ -32,7 +32,6 @@ on:
     branches-ignore: []
 
 jobs:
-
   # -----
   ios:
     # Config
@@ -53,12 +52,16 @@ jobs:
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
         run: echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
         shell: bash
+      # - name: Setup Xcode
+      #   uses: apple/actions/setup-xcode@v3
+      #   with:
+      #     xcode-version: "15.2"
       - name: Install Rust toolchain
         uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
@@ -91,7 +94,10 @@ jobs:
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
-              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/i686-linux-android21-clang
+              ANDROID_TARGET=i686-linux-android21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
               echo "CXX=$CC++" >> $GITHUB_ENV
@@ -99,13 +105,18 @@ jobs:
               echo "CARGO_TARGET_I686_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_i686-linux-android=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_i686_linux_android=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: android-x86_64
             target: x86_64-linux-android
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
-              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android21-clang
+              ANDROID_TARGET=x86_64-linux-android21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
               echo "CXX=$CC++" >> $GITHUB_ENV
@@ -113,27 +124,41 @@ jobs:
               echo "CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64-linux-android=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: android-aarch64
             target: aarch64-linux-android
             setup_env: |
-              set -x
-              ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
-              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang
+              set -eux
+
+              export ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
+              export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+              export ANDROID_TARGET=aarch64-linux-android21
+              export ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              export BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
+
+              export CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
+              export CXX=${CC}++
+              export AR=llvm-ar
+              export RANLIB=llvm-ranlib
 
               echo "CC=$CC" >> $GITHUB_ENV
-              echo "CXX=$CC++" >> $GITHUB_ENV
+              echo "CXX=$CXX" >> $GITHUB_ENV
               echo "CLANG_PATH=$CC" >> $GITHUB_ENV
               echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$CC" >> $GITHUB_ENV
-
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
           - name: android-armv7
             target: armv7-linux-androideabi
             setup_env: |
               set -x
               ANDROID_NDK_HOME=$HOME/wgpu-deps/ndk/android-ndk-$WGPU_ANDROID_NDK_VERSION
-              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/armv7a-linux-androideabi21-clang
+              ANDROID_TARGET=armv7a-linux-androideabi21
+              ANDROID_SYSROOT=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+              BINDGEN_ARGS="--target=$ANDROID_TARGET --sysroot=$ANDROID_SYSROOT"
+              CC=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/$ANDROID_TARGET-clang
 
               echo "CC=$CC" >> $GITHUB_ENV
               echo "CXX=$CC++" >> $GITHUB_ENV
@@ -141,13 +166,15 @@ jobs:
               echo "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=$CC" >> $GITHUB_ENV
 
               echo "LLVM_CONFIG_PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-config" >> $GITHUB_ENV
-              echo "BINDGEN_EXTRA_CLANG_ARGS='-isysroot $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot'" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7-linux-androideabi=$BINDGEN_ARGS" >> $GITHUB_ENV
+              echo "BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi=$BINDGEN_ARGS" >> $GITHUB_ENV
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -202,7 +229,7 @@ jobs:
       IMAGE: ${{ matrix.image }}
     steps:
       # Common part (same for nearly each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -247,7 +274,7 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name:  windows-x86_64 - MSVC
+          - name: windows-x86_64 - MSVC
             target: x86_64-pc-windows-msvc
             archive-name: windows-x86_64-msvc
           - name:  windows-i686 - MSVC
@@ -256,15 +283,17 @@ jobs:
           - name:  windows-aarch64 - MSVC
             target: aarch64-pc-windows-msvc
             archive-name: windows-aarch64-msvc
-          - name:  windows-x86_64 - GNU
+            toolchain: stable-msvc
+          - name: windows-x86_64 - GNU
             target: x86_64-pc-windows-gnu
             archive-name: windows-x86_64-gnu
+            toolchain: stable-gnu
     env:
       TARGET: ${{ matrix.target }}
       ARCHIVE_NAME: wgpu-${{ matrix.archive-name }}
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -299,10 +328,10 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name:  macos-x86_64
+          - name: macos-x86_64
             target: x86_64-apple-darwin
             archive-name: macos-x86_64
-          - name:  macos-aarch64
+          - name: macos-aarch64
             target: aarch64-apple-darwin
             archive-name: macos-aarch64
     env:
@@ -312,7 +341,7 @@ jobs:
       RUSTFLAGS: "-C link-args=-Wl,-install_name,@rpath/libwgpu_native.dylib"
     steps:
       # Common part (same for each build)
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set WGPU_NATIVE_VERSION
@@ -350,7 +379,7 @@ jobs:
     runs-on: ubuntu-latest
     if: success() && contains(github.ref, 'tags/v')
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: set version (which gets used as release name)
         run: |
           echo "WGPU_NATIVE_VERSION=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_ENV
@@ -365,7 +394,7 @@ jobs:
         run: |
           echo $GITHUB_SHA > dist/commit-sha
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ env.WGPU_NATIVE_VERSION }}
           name: ${{ env.WGPU_NATIVE_VERSION }}

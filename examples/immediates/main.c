@@ -5,7 +5,7 @@
 #include "framework.h"
 #include "webgpu-headers/webgpu.h"
 
-#define LOG_PREFIX "[push_constants]"
+#define LOG_PREFIX "[immediates]"
 
 static void handle_request_adapter(WGPURequestAdapterStatus status,
                                    WGPUAdapter adapter, WGPUStringView message,
@@ -23,7 +23,7 @@ static void handle_request_device(WGPURequestDeviceStatus status,
   UNUSED(userdata2)
   *(WGPUDevice *)userdata1 = device;
 }
-static void handle_buffer_map(WGPUMapAsyncStatus status, 
+static void handle_buffer_map(WGPUMapAsyncStatus status,
                               WGPUStringView message,
                               void *userdata1, void *userdata2) {
   UNUSED(userdata1)
@@ -51,20 +51,13 @@ int main(int argc, char *argv[]) {
                              });
   assert(adapter);
 
-  WGPUNativeLimits supported_limits_extras = {
-      .chain =
-          {
-              .sType = WGPUSType_NativeLimits,
-          },
-      .maxPushConstantSize = 0,
-  };
   WGPULimits supported_limits = {
-      .nextInChain = &supported_limits_extras.chain,
+      .maxImmediateSize = 0,
   };
   wgpuAdapterGetLimits(adapter, &supported_limits);
 
   WGPUFeatureName requiredFeatures[] = {
-      WGPUNativeFeature_PushConstants,
+      WGPUNativeFeature_Immediates,
   };
   WGPUDeviceDescriptor device_desc = {
       .label = {"compute_device", WGPU_STRLEN},
@@ -74,8 +67,8 @@ int main(int argc, char *argv[]) {
   };
 
   WGPUDevice device = NULL;
-  wgpuAdapterRequestDevice(adapter, &device_desc, 
-                           (const WGPURequestDeviceCallbackInfo){ 
+  wgpuAdapterRequestDevice(adapter, &device_desc,
+                           (const WGPURequestDeviceCallbackInfo){
                                .callback = handle_request_device,
                                .userdata1 = &device
                            });
@@ -107,21 +100,6 @@ int main(int argc, char *argv[]) {
               });
   assert(staging_buffer);
 
-  WGPUPushConstantRange push_constant_range = {
-      .stages = WGPUShaderStage_Compute,
-      .start = 0,
-      .end = sizeof(uint32_t),
-  };
-
-  WGPUPipelineLayoutExtras pipeline_layout_extras = {
-      .chain =
-          {
-              .sType = WGPUSType_PipelineLayoutExtras,
-          },
-      .pushConstantRangeCount = 1,
-      .pushConstantRanges = &push_constant_range,
-  };
-
   WGPUBindGroupLayoutEntry bind_group_layout_entries[] = {
       {
           .binding = 0,
@@ -144,9 +122,10 @@ int main(int argc, char *argv[]) {
 
   WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
       .label = {"pipeline_layout", WGPU_STRLEN},
-      .nextInChain = &pipeline_layout_extras.chain,
+      .nextInChain = NULL,
       .bindGroupLayouts = &bind_group_layout,
       .bindGroupLayoutCount = 1,
+      .immediateSize = sizeof(uint32_t),
   };
   WGPUPipelineLayout pipeline_layout =
       wgpuDeviceCreatePipelineLayout(device, &pipeline_layout_desc);
@@ -156,7 +135,7 @@ int main(int argc, char *argv[]) {
       device, &(const WGPUComputePipelineDescriptor){
                   .label = {"compute_pipeline", WGPU_STRLEN},
                   .compute =
-                      (const WGPUProgrammableStageDescriptor){
+                      (const WGPUComputeState){
                           .module = shader_module,
                           .entryPoint = {"main", WGPU_STRLEN},
                       },
@@ -199,9 +178,9 @@ int main(int argc, char *argv[]) {
                                      NULL);
 
   for (uint32_t i = 0; i < numbers_length; i++) {
-    uint32_t pushConst = i;
-    wgpuComputePassEncoderSetPushConstants(compute_pass_encoder, 0,
-                                           sizeof(uint32_t), &pushConst);
+    uint32_t immediate = i;
+    wgpuComputePassEncoderSetImmediates(compute_pass_encoder, 0,
+                                        &immediate, sizeof(uint32_t));
 
     wgpuComputePassEncoderDispatchWorkgroups(compute_pass_encoder,
                                              numbers_length, 1, 1);
