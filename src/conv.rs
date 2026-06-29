@@ -1574,7 +1574,7 @@ pub fn map_bind_group_entry<'a>(
                     buffer: buffer.id,
                     offset: entry.offset,
                     size: match entry.size {
-                        0 => panic!("invalid size"),
+                        0 => panic!("buffer supplied to bind group must have size greater than 0"),
                         WGPU_WHOLE_SIZE => None,
                         _ => Some(entry.size),
                     },
