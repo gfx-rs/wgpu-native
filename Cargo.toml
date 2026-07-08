@@ -32,7 +32,7 @@ version = "29.0.1"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-version = "29.0.1"
+version = "30.0.0"
 
 [workspace.dependencies.naga]
 package = "naga"
