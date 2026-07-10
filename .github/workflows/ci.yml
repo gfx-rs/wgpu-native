@@ -416,6 +416,8 @@ jobs:
       - name: (Windows) Install WARP
         if: matrix.os == 'windows-latest'
         uses: gfx-rs/wgpu/.github/actions/install-warp@trunk
+        with:
+          target-dir: "target/debug"
 
       - name: (Windows) Install Agility SDK
         if: matrix.os == 'windows-latest'
