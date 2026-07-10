@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import re
 import shutil
 import subprocess
@@ -7,18 +6,12 @@ import sys
 from pathlib import Path
 
 REPO_URL = "https://github.com/inner-daemons/wgpu.git"
+# Branch on the fork that carries the wgpu-side integration glue as a single
+# commit (see apply_glue). Replaces the string-patching this script used to do.
+GLUE_BRANCH = "c-backend-testrig"
 LOCAL_WGPU = Path(".local-wgpu")
 WGPU_C_BACKEND_SRC = Path("wgpu-c-backend")
 CARGO_LOCK = Path("Cargo.lock")
-
-patches = """
-# PATCH
-[patch."https://github.com/inner-daemons/wgpu.git"]
-wgpu-core = { path = "./wgpu-core" }
-wgpu-hal = { path = "./wgpu-hal" }
-wgpu-types = { path = "./wgpu-types" }
-naga = { path = "./naga" }
-"""
 
 
 def get_wgpu_commit() -> str:
@@ -53,6 +46,36 @@ def copy_c_backend():
     shutil.copytree(str(WGPU_C_BACKEND_SRC), str(dest))
 
 
+def apply_glue():
+    """Apply the wgpu-side integration glue on top of whatever commit is
+    currently checked out.
+
+    The glue — adding wgpu-c-backend to the workspace, redirecting the
+    inner-daemons/wgpu.git git dep to local paths, and injecting a
+    wgpu-c-backend dep + `extern crate wgpu_c_backend;` into every crate that
+    depends on wgpu — lives as a single commit on GLUE_BRANCH in the fork. We
+    fetch that branch and apply just that commit's diff, so the glue tracks
+    whatever wgpu commit Cargo.lock pins without being reproduced here.
+
+    wgpu-c-backend source itself is NOT in that commit; it stays
+    source-of-truth in this repo and is copied in by copy_c_backend().
+    """
+    print(f"Applying glue from {GLUE_BRANCH}")
+    run("git", "-C", str(LOCAL_WGPU), "fetch", "--quiet", REPO_URL, GLUE_BRANCH)
+    diff = subprocess.run(
+        ["git", "-C", str(LOCAL_WGPU), "diff", "FETCH_HEAD^", "FETCH_HEAD"],
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    # --3way falls back to a real merge if context has drifted from the glue's
+    # base commit, and fails loudly on a true conflict (regenerate the branch).
+    subprocess.run(
+        ["git", "-C", str(LOCAL_WGPU), "apply", "--3way"],
+        check=True,
+        input=diff,
+    )
+
+
 def patch_file(file, search_for, replace):
     with open(file, "rt", encoding="utf-8") as f:
         contents = f.read()
@@ -61,94 +84,21 @@ def patch_file(file, search_for, replace):
         f.write(new_contents)
 
 
-def append_file(file, contents):
-    with open(file, "at", encoding="utf-8") as f:
-        f.write(contents)
-
-
-def patch_add_c_backend():
-    c_backend_dir = (LOCAL_WGPU / "wgpu-c-backend").resolve()
-
-    for cargo_toml in LOCAL_WGPU.rglob("Cargo.toml"):
-        if any(part == "target" for part in cargo_toml.parts):
-            continue
-        if cargo_toml.parent.resolve() == c_backend_dir:
-            continue
-
-        content = cargo_toml.read_text(encoding="utf-8")
-        if not re.search(r"(?m)^wgpu\s*[=.{]", content):
-            continue
-
-        rel_path = os.path.relpath(c_backend_dir, cargo_toml.parent.resolve()).replace(
-            "\\", "/"
-        )
-        dep_line = f'wgpu-c-backend = {{ path = "{rel_path}", features = ["instance_factory_override"] }}\n'
-
-        if "wgpu-c-backend" not in content:
-            if "[dependencies]\n" in content:
-                content = content.replace(
-                    "[dependencies]\n", "[dependencies]\n" + dep_line, 1
-                )
-            else:
-                content += f"\n[dependencies]\n{dep_line}"
-            cargo_toml.write_text(content, encoding="utf-8")
-            print(f"  + wgpu-c-backend dep -> {cargo_toml}")
-
-        for rs_name in ("main.rs", "lib.rs"):
-            rs_path = cargo_toml.parent / "src" / rs_name
-            if not rs_path.exists():
-                continue
-            rs = rs_path.read_text(encoding="utf-8")
-            if "extern crate wgpu_c_backend" not in rs:
-                lines = rs.splitlines(keepends=True)
-                # Inner attributes (#![...]) must precede all items and may
-                # span multiple lines. Track bracket depth to find each
-                # attribute's end, then insert after the last complete one.
-                insert_at = 0
-                i = 0
-                while i < len(lines):
-                    stripped = lines[i].strip()
-                    if stripped.startswith("#!["):
-                        depth = 0
-                        while i < len(lines):
-                            depth += lines[i].count("[") - lines[i].count("]")
-                            i += 1
-                            if depth <= 0:
-                                insert_at = i
-                                break
-                    elif stripped.startswith("//!"):
-                        i += 1
-                        insert_at = i
-                    elif not stripped or stripped.startswith("//"):
-                        i += 1
-                    else:
-                        break
-                lines.insert(insert_at, "extern crate wgpu_c_backend;\n")
-                rs_path.write_text("".join(lines), encoding="utf-8")
-                print(f"  + extern crate wgpu_c_backend -> {rs_path}")
-
-
 def main():
     if "--no-setup" not in sys.argv:
         commit = get_wgpu_commit()
         print(f"wgpu commit from Cargo.lock: {commit[:12]}")
         clone_at_commit(commit)
         copy_c_backend()
-        patch_file(
-            ".local-wgpu/Cargo.toml", "members = [\n", 'members = ["wgpu-c-backend",\n'
-        )
-        patch_file(
-            ".local-wgpu/Cargo.toml",
-            "default-members = [\n",
-            'default-members = ["wgpu-c-backend",\n',
-        )
+        apply_glue()
+        # wgpu-c-backend sits one directory deeper under .local-wgpu than it
+        # does in the wgpu-native workspace, so fix its path to wgpu-native.
+        # This edits our copied-in file, not wgpu, so it stays here.
         patch_file(
             ".local-wgpu/wgpu-c-backend/Cargo.toml",
             'wgpu-native = { path = "../"',
             'wgpu-native = { path = "../../"',
         )
-        append_file(".local-wgpu/Cargo.toml", patches)
-        patch_add_c_backend()
 
     if "--no-run" not in sys.argv:
         print("+ cargo run --bin wgpu-examples hello_workgroups")
