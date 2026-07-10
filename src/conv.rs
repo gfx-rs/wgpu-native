@@ -1052,7 +1052,9 @@ pub fn map_display_hdr_info(info: wgt::DisplayHdrInfo) -> native::WGPUDisplayHdr
     let coarse = match info.coarse {
         Some(c) => {
             let (has_gamut, gamut) = match c.gamut {
-                Some(wgt::DisplayGamut::Srgb) => (true as native::WGPUBool, native::WGPUDisplayGamut_Srgb),
+                Some(wgt::DisplayGamut::Srgb) => {
+                    (true as native::WGPUBool, native::WGPUDisplayGamut_Srgb)
+                }
                 Some(wgt::DisplayGamut::DisplayP3) => {
                     (true as native::WGPUBool, native::WGPUDisplayGamut_DisplayP3)
                 }
@@ -1104,9 +1106,11 @@ pub fn map_load_op<T>(
         //
         // SAFETY: `DontCare` was explicitly requested by the C caller, opting in
         // to its documented undefined-contents semantics at their own risk.
-        other if other == native::WGPULoadOp_DontCare as native::WGPULoadOp => Some(
-            wgc::command::LoadOp::DontCare(unsafe { wgt::LoadOpDontCare::enabled() }),
-        ),
+        other if other == native::WGPULoadOp_DontCare as native::WGPULoadOp => {
+            Some(wgc::command::LoadOp::DontCare(unsafe {
+                wgt::LoadOpDontCare::enabled()
+            }))
+        }
         _ => None,
     }
 }
@@ -2306,7 +2310,9 @@ pub fn map_surface_color_space(cs: native::WGPUSurfaceColorSpace) -> wgt::Surfac
         native::WGPUSurfaceColorSpace_Bt2100Pq => wgt::SurfaceColorSpace::Bt2100Pq,
         native::WGPUSurfaceColorSpace_Bt2100Hlg => wgt::SurfaceColorSpace::Bt2100Hlg,
         native::WGPUSurfaceColorSpace_ExtendedSrgb => wgt::SurfaceColorSpace::ExtendedSrgb,
-        native::WGPUSurfaceColorSpace_ExtendedDisplayP3 => wgt::SurfaceColorSpace::ExtendedDisplayP3,
+        native::WGPUSurfaceColorSpace_ExtendedDisplayP3 => {
+            wgt::SurfaceColorSpace::ExtendedDisplayP3
+        }
         // WGPUSurfaceColorSpace_Auto and any unknown value.
         _ => wgt::SurfaceColorSpace::Auto,
     }

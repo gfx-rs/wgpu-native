@@ -278,9 +278,7 @@ pub fn map_feature(f: native::WGPUFeatureName) -> Option<wgpu::Features> {
     }
 }
 
-pub fn surface_color_space_to_native(
-    cs: wgpu::SurfaceColorSpace,
-) -> native::WGPUSurfaceColorSpace {
+pub fn surface_color_space_to_native(cs: wgpu::SurfaceColorSpace) -> native::WGPUSurfaceColorSpace {
     match cs {
         wgpu::SurfaceColorSpace::Auto => native::WGPUSurfaceColorSpace_Auto,
         wgpu::SurfaceColorSpace::Srgb => native::WGPUSurfaceColorSpace_Srgb,

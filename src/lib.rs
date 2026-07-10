@@ -27,7 +27,7 @@ use utils::{
     string_view_into_label, string_view_into_str, texture_format_has_depth,
 };
 use wgc::{
-    command::{bundle_ffi, ComputePass, RenderPass},
+    command::{ComputePass, RenderPass},
     id, resource, Label,
 };
 
@@ -5416,10 +5416,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    if let Err(cause) = bundle
-        .context
-        .render_bundle_encoder_set_immediates(encoder, offset, make_slice(data, size as usize))
-    {
+    if let Err(cause) = bundle.context.render_bundle_encoder_set_immediates(
+        encoder,
+        offset,
+        make_slice(data, size as usize),
+    ) {
         handle_error_fatal(cause, "wgpuRenderBundleEncoderSetImmediates");
     }
 }
