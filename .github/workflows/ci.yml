@@ -411,35 +411,35 @@ jobs:
           tool: cargo-nextest
       - name: (Windows) Install DXC
         if: matrix.os == 'windows-latest'
-        uses: ./.github/actions/install-dxc
+        uses: gfx-rs/wgpu/.github/actions/install-dxc@trunk
 
       - name: (Windows) Install WARP
         if: matrix.os == 'windows-latest'
-        uses: ./.github/actions/install-warp
+        uses: gfx-rs/wgpu/.github/actions/install-warp@trunk
 
       - name: (Windows) Install Agility SDK
         if: matrix.os == 'windows-latest'
-        uses: ./.github/actions/install-agility-sdk
+        uses: gfx-rs/wgpu/.github/actions/install-agility-sdk@trunk
 
       - name: (Windows) Install Mesa
         if: matrix.os == 'windows-latest'
-        uses: ./.github/actions/install-mesa
+        uses: gfx-rs/wgpu/.github/actions/install-mesa@trunk
 
       - name: (Windows) Install Vulkan SDK
         if: matrix.os == 'windows-latest'
-        uses: ./.github/actions/install-vulkan-sdk
+        uses: gfx-rs/wgpu/.github/actions/install-vulkan-sdk@trunk
 
       - name: (Mac) Install Vulkan SDK
         if: matrix.os == 'macos-14'
-        uses: ./.github/actions/install-vulkan-sdk
+        uses: gfx-rs/wgpu/.github/actions/install-vulkan-sdk@trunk
 
       - name: (Linux) Install Vulkan SDK
         if: matrix.os == 'ubuntu-latest'
-        uses: ./.github/actions/install-vulkan-sdk
+        uses: gfx-rs/wgpu/.github/actions/install-vulkan-sdk@trunk
 
       - name: (Linux) Install Mesa
         if: matrix.os == 'ubuntu-latest'
-        uses: ./.github/actions/install-mesa
+        uses: gfx-rs/wgpu/.github/actions/install-mesa@trunk
       - name: Set up Python
         uses: actions/setup-python@v6
       - name: Setup caching
