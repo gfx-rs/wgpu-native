@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 import re
 import shutil
 import subprocess
@@ -10,11 +9,6 @@ REPO_URL = "https://github.com/inner-daemons/wgpu.git"
 # Branch on the fork that carries the wgpu-side integration glue as a single
 # commit (see apply_glue). Replaces the string-patching this script used to do.
 GLUE_BRANCH = "c-backend-testrig-v30"
-
-# The wgpu patch routes `Instance::new` through wgpu-native only when built with
-# this cfg (see the branch's wgpu/src/api/instance.rs). `--check-cfg` declares it
-# so `-Dwarnings` builds don't trip `unexpected_cfgs`.
-TEST_RUSTFLAGS = "--cfg wgpu_custom_backend --check-cfg=cfg(wgpu_custom_backend)"
 LOCAL_WGPU = Path(".local-wgpu")
 WGPU_C_BACKEND_SRC = Path("wgpu-c-backend")
 CARGO_LOCK = Path("Cargo.lock")
@@ -107,13 +101,10 @@ def main():
         )
 
     if "--no-run" not in sys.argv:
-        # Build/run with the cfg that makes the patched wgpu defer to the C backend.
-        test_env = {**os.environ, "RUSTFLAGS": TEST_RUSTFLAGS}
         print("+ cargo run --bin wgpu-examples hello_workgroups")
         proc = subprocess.Popen(
             ("cargo", "run", "--bin", "wgpu-examples", "hello_workgroups"),
             cwd=".local-wgpu",
-            env=test_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -130,7 +121,7 @@ def main():
         if proc.returncode != 0:
             sys.exit(f"ERROR: hello_workgroups exited with code {proc.returncode}")
         try:
-            run("cargo", "xtask", "test", cwd=".local-wgpu", env=test_env)
+            run("cargo", "xtask", "test", cwd=".local-wgpu")
         except subprocess.CalledProcessError as e:
             sys.exit(e.returncode)
     print("Done.")
