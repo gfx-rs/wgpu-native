@@ -6,8 +6,9 @@ use conv::{
     map_bind_group_entry, map_bind_group_layout_entry, map_cooperative_scalar_type,
     map_device_descriptor, map_index_format, map_instance_backend_flags, map_instance_descriptor,
     map_pipeline_layout_descriptor, map_query_set_descriptor, map_query_set_index,
-    map_sampler_extras, map_shader_module, map_shader_runtime_checks, map_state_to_u32,
-    map_surface, map_surface_configuration, map_vertex_format, CreateSurfaceParams,
+    map_sampler_border_color_extras, map_shader_module, map_shader_runtime_checks,
+    map_state_to_u32, map_surface, map_surface_configuration, map_vertex_format,
+    CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -26,7 +27,7 @@ use utils::{
     string_view_into_label, string_view_into_str, texture_format_has_depth,
 };
 use wgc::{
-    command::{ComputePass, RenderPass},
+    command::{bundle_ffi, ComputePass, RenderPass},
     id, resource, Label,
 };
 
@@ -1265,7 +1266,10 @@ pub unsafe extern "C" fn wgpuBufferMapAsync(
     if let Err(cause) = context.buffer_map_async(
         buffer_id,
         offset as wgt::BufferAddress,
-        Some(size as wgt::BufferAddress),
+        match size {
+            conv::WGPU_WHOLE_MAP_SIZE => None,
+            _ => Some(size as wgt::BufferAddress),
+        },
         operation,
     ) {
         map_state.store(
@@ -2356,11 +2360,7 @@ pub unsafe extern "C" fn wgpuDeviceCreatePipelineLayout(
     };
     let descriptor = descriptor.expect("invalid descriptor");
 
-    let desc = follow_chain!(
-        map_pipeline_layout_descriptor(
-            (descriptor),
-            WGPUSType_PipelineLayoutExtras => native::WGPUPipelineLayoutExtras)
-    );
+    let desc = map_pipeline_layout_descriptor(descriptor);
     let (pipeline_layout_id, error) = context.device_create_pipeline_layout(device_id, &desc, None);
     if let Some(cause) = error {
         handle_error(
@@ -2901,35 +2901,29 @@ pub unsafe extern "C" fn wgpuDeviceCreateSampler(
     };
 
     let desc = match descriptor {
-        Some(descriptor) => {
-            let border_color = follow_chain!(
-                map_sampler_extras((descriptor),
-                WGPUSType_SamplerDescriptorExtras => native::WGPUSamplerDescriptorExtras)
-            );
-            wgc::resource::SamplerDescriptor {
-                label: string_view_into_label(descriptor.label),
-                address_modes: [
-                    conv::map_address_mode_native(descriptor.addressModeU)
-                        .unwrap_or(wgt::AddressMode::ClampToEdge),
-                    conv::map_address_mode_native(descriptor.addressModeV)
-                        .unwrap_or(wgt::AddressMode::ClampToEdge),
-                    conv::map_address_mode_native(descriptor.addressModeW)
-                        .unwrap_or(wgt::AddressMode::ClampToEdge),
-                ],
-                mag_filter: conv::map_filter_mode(descriptor.magFilter)
-                    .unwrap_or(wgt::FilterMode::Nearest),
-                min_filter: conv::map_filter_mode(descriptor.minFilter)
-                    .unwrap_or(wgt::FilterMode::Nearest),
-                mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter)
-                    .unwrap_or(wgt::MipmapFilterMode::Nearest),
-                lod_min_clamp: descriptor.lodMinClamp,
-                lod_max_clamp: descriptor.lodMaxClamp,
-                compare: conv::map_compare_function(descriptor.compare)
-                    .expect("Invalid compare function"),
-                anisotropy_clamp: descriptor.maxAnisotropy,
-                border_color,
-            }
-        }
+        Some(descriptor) => wgc::resource::SamplerDescriptor {
+            label: string_view_into_label(descriptor.label),
+            address_modes: [
+                conv::map_address_mode(descriptor.addressModeU)
+                    .unwrap_or(wgt::AddressMode::ClampToEdge),
+                conv::map_address_mode(descriptor.addressModeV)
+                    .unwrap_or(wgt::AddressMode::ClampToEdge),
+                conv::map_address_mode(descriptor.addressModeW)
+                    .unwrap_or(wgt::AddressMode::ClampToEdge),
+            ],
+            mag_filter: conv::map_filter_mode(descriptor.magFilter)
+                .unwrap_or(wgt::FilterMode::Nearest),
+            min_filter: conv::map_filter_mode(descriptor.minFilter)
+                .unwrap_or(wgt::FilterMode::Nearest),
+            mipmap_filter: conv::map_mipmap_filter_mode(descriptor.mipmapFilter)
+                .unwrap_or(wgt::MipmapFilterMode::Nearest),
+            lod_min_clamp: descriptor.lodMinClamp,
+            lod_max_clamp: descriptor.lodMaxClamp,
+            compare: conv::map_compare_function(descriptor.compare)
+                .expect("Invalid compare function"),
+            anisotropy_clamp: descriptor.maxAnisotropy,
+            border_color: follow_chain!(map_sampler_border_color_extras((*descriptor), WGPUSType_SamplerDescriptorExtras => native::WGPUSamplerDescriptorExtras)),
+        },
         // wgpu-core doesn't have Default implementation for SamplerDescriptor,
         // use defaults from spec.
         // ref: https://gpuweb.github.io/gpuweb/#GPUSamplerDescriptor
@@ -5366,17 +5360,16 @@ pub unsafe extern "C" fn wgpuDeviceCreateShaderModulePassthrough(
 pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
     pass: native::WGPURenderPassEncoder,
     offset: u32,
-    size_bytes: u32,
     data: *const u8,
+    size: u32,
 ) {
     let pass = pass.as_ref().expect("invalid render pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match pass.context.render_pass_set_immediates(
-        encoder,
-        offset,
-        make_slice(data, size_bytes as usize),
-    ) {
+    match pass
+        .context
+        .render_pass_set_immediates(encoder, offset, make_slice(data, size as usize))
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -5391,17 +5384,16 @@ pub unsafe extern "C" fn wgpuRenderPassEncoderSetImmediates(
 pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
     pass: native::WGPUComputePassEncoder,
     offset: u32,
-    size_bytes: u32,
     data: *const u8,
+    size: u32,
 ) {
     let pass = pass.as_ref().expect("invalid compute pass");
     let encoder = pass.encoder.as_mut().expect("invalid compute pass encoder");
 
-    match pass.context.compute_pass_set_immediates(
-        encoder,
-        offset,
-        make_slice(data, size_bytes as usize),
-    ) {
+    match pass
+        .context
+        .compute_pass_set_immediates(encoder, offset, make_slice(data, size as usize))
+    {
         Ok(()) => (),
         Err(cause) => handle_error(
             &pass.error_sink,
@@ -5416,19 +5408,15 @@ pub unsafe extern "C" fn wgpuComputePassEncoderSetImmediates(
 pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     bundle: native::WGPURenderBundleEncoder,
     offset: u32,
-    size_bytes: u32,
     data: *const u8,
+    size: u32,
 ) {
     let bundle = bundle.as_ref().expect("invalid render bundle");
     let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    let _ = bundle.context.render_bundle_encoder_set_immediates(
-        encoder,
-        offset,
-        make_slice(data, size_bytes as usize),
-    );
+    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size, data);
 }
 
 #[no_mangle]

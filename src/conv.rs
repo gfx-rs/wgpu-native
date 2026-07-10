@@ -39,45 +39,6 @@ map_enum_with_undefined!(
     Store
 );
 map_enum_with_undefined!(
-    map_address_mode,
-    WGPUAddressMode,
-    wgt::AddressMode,
-    "Unknown address mode",
-    ClampToEdge,
-    Repeat,
-    MirrorRepeat
-);
-
-#[inline]
-pub fn map_address_mode_native(value: native::WGPUAddressMode) -> Option<wgt::AddressMode> {
-    if value == native::WGPUNativeAddressMode_ClampToBorder as native::WGPUAddressMode {
-        return Some(wgt::AddressMode::ClampToBorder);
-    }
-    map_address_mode(value)
-}
-
-#[inline]
-pub fn map_sampler_border_color(color: native::WGPUSamplerBorderColor) -> wgt::SamplerBorderColor {
-    match color {
-        native::WGPUSamplerBorderColor_TransparentBlack => {
-            wgt::SamplerBorderColor::TransparentBlack
-        }
-        native::WGPUSamplerBorderColor_OpaqueBlack => wgt::SamplerBorderColor::OpaqueBlack,
-        native::WGPUSamplerBorderColor_OpaqueWhite => wgt::SamplerBorderColor::OpaqueWhite,
-        native::WGPUSamplerBorderColor_Zero => wgt::SamplerBorderColor::Zero,
-        x => panic!("Unknown sampler border color: {x}"),
-    }
-}
-
-#[inline]
-pub(crate) unsafe fn map_sampler_extras(
-    _descriptor: &native::WGPUSamplerDescriptor,
-    extras: Option<&native::WGPUSamplerDescriptorExtras>,
-) -> Option<wgt::SamplerBorderColor> {
-    extras.map(|e| map_sampler_border_color(e.borderColor))
-}
-
-map_enum_with_undefined!(
     map_filter_mode,
     WGPUFilterMode,
     wgt::FilterMode,
@@ -289,6 +250,17 @@ pub fn map_storage_texture_access(
     }
 }
 
+map_enum_with_undefined!(
+    map_sampler_border_color,
+    WGPUSamplerBorderColor,
+    wgt::SamplerBorderColor,
+    "Unknown sampler border color",
+    TransparentBlack,
+    OpaqueBlack,
+    OpaqueWhite,
+    Zero
+);
+
 // These are defined as UINT64_MAX in the header, but bindgen currently can't process that define.
 // See https://github.com/rust-lang/rust-bindgen/issues/2822
 pub const WGPU_WHOLE_SIZE: u64 = u64::MAX;
@@ -312,6 +284,18 @@ pub fn map_origin3d(native: &native::WGPUOrigin3D) -> wgt::Origin3d {
         x: native.x,
         y: native.y,
         z: native.z,
+    }
+}
+
+#[inline]
+pub fn map_address_mode(mode: native::WGPUAddressMode) -> Option<wgt::AddressMode> {
+    match mode {
+        native::WGPUAddressMode_Undefined => None,
+        native::WGPUAddressMode_ClampToEdge => Some(wgt::AddressMode::ClampToEdge),
+        native::WGPUAddressMode_Repeat => Some(wgt::AddressMode::Repeat),
+        native::WGPUAddressMode_MirrorRepeat => Some(wgt::AddressMode::MirrorRepeat),
+        native::WGPUNativeAddressMode_ClampToBorder => Some(wgt::AddressMode::ClampToBorder),
+        _ => panic!("Unknown address mode"),
     }
 }
 
@@ -555,7 +539,6 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
 #[inline]
 pub unsafe fn map_pipeline_layout_descriptor<'a>(
     des: &native::WGPUPipelineLayoutDescriptor,
-    extras: Option<&native::WGPUPipelineLayoutExtras>,
 ) -> wgc::binding_model::PipelineLayoutDescriptor<'a> {
     let bind_group_layouts = make_slice(des.bindGroupLayouts, des.bindGroupLayoutCount)
         .iter()
@@ -569,12 +552,7 @@ pub unsafe fn map_pipeline_layout_descriptor<'a>(
         })
         .collect::<Vec<_>>();
 
-    // immediateSize was added to the main descriptor; fall back to the legacy extras chain.
-    let immediate_size = if des.immediateSize != 0 {
-        des.immediateSize
-    } else {
-        extras.map_or(0, |extras| extras.immediateDataSize)
-    };
+    let immediate_size = des.immediateSize;
 
     wgc::binding_model::PipelineLayoutDescriptor {
         label: string_view_into_label(des.label),
@@ -1290,13 +1268,10 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_ASTC12x12Unorm => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm }),
         native::WGPUTextureFormat_ASTC12x12UnormSrgb => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb }),
 
+        // now in webgpu.h
+        native::WGPUTextureFormat_R16Unorm => Some(wgt::TextureFormat::R16Unorm),
+        native::WGPUTextureFormat_R16Snorm => Some(wgt::TextureFormat::R16Snorm),
         // wgpu.h extended
-        native::WGPUNativeTextureFormat_R16Unorm => Some(wgt::TextureFormat::R16Unorm),
-        native::WGPUNativeTextureFormat_R16Snorm => Some(wgt::TextureFormat::R16Snorm),
-        native::WGPUNativeTextureFormat_Rg16Unorm => Some(wgt::TextureFormat::Rg16Unorm),
-        native::WGPUNativeTextureFormat_Rg16Snorm => Some(wgt::TextureFormat::Rg16Snorm),
-        native::WGPUNativeTextureFormat_Rgba16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
-        native::WGPUNativeTextureFormat_Rgba16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
         native::WGPUNativeTextureFormat_P010  => Some(wgt::TextureFormat::P010),
         WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT   => Some(wgt::TextureFormat::R64Uint),
@@ -1424,9 +1399,9 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Unorm } => Some(native::WGPUTextureFormat_ASTC12x12Unorm),
         wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::UnormSrgb } => Some(native::WGPUTextureFormat_ASTC12x12UnormSrgb),
 
+        wgt::TextureFormat::R16Unorm => Some(native::WGPUTextureFormat_R16Unorm),
+        wgt::TextureFormat::R16Snorm => Some(native::WGPUTextureFormat_R16Snorm),
         // wgpu.h extended
-        wgt::TextureFormat::R16Unorm => Some(native::WGPUNativeTextureFormat_R16Unorm),
-        wgt::TextureFormat::R16Snorm => Some(native::WGPUNativeTextureFormat_R16Snorm),
         wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
         wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010),
         wgt::TextureFormat::R64Uint => Some(WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT),
@@ -1898,7 +1873,7 @@ pub fn map_bind_group_entry<'a>(
                     buffer: buffer.id,
                     offset: entry.offset,
                     size: match entry.size {
-                        0 => panic!("invalid size"),
+                        0 => panic!("buffer supplied to bind group must have size greater than 0"),
                         WGPU_WHOLE_SIZE => None,
                         _ => Some(entry.size),
                     },
@@ -2472,6 +2447,16 @@ pub fn map_shader_runtime_checks(
         mesh_shader_primitive_indices_clamp: (value
             & native::WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp)
             != 0,
+    }
+}
+
+pub fn map_sampler_border_color_extras(
+    _descriptor: native::WGPUSamplerDescriptor,
+    extras: Option<&native::WGPUSamplerDescriptorExtras>,
+) -> Option<wgt::SamplerBorderColor> {
+    match extras {
+        Some(extras) => map_sampler_border_color(extras.samplerBorderColor),
+        None => None,
     }
 }
 

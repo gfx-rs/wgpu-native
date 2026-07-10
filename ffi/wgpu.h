@@ -25,24 +25,23 @@ typedef enum WGPUNativeSType
     WGPUSType_DeviceExtras = 0x00030001,
     /** Identifies @ref WGPUNativeLimits. */
     WGPUSType_NativeLimits = 0x00030002,
-    /** Identifies @ref WGPUPipelineLayoutExtras. */
-    WGPUSType_PipelineLayoutExtras = 0x00030003,
     /** Identifies @ref WGPUShaderSourceGLSL. */
-    WGPUSType_ShaderSourceGLSL = 0x00030004,
+    WGPUSType_ShaderSourceGLSL = 0x00030003,
     /** Identifies @ref WGPUInstanceExtras. */
-    WGPUSType_InstanceExtras = 0x00030006,
+    WGPUSType_InstanceExtras = 0x00030004,
     /** Identifies @ref WGPUBindGroupEntryExtras. */
-    WGPUSType_BindGroupEntryExtras = 0x00030007,
+    WGPUSType_BindGroupEntryExtras = 0x00030005,
     /** Identifies @ref WGPUBindGroupLayoutEntryExtras. */
-    WGPUSType_BindGroupLayoutEntryExtras = 0x00030008,
+    WGPUSType_BindGroupLayoutEntryExtras = 0x00030006,
     /** Identifies @ref WGPUQuerySetDescriptorExtras. */
-    WGPUSType_QuerySetDescriptorExtras = 0x00030009,
+    WGPUSType_QuerySetDescriptorExtras = 0x00030007,
     /** Identifies @ref WGPUSurfaceConfigurationExtras. */
-    WGPUSType_SurfaceConfigurationExtras = 0x0003000A,
+    WGPUSType_SurfaceConfigurationExtras = 0x00030008,
     /** Identifies @ref WGPUSurfaceSourceSwapChainPanel. */
-    WGPUSType_SurfaceSourceSwapChainPanel = 0x0003000B,
-    /** Identifies @ref WGPUPrimitiveStateExtras. */
-    WGPUSType_PrimitiveStateExtras = 0x0003000C,
+    WGPUSType_SurfaceSourceSwapChainPanel = 0x00030009,
+    WGPUSType_PrimitiveStateExtras = 0x0003000A,
+    /** Identifies @ref WGPUSamplerDescriptorExtras. */
+    WGPUSType_SamplerDescriptorExtras = 0x0003000B,
     /** Identifies @ref WGPUComputePipelineDescriptorExtras. */
     WGPUSType_ComputePipelineDescriptorExtras = 0x0003000D,
     /** Identifies @ref WGPURenderPipelineDescriptorExtras. */
@@ -51,8 +50,6 @@ typedef enum WGPUNativeSType
     WGPUSType_MeshPipelineDescriptorExtras = 0x0003000F,
     /** Identifies @ref WGPUAdapterInfoExtras. */
     WGPUSType_AdapterInfoExtras = 0x00030010,
-    /** Identifies @ref WGPUSamplerDescriptorExtras. */
-    WGPUSType_SamplerDescriptorExtras = 0x00030011,
     /** Identifies @ref WGPURenderPassDescriptorExtras. */
     WGPUSType_RenderPassDescriptorExtras = 0x00030012,
     /** Identifies @ref WGPURenderBundleEncoderDescriptorExtras. */
@@ -119,8 +116,8 @@ typedef enum WGPUNativeFeature
      * Enables @ref wgpuRenderPassEncoderSetImmediates,
      * @ref wgpuComputePassEncoderSetImmediates,
      * @ref wgpuRenderBundleEncoderSetImmediates,
-     * non-zero @c immediateDataSize in @ref WGPUPipelineLayoutExtras,
-     * and non-zero @c maxImmediateSize in @ref WGPUNativeLimits.
+     * non-zero @c immediateSize in @ref WGPUPipelineLayout,
+     * and non-zero @c maxImmediateSize in @ref WGPULimits.
      *
      * A block of immediate data can be declared in WGSL with
      * @c var<immediate>:
@@ -284,9 +281,9 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_PartiallyBoundBindingArray = 0x0003000A,
     /**
      * Enables normalized 16-bit texture formats:
-     * @ref WGPUNativeTextureFormat_R16Unorm, @ref WGPUNativeTextureFormat_R16Snorm,
-     * @ref WGPUNativeTextureFormat_Rg16Unorm, @ref WGPUNativeTextureFormat_Rg16Snorm,
-     * @ref WGPUNativeTextureFormat_Rgba16Unorm, @ref WGPUNativeTextureFormat_Rgba16Snorm.
+     * @ref WGPUTextureFormat_R16Unorm, @ref WGPUTextureFormat_R16Snorm,
+     * @ref WGPUTextureFormat_RG16Unorm, @ref WGPUTextureFormat_RG16Snorm,
+     * @ref WGPUTextureFormat_RGBA16Unorm, @ref WGPUTextureFormat_RGBA16Snorm.
      *
      * Supported platforms:
      * - Vulkan
@@ -1448,20 +1445,6 @@ typedef struct WGPUNativeLimits
     /*.maxMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
 })
 
-typedef struct WGPUPipelineLayoutExtras
-{
-    WGPUChainedStruct chain;
-    /**
-     * The number of bytes of immediate data allocated for use in shaders
-     * attached to this pipeline.
-     *
-     * The @c var<immediate> declarations in the shader must be equal or
-     * smaller than this size. If this value is non-zero,
-     * @ref WGPUNativeFeature_Immediates must be enabled.
-     */
-    uint32_t immediateDataSize;
-} WGPUPipelineLayoutExtras;
-
 /**
  * Identifier for a particular call to @ref wgpuQueueSubmitForIndex.
  *
@@ -1801,33 +1784,6 @@ typedef struct WGPUSurfaceSourceSwapChainPanel
 } WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
- * Native extension for @ref WGPUAddressMode.
- *
- * Cast to @c WGPUAddressMode when storing in sampler descriptor fields.
- */
-typedef enum WGPUNativeAddressMode
-{
-    /** Clamp to border color. Requires @ref WGPUNativeFeature_AddressModeClampToBorder. */
-    WGPUNativeAddressMode_ClampToBorder = 0x00030001,
-    WGPUNativeAddressMode_Force32 = 0x7FFFFFFF
-} WGPUNativeAddressMode;
-
-/**
- * Border color to use when address mode is @ref WGPUNativeAddressMode_ClampToBorder.
- *
- * Pass via @ref WGPUSamplerDescriptorExtras.
- */
-typedef enum WGPUSamplerBorderColor
-{
-    WGPUSamplerBorderColor_TransparentBlack = 0x00000000,
-    WGPUSamplerBorderColor_OpaqueBlack = 0x00000001,
-    WGPUSamplerBorderColor_OpaqueWhite = 0x00000002,
-    /** Requires @ref WGPUNativeFeature_AddressModeClampToZero. */
-    WGPUSamplerBorderColor_Zero = 0x00000003,
-    WGPUSamplerBorderColor_Force32 = 0x7FFFFFFF
-} WGPUSamplerBorderColor;
-
-/**
  * Memory allocation strategy for device creation.
  *
  * Pass via @ref WGPUDeviceDescriptorExtras.
@@ -1874,19 +1830,6 @@ typedef struct WGPUPrimitiveStateExtras
      */
     WGPUBool conservative;
 } WGPUPrimitiveStateExtras WGPU_STRUCTURE_ATTRIBUTE;
-
-/**
- * Chained in @ref WGPUSamplerDescriptor to set the border color.
- *
- * Required when any address mode is @ref WGPUNativeAddressMode_ClampToBorder.
- * Requires @ref WGPUNativeFeature_AddressModeClampToBorder (or
- * @ref WGPUNativeFeature_AddressModeClampToZero for @ref WGPUSamplerBorderColor_Zero).
- */
-typedef struct WGPUSamplerDescriptorExtras
-{
-    WGPUChainedStruct chain;
-    WGPUSamplerBorderColor borderColor;
-} WGPUSamplerDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Chained in @ref WGPURenderPassDescriptor to enable multiview rendering.
@@ -2252,38 +2195,6 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void
 
 typedef enum WGPUNativeTextureFormat
 {
-    // From Features::TEXTURE_FORMAT_16BIT_NORM
-    WGPUNativeTextureFormat_R16Unorm = 0x00030001,
-    /**
-     * Red channel only. 16-bit signed integer per channel.
-     * [-32767, 32767] converted to/from float [-1, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_R16Snorm = 0x00030002,
-    /**
-     * Red and green channels. 16-bit unsigned integer per channel.
-     * [0, 65535] converted to/from float [0, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rg16Unorm = 0x00030003,
-    /**
-     * Red and green channels. 16-bit signed integer per channel.
-     * [-32767, 32767] converted to/from float [-1, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rg16Snorm = 0x00030004,
-    /**
-     * Red, green, blue, and alpha channels. 16-bit unsigned integer per channel.
-     * [0, 65535] converted to/from float [0, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rgba16Unorm = 0x00030005,
-    /**
-     * Red, green, blue, and alpha channels. 16-bit signed integer per channel.
-     * [-32767, 32767] converted to/from float [-1, 1] in shader.
-     * Requires @ref WGPUNativeFeature_TextureFormat16bitNorm.
-     */
-    WGPUNativeTextureFormat_Rgba16Snorm = 0x00030006,
     /**
      * YUV 4:2:0 chroma subsampled format (NV12).
      * Plane 0 contains R8Unorm luminance (Y), Plane 1 contains Rg8Unorm
@@ -2525,6 +2436,27 @@ typedef struct WGPUExternalTextureDescriptor {
     float loadTransform[6];
 } WGPUExternalTextureDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
+typedef enum WGPUNativeAddressMode
+{
+    WGPUNativeAddressMode_ClampToBorder = 0x00000004,
+    WGPUNativeAddressMode_Force32 = 0x7FFFFFFF
+} WGPUNativeAddressMode WGPU_ENUM_ATTRIBUTE;
+
+typedef enum WGPUSamplerBorderColor
+{
+    WGPUSamplerBorderColor_Undefined = 0x00000000,
+    WGPUSamplerBorderColor_TransparentBlack = 0x00000001,
+    WGPUSamplerBorderColor_OpaqueBlack = 0x00000002,
+    WGPUSamplerBorderColor_OpaqueWhite = 0x00000003,
+    WGPUSamplerBorderColor_Zero = 0x00000004,
+    WGPUSamplerBorderColor_Force32 = 0x7FFFFFFF
+} WGPUSamplerBorderColor;
+
+typedef struct WGPUSamplerDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPUSamplerBorderColor samplerBorderColor;
+} WGPUSamplerDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -2588,10 +2520,6 @@ extern "C"
      * Returns NULL when the active backend is not Metal or when the handle is unavailable.
      */
     void *wgpuTextureGetNativeMetalTexture(WGPUTexture texture);
-
-    void wgpuRenderPassEncoderSetImmediates(WGPURenderPassEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const *data);
-    void wgpuComputePassEncoderSetImmediates(WGPUComputePassEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const *data);
-    void wgpuRenderBundleEncoderSetImmediates(WGPURenderBundleEncoder encoder, uint32_t offset, uint32_t sizeBytes, void const *data);
 
     void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
     void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);

@@ -645,8 +645,8 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
             wgpuRenderBundleEncoderSetImmediates(
                 self.ptr,
                 offset,
-                data.len() as u32,
                 data.as_ptr().cast(),
+                data.len() as u32,
             )
         };
     }

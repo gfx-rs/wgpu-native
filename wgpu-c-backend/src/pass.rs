@@ -64,7 +64,7 @@ impl ComputePassInterface for CComputePass {
 
     fn set_immediates(&mut self, offset: u32, data: &[u8]) {
         unsafe {
-            wgpuComputePassEncoderSetImmediates(self.ptr, offset, data.len() as u32, data.as_ptr())
+            wgpuComputePassEncoderSetImmediates(self.ptr, offset, data.as_ptr(), data.len() as u32)
         };
     }
 
@@ -210,7 +210,7 @@ impl RenderPassInterface for CRenderPass {
 
     fn set_immediates(&mut self, offset: u32, data: &[u8]) {
         unsafe {
-            wgpuRenderPassEncoderSetImmediates(self.ptr, offset, data.len() as u32, data.as_ptr())
+            wgpuRenderPassEncoderSetImmediates(self.ptr, offset, data.as_ptr(), data.len() as u32)
         };
     }
 

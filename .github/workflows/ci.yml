@@ -25,7 +25,7 @@ jobs:
     name: Code integrity checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: true
       - name: Set up Python
@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Install Rust toolchain
@@ -57,7 +57,7 @@ jobs:
       RUSTDOCFLAGS: ""
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - name: Install Rust toolchain
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - uses: taiki-e/install-action@cargo-deny
@@ -180,7 +180,7 @@ jobs:
               echo "LDFLAGS=-isysroot $SDKROOT" >> $GITHUB_ENV
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - if: matrix.target == 'i686-pc-windows-gnu'
@@ -271,7 +271,7 @@ jobs:
             setup_env: choco install -y make
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: true
       - if: contains(matrix.target, 'windows-msvc')

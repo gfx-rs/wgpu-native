@@ -1330,7 +1330,7 @@ impl DeviceInterface for CDevice {
                     next: std::ptr::null_mut(),
                     sType: native::WGPUSType_SamplerDescriptorExtras,
                 },
-                borderColor: conv::border_color_to_native(bc),
+                samplerBorderColor: conv::border_color_to_native(bc),
             });
         let c_desc = native::WGPUSamplerDescriptor {
             nextInChain: extras

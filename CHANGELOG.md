@@ -17,8 +17,13 @@ Wgpu-native has reached feature-parity with upstream wgpu. This introduces ray t
 
 By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
 
-### Changed
+### Fixed
+- `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
+### Changed
+- `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h, with `size_bytes` renamed to `size` and argument order adjusted. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
+- moved 16bit norm textures into spec and out of wgpu.h `WGPUNativeTextureFormat_Rgba16Unorm` -> `WGPUTextureFormat_RGBA16Unorm`. by @Vipitis in [#tbd](tbd)
+- Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
 - Updated all wgpu crates to v29
 - MSRV bumped from 1.82 to 1.87.
 - **Push constants renamed to immediates.** This matches the upstream wgpu rename.
@@ -74,6 +79,10 @@ By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
 - `WGPUNativeFeature_StorageTextureArrayNonUniformIndexing`, `WGPUNativeFeature_Multiview`, `WGPUNativeFeature_ShaderFloat32Atomic`, `WGPUNativeFeature_TextureAtomic`, `WGPUNativeFeature_TextureFormatP010`, `WGPUNativeFeature_PipelineCache`, `WGPUNativeFeature_ShaderInt64AtomicMinMax`, `WGPUNativeFeature_ShaderInt64AtomicAllOps`, `WGPUNativeFeature_TextureInt64Atomic`, `WGPUNativeFeature_ShaderBarycentrics`, `WGPUNativeFeature_SelectiveMultiview`, `WGPUNativeFeature_MultisampleArray`, `WGPUNativeFeature_CooperativeMatrix`, `WGPUNativeFeature_ShaderPerVertex`, `WGPUNativeFeature_ShaderDrawIndex`, `WGPUNativeFeature_AccelerationStructureBindingArray`, `WGPUNativeFeature_MemoryDecorationCoherent`, `WGPUNativeFeature_MemoryDecorationVolatile` @lisyarus
 - `wgpuCommandEncoderClearTexture` @lisyarus
 - `wgpuDeviceCreateShaderModuleTrusted` @lisyarus
+- Sampler address modes ClampToBorder and ClampToZero supported: @lisyarus
+  - `WGPUNativeAddressMode_ClampToBorder` address mode
+  - `WGPUSamplerBorderColor` enum
+  - `WGPUSamplerDescriptorExtras` struct to be chained in `WGPUSamplerDescriptor`
 
 ### Removed
 

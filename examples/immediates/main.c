@@ -100,14 +100,6 @@ int main(int argc, char *argv[]) {
               });
   assert(staging_buffer);
 
-  WGPUPipelineLayoutExtras pipeline_layout_extras = {
-      .chain =
-          {
-              .sType = WGPUSType_PipelineLayoutExtras,
-          },
-      .immediateDataSize = sizeof(uint32_t),
-  };
-
   WGPUBindGroupLayoutEntry bind_group_layout_entries[] = {
       {
           .binding = 0,
@@ -130,9 +122,10 @@ int main(int argc, char *argv[]) {
 
   WGPUPipelineLayoutDescriptor pipeline_layout_desc = {
       .label = {"pipeline_layout", WGPU_STRLEN},
-      .nextInChain = &pipeline_layout_extras.chain,
+      .nextInChain = NULL,
       .bindGroupLayouts = &bind_group_layout,
       .bindGroupLayoutCount = 1,
+      .immediateSize = sizeof(uint32_t),
   };
   WGPUPipelineLayout pipeline_layout =
       wgpuDeviceCreatePipelineLayout(device, &pipeline_layout_desc);
@@ -187,7 +180,7 @@ int main(int argc, char *argv[]) {
   for (uint32_t i = 0; i < numbers_length; i++) {
     uint32_t immediate = i;
     wgpuComputePassEncoderSetImmediates(compute_pass_encoder, 0,
-                                        sizeof(uint32_t), &immediate);
+                                        &immediate, sizeof(uint32_t));
 
     wgpuComputePassEncoderDispatchWorkgroups(compute_pass_encoder,
                                              numbers_length, 1, 1);
