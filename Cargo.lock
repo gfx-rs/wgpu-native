@@ -179,16 +179,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
-name = "ctor"
-version = "1.0.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d765eb1c0bda10d31e0ea185f5ee15da532d60b0912d2bd1441783439e749c5"
-dependencies = [
- "link-section",
- "linktime-proc-macro",
-]
-
-[[package]]
 name = "dispatch2"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -353,8 +343,6 @@ dependencies = [
  "allocator-api2",
  "equivalent",
  "foldhash 0.2.0",
- "serde",
- "serde_core",
 ]
 
 [[package]]
@@ -362,6 +350,11 @@ name = "hashbrown"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
+dependencies = [
+ "foldhash 0.2.0",
+ "serde",
+ "serde_core",
+]
 
 [[package]]
 name = "indexmap"
@@ -464,18 +457,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
-name = "link-section"
-version = "0.17.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d1e908a416d6e9f725743b84a36feea40c4c131e805fbc26d61f9f451f36080"
-
-[[package]]
-name = "linktime-proc-macro"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a44cd706ff0d503ee32b2071166510ca27e281228de10cd3aa8d35ff94560f81"
-
-[[package]]
 name = "litrs"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -526,8 +507,8 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "naga"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -536,10 +517,11 @@ dependencies = [
  "cfg_aliases",
  "codespan-reporting",
  "half",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "indexmap",
  "libm",
  "log",
+ "naga-types",
  "num-traits",
  "once_cell",
  "petgraph",
@@ -549,6 +531,18 @@ dependencies = [
  "spirv",
  "thiserror",
  "unicode-ident",
+]
+
+[[package]]
+name = "naga-types"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
+dependencies = [
+ "hashbrown 0.17.0",
+ "indexmap",
+ "rustc-hash 1.1.0",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -601,6 +595,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "objc2-core-graphics"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e022c9d066895efa1345f8e33e584b9f958da2fd4cd116792e15e07e4720a807"
+dependencies = [
+ "dispatch2",
+ "objc2",
+ "objc2-core-foundation",
+ "objc2-io-surface",
+]
+
+[[package]]
 name = "objc2-encode"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -611,6 +617,17 @@ name = "objc2-foundation"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
+dependencies = [
+ "bitflags",
+ "objc2",
+ "objc2-core-foundation",
+]
+
+[[package]]
+name = "objc2-io-surface"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "180788110936d59bab6bd83b6060ffdfffb3b922ba1396b312ae795e1de9d81d"
 dependencies = [
  "bitflags",
  "objc2",
@@ -638,6 +655,7 @@ dependencies = [
  "bitflags",
  "objc2",
  "objc2-core-foundation",
+ "objc2-core-graphics",
  "objc2-foundation",
  "objc2-metal",
 ]
@@ -1083,8 +1101,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -1092,7 +1110,7 @@ dependencies = [
  "cfg-if",
  "cfg_aliases",
  "document-features",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "js-sys",
  "log",
  "naga",
@@ -1114,7 +1132,6 @@ dependencies = [
 name = "wgpu-c-backend"
 version = "0.0.0"
 dependencies = [
- "ctor",
  "log",
  "raw-window-metal",
  "wgpu",
@@ -1123,8 +1140,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "arrayvec",
  "bit-set",
@@ -1133,11 +1150,12 @@ dependencies = [
  "bytemuck",
  "cfg_aliases",
  "document-features",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "indexmap",
  "log",
  "macro_rules_attribute",
  "naga",
+ "naga-types",
  "once_cell",
  "parking_lot",
  "portable-atomic",
@@ -1157,32 +1175,32 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core-deps-apple"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "wgpu-hal",
 ]
 
 [[package]]
 name = "wgpu-core-deps-emscripten"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "wgpu-hal",
 ]
 
 [[package]]
 name = "wgpu-core-deps-windows-linux-android"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "wgpu-hal",
 ]
 
 [[package]]
 name = "wgpu-hal"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -1196,16 +1214,18 @@ dependencies = [
  "glow",
  "glutin_wgl_sys",
  "gpu-allocator",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "js-sys",
  "khronos-egl",
  "libc",
  "libloading",
  "log",
  "naga",
+ "naga-types",
  "ndk-sys",
  "objc2",
  "objc2-core-foundation",
+ "objc2-core-graphics",
  "objc2-foundation",
  "objc2-metal",
  "objc2-quartz-core",
@@ -1234,8 +1254,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-naga-bridge"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "naga",
  "wgpu-types",
@@ -1262,13 +1282,14 @@ dependencies = [
 
 [[package]]
 name = "wgpu-types"
-version = "29.0.0"
-source = "git+https://github.com/inner-daemons/wgpu.git?branch=c-backend#70a4e0717b35df8c1ec0392bd5a88c8cd87c7637"
+version = "30.0.0"
+source = "git+https://github.com/gfx-rs/wgpu.git?rev=8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1#8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1"
 dependencies = [
  "bitflags",
  "bytemuck",
  "js-sys",
  "log",
+ "naga-types",
  "raw-window-handle",
  "serde",
  "static_assertions",

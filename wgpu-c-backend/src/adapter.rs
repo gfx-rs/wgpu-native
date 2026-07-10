@@ -26,7 +26,11 @@ pub(crate) fn adapter_info_with_extras(
         backend,
         subgroup_min_size: info.subgroupMinSize,
         subgroup_max_size: info.subgroupMaxSize,
-        transient_saves_memory: extras.transientSavesMemory != 0,
+        transient_saves_memory: match extras.transientSavesMemory {
+            native::WGPUOptionalBool_True => Some(true),
+            native::WGPUOptionalBool_False => Some(false),
+            _ => None,
+        },
         limit_bucket: None,
     }
 }
@@ -343,6 +347,7 @@ impl AdapterInterface for CAdapter {
         flag!(WGPUDownlevelFlags_NonblockingQueryResolve => NONBLOCKING_QUERY_RESOLVE);
         flag!(WGPUDownlevelFlags_ShaderF16InF32 => SHADER_F16_IN_F32);
         flag!(WGPUDownlevelFlags_Msl21 => MSL2_1);
+        flag!(WGPUDownlevelFlags_TextureCompression => TEXTURE_COMPRESSION);
         let shader_model = match c.shaderModel {
             native::WGPUShaderModel_Sm2 => wgpu::ShaderModel::Sm2,
             native::WGPUShaderModel_Sm4 => wgpu::ShaderModel::Sm4,

@@ -45,6 +45,9 @@ pub fn instance_flags_to_native(flags: wgpu::InstanceFlags) -> native::WGPUInsta
     if flags.contains(wgpu::InstanceFlags::AUTOMATIC_TIMESTAMP_NORMALIZATION) {
         result |= native::WGPUInstanceFlag_AutomaticTimestampNormalization;
     }
+    if flags.contains(wgpu::InstanceFlags::STRICT_WEBGPU_COMPLIANCE) {
+        result |= native::WGPUInstanceFlag_StrictWebgpuCompliance;
+    }
     result
 }
 
@@ -265,11 +268,62 @@ pub fn map_feature(f: native::WGPUFeatureName) -> Option<wgpu::Features> {
         native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf => {
             Some(Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF)
         }
+        native::WGPUNativeFeature_ExperimentalRayTracingPipelines => {
+            Some(Features::EXPERIMENTAL_RAY_TRACING_PIPELINES)
+        }
         native::WGPUNativeFeature_VulkanGoogleDisplayTiming => {
             Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING)
         }
         _ => None,
     }
+}
+
+pub fn surface_color_space_to_native(
+    cs: wgpu::SurfaceColorSpace,
+) -> native::WGPUSurfaceColorSpace {
+    match cs {
+        wgpu::SurfaceColorSpace::Auto => native::WGPUSurfaceColorSpace_Auto,
+        wgpu::SurfaceColorSpace::Srgb => native::WGPUSurfaceColorSpace_Srgb,
+        wgpu::SurfaceColorSpace::ExtendedSrgbLinear => {
+            native::WGPUSurfaceColorSpace_ExtendedSrgbLinear
+        }
+        wgpu::SurfaceColorSpace::DisplayP3 => native::WGPUSurfaceColorSpace_DisplayP3,
+        wgpu::SurfaceColorSpace::Bt2100Pq => native::WGPUSurfaceColorSpace_Bt2100Pq,
+        wgpu::SurfaceColorSpace::Bt2100Hlg => native::WGPUSurfaceColorSpace_Bt2100Hlg,
+        wgpu::SurfaceColorSpace::ExtendedSrgb => native::WGPUSurfaceColorSpace_ExtendedSrgb,
+        wgpu::SurfaceColorSpace::ExtendedDisplayP3 => {
+            native::WGPUSurfaceColorSpace_ExtendedDisplayP3
+        }
+    }
+}
+
+pub fn map_surface_color_spaces(
+    cs: native::WGPUSurfaceColorSpaces,
+) -> wgpu::wgt::SurfaceColorSpaces {
+    let mut out = wgpu::wgt::SurfaceColorSpaces::empty();
+    let has = |bit: native::WGPUSurfaceColorSpaces| cs & bit != 0;
+    if has(native::WGPUSurfaceColorSpaces_Srgb) {
+        out |= wgpu::wgt::SurfaceColorSpaces::SRGB;
+    }
+    if has(native::WGPUSurfaceColorSpaces_ExtendedSrgbLinear) {
+        out |= wgpu::wgt::SurfaceColorSpaces::EXTENDED_SRGB_LINEAR;
+    }
+    if has(native::WGPUSurfaceColorSpaces_DisplayP3) {
+        out |= wgpu::wgt::SurfaceColorSpaces::DISPLAY_P3;
+    }
+    if has(native::WGPUSurfaceColorSpaces_Bt2100Pq) {
+        out |= wgpu::wgt::SurfaceColorSpaces::BT2100_PQ;
+    }
+    if has(native::WGPUSurfaceColorSpaces_Bt2100Hlg) {
+        out |= wgpu::wgt::SurfaceColorSpaces::BT2100_HLG;
+    }
+    if has(native::WGPUSurfaceColorSpaces_ExtendedSrgb) {
+        out |= wgpu::wgt::SurfaceColorSpaces::EXTENDED_SRGB;
+    }
+    if has(native::WGPUSurfaceColorSpaces_ExtendedDisplayP3) {
+        out |= wgpu::wgt::SurfaceColorSpaces::EXTENDED_DISPLAY_P3;
+    }
+    out
 }
 
 pub fn map_supported_features(sf: &native::WGPUSupportedFeatures) -> wgpu::Features {
@@ -576,6 +630,10 @@ pub fn features_to_native(features: wgpu::Features) -> Vec<native::WGPUFeatureNa
         native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf
     );
     push!(
+        Features::EXPERIMENTAL_RAY_TRACING_PIPELINES,
+        native::WGPUNativeFeature_ExperimentalRayTracingPipelines
+    );
+    push!(
         Features::VULKAN_GOOGLE_DISPLAY_TIMING,
         native::WGPUNativeFeature_VulkanGoogleDisplayTiming
     );
@@ -653,6 +711,10 @@ pub fn native_limits_from_wgpu(l: &wgpu::Limits) -> native::WGPUNativeLimits {
     out.maxBlasGeometryCount = l.max_blas_geometry_count;
     out.maxTlasInstanceCount = l.max_tlas_instance_count;
     out.maxAccelerationStructuresPerShaderStage = l.max_acceleration_structures_per_shader_stage;
+    out.maxBuffersAndAccelerationStructuresPerShaderStage =
+        l.max_buffers_and_acceleration_structures_per_shader_stage;
+    out.maxRayDispatchCount = l.max_ray_dispatch_count;
+    out.maxRayRecursionDepth = l.max_ray_recursion_depth;
     out
 }
 
@@ -799,6 +861,12 @@ pub fn map_limits(
             max_acceleration_structures_per_shader_stage,
             n.maxAccelerationStructuresPerShaderStage
         );
+        set!(
+            max_buffers_and_acceleration_structures_per_shader_stage,
+            n.maxBuffersAndAccelerationStructuresPerShaderStage
+        );
+        set!(max_ray_dispatch_count, n.maxRayDispatchCount);
+        set!(max_ray_recursion_depth, n.maxRayRecursionDepth);
     }
     l
 }
@@ -1768,30 +1836,31 @@ pub fn color_writes_to_native(w: wgpu::ColorWrites) -> native::WGPUColorWriteMas
 pub fn load_op_color_to_native(
     op: &wgpu::LoadOp<wgpu::Color>,
 ) -> (native::WGPULoadOp, native::WGPUColor) {
+    let zero = native::WGPUColor {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+    };
     match op {
-        wgpu::LoadOp::Load | wgpu::LoadOp::DontCare(_) => (
-            native::WGPULoadOp_Load,
-            native::WGPUColor {
-                r: 0.0,
-                g: 0.0,
-                b: 0.0,
-                a: 0.0,
-            },
-        ),
+        wgpu::LoadOp::Load => (native::WGPULoadOp_Load, zero),
+        wgpu::LoadOp::DontCare(_) => (native::WGPULoadOp_DontCare as native::WGPULoadOp, zero),
         wgpu::LoadOp::Clear(c) => (native::WGPULoadOp_Clear, color_to_native(*c)),
     }
 }
 
 pub fn load_op_f32_to_native(op: &wgpu::Operations<f32>) -> (native::WGPULoadOp, f32) {
     match op.load {
-        wgpu::LoadOp::Load | wgpu::LoadOp::DontCare(_) => (native::WGPULoadOp_Load, f32::NAN),
+        wgpu::LoadOp::Load => (native::WGPULoadOp_Load, f32::NAN),
+        wgpu::LoadOp::DontCare(_) => (native::WGPULoadOp_DontCare as native::WGPULoadOp, f32::NAN),
         wgpu::LoadOp::Clear(v) => (native::WGPULoadOp_Clear, v),
     }
 }
 
 pub fn load_op_u32_to_native(op: &wgpu::Operations<u32>) -> (native::WGPULoadOp, u32) {
     match op.load {
-        wgpu::LoadOp::Load | wgpu::LoadOp::DontCare(_) => (native::WGPULoadOp_Load, 0),
+        wgpu::LoadOp::Load => (native::WGPULoadOp_Load, 0),
+        wgpu::LoadOp::DontCare(_) => (native::WGPULoadOp_DontCare as native::WGPULoadOp, 0),
         wgpu::LoadOp::Clear(v) => (native::WGPULoadOp_Clear, v),
     }
 }

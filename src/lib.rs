@@ -26,7 +26,7 @@ use utils::{
     string_view_into_label, string_view_into_str, texture_format_has_depth,
 };
 use wgc::{
-    command::{bundle_ffi, ComputePass, RenderPass},
+    command::{ComputePass, RenderPass},
     id, resource, Label,
 };
 
@@ -859,7 +859,7 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
         && unsafe { (*info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
     {
         let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
-        extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
+        extras.transientSavesMemory = conv::optional_bool_to_native(result.transient_saves_memory);
         extras.devicePciBusId = utils::str_into_owned_string_view(&result.device_pci_bus_id);
     }
 
@@ -1454,8 +1454,8 @@ pub unsafe extern "C" fn wgpuCommandEncoderBeginRenderPass(
                 })
                 .collect(),
         ),
-        depth_stencil_attachment: depth_stencil_attachment.as_ref(),
-        timestamp_writes: timestamp_writes.as_ref(),
+        depth_stencil_attachment,
+        timestamp_writes,
         occlusion_query_set: descriptor.occlusionQuerySet.as_ref().map(|v| v.id),
         multiview_mask: {
             let mut mask = None;
@@ -3805,7 +3805,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDraw(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_draw(
+    let _ = bundle.context.render_bundle_encoder_draw(
         encoder,
         vertex_count,
         instance_count,
@@ -3828,7 +3828,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexed(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_draw_indexed(
+    let _ = bundle.context.render_bundle_encoder_draw_indexed(
         encoder,
         index_count,
         instance_count,
@@ -3853,7 +3853,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndexedIndirect(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_draw_indexed_indirect(
+    let _ = bundle.context.render_bundle_encoder_draw_indexed_indirect(
         encoder,
         indirect_buffer_id,
         indirect_offset,
@@ -3875,7 +3875,10 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_draw_indirect(encoder, indirect_buffer_id, indirect_offset);
+    let _ =
+        bundle
+            .context
+            .render_bundle_encoder_draw_indirect(encoder, indirect_buffer_id, indirect_offset);
 }
 
 #[no_mangle]
@@ -3887,7 +3890,7 @@ pub unsafe extern "C-unwind" fn wgpuRenderBundleEncoderFinish(
     let context = &bundle.context;
     let encoder = bundle.encoder.as_mut().expect("invalid render bundle");
     let encoder = encoder.take().expect("invalid render bundle");
-    let encoder = Box::from_raw(encoder);
+    let mut encoder = Box::from_raw(encoder);
 
     let desc = match descriptor {
         Some(descriptor) => wgt::RenderBundleDescriptor {
@@ -3896,7 +3899,10 @@ pub unsafe extern "C-unwind" fn wgpuRenderBundleEncoderFinish(
         None => wgt::RenderBundleDescriptor::default(),
     };
 
-    let (render_bundle_id, error) = context.render_bundle_encoder_finish(encoder, &desc, None);
+    // v30 takes the encoder by `&mut` instead of consuming it; the `Box` is
+    // still dropped at end of scope, freeing the reclaimed raw pointer.
+    let (render_bundle_id, error) =
+        context.render_bundle_encoder_finish(&mut encoder, &desc, None);
     if let Some(cause) = error {
         handle_error_fatal(cause, "wgpuRenderBundleEncoderFinish");
     }
@@ -3968,12 +3974,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetBindGroup(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_bind_group(
+    let _ = bundle.context.render_bundle_encoder_set_bind_group(
         encoder,
         group_index,
         bind_group_id,
-        dynamic_offsets,
-        dynamic_offset_count,
+        make_slice(dynamic_offsets, dynamic_offset_count),
     );
 }
 
@@ -3991,7 +3996,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetIndexBuffer(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_index_buffer(
+    let _ = bundle.context.render_bundle_encoder_set_index_buffer(
         encoder,
         buffer_id,
         conv::map_index_format(format).expect("invalid index format"),
@@ -4015,7 +4020,9 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetPipeline(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_pipeline(encoder, pipeline_id);
+    let _ = bundle
+        .context
+        .render_bundle_encoder_set_pipeline(encoder, pipeline_id);
 }
 
 #[no_mangle]
@@ -4033,7 +4040,7 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetVertexBuffer(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_vertex_buffer(
+    let _ = bundle.context.render_bundle_encoder_set_vertex_buffer(
         encoder,
         slot,
         Some(buffer_id),
@@ -4797,6 +4804,37 @@ pub unsafe extern "C" fn wgpuSurfaceGetCapabilities(
         capabilities.alphaModeCount = 0;
     }
 
+    // If the caller chained a WGPUSurfaceCapabilitiesExtras, also report the
+    // per-format color-space capabilities into it.
+    let mut chain = capabilities.nextInChain;
+    while let Some(next) = chain.as_ref() {
+        if next.sType == native::WGPUSType_SurfaceCapabilitiesExtras {
+            let extras = &mut *(chain as *mut native::WGPUSurfaceCapabilitiesExtras);
+            let fmt_caps = caps
+                .format_capabilities
+                .iter()
+                .filter_map(|fc| {
+                    conv::to_native_texture_format(fc.format).map(|format| {
+                        native::WGPUSurfaceFormatCapabilities {
+                            format,
+                            colorSpaces: conv::surface_color_spaces_to_native(fc.color_spaces),
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
+            if fmt_caps.is_empty() {
+                extras.formatCapabilities = std::ptr::null_mut();
+                extras.formatCapabilityCount = 0;
+            } else {
+                let mut array = fmt_caps.into_boxed_slice();
+                extras.formatCapabilities = array.as_mut_ptr();
+                extras.formatCapabilityCount = array.len();
+                mem::forget(array);
+            }
+        }
+        chain = next.next;
+    }
+
     native::WGPUStatus_Success
 }
 
@@ -4909,6 +4947,23 @@ pub unsafe extern "C" fn wgpuSurfaceRelease(surface: native::WGPUSurface) {
     Arc::decrement_strong_count(surface);
 }
 
+/// Query the HDR / luminance characteristics of the display `surface` is on,
+/// as seen by `adapter`. Native-only extension. Fields that a platform cannot
+/// report are flagged via the sub-structs' `present`/`has*` members (and NaN
+/// for individual float values).
+#[no_mangle]
+pub unsafe extern "C" fn wgpuSurfaceGetDisplayHdrInfo(
+    surface: native::WGPUSurface,
+    adapter: native::WGPUAdapter,
+) -> native::WGPUDisplayHdrInfo {
+    let (adapter_id, context) = {
+        let adapter = adapter.as_ref().expect("invalid adapter");
+        (adapter.id, &adapter.context)
+    };
+    let surface_id = surface.as_ref().expect("invalid surface").id;
+    conv::map_display_hdr_info(context.surface_display_hdr_info(surface_id, adapter_id))
+}
+
 // SurfaceCapabilities methods
 
 #[no_mangle]
@@ -4935,6 +4990,24 @@ pub unsafe extern "C" fn wgpuSurfaceCapabilitiesFreeMembers(
             capabilities.alphaModeCount,
             capabilities.alphaModeCount,
         ));
+    }
+    // Free the per-format color-space array from any chained
+    // WGPUSurfaceCapabilitiesExtras (allocated in wgpuSurfaceGetCapabilities).
+    let mut chain = capabilities.nextInChain;
+    while let Some(next) = chain.as_ref() {
+        if next.sType == native::WGPUSType_SurfaceCapabilitiesExtras {
+            let extras = &mut *(chain as *mut native::WGPUSurfaceCapabilitiesExtras);
+            if !extras.formatCapabilities.is_null() && extras.formatCapabilityCount > 0 {
+                drop(Vec::from_raw_parts(
+                    extras.formatCapabilities,
+                    extras.formatCapabilityCount,
+                    extras.formatCapabilityCount,
+                ));
+                extras.formatCapabilities = std::ptr::null_mut();
+                extras.formatCapabilityCount = 0;
+            }
+        }
+        chain = next.next;
     }
 }
 
@@ -5351,7 +5424,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size_bytes, data);
+    let _ = bundle.context.render_bundle_encoder_set_immediates(
+        encoder,
+        offset,
+        make_slice(data, size_bytes as usize),
+    );
 }
 
 #[no_mangle]
@@ -5988,6 +6065,7 @@ pub unsafe extern "C" fn wgpuDeviceGetInternalCounters(
             bindGroupLayouts: hal.bind_group_layouts.read() as i64,
             renderPipelines: hal.render_pipelines.read() as i64,
             computePipelines: hal.compute_pipelines.read() as i64,
+            rayTracingPipelines: hal.ray_tracing_pipelines.read() as i64,
             pipelineLayouts: hal.pipeline_layouts.read() as i64,
             samplers: hal.samplers.read() as i64,
             commandEncoders: hal.command_encoders.read() as i64,
@@ -6354,7 +6432,7 @@ pub unsafe extern "C" fn wgpuDeviceGetAdapterInfo(
         && unsafe { (*info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
     {
         let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
-        extras.transientSavesMemory = result.transient_saves_memory as native::WGPUBool;
+        extras.transientSavesMemory = conv::optional_bool_to_native(result.transient_saves_memory);
         extras.devicePciBusId = utils::str_into_owned_string_view(&result.device_pci_bus_id);
     }
 

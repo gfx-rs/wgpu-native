@@ -61,6 +61,7 @@ typedef enum WGPUNativeSType
     WGPUSType_DeviceDescriptorExtras = 0x00030014,
     /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
     WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
+    WGPUSType_SurfaceCapabilitiesExtras = 0x00030016,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -830,6 +831,12 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_VulkanExternalMemoryDmaBuf = 0x00030042,
+    /**
+     * Enables ray tracing pipelines (@c wgpuRayTracingPipeline*).
+     *
+     * This is an experimental, native-only feature.
+     */
+    WGPUNativeFeature_ExperimentalRayTracingPipelines = 0x00030043,
 
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
@@ -941,6 +948,28 @@ static const WGPUInstanceBackend WGPUInstanceBackend_Secondary = (1 << 1);
 static const WGPUInstanceBackend WGPUInstanceBackend_Force32 = 0x7FFFFFFF;
 
 /**
+ * Native extension value for @ref WGPULoadOp.
+ *
+ * The render target has undefined contents at the start of the render pass.
+ * This is the fastest option when every pixel is overwritten by the pass, but
+ * reading an unwritten pixel is undefined behavior. Backends that don't support
+ * it internally fall back to an unspecified load op. Under
+ * @ref WGPUInstanceFlag_StrictWebgpuCompliance it is rejected.
+ *
+ * Assignable to any @ref WGPULoadOp field (e.g. @ref WGPURenderPassColorAttachment::loadOp).
+ */
+#define WGPULoadOp_DontCare 0x00030001
+
+/**
+ * Native extension value for @ref WGPUBufferUsage.
+ *
+ * The buffer can hold ray-tracing pipeline shader-binding-table data. Requires
+ * @ref WGPUNativeFeature_ExperimentalRayTracingPipelines. Not part of the WebGPU
+ * standard.
+ */
+static const WGPUBufferUsage WGPUBufferUsage_RayTracingPipelineShaderData = 0x0000000000008000;
+
+/**
  * Bitflags controlling instance debugging and validation behavior.
  *
  * These are not part of the WebGPU standard.
@@ -1021,6 +1050,16 @@ static const WGPUInstanceFlag WGPUInstanceFlag_ValidationIndirectCall = 1 << 5;
  * will always be @c 1.0.
  */
 static const WGPUInstanceFlag WGPUInstanceFlag_AutomaticTimestampNormalization = 1 << 6;
+/**
+ * Restrict the available feature set to the one defined by the WebGPU
+ * specification. Adapters that can't fully satisfy the WebGPU v1 spec are
+ * excluded, and spec-forbidden behaviour (e.g. @ref WGPULoadOp_DontCare) is
+ * rejected.
+ *
+ * When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+ * @c WGPU_STRICT_WEBGPU_COMPLIANCE environment variable.
+ */
+static const WGPUInstanceFlag WGPUInstanceFlag_StrictWebgpuCompliance = 1 << 7;
 /**
  * Use the default flags for the current build configuration.
  * In debug builds, this typically enables @ref WGPUInstanceFlag_Debug and
@@ -1261,8 +1300,9 @@ typedef struct WGPUAdapterInfoExtras
 {
     WGPUChainedStruct chain;
     /** Whether the adapter uses memory that is shared with the CPU and
-     *  benefits from keeping allocations small (e.g. integrated/mobile GPUs). */
-    WGPUBool transientSavesMemory;
+     *  benefits from keeping allocations small (e.g. integrated/mobile GPUs).
+     *  @ref WGPUOptionalBool_Undefined when the adapter cannot report it. */
+    WGPUOptionalBool transientSavesMemory;
     /**
      * PCI bus identifier for the adapter in the form @c "bus:device.function",
      * e.g. @c "0000:01:00.0". Empty when not available.
@@ -1391,6 +1431,10 @@ typedef struct WGPUNativeLimits
     uint32_t maxBlasGeometryCount;
     uint32_t maxTlasInstanceCount;
     uint32_t maxAccelerationStructuresPerShaderStage;
+    uint32_t maxBuffersAndAccelerationStructuresPerShaderStage;
+    /* Ray tracing pipeline limits */
+    uint32_t maxRayDispatchCount;
+    uint32_t maxRayRecursionDepth;
 } WGPUNativeLimits;
 
 #define WGPU_NATIVE_LIMITS_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeLimits, { \
@@ -1607,6 +1651,26 @@ typedef struct WGPUQuerySetDescriptorExtras
     size_t pipelineStatisticCount;
 } WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Color space a surface presents its contents in.
+ *
+ * These are not part of the WebGPU standard. Used in the @c colorSpace field of
+ * @ref WGPUSurfaceConfigurationExtras.
+ */
+typedef enum WGPUSurfaceColorSpace
+{
+    /** Let wgpu pick the platform default (usually sRGB). */
+    WGPUSurfaceColorSpace_Auto = 0x00000000,
+    WGPUSurfaceColorSpace_Srgb = 0x00000001,
+    WGPUSurfaceColorSpace_ExtendedSrgbLinear = 0x00000002,
+    WGPUSurfaceColorSpace_DisplayP3 = 0x00000003,
+    WGPUSurfaceColorSpace_Bt2100Pq = 0x00000004,
+    WGPUSurfaceColorSpace_Bt2100Hlg = 0x00000005,
+    WGPUSurfaceColorSpace_ExtendedSrgb = 0x00000006,
+    WGPUSurfaceColorSpace_ExtendedDisplayP3 = 0x00000007,
+    WGPUSurfaceColorSpace_Force32 = 0x7FFFFFFF
+} WGPUSurfaceColorSpace WGPU_ENUM_ATTRIBUTE;
+
 typedef struct WGPUSurfaceConfigurationExtras
 {
     WGPUChainedStruct chain;
@@ -1619,7 +1683,109 @@ typedef struct WGPUSurfaceConfigurationExtras
      * - 3+: Maximize throughput.
      */
     uint32_t desiredMaximumFrameLatency;
+    /** Color space the surface presents in. Defaults to @ref WGPUSurfaceColorSpace_Auto. */
+    WGPUSurfaceColorSpace colorSpace;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Approximate color-gamut bucket reported by @ref WGPUDisplayCoarseRange. */
+typedef enum WGPUDisplayGamut
+{
+    WGPUDisplayGamut_Srgb = 0x00000000,
+    WGPUDisplayGamut_DisplayP3 = 0x00000001,
+    WGPUDisplayGamut_Rec2020 = 0x00000002,
+    WGPUDisplayGamut_Force32 = 0x7FFFFFFF
+} WGPUDisplayGamut WGPU_ENUM_ATTRIBUTE;
+
+/**
+ * Absolute-nit luminance levels of a display. Only meaningful when @c present is
+ * true; individual fields are @c NaN when that value is unknown.
+ */
+typedef struct WGPUDisplayLuminance
+{
+    WGPUBool present;
+    float maxNits;
+    float maxFullFrameNits;
+    float minNits;
+    float sdrWhiteNits;
+} WGPUDisplayLuminance WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Relative EDR-headroom multipliers. @c NaN fields are unknown. */
+typedef struct WGPUDisplayHeadroom
+{
+    WGPUBool present;
+    float current;
+    float potential;
+    float reference;
+} WGPUDisplayHeadroom WGPU_STRUCTURE_ATTRIBUTE;
+
+/** CIE 1931 xy chromaticity of the display primaries and white point. Each
+ *  x/y component is @c NaN when unknown. */
+typedef struct WGPUDisplayChromaticity
+{
+    WGPUBool present;
+    float redX, redY;
+    float greenX, greenY;
+    float blueX, blueY;
+    float whiteX, whiteY;
+} WGPUDisplayChromaticity WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Coarse, boolean dynamic-range + gamut bucket. */
+typedef struct WGPUDisplayCoarseRange
+{
+    WGPUBool present;
+    WGPUOptionalBool highDynamicRange;
+    WGPUBool hasGamut;
+    WGPUDisplayGamut gamut;
+} WGPUDisplayCoarseRange WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * HDR / luminance characteristics of the display a surface is on, returned by
+ * @ref wgpuSurfaceGetDisplayHdrInfo. Each sub-struct's @c present flag says
+ * whether that group is reported on the current platform.
+ */
+typedef struct WGPUDisplayHdrInfo
+{
+    WGPUDisplayLuminance luminance;
+    WGPUDisplayHeadroom headroom;
+    WGPUDisplayChromaticity chromaticity;
+    WGPUDisplayCoarseRange coarse;
+    WGPUBool hasBitsPerColor;
+    uint8_t bitsPerColor;
+} WGPUDisplayHdrInfo WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Bitset of color spaces a surface format can be presented in. Not part of the
+ * WebGPU standard.
+ */
+typedef WGPUFlags WGPUSurfaceColorSpaces;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_None = 0x0000000000000000;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_Srgb = 0x0000000000000001;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_ExtendedSrgbLinear = 0x0000000000000002;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_DisplayP3 = 0x0000000000000004;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_Bt2100Pq = 0x0000000000000008;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_Bt2100Hlg = 0x0000000000000010;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_ExtendedSrgb = 0x0000000000000020;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_ExtendedDisplayP3 = 0x0000000000000040;
+
+/** The color spaces a single surface format supports. */
+typedef struct WGPUSurfaceFormatCapabilities
+{
+    WGPUTextureFormat format;
+    WGPUSurfaceColorSpaces colorSpaces;
+} WGPUSurfaceFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Output extras that may be chained onto @ref WGPUSurfaceCapabilities before
+ * calling @ref wgpuSurfaceGetCapabilities to also receive per-format color-space
+ * capabilities. The array is owned by wgpu-native and freed by
+ * @ref wgpuSurfaceCapabilitiesFreeMembers.
+ */
+typedef struct WGPUSurfaceCapabilitiesExtras
+{
+    WGPUChainedStruct chain;
+    size_t formatCapabilityCount;
+    WGPUSurfaceFormatCapabilities *formatCapabilities;
+} WGPUSurfaceCapabilitiesExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a WinUI [`SwapChainPanel`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel).
@@ -2049,6 +2215,7 @@ typedef struct WGPUHalCounters
     int64_t bindGroupLayouts;
     int64_t renderPipelines;
     int64_t computePipelines;
+    int64_t rayTracingPipelines;
     int64_t pipelineLayouts;
     int64_t samplers;
     int64_t commandEncoders;
@@ -2220,6 +2387,11 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_TaskShaderDispatchT
  * undefined behavior and arbitrary memory access.
  */
 static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp = 0x0000000000000010;
+/**
+ * If set, integer division and modulo by zero (or `i32::MIN / -1`) are checked
+ * and clamped instead of producing undefined behavior.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_IntDivChecks = 0x0000000000000020;
 
 /**
  * Bitmask of texture format feature flags returned by
@@ -2285,6 +2457,8 @@ static const WGPUDownlevelFlags WGPUDownlevelFlags_SurfaceViewFormats = 0x002000
 static const WGPUDownlevelFlags WGPUDownlevelFlags_NonblockingQueryResolve = 0x00400000;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_ShaderF16InF32 = 0x00800000;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_Msl21 = 0x01000000;
+/** The device supports compressed texture formats. */
+static const WGPUDownlevelFlags WGPUDownlevelFlags_TextureCompression = 0x02000000;
 
 /** Shader model supported by the adapter. */
 typedef enum WGPUShaderModel
@@ -2549,6 +2723,11 @@ extern "C"
      * abandon the frame (e.g. on resize or minimise).
      */
     void wgpuSurfaceDiscardTexture(WGPUSurface surface);
+    /**
+     * Query HDR / luminance characteristics of the display @p surface is on, as
+     * seen by @p adapter. Native-only extension.
+     */
+    WGPUDisplayHdrInfo wgpuSurfaceGetDisplayHdrInfo(WGPUSurface surface, WGPUAdapter adapter);
 
     /** Returns true if this surface can be presented by this adapter. */
     WGPUBool wgpuAdapterIsSurfaceSupported(WGPUAdapter adapter, WGPUSurface surface);

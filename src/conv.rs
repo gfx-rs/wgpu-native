@@ -366,6 +366,9 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
     if (flags & native::WGPUInstanceFlag_AutomaticTimestampNormalization) != 0 {
         result.insert(wgt::InstanceFlags::AUTOMATIC_TIMESTAMP_NORMALIZATION);
     }
+    if (flags & native::WGPUInstanceFlag_StrictWebgpuCompliance) != 0 {
+        result.insert(wgt::InstanceFlags::STRICT_WEBGPU_COMPLIANCE);
+    }
 
     // Convenience helpers
     if (flags & native::WGPUInstanceFlag_Default) != 0 {
@@ -435,8 +438,6 @@ pub unsafe fn map_instance_descriptor(
                     ..Default::default()
                 },
                 noop: Default::default(),
-                // Noop on wgpu-core
-                skip_custom_backend_library: true,
             },
             flags: map_instance_flags(extras.flags),
             memory_budget_thresholds: wgt::MemoryBudgetThresholds {
@@ -662,6 +663,10 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
             (*native_limits).maxTlasInstanceCount = wgt_limits.max_tlas_instance_count;
             (*native_limits).maxAccelerationStructuresPerShaderStage =
                 wgt_limits.max_acceleration_structures_per_shader_stage;
+            (*native_limits).maxBuffersAndAccelerationStructuresPerShaderStage =
+                wgt_limits.max_buffers_and_acceleration_structures_per_shader_stage;
+            (*native_limits).maxRayDispatchCount = wgt_limits.max_ray_dispatch_count;
+            (*native_limits).maxRayRecursionDepth = wgt_limits.max_ray_recursion_depth;
         }
     };
 }
@@ -845,6 +850,18 @@ pub fn map_required_limits(
             wgt_limits.max_acceleration_structures_per_shader_stage =
                 limits.maxAccelerationStructuresPerShaderStage;
         }
+        if limits.maxBuffersAndAccelerationStructuresPerShaderStage
+            != native::WGPU_LIMIT_U32_UNDEFINED
+        {
+            wgt_limits.max_buffers_and_acceleration_structures_per_shader_stage =
+                limits.maxBuffersAndAccelerationStructuresPerShaderStage;
+        }
+        if limits.maxRayDispatchCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_ray_dispatch_count = limits.maxRayDispatchCount;
+        }
+        if limits.maxRayRecursionDepth != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_ray_recursion_depth = limits.maxRayRecursionDepth;
+        }
     }
     wgt_limits
 }
@@ -975,6 +992,127 @@ pub fn map_texture_data_layout(
 }
 
 #[inline]
+pub fn optional_bool_to_native(value: Option<bool>) -> native::WGPUOptionalBool {
+    match value {
+        Some(true) => native::WGPUOptionalBool_True,
+        Some(false) => native::WGPUOptionalBool_False,
+        None => native::WGPUOptionalBool_Undefined,
+    }
+}
+
+pub fn map_display_hdr_info(info: wgt::DisplayHdrInfo) -> native::WGPUDisplayHdrInfo {
+    // Unknown `Option<f32>` values are encoded as NaN.
+    fn f(v: Option<f32>) -> f32 {
+        v.unwrap_or(f32::NAN)
+    }
+    fn pair(v: Option<[f32; 2]>) -> (f32, f32) {
+        match v {
+            Some([x, y]) => (x, y),
+            None => (f32::NAN, f32::NAN),
+        }
+    }
+    let luminance = match info.luminance {
+        Some(l) => native::WGPUDisplayLuminance {
+            present: true as native::WGPUBool,
+            maxNits: f(l.max_nits),
+            maxFullFrameNits: f(l.max_full_frame_nits),
+            minNits: f(l.min_nits),
+            sdrWhiteNits: f(l.sdr_white_nits),
+        },
+        None => native::WGPUDisplayLuminance {
+            present: false as native::WGPUBool,
+            maxNits: f32::NAN,
+            maxFullFrameNits: f32::NAN,
+            minNits: f32::NAN,
+            sdrWhiteNits: f32::NAN,
+        },
+    };
+    let headroom = match info.headroom {
+        Some(h) => native::WGPUDisplayHeadroom {
+            present: true as native::WGPUBool,
+            current: f(h.current),
+            potential: f(h.potential),
+            reference: f(h.reference),
+        },
+        None => native::WGPUDisplayHeadroom {
+            present: false as native::WGPUBool,
+            current: f32::NAN,
+            potential: f32::NAN,
+            reference: f32::NAN,
+        },
+    };
+    let chromaticity = match info.chromaticity {
+        Some(c) => {
+            let (red_x, red_y) = pair(c.red);
+            let (green_x, green_y) = pair(c.green);
+            let (blue_x, blue_y) = pair(c.blue);
+            let (white_x, white_y) = pair(c.white);
+            native::WGPUDisplayChromaticity {
+                present: true as native::WGPUBool,
+                redX: red_x,
+                redY: red_y,
+                greenX: green_x,
+                greenY: green_y,
+                blueX: blue_x,
+                blueY: blue_y,
+                whiteX: white_x,
+                whiteY: white_y,
+            }
+        }
+        None => native::WGPUDisplayChromaticity {
+            present: false as native::WGPUBool,
+            redX: f32::NAN,
+            redY: f32::NAN,
+            greenX: f32::NAN,
+            greenY: f32::NAN,
+            blueX: f32::NAN,
+            blueY: f32::NAN,
+            whiteX: f32::NAN,
+            whiteY: f32::NAN,
+        },
+    };
+    let coarse = match info.coarse {
+        Some(c) => {
+            let (has_gamut, gamut) = match c.gamut {
+                Some(wgt::DisplayGamut::Srgb) => (true as native::WGPUBool, native::WGPUDisplayGamut_Srgb),
+                Some(wgt::DisplayGamut::DisplayP3) => {
+                    (true as native::WGPUBool, native::WGPUDisplayGamut_DisplayP3)
+                }
+                Some(wgt::DisplayGamut::Rec2020) => {
+                    (true as native::WGPUBool, native::WGPUDisplayGamut_Rec2020)
+                }
+                // A future gamut we can't represent yet — report as unknown.
+                Some(_) => (false as native::WGPUBool, native::WGPUDisplayGamut_Srgb),
+                None => (false as native::WGPUBool, native::WGPUDisplayGamut_Srgb),
+            };
+            native::WGPUDisplayCoarseRange {
+                present: true as native::WGPUBool,
+                highDynamicRange: optional_bool_to_native(c.high_dynamic_range),
+                hasGamut: has_gamut,
+                gamut,
+            }
+        }
+        None => native::WGPUDisplayCoarseRange {
+            present: false as native::WGPUBool,
+            highDynamicRange: native::WGPUOptionalBool_Undefined,
+            hasGamut: false as native::WGPUBool,
+            gamut: native::WGPUDisplayGamut_Srgb,
+        },
+    };
+    let (has_bits_per_color, bits_per_color) = match info.bits_per_color {
+        Some(b) => (true as native::WGPUBool, b),
+        None => (false as native::WGPUBool, 0),
+    };
+    native::WGPUDisplayHdrInfo {
+        luminance,
+        headroom,
+        chromaticity,
+        coarse,
+        hasBitsPerColor: has_bits_per_color,
+        bitsPerColor: bits_per_color,
+    }
+}
+
 pub fn map_load_op<T>(
     command: native::WGPULoadOp,
     clear_value: T,
@@ -982,6 +1120,15 @@ pub fn map_load_op<T>(
     match command {
         native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
         native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(clear_value)),
+        // `WGPULoadOp_DontCare` is a native-only value (a `#define`, not part of
+        // the standard `WGPULoadOp` enum), so it's compared in a guard rather
+        // than used as a match pattern, with a cast to the enum's repr type.
+        //
+        // SAFETY: `DontCare` was explicitly requested by the C caller, opting in
+        // to its documented undefined-contents semantics at their own risk.
+        other if other == native::WGPULoadOp_DontCare as native::WGPULoadOp => Some(
+            wgc::command::LoadOp::DontCare(unsafe { wgt::LoadOpDontCare::enabled() }),
+        ),
         _ => None,
     }
 }
@@ -1611,6 +1758,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF) {
         temp.push(native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf);
     }
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_TRACING_PIPELINES) {
+        temp.push(native::WGPUNativeFeature_ExperimentalRayTracingPipelines);
+    }
 
     temp
 }
@@ -1702,6 +1852,9 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_MemoryDecorationVolatile => Some(Features::MEMORY_DECORATION_VOLATILE),
         native::WGPUNativeFeature_VulkanExternalMemoryFd => Some(Features::VULKAN_EXTERNAL_MEMORY_FD),
         native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf => Some(Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF),
+        native::WGPUNativeFeature_ExperimentalRayTracingPipelines => {
+            Some(Features::EXPERIMENTAL_RAY_TRACING_PIPELINES)
+        }
         // fallback, probably not available in wgpu-core
         _ => None,
     }
@@ -2036,7 +2189,7 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
         temp.insert(wgt::TextureUsages::RENDER_ATTACHMENT);
     }
     if (flags & native::WGPUTextureUsage_TransientAttachment) != 0 {
-        temp.insert(wgt::TextureUsages::TRANSIENT);
+        temp.insert(wgt::TextureUsages::TRANSIENT_ATTACHMENT);
     }
     // STORAGE_ATOMIC (1 << 16) is a wgpu-native extension not in the standard WebGPU C API.
     // We pass the raw wgpu-types bit value through the C API and recognize it here.
@@ -2064,7 +2217,7 @@ pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUT
     if flags.contains(wgt::TextureUsages::RENDER_ATTACHMENT) {
         flag |= native::WGPUTextureUsage_RenderAttachment;
     }
-    if flags.contains(wgt::TextureUsages::TRANSIENT) {
+    if flags.contains(wgt::TextureUsages::TRANSIENT_ATTACHMENT) {
         flag |= native::WGPUTextureUsage_TransientAttachment;
     }
     if flags.contains(wgt::TextureUsages::STORAGE_ATOMIC) {
@@ -2168,6 +2321,50 @@ pub unsafe fn map_surface(
     panic!("Error: Unsupported Surface");
 }
 
+pub fn map_surface_color_space(cs: native::WGPUSurfaceColorSpace) -> wgt::SurfaceColorSpace {
+    match cs {
+        native::WGPUSurfaceColorSpace_Srgb => wgt::SurfaceColorSpace::Srgb,
+        native::WGPUSurfaceColorSpace_ExtendedSrgbLinear => {
+            wgt::SurfaceColorSpace::ExtendedSrgbLinear
+        }
+        native::WGPUSurfaceColorSpace_DisplayP3 => wgt::SurfaceColorSpace::DisplayP3,
+        native::WGPUSurfaceColorSpace_Bt2100Pq => wgt::SurfaceColorSpace::Bt2100Pq,
+        native::WGPUSurfaceColorSpace_Bt2100Hlg => wgt::SurfaceColorSpace::Bt2100Hlg,
+        native::WGPUSurfaceColorSpace_ExtendedSrgb => wgt::SurfaceColorSpace::ExtendedSrgb,
+        native::WGPUSurfaceColorSpace_ExtendedDisplayP3 => wgt::SurfaceColorSpace::ExtendedDisplayP3,
+        // WGPUSurfaceColorSpace_Auto and any unknown value.
+        _ => wgt::SurfaceColorSpace::Auto,
+    }
+}
+
+pub fn surface_color_spaces_to_native(
+    cs: wgt::SurfaceColorSpaces,
+) -> native::WGPUSurfaceColorSpaces {
+    let mut out = native::WGPUSurfaceColorSpaces_None;
+    if cs.contains(wgt::SurfaceColorSpaces::SRGB) {
+        out |= native::WGPUSurfaceColorSpaces_Srgb;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::EXTENDED_SRGB_LINEAR) {
+        out |= native::WGPUSurfaceColorSpaces_ExtendedSrgbLinear;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::DISPLAY_P3) {
+        out |= native::WGPUSurfaceColorSpaces_DisplayP3;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::BT2100_PQ) {
+        out |= native::WGPUSurfaceColorSpaces_Bt2100Pq;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::BT2100_HLG) {
+        out |= native::WGPUSurfaceColorSpaces_Bt2100Hlg;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::EXTENDED_SRGB) {
+        out |= native::WGPUSurfaceColorSpaces_ExtendedSrgb;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::EXTENDED_DISPLAY_P3) {
+        out |= native::WGPUSurfaceColorSpaces_ExtendedDisplayP3;
+    }
+    out
+}
+
 #[inline]
 pub fn map_surface_configuration(
     config: &native::WGPUSurfaceConfiguration,
@@ -2180,6 +2377,9 @@ pub fn map_surface_configuration(
         width: config.width,
         height: config.height,
         present_mode: map_present_mode(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),
+        color_space: extras
+            .map(|e| map_surface_color_space(e.colorSpace))
+            .unwrap_or(wgt::SurfaceColorSpace::Auto),
         alpha_mode: map_composite_alpha_mode(config.alphaMode)
             .expect("invalid alpha mode for surface configuration"),
         view_formats: make_slice(config.viewFormats, config.viewFormatCount)
@@ -2261,6 +2461,7 @@ pub fn map_shader_runtime_checks(
 ) -> wgt::ShaderRuntimeChecks {
     wgt::ShaderRuntimeChecks {
         bounds_checks: (value & native::WGPUShaderRuntimeChecks_BoundsChecks) != 0,
+        int_div_checks: (value & native::WGPUShaderRuntimeChecks_IntDivChecks) != 0,
         force_loop_bounding: (value & native::WGPUShaderRuntimeChecks_ForceLoopBounding) != 0,
         ray_query_initialization_tracking: (value
             & native::WGPUShaderRuntimeChecks_RayQueryInitializationTracking)
@@ -2373,6 +2574,7 @@ pub fn map_downlevel_capabilities(
     flag!(NONBLOCKING_QUERY_RESOLVE => WGPUDownlevelFlags_NonblockingQueryResolve);
     flag!(SHADER_F16_IN_F32 => WGPUDownlevelFlags_ShaderF16InF32);
     flag!(MSL2_1 => WGPUDownlevelFlags_Msl21);
+    flag!(TEXTURE_COMPRESSION => WGPUDownlevelFlags_TextureCompression);
 
     let shader_model = match caps.shader_model {
         wgt::ShaderModel::Sm2 => native::WGPUShaderModel_Sm2,

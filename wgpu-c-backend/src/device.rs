@@ -1601,6 +1601,7 @@ impl DeviceInterface for CDevice {
                 bind_group_layouts: make(hal.bindGroupLayouts),
                 render_pipelines: make(hal.renderPipelines),
                 compute_pipelines: make(hal.computePipelines),
+                ray_tracing_pipelines: make(hal.rayTracingPipelines),
                 pipeline_layouts: make(hal.pipelineLayouts),
                 samplers: make(hal.samplers),
                 command_encoders: make(hal.commandEncoders),

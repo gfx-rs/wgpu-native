@@ -8,11 +8,7 @@ homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
 license = "MIT OR Apache-2.0"
 
-[features]
-instance_factory_override = ["ctor"]
-
 [dependencies]
-ctor = { version = "1.0", optional = true }
 log = "0.4"
 wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv"] }
 wgpu-native = { path = "../", features = ["vulkan-portability", "angle"] }

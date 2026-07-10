@@ -29,7 +29,11 @@ impl Drop for CSurface {
 impl SurfaceInterface for CSurface {
     fn get_capabilities(&self, adapter: &DispatchAdapter) -> wgpu::SurfaceCapabilities {
         let adapter_ptr = adapter.as_custom::<crate::adapter::CAdapter>().unwrap().ptr;
+        // Chain an extras so wgpu-native also reports per-format color spaces.
+        let mut fmt_extras: native::WGPUSurfaceCapabilitiesExtras = unsafe { std::mem::zeroed() };
+        fmt_extras.chain.sType = native::WGPUSType_SurfaceCapabilitiesExtras;
         let mut caps: native::WGPUSurfaceCapabilities = unsafe { std::mem::zeroed() };
+        caps.nextInChain = std::ptr::from_mut(&mut fmt_extras.chain);
         unsafe { wgpuSurfaceGetCapabilities(self.ptr, adapter_ptr, Some(&mut caps)) };
 
         let formats = unsafe {
@@ -52,6 +56,23 @@ impl SurfaceInterface for CSurface {
         };
         let usages = conv::map_texture_usage(caps.usages);
 
+        let format_capabilities = unsafe {
+            std::slice::from_raw_parts(
+                fmt_extras.formatCapabilities,
+                fmt_extras.formatCapabilityCount,
+            )
+            .iter()
+            .filter_map(|fc| {
+                conv::map_texture_format(fc.format).map(|format| {
+                    wgpu::wgt::SurfaceFormatCapabilities {
+                        format,
+                        color_spaces: conv::map_surface_color_spaces(fc.colorSpaces),
+                    }
+                })
+            })
+            .collect()
+        };
+
         unsafe { wgpuSurfaceCapabilitiesFreeMembers(caps) };
 
         wgpu::SurfaceCapabilities {
@@ -59,6 +80,7 @@ impl SurfaceInterface for CSurface {
             present_modes,
             alpha_modes,
             usages,
+            format_capabilities,
         }
     }
 
@@ -75,6 +97,7 @@ impl SurfaceInterface for CSurface {
                 sType: native::WGPUSType_SurfaceConfigurationExtras,
             },
             desiredMaximumFrameLatency: config.desired_maximum_frame_latency,
+            colorSpace: conv::surface_color_space_to_native(config.color_space),
         };
         let c_config = native::WGPUSurfaceConfiguration {
             nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut sc_extras.chain),
@@ -142,6 +165,13 @@ unsafe impl Sync for CSurfaceOutputDetail {}
 
 impl SurfaceOutputDetailInterface for CSurfaceOutputDetail {
     fn texture_discard(&self) {
+        unsafe { wgpuSurfaceDiscardTexture(self.surface_ptr) };
+    }
+
+    // v30 added `texture_release` (called only on drop-during-panic to release
+    // the acquired frame). The C API has no dedicated release primitive, so
+    // discard performs the same best-effort cleanup.
+    fn texture_release(&self) {
         unsafe { wgpuSurfaceDiscardTexture(self.surface_ptr) };
     }
 }

@@ -24,31 +24,35 @@ use wgpu::custom::*;
 use wgpu::InstanceDescriptor;
 use wgpu_native::{native, *};
 
-#[cfg(feature = "instance_factory_override")]
-mod backend_override {
-    use super::CInstance;
-    use wgpu::{custom::InstanceInterface, InstanceDescriptor};
-    // Backends that wgpu-native actually implements.
+/// Instance-factory entry point for the C backend.
+///
+/// A wgpu build patched for C-backend integration testing (its `Instance::new`
+/// compiled with `--cfg wgpu_custom_backend`) calls this symbol by name to route
+/// `wgpu::Instance::new` through wgpu-native. This crate is deliberately unaware
+/// of that wiring: it always exports the entry point and carries no test-only
+/// configuration of its own.
+///
+/// Returns `Err(desc)` to hand the request back to wgpu-core for backends that
+/// wgpu-native does not implement.
+///
+/// # ABI
+///
+/// Exported with the Rust ABI under a fixed symbol name. The wgpu that calls it
+/// must be built with the same toolchain (guaranteed within one workspace).
+#[no_mangle]
+#[expect(clippy::result_large_err)]
+extern "Rust" fn __wgpu_custom_backend_new_instance(
+    desc: InstanceDescriptor,
+) -> Result<wgpu::Instance, InstanceDescriptor> {
+    // Backends wgpu-native actually implements.
     const WGPU_NATIVE_BACKENDS: wgpu::Backends = wgpu::Backends::VULKAN
         .union(wgpu::Backends::METAL)
         .union(wgpu::Backends::DX12)
         .union(wgpu::Backends::GL);
-
-    #[expect(clippy::result_large_err)]
-    pub fn instance_factory(
-        desc: InstanceDescriptor,
-    ) -> Result<wgpu::Instance, InstanceDescriptor> {
-        // Defer to wgpu-core for backends wgpu-native doesn't handle.
-        if desc.backends.intersection(WGPU_NATIVE_BACKENDS).is_empty() {
-            return Err(desc);
-        }
-        Ok(wgpu::Instance::from_custom(CInstance::new(desc)))
+    if desc.backends.intersection(WGPU_NATIVE_BACKENDS).is_empty() {
+        return Err(desc);
     }
-
-    #[ctor::ctor(unsafe)]
-    fn setup_instance_factory() {
-        wgpu::set_instance_factory(instance_factory);
-    }
+    Ok(wgpu::Instance::from_custom(CInstance::new(desc)))
 }
 
 // ── Panic propagation for extern "C" callbacks ────────────────────────────────
