@@ -3869,10 +3869,11 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderDrawIndirect(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    let _ =
-        bundle
-            .context
-            .render_bundle_encoder_draw_indirect(encoder, indirect_buffer_id, indirect_offset);
+    let _ = bundle.context.render_bundle_encoder_draw_indirect(
+        encoder,
+        indirect_buffer_id,
+        indirect_offset,
+    );
 }
 
 #[no_mangle]
@@ -3895,8 +3896,7 @@ pub unsafe extern "C-unwind" fn wgpuRenderBundleEncoderFinish(
 
     // v30 takes the encoder by `&mut` instead of consuming it; the `Box` is
     // still dropped at end of scope, freeing the reclaimed raw pointer.
-    let (render_bundle_id, error) =
-        context.render_bundle_encoder_finish(&mut encoder, &desc, None);
+    let (render_bundle_id, error) = context.render_bundle_encoder_finish(&mut encoder, &desc, None);
     if let Some(cause) = error {
         handle_error_fatal(cause, "wgpuRenderBundleEncoderFinish");
     }
@@ -5416,7 +5416,12 @@ pub unsafe extern "C" fn wgpuRenderBundleEncoderSetImmediates(
     let encoder = encoder.expect("invalid render bundle");
     let encoder = encoder.as_mut().unwrap();
 
-    bundle_ffi::wgpu_render_bundle_set_immediates(encoder, offset, size, data);
+    if let Err(cause) = bundle
+        .context
+        .render_bundle_encoder_set_immediates(encoder, offset, make_slice(data, size as usize))
+    {
+        handle_error_fatal(cause, "wgpuRenderBundleEncoderSetImmediates");
+    }
 }
 
 #[no_mangle]
