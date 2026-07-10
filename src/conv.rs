@@ -67,15 +67,26 @@ map_enum_with_undefined!(
     GreaterEqual,
     Always
 );
-map_enum_with_undefined!(
-    map_texture_aspect,
-    WGPUTextureAspect,
-    wgt::TextureAspect,
-    "Unknown texture aspect",
-    All,
-    StencilOnly,
-    DepthOnly
-);
+pub fn map_texture_aspect(aspect: native::WGPUTextureAspect) -> Option<wgt::TextureAspect> {
+    match aspect {
+        native::WGPUTextureAspect_All => Some(wgt::TextureAspect::All),
+        native::WGPUTextureAspect_StencilOnly => Some(wgt::TextureAspect::StencilOnly),
+        native::WGPUTextureAspect_DepthOnly => Some(wgt::TextureAspect::DepthOnly),
+        // Native-only plane aspects (see wgpu.h) for multi-planar formats (NV12,
+        // P010, …). These are `#define`d values, not enum variants, so compare in
+        // guards rather than match patterns.
+        other if other == native::WGPUTextureAspect_Plane0 as native::WGPUTextureAspect => {
+            Some(wgt::TextureAspect::Plane0)
+        }
+        other if other == native::WGPUTextureAspect_Plane1 as native::WGPUTextureAspect => {
+            Some(wgt::TextureAspect::Plane1)
+        }
+        other if other == native::WGPUTextureAspect_Plane2 as native::WGPUTextureAspect => {
+            Some(wgt::TextureAspect::Plane2)
+        }
+        _ => None,
+    }
+}
 map_enum_with_undefined!(
     map_present_mode,
     WGPUPresentMode,

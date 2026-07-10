@@ -486,7 +486,7 @@ c_resource!(CQuerySet, native::WGPUQuerySet, wgpuQuerySetRelease);
 
 impl QuerySetInterface for CQuerySet {
     fn destroy(&self) {
-        // No native `wgpuQuerySetDestroy`; the query set is freed on release.
+        unsafe { wgpuQuerySetDestroy(self.ptr) };
     }
 }
 

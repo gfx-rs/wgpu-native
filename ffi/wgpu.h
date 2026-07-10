@@ -967,6 +967,17 @@ static const WGPUInstanceBackend WGPUInstanceBackend_Force32 = 0x7FFFFFFF;
 static const WGPUBufferUsage WGPUBufferUsage_RayTracingPipelineShaderData = 0x0000000000008000;
 
 /**
+ * Native extension values for @ref WGPUTextureAspect.
+ *
+ * Select an individual plane of a multi-planar texture format (e.g. @ref
+ * WGPUTextureFormat_NV12, P010). Not part of the WebGPU standard. Assignable to
+ * any @ref WGPUTextureAspect field.
+ */
+#define WGPUTextureAspect_Plane0 0x00030000
+#define WGPUTextureAspect_Plane1 0x00030001
+#define WGPUTextureAspect_Plane2 0x00030002
+
+/**
  * Bitflags controlling instance debugging and validation behavior.
  *
  * These are not part of the WebGPU standard.

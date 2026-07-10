@@ -1425,7 +1425,16 @@ pub fn texture_aspect_to_native(a: wgpu::TextureAspect) -> native::WGPUTextureAs
         wgpu::TextureAspect::All => native::WGPUTextureAspect_All,
         wgpu::TextureAspect::StencilOnly => native::WGPUTextureAspect_StencilOnly,
         wgpu::TextureAspect::DepthOnly => native::WGPUTextureAspect_DepthOnly,
-        _ => native::WGPUTextureAspect_All,
+        // Native-only plane aspects for multi-planar formats (NV12, P010, …).
+        wgpu::TextureAspect::Plane0 => {
+            native::WGPUTextureAspect_Plane0 as native::WGPUTextureAspect
+        }
+        wgpu::TextureAspect::Plane1 => {
+            native::WGPUTextureAspect_Plane1 as native::WGPUTextureAspect
+        }
+        wgpu::TextureAspect::Plane2 => {
+            native::WGPUTextureAspect_Plane2 as native::WGPUTextureAspect
+        }
     }
 }
 

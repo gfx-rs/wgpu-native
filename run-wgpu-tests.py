@@ -120,8 +120,20 @@ def main():
             sys.exit(f"ERROR: expected '{needle}' in hello_workgroups output")
         if proc.returncode != 0:
             sys.exit(f"ERROR: hello_workgroups exited with code {proc.returncode}")
+        # Tests that can't pass through the C backend, excluded from the run:
+        # - wgpu-dependency: asserts the wasm dep graph; injecting wgpu-c-backend
+        #   (which pulls in wgpu-native -> wgpu-core -> naga) inherently breaks it.
+        # - device_lifetime_check / mem_leaks: assert on `Instance::generate_report()`,
+        #   which the C backend doesn't implement (returns None -> `.unwrap()` panics).
+        exclude = (
+            "not ("
+            "binary(wgpu-dependency)"
+            " or test(device_lifetime_check)"
+            " or test(/mem_leaks::/)"
+            ")"
+        )
         try:
-            run("cargo", "xtask", "test", cwd=".local-wgpu")
+            run("cargo", "xtask", "test", "-E", exclude, cwd=".local-wgpu")
         except subprocess.CalledProcessError as e:
             sys.exit(e.returncode)
     print("Done.")

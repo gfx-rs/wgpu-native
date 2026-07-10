@@ -413,19 +413,29 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: gfx-rs/wgpu/.github/actions/install-dxc@trunk
 
+      # WARP/Agility install via `cargo xtask`, which lives in the wgpu checkout
+      # (.local-wgpu), not this repo root — so run there. The test binaries build
+      # under target/<triple>/ (CARGO_BUILD_TARGET is set), so WARP goes there.
       - name: (Windows) Install WARP
         if: matrix.os == 'windows-latest'
-        uses: gfx-rs/wgpu/.github/actions/install-warp@trunk
-        with:
-          target-dir: "target/debug"
+        working-directory: .local-wgpu
+        shell: bash
+        run: cargo xtask install-warp --target-dir "target/${{ matrix.target }}/debug"
 
       - name: (Windows) Install Agility SDK
         if: matrix.os == 'windows-latest'
-        uses: gfx-rs/wgpu/.github/actions/install-agility-sdk@trunk
+        working-directory: .local-wgpu
+        shell: bash
+        run: |
+          cargo xtask install-agility-sdk >> "$GITHUB_ENV"
+          echo "WGPU_DX12_AGILITY_SDK_REQUIRE=1" >> "$GITHUB_ENV"
 
       - name: (Windows) Install Mesa
         if: matrix.os == 'windows-latest'
         uses: gfx-rs/wgpu/.github/actions/install-mesa@trunk
+        with:
+          # Copy the DLLs next to the test binaries built by cargo xtask in .local-wgpu.
+          target-dir: ".local-wgpu/target/${{ matrix.target }}/debug"
 
       - name: (Windows) Install Vulkan SDK
         if: matrix.os == 'windows-latest'
