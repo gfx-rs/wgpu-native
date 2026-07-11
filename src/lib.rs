@@ -3594,8 +3594,10 @@ pub unsafe extern "C" fn wgpuQuerySetDestroy(query_set: native::WGPUQuerySet) {
         (query_set.id, &query_set.context)
     };
 
-    // FIXME: we shouldn't be using drop to implement this!
-    context.query_set_drop(query_set_id);
+    // `destroy` frees the GPU resource but keeps the handle valid (the refcount
+    // is released separately by wgpuQuerySetRelease); using `drop` here would
+    // invalidate the id and double-free on release.
+    context.query_set_destroy(query_set_id);
 }
 
 #[no_mangle]
