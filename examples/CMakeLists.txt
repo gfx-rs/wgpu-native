@@ -34,6 +34,7 @@ add_subdirectory(compute)
 add_subdirectory(enumerate_adapters)
 add_subdirectory(immediates)
 add_subdirectory(metal_interop)
+add_subdirectory(pipeline_cache)
 add_subdirectory(texture_arrays)
 add_subdirectory(triangle)
 

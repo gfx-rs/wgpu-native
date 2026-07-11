@@ -170,6 +170,18 @@ example-enumerate_adapters-release: examples-release
 run-example-enumerate_adapters-release: example-enumerate_adapters-release
 	cd examples/triangle && "../build/RelWithDebInfo/enumerate_adapters/enumerate_adapters"
 
+example-pipeline_cache: examples-debug
+	cd examples/build/Debug && cmake --build . --target pipeline_cache
+
+run-example-pipeline_cache: example-pipeline_cache
+	cd examples/pipeline_cache && "../build/Debug/pipeline_cache/pipeline_cache"
+
+example-pipeline_cache-release: examples-release
+	cd examples/build/RelWithDebInfo && cmake --build . --target pipeline_cache
+
+run-example-pipeline_cache-release: example-pipeline_cache-release
+	cd examples/pipeline_cache && "../build/RelWithDebInfo/pipeline_cache/pipeline_cache"
+
 example-texture_arrays: examples-debug
 	cd examples/build/Debug && cmake --build . --target texture_arrays
 

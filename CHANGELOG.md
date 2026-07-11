@@ -73,6 +73,22 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - `WGPUNativeFeature_StorageTextureArrayNonUniformIndexing`, `WGPUNativeFeature_Multiview`, `WGPUNativeFeature_ShaderFloat32Atomic`, `WGPUNativeFeature_TextureAtomic`, `WGPUNativeFeature_TextureFormatP010`, `WGPUNativeFeature_PipelineCache`, `WGPUNativeFeature_ShaderInt64AtomicMinMax`, `WGPUNativeFeature_ShaderInt64AtomicAllOps`, `WGPUNativeFeature_TextureInt64Atomic`, `WGPUNativeFeature_ShaderBarycentrics`, `WGPUNativeFeature_SelectiveMultiview`, `WGPUNativeFeature_MultisampleArray`, `WGPUNativeFeature_CooperativeMatrix`, `WGPUNativeFeature_ShaderPerVertex`, `WGPUNativeFeature_ShaderDrawIndex`, `WGPUNativeFeature_AccelerationStructureBindingArray`, `WGPUNativeFeature_MemoryDecorationCoherent`, `WGPUNativeFeature_MemoryDecorationVolatile` @lisyarus
 - `wgpuCommandEncoderClearTexture` @lisyarus
 - `wgpuDeviceCreateShaderModuleTrusted` @lisyarus
+- Pipeline caches, which let the result of shader compilation be reused between runs of a program. Requires `WGPUNativeFeature_PipelineCache`. @rael-g
+  - `WGPUPipelineCache` object, with `wgpuDeviceCreatePipelineCache`, `wgpuPipelineCacheGetData`, `wgpuPipelineCacheAddRef` and `wgpuPipelineCacheRelease`
+  - `WGPUPipelineDescriptorExtras` struct to be chained in `WGPURenderPipelineDescriptor` or `WGPUComputePipelineDescriptor`
+    ```c
+    WGPUPipelineCache pipeline_cache = wgpuDeviceCreatePipelineCache(
+        device, &(const WGPUPipelineCacheDescriptor){
+                    // Data previously returned by wgpuPipelineCacheGetData, if any.
+                    .data = data,
+                    .dataSize = data_size,
+                });
+
+    WGPUPipelineDescriptorExtras extras = {
+        .chain = { .sType = WGPUSType_PipelineDescriptorExtras },
+        .pipelineCache = pipeline_cache,
+    };
+    ```
 - Sampler address modes ClampToBorder and ClampToZero supported: @lisyarus
   - `WGPUNativeAddressMode_ClampToBorder` address mode
   - `WGPUSamplerBorderColor` enum
