@@ -9,6 +9,11 @@ REPO_URL = "https://github.com/inner-daemons/wgpu.git"
 # Branch on the fork that carries the wgpu-side integration glue as a single
 # commit (see apply_glue). Replaces the string-patching this script used to do.
 GLUE_BRANCH = "c-backend-testrig-v30"
+# Exact commit of GLUE_BRANCH to apply. Pinned (rather than tracking the branch
+# tip) so a later force-push to the branch can't silently change the glue.
+# Update this when intentionally moving to a new glue commit; the pinned commit
+# must be authored on top of the wgpu revision pinned in Cargo.lock.
+GLUE_COMMIT = "3e2a7edb775682d358f757f4fc29435ca4dcb89d"
 LOCAL_WGPU = Path(".local-wgpu")
 WGPU_C_BACKEND_SRC = Path("wgpu-c-backend")
 CARGO_LOCK = Path("Cargo.lock")
@@ -53,17 +58,17 @@ def apply_glue():
     The glue — adding wgpu-c-backend to the workspace, redirecting the
     inner-daemons/wgpu.git git dep to local paths, and injecting a
     wgpu-c-backend dep + `extern crate wgpu_c_backend;` into every crate that
-    depends on wgpu — lives as a single commit on GLUE_BRANCH in the fork. We
-    fetch that branch and apply just that commit's diff, so the glue tracks
-    whatever wgpu commit Cargo.lock pins without being reproduced here.
+    depends on wgpu — lives as a single commit (GLUE_COMMIT on GLUE_BRANCH) in
+    the fork. We fetch that exact commit and apply just its diff, so the glue
+    tracks whatever wgpu commit Cargo.lock pins without being reproduced here.
 
     wgpu-c-backend source itself is NOT in that commit; it stays
     source-of-truth in this repo and is copied in by copy_c_backend().
     """
-    print(f"Applying glue from {GLUE_BRANCH}")
-    run("git", "-C", str(LOCAL_WGPU), "fetch", "--quiet", REPO_URL, GLUE_BRANCH)
+    print(f"Applying glue {GLUE_COMMIT[:12]} ({GLUE_BRANCH})")
+    run("git", "-C", str(LOCAL_WGPU), "fetch", "--quiet", REPO_URL, GLUE_COMMIT)
     diff = subprocess.run(
-        ["git", "-C", str(LOCAL_WGPU), "diff", "FETCH_HEAD^", "FETCH_HEAD"],
+        ["git", "-C", str(LOCAL_WGPU), "diff", f"{GLUE_COMMIT}^", GLUE_COMMIT],
         check=True,
         stdout=subprocess.PIPE,
     ).stdout
