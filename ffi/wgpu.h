@@ -1177,6 +1177,23 @@ typedef struct WGPUInstanceExtras
     WGPUNativeDisplayHandle displayHandle;
 } WGPUInstanceExtras;
 
+typedef enum WGPUMemoryHints
+{
+    /** Same as Performance (the wgpu default). */
+    WGPUMemoryHints_Undefined = 0x00000000,
+    /** Favor performance over memory usage. */
+    WGPUMemoryHints_Performance = 0x00000001,
+    /** Favor memory usage over performance. */
+    WGPUMemoryHints_MemoryUsage = 0x00000002,
+    /**
+     * Choose the suballocated memory block size range explicitly via
+     * @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeStart and
+     * @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeEnd.
+     */
+    WGPUMemoryHints_Manual = 0x00000003,
+    WGPUMemoryHints_Force32 = 0x7FFFFFFF
+} WGPUMemoryHints;
+
 typedef struct WGPUDeviceExtras
 {
     WGPUChainedStruct chain;
@@ -1188,6 +1205,24 @@ typedef struct WGPUDeviceExtras
      * An empty/undefined string view disables tracing.
      */
     WGPUStringView tracePath;
+    /**
+     * Hints to the backend memory allocator.
+     * Zero-initialized yields @ref WGPUMemoryHints_Undefined (Performance).
+     */
+    WGPUMemoryHints memoryHints;
+    /**
+     * Initial suballocated device-memory block size, in bytes. Only used
+     * with @ref WGPUMemoryHints_Manual.
+     *
+     * After running out of space in existing blocks, the backend may grow
+     * subsequent block sizes up to
+     * @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeEnd. This does
+     * not limit resource sizes: a resource that does not fit is typically
+     * placed in a dedicated memory block.
+     */
+    uint64_t suballocatedDeviceMemoryBlockSizeStart;
+    /** See @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeStart. */
+    uint64_t suballocatedDeviceMemoryBlockSizeEnd;
 } WGPUDeviceExtras;
 
 typedef struct WGPUNativeLimits

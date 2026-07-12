@@ -470,7 +470,7 @@ unsafe fn map_native_display_handle(
 pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
-    _extras: Option<&native::WGPUDeviceExtras>,
+    extras: Option<&native::WGPUDeviceExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
@@ -491,8 +491,18 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
-            // TODO(wgpu.h)
-            memory_hints: Default::default(),
+            memory_hints: match extras {
+                Some(extras) => match extras.memoryHints {
+                    native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
+                    native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
+                        suballocated_device_memory_block_size: extras
+                            .suballocatedDeviceMemoryBlockSizeStart
+                            ..extras.suballocatedDeviceMemoryBlockSizeEnd,
+                    },
+                    _ => wgt::MemoryHints::Performance,
+                },
+                None => Default::default(),
+            },
             trace: Default::default(),
             experimental_features: wgt::ExperimentalFeatures::disabled(),
         },
