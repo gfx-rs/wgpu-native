@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 log = "0.4"
-wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv"] }
+wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "static-dxc"] }
 wgpu-native = { path = "../", features = ["vulkan-portability", "angle"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
