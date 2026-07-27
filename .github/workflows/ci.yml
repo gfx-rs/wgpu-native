@@ -29,7 +29,7 @@ jobs:
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
       - run: python checks.py
 
   fmt:
