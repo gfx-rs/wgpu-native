@@ -5,7 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_URL = "https://github.com/inner-daemons/wgpu.git"
+UPSTREAM_URL = "https://github.com/gfx-rs/wgpu.git"
+FORK_URL = "https://github.com/inner-daemons/wgpu.git"
 # Branch on the fork that carries the wgpu-side integration glue as a single
 # commit (see apply_glue). Replaces the string-patching this script used to do.
 GLUE_BRANCH = "c-backend-testrig-v31"
@@ -36,7 +37,7 @@ def run(*args, **kwargs):
 
 def clone_at_commit(commit: str):
     if not LOCAL_WGPU.exists():
-        run("git", "clone", REPO_URL, str(LOCAL_WGPU))
+        run("git", "clone", UPSTREAM_URL, str(LOCAL_WGPU))
     else:
         run("git", "-C", str(LOCAL_WGPU), "fetch", "--all")
     run("git", "-C", str(LOCAL_WGPU), "reset", "--hard", commit)
@@ -65,7 +66,7 @@ def apply_glue():
     source-of-truth in this repo and is copied in by copy_c_backend().
     """
     print(f"Applying glue {GLUE_COMMIT[:12]} ({GLUE_BRANCH})")
-    run("git", "-C", str(LOCAL_WGPU), "fetch", "--quiet", REPO_URL, GLUE_COMMIT)
+    run("git", "-C", str(LOCAL_WGPU), "fetch", "--quiet", FORK_URL, GLUE_COMMIT)
     diff = subprocess.run(
         ["git", "-C", str(LOCAL_WGPU), "diff", f"{GLUE_COMMIT}^", GLUE_COMMIT],
         check=True,
