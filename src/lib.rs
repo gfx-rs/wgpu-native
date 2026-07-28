@@ -2496,15 +2496,14 @@ pub unsafe extern "C-unwind" fn wgpuDeviceCreateRenderBundleEncoder(
         multiview,
     };
 
-    match wgc::command::RenderBundleEncoder::new(&desc, None, device_id) {
-        Ok(encoder) => Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
-            context: context.clone(),
-            encoder: Box::into_raw(Box::new(Some(Box::into_raw(Box::new(encoder))))),
-        })),
-        Err(cause) => {
-            handle_error_fatal(cause, "wgpuDeviceCreateRenderBundleEncoder");
-        }
+    let (encoder, error) = context.device_create_render_bundle_encoder(device_id, &desc);
+    if let Some(cause) = error {
+        handle_error_fatal(cause, "wgpuDeviceCreateRenderBundleEncoder");
     }
+    Arc::into_raw(Arc::new(WGPURenderBundleEncoderImpl {
+        context: context.clone(),
+        encoder: Box::into_raw(Box::new(Some(Box::into_raw(encoder)))),
+    }))
 }
 
 #[no_mangle]
@@ -5199,6 +5198,9 @@ pub extern "C" fn wgpuGetWgslLanguageFeatures() -> native::WGPUWgslLanguageFeatu
                     ImplementedLanguageExtension::PointerCompositeAccess => {
                         native::WGPUWgslLanguageFeatures_PointerCompositeAccess
                     }
+                    ImplementedLanguageExtension::ImmediateAddressSpace => {
+                        native::WGPUWgslLanguageFeatures_ImmediateAddressSpace
+                    }
                 }
             },
         )
@@ -6354,7 +6356,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                 panic!("unknown WGPUBlasGeometryKind: {}", entry.geometryKind)
             };
             wgc::ray_tracing::BlasBuildEntry {
-                blas_id,
+                blas: blas_id,
                 geometries,
             }
         });
@@ -6370,7 +6372,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                     inst.as_ref()
                         .map(|(blas_id, transform, custom_data, mask)| {
                             wgc::ray_tracing::TlasInstance {
-                                blas_id: *blas_id,
+                                blas: *blas_id,
                                 transform,
                                 custom_data: *custom_data,
                                 mask: *mask,
@@ -6379,7 +6381,7 @@ pub unsafe extern "C" fn wgpuCommandEncoderBuildAccelerationStructures(
                 })
                 .collect();
             wgc::ray_tracing::TlasPackage {
-                tlas_id,
+                tlas: tlas_id,
                 instances: Box::new(instances.into_iter()),
                 lowest_unmodified: pkg.lowestUnmodified,
             }

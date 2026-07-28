@@ -100,13 +100,28 @@ api_log_info = ["wgc/api_log_info"]
 ## Enables serialization via `serde` on common wgpu types.
 serde = ["dep:serde", "wgc/serde"]
 
-# Uncomment once upstream adds it again — https://github.com/gfx-rs/wgpu/issues/5974
-# ## Allow writing of trace capture files. See [`Adapter::request_device`].
-# trace = ["serde", "wgc/trace"]
-
 ## Allow deserializing of trace capture files that were written with the `trace` feature.
 ## To replay a trace file use the [wgpu player](https://github.com/gfx-rs/wgpu/tree/trunk/player).
 replay = ["serde", "wgc/replay"]
+
+#! ### Backend features
+# --------------------------------------------------------------------
+
+## Support creating textures from DRM display/window handles.
+drm = ["wgc/drm"]
+
+#! ### External libraries
+# --------------------------------------------------------------------
+
+## Enables statically linking DXC.
+##
+## Normally, to use the modern DXC shader compiler with wgpu, the final application
+## must be shipped alongside `dxcompiler.dll` (min v1.8.2502). This feature statically
+## links a version of DXC so that no external binaries are required to compile DX12 shaders.
+static-dxc = ["wgc/static-dxc"]
+
+## Enable portable atomics on platforms that do not support 64-bit atomics.
+portable-atomic = ["wgc/portable-atomic"]
 
 [dependencies.wgc]
 workspace = true

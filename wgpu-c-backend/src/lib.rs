@@ -407,6 +407,9 @@ impl InstanceInterface for CInstance {
         if bits & wgpu_native::native::WGPUWgslLanguageFeatures_PointerCompositeAccess != 0 {
             out |= wgpu::WgslLanguageFeatures::PointerCompositeAccess;
         }
+        if bits & wgpu_native::native::WGPUWgslLanguageFeatures_ImmediateAddressSpace != 0 {
+            out |= wgpu::WgslLanguageFeatures::ImmediateAddressSpace;
+        }
         out
     }
 }

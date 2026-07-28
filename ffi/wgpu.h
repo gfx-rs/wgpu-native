@@ -2345,6 +2345,7 @@ static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_None = 0x00000000
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures = 0x00000001;
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct = 0x00000002;
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_PointerCompositeAccess = 0x00000004;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ImmediateAddressSpace = 0x00000008;
 
 /**
  * Bitmask of downlevel capabilities returned by

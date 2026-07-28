@@ -10,8 +10,8 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 log = "0.4"
-wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "static-dxc"] }
-wgpu-native = { path = "../", features = ["vulkan-portability", "angle"] }
+wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "static-dxc", "drm"] }
+wgpu-native = { path = "../", features = ["vulkan-portability", "angle", "spirv", "glsl", "wgsl"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 raw-window-metal = "1.1.0"
