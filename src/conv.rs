@@ -2314,15 +2314,21 @@ pub unsafe fn map_surface(
         let ui_view = NonNull::new_unchecked(uiview.ui_view);
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::UiKit(raw_window_handle::UiKitDisplayHandle::new()),
-            raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(ui_view)),
+            raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(
+                ui_view,
+            )),
         ));
     }
 
     #[cfg(feature = "drm")]
     if let Some(drm) = _drm {
         return CreateSurfaceParams::Raw((
-            raw_window_handle::RawDisplayHandle::Drm(raw_window_handle::DrmDisplayHandle::new(drm.fd)),
-            raw_window_handle::RawWindowHandle::Drm(raw_window_handle::DrmWindowHandle::new(drm.plane)),
+            raw_window_handle::RawDisplayHandle::Drm(raw_window_handle::DrmDisplayHandle::new(
+                drm.fd,
+            )),
+            raw_window_handle::RawWindowHandle::Drm(raw_window_handle::DrmWindowHandle::new(
+                drm.plane,
+            )),
         ));
     }
 

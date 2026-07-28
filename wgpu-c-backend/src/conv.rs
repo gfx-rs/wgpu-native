@@ -5,12 +5,16 @@ const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAcces
 
 pub(crate) unsafe fn string_view_into_str<'a>(sv: native::WGPUStringView) -> Option<&'a str> {
     if sv.data.is_null() {
-        return if sv.length == usize::MAX { None } else { Some("") };
+        return if sv.length == usize::MAX {
+            None
+        } else {
+            Some("")
+        };
     }
     let bytes = if sv.length == usize::MAX {
         std::ffi::CStr::from_ptr(sv.data).to_bytes()
     } else {
-        std::slice::from_raw_parts(sv.data as *const u8, sv.length)
+        std::slice::from_raw_parts(sv.data.cast::<u8>(), sv.length)
     };
     Some(std::str::from_utf8_unchecked(bytes))
 }
@@ -1826,9 +1830,7 @@ pub fn storage_texture_access_to_native(
         wgpu::StorageTextureAccess::WriteOnly => native::WGPUStorageTextureAccess_WriteOnly,
         wgpu::StorageTextureAccess::ReadOnly => native::WGPUStorageTextureAccess_ReadOnly,
         wgpu::StorageTextureAccess::ReadWrite => native::WGPUStorageTextureAccess_ReadWrite,
-        wgpu::StorageTextureAccess::Atomic => {
-            WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC
-        }
+        wgpu::StorageTextureAccess::Atomic => WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC,
     }
 }
 

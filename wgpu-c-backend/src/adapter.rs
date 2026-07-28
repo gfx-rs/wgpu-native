@@ -378,7 +378,11 @@ impl AdapterInterface for CAdapter {
             flags: 0,
         };
         let status = unsafe {
-            wgpuAdapterGetTextureFormatCapabilities(self.ptr, native_fmt, std::ptr::from_mut(&mut caps))
+            wgpuAdapterGetTextureFormatCapabilities(
+                self.ptr,
+                native_fmt,
+                std::ptr::from_mut(&mut caps),
+            )
         };
         if status != native::WGPUStatus_Success {
             return format.guaranteed_format_features(self.features());

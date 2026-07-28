@@ -141,7 +141,8 @@ impl CommandEncoderInterface for CCommandEncoder {
             label: label_sv,
             timestampWrites: ts_ptr,
         };
-        let ptr = unsafe { wgpuCommandEncoderBeginComputePass(self.ptr, std::ptr::from_ref(&c_desc)) };
+        let ptr =
+            unsafe { wgpuCommandEncoderBeginComputePass(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchComputePass::custom(CComputePass { ptr })
     }
 
@@ -273,7 +274,8 @@ impl CommandEncoderInterface for CCommandEncoder {
             timestampWrites: ts_ptr,
         };
 
-        let ptr = unsafe { wgpuCommandEncoderBeginRenderPass(self.ptr, std::ptr::from_ref(&c_desc)) };
+        let ptr =
+            unsafe { wgpuCommandEncoderBeginRenderPass(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchRenderPass::custom(CRenderPass { ptr })
     }
 
@@ -282,12 +284,7 @@ impl CommandEncoderInterface for CCommandEncoder {
             nextInChain: std::ptr::null_mut(),
             label: conv::null_string_view(),
         };
-        let ptr = unsafe {
-            wgpuCommandEncoderFinish(
-                self.ptr,
-                std::ptr::from_ref(&desc),
-            )
-        };
+        let ptr = unsafe { wgpuCommandEncoderFinish(self.ptr, std::ptr::from_ref(&desc)) };
         DispatchCommandBuffer::custom(CCommandBuffer {
             ptr,
             device_ptr: self.device_ptr,
@@ -644,12 +641,7 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
 
     fn set_immediates(&mut self, offset: u32, data: &[u8]) {
         unsafe {
-            wgpuRenderBundleEncoderSetImmediates(
-                self.ptr,
-                offset,
-                data.as_ptr().cast(),
-                data.len(),
-            )
+            wgpuRenderBundleEncoderSetImmediates(self.ptr, offset, data.as_ptr().cast(), data.len())
         };
     }
 

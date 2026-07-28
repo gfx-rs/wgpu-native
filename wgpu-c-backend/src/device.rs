@@ -116,7 +116,11 @@ impl DeviceInterface for CDevice {
                     label: label_sv,
                 };
                 let ptr = unsafe {
-                    wgpuDeviceCreateShaderModuleTrusted(self.ptr, std::ptr::from_ref(&c_desc), runtime_checks)
+                    wgpuDeviceCreateShaderModuleTrusted(
+                        self.ptr,
+                        std::ptr::from_ref(&c_desc),
+                        runtime_checks,
+                    )
                 };
                 crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
@@ -140,7 +144,11 @@ impl DeviceInterface for CDevice {
                     label: label_sv,
                 };
                 let ptr = unsafe {
-                    wgpuDeviceCreateShaderModuleTrusted(self.ptr, std::ptr::from_ref(&c_desc), runtime_checks)
+                    wgpuDeviceCreateShaderModuleTrusted(
+                        self.ptr,
+                        std::ptr::from_ref(&c_desc),
+                        runtime_checks,
+                    )
                 };
                 crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
@@ -188,7 +196,11 @@ impl DeviceInterface for CDevice {
                     label: label_sv,
                 };
                 let ptr = unsafe {
-                    wgpuDeviceCreateShaderModuleTrusted(self.ptr, std::ptr::from_ref(&c_desc), runtime_checks)
+                    wgpuDeviceCreateShaderModuleTrusted(
+                        self.ptr,
+                        std::ptr::from_ref(&c_desc),
+                        runtime_checks,
+                    )
                 };
                 crate::resume_callback_panic();
                 DispatchShaderModule::custom(CShaderModule {
@@ -264,7 +276,9 @@ impl DeviceInterface for CDevice {
                 .map(conv::str_to_string_view)
                 .unwrap_or_else(conv::null_string_view),
         };
-        let ptr = unsafe { wgpuDeviceCreateShaderModulePassthrough(self.ptr, std::ptr::from_ref(&c_desc)) };
+        let ptr = unsafe {
+            wgpuDeviceCreateShaderModulePassthrough(self.ptr, std::ptr::from_ref(&c_desc))
+        };
         crate::resume_callback_panic();
         DispatchShaderModule::custom(CShaderModule {
             ptr,
@@ -1271,7 +1285,8 @@ impl DeviceInterface for CDevice {
                     aabbDescriptors: std::ptr::null(),
                     aabbDescriptorCount: 0,
                 };
-                let ptr = unsafe { wgpuDeviceCreateBlas(self.ptr, std::ptr::from_ref(&c_desc), c_sizes) };
+                let ptr =
+                    unsafe { wgpuDeviceCreateBlas(self.ptr, std::ptr::from_ref(&c_desc), c_sizes) };
                 crate::resume_callback_panic();
                 ptr
             }
@@ -1294,7 +1309,8 @@ impl DeviceInterface for CDevice {
                     },
                     aabbDescriptorCount: c_aabbs.len(),
                 };
-                let ptr = unsafe { wgpuDeviceCreateBlas(self.ptr, std::ptr::from_ref(&c_desc), c_sizes) };
+                let ptr =
+                    unsafe { wgpuDeviceCreateBlas(self.ptr, std::ptr::from_ref(&c_desc), c_sizes) };
                 crate::resume_callback_panic();
                 ptr
             }
@@ -1456,7 +1472,8 @@ impl DeviceInterface for CDevice {
                 .map(|ds| ds.stencil_read_only as u32)
                 .unwrap_or(0),
         };
-        let ptr = unsafe { wgpuDeviceCreateRenderBundleEncoder(self.ptr, std::ptr::from_ref(&c_desc)) };
+        let ptr =
+            unsafe { wgpuDeviceCreateRenderBundleEncoder(self.ptr, std::ptr::from_ref(&c_desc)) };
         crate::resume_callback_panic();
         DispatchRenderBundleEncoder::custom(CRenderBundleEncoder { ptr })
     }
@@ -1565,13 +1582,25 @@ impl DeviceInterface for CDevice {
         poll_type: wgpu::wgt::PollType<u64>,
     ) -> Result<wgpu::PollStatus, wgpu::PollError> {
         let result = match poll_type {
-            wgpu::wgt::PollType::Poll => unsafe { wgpuDevicePoll(self.ptr, 0u32, std::ptr::null(), 0) },
+            wgpu::wgt::PollType::Poll => unsafe {
+                wgpuDevicePoll(self.ptr, 0u32, std::ptr::null(), 0)
+            },
             wgpu::wgt::PollType::Wait {
                 submission_index,
                 timeout,
             } => {
                 let timeout_ns = timeout.map_or(0, |d| d.as_nanos() as u64);
-                unsafe { wgpuDevicePoll(self.ptr, 1u32, submission_index.as_ref().map(std::ptr::from_ref).unwrap_or(std::ptr::null()), timeout_ns) }
+                unsafe {
+                    wgpuDevicePoll(
+                        self.ptr,
+                        1u32,
+                        submission_index
+                            .as_ref()
+                            .map(std::ptr::from_ref)
+                            .unwrap_or(std::ptr::null()),
+                        timeout_ns,
+                    )
+                }
             }
         };
         // Re-raise any panic that occurred inside a map callback during polling.

@@ -365,7 +365,9 @@ impl InstanceInterface for CInstance {
             userdata2: std::ptr::null_mut(),
         };
 
-        unsafe { wgpuInstanceRequestAdapter(self.ptr, std::ptr::from_ref(&c_options), callback_info) };
+        unsafe {
+            wgpuInstanceRequestAdapter(self.ptr, std::ptr::from_ref(&c_options), callback_info)
+        };
         Box::pin(future::ready(out.result.unwrap_or(Err(not_found()))))
     }
 
@@ -380,8 +382,11 @@ impl InstanceInterface for CInstance {
         };
 
         let adapters = unsafe {
-            let count =
-                wgpuInstanceEnumerateAdapters(self.ptr, std::ptr::from_ref(&options), std::ptr::null_mut());
+            let count = wgpuInstanceEnumerateAdapters(
+                self.ptr,
+                std::ptr::from_ref(&options),
+                std::ptr::null_mut(),
+            );
 
             let mut out: Vec<native::WGPUAdapter> = vec![std::ptr::null_mut(); count];
             wgpuInstanceEnumerateAdapters(self.ptr, std::ptr::from_ref(&options), out.as_mut_ptr());
