@@ -11,6 +11,12 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased
 
+### Feature parity with wgpu
+
+Wgpu-native has reached feature-parity with upstream wgpu. This introduces ray tracing, mesh shaders, passthrough shaders, and more. Now tested against wgpu's test suite.
+
+By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
+
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
@@ -84,6 +90,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - `foreign-types-shared` dependency (no longer needed after Metal backend switched to `objc2`).
 - `raw-window-handle` feature on `wgpu-core` dependency (removed upstream).
 - `WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing` and `WGPUNativeFeature_SpirvShaderPassthrough` removed @lisyarus
+- `wgpuDeviceCreateShaderModuleSpirV` method, replaced with the new `wgpuDeviceCreateShaderModulePassthrough`. By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
 
 ## Diffs
 

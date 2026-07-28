@@ -14,6 +14,10 @@
 
 #include "webgpu.h"
 
+typedef struct WGPUPipelineCacheImpl* WGPUPipelineCache WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUBlasImpl* WGPUBlas WGPU_OBJECT_ATTRIBUTE;
+typedef struct WGPUTlasImpl* WGPUTlas WGPU_OBJECT_ATTRIBUTE;
+
 typedef enum WGPUNativeSType
 {
     // Start at 0003 since that's allocated range for wgpu-native
@@ -35,10 +39,30 @@ typedef enum WGPUNativeSType
     WGPUSType_SurfaceConfigurationExtras = 0x00030008,
     /** Identifies @ref WGPUSurfaceSourceSwapChainPanel. */
     WGPUSType_SurfaceSourceSwapChainPanel = 0x00030009,
-    /** Identifies @ref WGPUPrimitiveStateExtras. */
     WGPUSType_PrimitiveStateExtras = 0x0003000A,
     /** Identifies @ref WGPUSamplerDescriptorExtras. */
     WGPUSType_SamplerDescriptorExtras = 0x0003000B,
+    /** Identifies @ref WGPUComputePipelineDescriptorExtras. */
+    WGPUSType_ComputePipelineDescriptorExtras = 0x0003000D,
+    /** Identifies @ref WGPURenderPipelineDescriptorExtras. */
+    WGPUSType_RenderPipelineDescriptorExtras = 0x0003000E,
+    /** Identifies @ref WGPUMeshPipelineDescriptorExtras. */
+    WGPUSType_MeshPipelineDescriptorExtras = 0x0003000F,
+    /** Identifies @ref WGPUAdapterInfoExtras. */
+    WGPUSType_AdapterInfoExtras = 0x00030010,
+    /** Identifies @ref WGPURenderPassDescriptorExtras. */
+    WGPUSType_RenderPassDescriptorExtras = 0x00030012,
+    /** Identifies @ref WGPURenderBundleEncoderDescriptorExtras. */
+    WGPUSType_RenderBundleEncoderDescriptorExtras = 0x00030013,
+    /** Identifies @ref WGPUDeviceDescriptorExtras. */
+    WGPUSType_DeviceDescriptorExtras = 0x00030014,
+    /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
+    WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
+    WGPUSType_SurfaceCapabilitiesExtras = 0x00030016,
+    /** Identifies @ref WGPUSurfaceSourceUIView. */
+    WGPUSType_SurfaceSourceUIView = 0x00030017,
+    /** Identifies @ref WGPUSurfaceSourceDrm. */
+    WGPUSType_SurfaceSourceDrm = 0x00030018,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -335,7 +359,17 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_StorageTextureArrayNonUniformIndexing = 0x00030010,
+    /**
+     * Allows the use of @ref WGPUSamplerBorderColor_Zero via @ref WGPUSamplerDescriptorExtras.
+     *
+     * This is a native only feature.
+     */
     WGPUNativeFeature_AddressModeClampToZero = 0x00030011,
+    /**
+     * Allows the use of @ref WGPUNativeAddressMode_ClampToBorder.
+     *
+     * This is a native only feature.
+     */
     WGPUNativeFeature_AddressModeClampToBorder = 0x00030012,
     /**
      * Allows the user to set @ref WGPUPolygonMode_Line in
@@ -586,8 +620,12 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_TextureFormatP010 = 0x00030029,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_ExternalTexture = 0x0003002A,
+    /**
+     * Enables @c ExternalTexture support.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ExternalTexture = 0x0003002A,
     /**
      * Allows the use of pipeline cache objects
      * 
@@ -620,9 +658,18 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_ShaderInt64AtomicAllOps = 0x0003002D,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x0003002E,
-    // WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x0003002F,
+    /**
+     * Enables Vulkan VK_GOOGLE_display_timing extension.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanGoogleDisplayTiming = 0x0003002E,
+    /**
+     * Enables Vulkan external memory for Win32 handles.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanExternalMemoryWin32 = 0x0003002F,
     /**
      * Enables R64Uint image atomic min and max.
      * 
@@ -636,12 +683,31 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_TextureInt64Atomic = 0x00030030,
     // TODO: not implemented yet, see https://github.com/gfx-rs/wgpu/issues/7149
     // WGPUNativeFeature_UniformBufferBindingArrays = 0x00030031,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_MeshShader = 0x00030032,
-    // WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
-    // WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
-    // WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
-    // WGPUNativeFeature_PassthroughShaders = 0x00030036,
+    WGPUNativeFeature_MeshShader = 0x00030032,
+    /**
+     * Enables returning hit vertex data from ray tracing shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
+    /**
+     * Enables multiview in mesh shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
+    /**
+     * Enables extended vertex format support for acceleration structures.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats = 0x00030035,
+    /**
+     * Enables passthrough shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_PassthroughShaders = 0x00030036,
     /**
      * Enables shader barycentric coordinates.
      * 
@@ -664,8 +730,12 @@ typedef enum WGPUNativeFeature
      * While metal supports this in theory, the behavior of `view_index` differs from vulkan and dx12 so the feature isn't exposed.
      */
     WGPUNativeFeature_SelectiveMultiview = 0x00030038,
-    // TODO: requires wgpu.h api change
-    // WGPUNativeFeature_MeshShaderPoints = 0x00030039,
+    /**
+     * Enables point topology in mesh shaders.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_MeshShaderPoints = 0x00030039,
     WGPUNativeFeature_MultisampleArray = 0x0003003A,
     /**
      * Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
@@ -750,9 +820,77 @@ typedef enum WGPUNativeFeature
      * This is a native only feature.
      */
     WGPUNativeFeature_MemoryDecorationVolatile = 0x00030040,
+    /**
+     * Enables Vulkan external memory for POSIX file descriptor handles.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanExternalMemoryFd = 0x00030041,
+    /**
+     * Enables Vulkan external memory for Linux DMA-BUF handles.
+     *
+     * This is a native only feature.
+     */
+    WGPUNativeFeature_VulkanExternalMemoryDmaBuf = 0x00030042,
+    /**
+     * Enables ray tracing pipelines (@c wgpuRayTracingPipeline*).
+     *
+     * This is an experimental, native-only feature.
+     */
+    WGPUNativeFeature_ExperimentalRayTracingPipelines = 0x00030043,
 
     WGPUNativeFeature_Force32 = 0x7FFFFFFF
 } WGPUNativeFeature;
+
+/**
+ * Geometry kind stored in a bottom level acceleration structure.
+ */
+typedef enum WGPUBlasGeometryKind
+{
+    WGPUBlasGeometryKind_Triangles = 0x00000000,
+    WGPUBlasGeometryKind_AABBs = 0x00000001,
+    WGPUBlasGeometryKind_Force32 = 0x7FFFFFFF
+} WGPUBlasGeometryKind;
+
+/**
+ * Build mode for acceleration structures.
+ */
+typedef enum WGPUAccelerationStructureUpdateMode
+{
+    /** Always perform a full build. */
+    WGPUAccelerationStructureUpdateMode_Build = 0x00000000,
+    /** Perform an incremental update if possible. */
+    WGPUAccelerationStructureUpdateMode_PreferUpdate = 0x00000001,
+    WGPUAccelerationStructureUpdateMode_Force32 = 0x7FFFFFFF
+} WGPUAccelerationStructureUpdateMode;
+
+typedef WGPUFlags WGPUAccelerationStructureFlags;
+/** No flags. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_None = 0x00000000;
+/** Allow incremental updates. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowUpdate = 1 << 0;
+/** Allow compaction via @ref wgpuQueueCompactBlas. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowCompaction = 1 << 1;
+/** Optimize for fast ray tracing (non-dynamic geometry). */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_PreferFastTrace = 1 << 2;
+/** Optimize for fast build (dynamic geometry). */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_PreferFastBuild = 1 << 3;
+/** Minimize memory footprint. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_LowMemory = 1 << 4;
+/** Use transform buffer during BLAS build (only valid at BLAS creation). */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_UseTransform = 1 << 5;
+/** Allow retrieval of hit triangle vertices. Requires @ref WGPUNativeFeature_RayHitVertexReturn. */
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowRayHitVertexReturn = 1 << 6;
+static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_Force32 = 0x7FFFFFFF;
+
+typedef WGPUFlags WGPUAccelerationStructureGeometryFlags;
+/** No flags. */
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_None = 0x00000000;
+/** Geometry is opaque (no alpha testing). */
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_Opaque = 1 << 0;
+/** Prevent duplicate any-hit shader invocations per primitive. */
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_NoDuplicateAnyHitInvocation = 1 << 1;
+static const WGPUAccelerationStructureGeometryFlags WGPUAccelerationStructureGeometryFlags_Force32 = 0x7FFFFFFF;
 
 typedef enum WGPULogLevel
 {
@@ -809,6 +947,39 @@ static const WGPUInstanceBackend WGPUInstanceBackend_Primary = (1 << 0) | (1 << 
 /** Secondary (second-tier) backends: GL. */
 static const WGPUInstanceBackend WGPUInstanceBackend_Secondary = (1 << 1);
 static const WGPUInstanceBackend WGPUInstanceBackend_Force32 = 0x7FFFFFFF;
+
+/**
+ * Native extension value for @ref WGPULoadOp.
+ *
+ * The render target has undefined contents at the start of the render pass.
+ * This is the fastest option when every pixel is overwritten by the pass, but
+ * reading an unwritten pixel is undefined behavior. Backends that don't support
+ * it internally fall back to an unspecified load op. Under
+ * @ref WGPUInstanceFlag_StrictWebgpuCompliance it is rejected.
+ *
+ * Assignable to any @ref WGPULoadOp field (e.g. @ref WGPURenderPassColorAttachment::loadOp).
+ */
+#define WGPULoadOp_DontCare 0x00030001
+
+/**
+ * Native extension value for @ref WGPUBufferUsage.
+ *
+ * The buffer can hold ray-tracing pipeline shader-binding-table data. Requires
+ * @ref WGPUNativeFeature_ExperimentalRayTracingPipelines. Not part of the WebGPU
+ * standard.
+ */
+static const WGPUBufferUsage WGPUBufferUsage_RayTracingPipelineShaderData = 0x0000000000008000;
+
+/**
+ * Native extension values for @ref WGPUTextureAspect.
+ *
+ * Select an individual plane of a multi-planar texture format (e.g. @ref
+ * WGPUTextureFormat_NV12, P010). Not part of the WebGPU standard. Assignable to
+ * any @ref WGPUTextureAspect field.
+ */
+#define WGPUTextureAspect_Plane0 0x00030000
+#define WGPUTextureAspect_Plane1 0x00030001
+#define WGPUTextureAspect_Plane2 0x00030002
 
 /**
  * Bitflags controlling instance debugging and validation behavior.
@@ -891,6 +1062,16 @@ static const WGPUInstanceFlag WGPUInstanceFlag_ValidationIndirectCall = 1 << 5;
  * will always be @c 1.0.
  */
 static const WGPUInstanceFlag WGPUInstanceFlag_AutomaticTimestampNormalization = 1 << 6;
+/**
+ * Restrict the available feature set to the one defined by the WebGPU
+ * specification. Adapters that can't fully satisfy the WebGPU v1 spec are
+ * excluded, and spec-forbidden behaviour (e.g. @ref WGPULoadOp_DontCare) is
+ * rejected.
+ *
+ * When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+ * @c WGPU_STRICT_WEBGPU_COMPLIANCE environment variable.
+ */
+static const WGPUInstanceFlag WGPUInstanceFlag_StrictWebgpuCompliance = 1 << 7;
 /**
  * Use the default flags for the current build configuration.
  * In debug builds, this typically enables @ref WGPUInstanceFlag_Debug and
@@ -1121,6 +1302,28 @@ typedef struct WGPUNativeDisplayHandle
     } data;
 } WGPUNativeDisplayHandle;
 
+/**
+ * Chained in @ref WGPUAdapterInfo to expose wgpu-native-specific adapter properties.
+ *
+ * Passed as @ref WGPUAdapterInfo::nextInChain to @ref wgpuAdapterGetInfo.
+ * Caller must free @ref devicePciBusId via @ref wgpuAdapterInfoFreeMembers.
+ */
+typedef struct WGPUAdapterInfoExtras
+{
+    WGPUChainedStruct chain;
+    /** Whether the adapter uses memory that is shared with the CPU and
+     *  benefits from keeping allocations small (e.g. integrated/mobile GPUs).
+     *  @ref WGPUOptionalBool_Undefined when the adapter cannot report it. */
+    WGPUOptionalBool transientSavesMemory;
+    /**
+     * PCI bus identifier for the adapter in the form @c "bus:device.function",
+     * e.g. @c "0000:01:00.0". Empty when not available.
+     *
+     * This is an \ref OutputString.
+     */
+    WGPUStringView devicePciBusId;
+} WGPUAdapterInfoExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef struct WGPUInstanceExtras
 {
     WGPUChainedStruct chain;
@@ -1217,6 +1420,33 @@ typedef struct WGPUNativeLimits
      * The maximum number of views that can be used in multiview rendering.
      */
     uint32_t maxMultiviewViewCount;
+    /**
+     * Maximum number of acceleration structures within binding arrays per shader stage.
+     */
+    uint32_t maxBindingArrayAccelerationStructureElementsPerShaderStage;
+    /* Mesh shader limits */
+    uint32_t maxTaskWorkgroupTotalCount;
+    uint32_t maxTaskWorkgroupsPerDimension;
+    uint32_t maxMeshWorkgroupTotalCount;
+    uint32_t maxMeshWorkgroupsPerDimension;
+    uint32_t maxTaskInvocationsPerWorkgroup;
+    uint32_t maxTaskInvocationsPerDimension;
+    uint32_t maxMeshInvocationsPerWorkgroup;
+    uint32_t maxMeshInvocationsPerDimension;
+    uint32_t maxTaskPayloadSize;
+    uint32_t maxMeshOutputVertices;
+    uint32_t maxMeshOutputPrimitives;
+    uint32_t maxMeshOutputLayers;
+    uint32_t maxMeshMultiviewViewCount;
+    /* Ray tracing limits */
+    uint32_t maxBlasPrimitiveCount;
+    uint32_t maxBlasGeometryCount;
+    uint32_t maxTlasInstanceCount;
+    uint32_t maxAccelerationStructuresPerShaderStage;
+    uint32_t maxBuffersAndAccelerationStructuresPerShaderStage;
+    /* Ray tracing pipeline limits */
+    uint32_t maxRayDispatchCount;
+    uint32_t maxRayRecursionDepth;
 } WGPUNativeLimits;
 
 #define WGPU_NATIVE_LIMITS_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeLimits, { \
@@ -1260,13 +1490,45 @@ typedef struct WGPUShaderSourceGLSL
     WGPUShaderDefine const *defines;
 } WGPUShaderSourceGLSL;
 
-typedef struct WGPUShaderModuleDescriptorSpirV
+typedef struct WGPUPassthroughShaderEntryPoint
+{
+    /** Entry point name. Required for GLSL and DXIL; used for identification in others. */
+    WGPUStringView name;
+    /** Workgroup size for compute shaders (Metal only). Ignored for other stages. */
+    uint32_t workgroupSizeX;
+    uint32_t workgroupSizeY;
+    uint32_t workgroupSizeZ;
+} WGPUPassthroughShaderEntryPoint WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for a shader module created from native/backend-specific sources.
+ * At least one source appropriate for the active backend must be provided.
+ *
+ * This type is unique to wgpu-native; there is no analogue in the
+ * WebGPU specification.
+ */
+typedef struct WGPUShaderModuleDescriptorPassthrough
 {
     WGPUStringView label;
-    /** Number of 32-bit words in @c source. */
-    uint32_t sourceSize;
-    uint32_t const *source;
-} WGPUShaderModuleDescriptorSpirV;
+    /** Number of entries in @c entryPoints. */
+    size_t entryPointCount;
+    WGPUPassthroughShaderEntryPoint const *entryPoints;
+    /** Number of 32-bit words in @c spirv. 0 if unused. */
+    uint32_t spirvSize;
+    uint32_t const *spirv;
+    /** Byte count of @c dxil. 0 if unused. */
+    size_t dxilSize;
+    uint8_t const *dxil;
+    /** HLSL source. @ref WGPUStringView_null if unused. */
+    WGPUStringView hlsl;
+    /** Byte count of @c metallib. 0 if unused. */
+    size_t metallibSize;
+    uint8_t const *metallib;
+    /** MSL source. @ref WGPUStringView_null if unused. */
+    WGPUStringView msl;
+    /** GLSL source (GL backend only). @ref WGPUStringView_null if unused. Exactly one entry point must be provided. */
+    WGPUStringView glsl;
+} WGPUShaderModuleDescriptorPassthrough;
 
 typedef struct WGPURegistryReport
 {
@@ -1304,6 +1566,50 @@ typedef struct WGPUGlobalReport
     WGPUHubReport hub;
 } WGPUGlobalReport;
 
+/** Describes a single GPU memory allocation within a memory block. */
+typedef struct WGPUAllocationReport
+{
+    /** Name given to the allocation at creation time. */
+    WGPUStringView name;
+    /** Byte offset within the containing memory block. */
+    uint64_t offset;
+    /** Size of the allocation in bytes. */
+    uint64_t size;
+} WGPUAllocationReport WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Describes a GPU memory block and the range of allocations it contains. */
+typedef struct WGPUMemoryBlockReport
+{
+    /** Total size of the memory block in bytes. */
+    uint64_t size;
+    /** Index into the allocations array of the first allocation in this block. */
+    size_t allocationStart;
+    /** One past the index of the last allocation in this block. */
+    size_t allocationEnd;
+} WGPUMemoryBlockReport WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * A snapshot of the GPU memory allocator's state, returned by
+ * @ref wgpuDeviceGetAllocatorReport.
+ *
+ * Must be freed with @ref wgpuAllocatorReportFreeMembers when no longer needed.
+ */
+typedef struct WGPUAllocatorReport
+{
+    /** True if the backend exposes allocator information; false otherwise. */
+    WGPUBool available;
+    /** Array of live allocations. Length is @p allocationCount. */
+    WGPUAllocationReport *allocations;
+    size_t allocationCount;
+    /** Array of memory blocks. Length is @p blockCount. */
+    WGPUMemoryBlockReport *blocks;
+    size_t blockCount;
+    /** Total bytes currently occupied by live allocations. */
+    uint64_t totalAllocatedBytes;
+    /** Total bytes reserved by all memory blocks (including unused padding). */
+    uint64_t totalReservedBytes;
+} WGPUAllocatorReport WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef struct WGPUInstanceEnumerateAdapterOptions
 {
     WGPUChainedStruct const *nextInChain;
@@ -1319,6 +1625,11 @@ typedef struct WGPUBindGroupEntryExtras
     size_t samplerCount;
     WGPUTextureView const *textureViews;
     size_t textureViewCount;
+    /** For AccelerationStructure bindings. NULL for non-AS bindings. */
+    WGPU_NULLABLE WGPUTlas tlas;
+    /** For AccelerationStructure array bindings. NULL for non-array AS bindings. */
+    WGPUTlas const *tlases;
+    size_t tlasCount;
 } WGPUBindGroupEntryExtras;
 
 typedef struct WGPUBindGroupLayoutEntryExtras
@@ -1338,6 +1649,26 @@ typedef struct WGPUQuerySetDescriptorExtras
     size_t pipelineStatisticCount;
 } WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Color space a surface presents its contents in.
+ *
+ * These are not part of the WebGPU standard. Used in the @c colorSpace field of
+ * @ref WGPUSurfaceConfigurationExtras.
+ */
+typedef enum WGPUSurfaceColorSpace
+{
+    /** Let wgpu pick the platform default (usually sRGB). */
+    WGPUSurfaceColorSpace_Auto = 0x00000000,
+    WGPUSurfaceColorSpace_Srgb = 0x00000001,
+    WGPUSurfaceColorSpace_ExtendedSrgbLinear = 0x00000002,
+    WGPUSurfaceColorSpace_DisplayP3 = 0x00000003,
+    WGPUSurfaceColorSpace_Bt2100Pq = 0x00000004,
+    WGPUSurfaceColorSpace_Bt2100Hlg = 0x00000005,
+    WGPUSurfaceColorSpace_ExtendedSrgb = 0x00000006,
+    WGPUSurfaceColorSpace_ExtendedDisplayP3 = 0x00000007,
+    WGPUSurfaceColorSpace_Force32 = 0x7FFFFFFF
+} WGPUSurfaceColorSpace WGPU_ENUM_ATTRIBUTE;
+
 typedef struct WGPUSurfaceConfigurationExtras
 {
     WGPUChainedStruct chain;
@@ -1350,7 +1681,109 @@ typedef struct WGPUSurfaceConfigurationExtras
      * - 3+: Maximize throughput.
      */
     uint32_t desiredMaximumFrameLatency;
+    /** Color space the surface presents in. Defaults to @ref WGPUSurfaceColorSpace_Auto. */
+    WGPUSurfaceColorSpace colorSpace;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Approximate color-gamut bucket reported by @ref WGPUDisplayCoarseRange. */
+typedef enum WGPUDisplayGamut
+{
+    WGPUDisplayGamut_Srgb = 0x00000000,
+    WGPUDisplayGamut_DisplayP3 = 0x00000001,
+    WGPUDisplayGamut_Rec2020 = 0x00000002,
+    WGPUDisplayGamut_Force32 = 0x7FFFFFFF
+} WGPUDisplayGamut WGPU_ENUM_ATTRIBUTE;
+
+/**
+ * Absolute-nit luminance levels of a display. Only meaningful when @c present is
+ * true; individual fields are @c NaN when that value is unknown.
+ */
+typedef struct WGPUDisplayLuminance
+{
+    WGPUBool present;
+    float maxNits;
+    float maxFullFrameNits;
+    float minNits;
+    float sdrWhiteNits;
+} WGPUDisplayLuminance WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Relative EDR-headroom multipliers. @c NaN fields are unknown. */
+typedef struct WGPUDisplayHeadroom
+{
+    WGPUBool present;
+    float current;
+    float potential;
+    float reference;
+} WGPUDisplayHeadroom WGPU_STRUCTURE_ATTRIBUTE;
+
+/** CIE 1931 xy chromaticity of the display primaries and white point. Each
+ *  x/y component is @c NaN when unknown. */
+typedef struct WGPUDisplayChromaticity
+{
+    WGPUBool present;
+    float redX, redY;
+    float greenX, greenY;
+    float blueX, blueY;
+    float whiteX, whiteY;
+} WGPUDisplayChromaticity WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Coarse, boolean dynamic-range + gamut bucket. */
+typedef struct WGPUDisplayCoarseRange
+{
+    WGPUBool present;
+    WGPUOptionalBool highDynamicRange;
+    WGPUBool hasGamut;
+    WGPUDisplayGamut gamut;
+} WGPUDisplayCoarseRange WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * HDR / luminance characteristics of the display a surface is on, returned by
+ * @ref wgpuSurfaceGetDisplayHdrInfo. Each sub-struct's @c present flag says
+ * whether that group is reported on the current platform.
+ */
+typedef struct WGPUDisplayHdrInfo
+{
+    WGPUDisplayLuminance luminance;
+    WGPUDisplayHeadroom headroom;
+    WGPUDisplayChromaticity chromaticity;
+    WGPUDisplayCoarseRange coarse;
+    WGPUBool hasBitsPerColor;
+    uint8_t bitsPerColor;
+} WGPUDisplayHdrInfo WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Bitset of color spaces a surface format can be presented in. Not part of the
+ * WebGPU standard.
+ */
+typedef WGPUFlags WGPUSurfaceColorSpaces;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_None = 0x0000000000000000;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_Srgb = 0x0000000000000001;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_ExtendedSrgbLinear = 0x0000000000000002;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_DisplayP3 = 0x0000000000000004;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_Bt2100Pq = 0x0000000000000008;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_Bt2100Hlg = 0x0000000000000010;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_ExtendedSrgb = 0x0000000000000020;
+static const WGPUSurfaceColorSpaces WGPUSurfaceColorSpaces_ExtendedDisplayP3 = 0x0000000000000040;
+
+/** The color spaces a single surface format supports. */
+typedef struct WGPUSurfaceFormatCapabilities
+{
+    WGPUTextureFormat format;
+    WGPUSurfaceColorSpaces colorSpaces;
+} WGPUSurfaceFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Output extras that may be chained onto @ref WGPUSurfaceCapabilities before
+ * calling @ref wgpuSurfaceGetCapabilities to also receive per-format color-space
+ * capabilities. The array is owned by wgpu-native and freed by
+ * @ref wgpuSurfaceCapabilitiesFreeMembers.
+ */
+typedef struct WGPUSurfaceCapabilitiesExtras
+{
+    WGPUChainedStruct chain;
+    size_t formatCapabilityCount;
+    WGPUSurfaceFormatCapabilities *formatCapabilities;
+} WGPUSurfaceCapabilitiesExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a WinUI [`SwapChainPanel`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel).
@@ -1364,6 +1797,56 @@ typedef struct WGPUSurfaceSourceSwapChainPanel
      */
     void *panelNative;
 } WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping an iOS/tvOS `UIView`.
+ *
+ * Set @c chain.sType to @ref WGPUSType_SurfaceSourceUIView.
+ */
+typedef struct WGPUSurfaceSourceUIView
+{
+    WGPUChainedStruct chain;
+    /**
+     * A pointer to the `UIView` that will be wrapped by the @ref WGPUSurface.
+     */
+    void *ui_view;
+} WGPUSurfaceSourceUIView WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a Linux KMS/DRM plane.
+ *
+ * Only available on Linux when neither X11 nor Wayland are present. Requires the `drm` cargo feature.
+ *
+ * Set @c chain.sType to @ref WGPUSType_SurfaceSourceDrm.
+ */
+typedef struct WGPUSurfaceSourceDrm
+{
+    WGPUChainedStruct chain;
+    /**
+     * The DRM file descriptor.
+     */
+    int32_t fd;
+    /**
+     * The primary DRM plane handle.
+     */
+    uint32_t plane;
+} WGPUSurfaceSourceDrm WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Memory allocation strategy for device creation.
+ *
+ * Pass via @ref WGPUDeviceDescriptorExtras.
+ */
+typedef enum WGPUMemoryHints
+{
+    /** Favour performance over memory usage (default). */
+    WGPUMemoryHints_Performance = 0x00000000,
+    /** Favour memory usage over performance. */
+    WGPUMemoryHints_MemoryUsage = 0x00000001,
+    /** Manual suballocation block size. Use @ref WGPUDeviceDescriptorExtras fields. */
+    WGPUMemoryHints_Manual = 0x00000002,
+    WGPUMemoryHints_Force32 = 0x7FFFFFFF
+} WGPUMemoryHints;
 
 typedef enum WGPUPolygonMode
 {
@@ -1397,6 +1880,366 @@ typedef struct WGPUPrimitiveStateExtras
     WGPUBool conservative;
 } WGPUPrimitiveStateExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * Chained in @ref WGPURenderPassDescriptor to enable multiview rendering.
+ *
+ * Requires @ref WGPUNativeFeature_Multiview.
+ */
+typedef struct WGPURenderPassDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    /** Bitmask of view indices to render into. Zero disables multiview. */
+    uint32_t multiviewMask;
+} WGPURenderPassDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPURenderBundleEncoderDescriptor to enable multiview rendering.
+ *
+ * Requires @ref WGPUNativeFeature_Multiview.
+ */
+typedef struct WGPURenderBundleEncoderDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    /** Bitmask of view indices the bundle will render into. Zero disables multiview. */
+    uint32_t multiviewMask;
+} WGPURenderBundleEncoderDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUDeviceDescriptor to configure memory hints and experimental features.
+ */
+typedef struct WGPUDeviceDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    /** Memory allocation strategy. See @ref WGPUMemoryHints. Default: @ref WGPUMemoryHints_Performance. */
+    WGPUMemoryHints memoryHints;
+    /** Minimum suballocation block size in bytes. Only used when @c memoryHints is @ref WGPUMemoryHints_Manual. */
+    uint64_t suballocatedDeviceMemoryBlockSizeMin;
+    /** Maximum suballocation block size in bytes. Only used when @c memoryHints is @ref WGPUMemoryHints_Manual. */
+    uint64_t suballocatedDeviceMemoryBlockSizeMax;
+    /** If true, enables experimental wgpu features on the device. */
+    WGPUBool experimentalFeaturesEnabled;
+} WGPUDeviceDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for creating a pipeline cache object via @ref wgpuDeviceCreatePipelineCache.
+ *
+ * Pass previously saved cache data in @c data/@c dataSize to seed the cache.
+ * Leave both as zero/NULL to create an empty cache.
+ * If @c fallback is true, creation errors are non-fatal and an empty cache is returned.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUPipelineCacheDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    /** Number of bytes in @c data. */
+    size_t dataSize;
+    /** Previously saved cache blob, or NULL to start empty. */
+    WGPU_NULLABLE uint8_t const * data;
+    /**
+     * If true, a cache-creation failure produces an empty (no-op) cache
+     * rather than propagating an error.
+     */
+    WGPUBool fallback;
+} WGPUPipelineCacheDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUComputePipelineDescriptor to attach a pipeline cache.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUComputePipelineDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+    WGPUBool zeroInitializeWorkgroupMemory;
+} WGPUComputePipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPURenderPipelineDescriptor to attach a pipeline cache
+ * or configure multiview rendering.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache for the cache field.
+ * Requires @ref WGPUNativeFeature_MultiView for the multiviewMask field.
+ */
+typedef struct WGPURenderPipelineDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+    uint32_t multiviewMask;
+    WGPUBool zeroInitializeWorkgroupMemory;
+} WGPURenderPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Describes the mesh shader stage in a @ref WGPUMeshPipelineDescriptor.
+ *
+ * Requires @ref WGPUNativeFeature_MeshShader.
+ */
+typedef struct WGPUMeshState
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUShaderModule module;
+    WGPUStringView entryPoint;
+    size_t constantCount;
+    WGPUConstantEntry const * constants;
+} WGPUMeshState WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Describes the optional task shader stage in a @ref WGPUMeshPipelineDescriptor.
+ *
+ * Requires @ref WGPUNativeFeature_MeshShader.
+ */
+typedef struct WGPUTaskState
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUShaderModule module;
+    WGPUStringView entryPoint;
+    size_t constantCount;
+    WGPUConstantEntry const * constants;
+} WGPUTaskState WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for @ref wgpuDeviceCreateMeshPipeline.
+ *
+ * A mesh pipeline replaces the vertex stage with an optional task stage
+ * and a required mesh stage. All other fields mirror @ref WGPURenderPipelineDescriptor.
+ *
+ * Requires @ref WGPUNativeFeature_MeshShader.
+ */
+typedef struct WGPUMeshPipelineDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    WGPU_NULLABLE WGPUPipelineLayout layout;
+    /** Optional task shader stage. NULL if no task shader is used. */
+    WGPU_NULLABLE WGPUTaskState const * task;
+    WGPUMeshState mesh;
+    WGPUPrimitiveState primitive;
+    WGPU_NULLABLE WGPUDepthStencilState const * depthStencil;
+    WGPUMultisampleState multisample;
+    WGPU_NULLABLE WGPUFragmentState const * fragment;
+} WGPUMeshPipelineDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUMeshPipelineDescriptor to attach a pipeline cache.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUMeshPipelineDescriptorExtras
+{
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache cache;
+    uint32_t multiviewMask;
+    WGPUBool zeroInitializeWorkgroupMemory;
+} WGPUMeshPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUBindGroupLayoutEntry to describe an acceleration structure binding.
+ *
+ * Set @c chain.sType to @ref WGPUSType_AccelerationStructureBindingLayout.
+ * Requires @ref WGPUNativeFeature_RayQuery.
+ */
+typedef struct WGPUAccelerationStructureBindingLayout
+{
+    WGPUChainedStruct chain;
+    /** Enable vertex return. Requires @ref WGPUNativeFeature_RayHitVertexReturn. */
+    WGPUBool vertexReturn;
+} WGPUAccelerationStructureBindingLayout WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for creating a bottom level acceleration structure.
+ * Pass to @ref wgpuDeviceCreateBlas.
+ */
+typedef struct WGPUBlasDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    WGPUAccelerationStructureFlags flags;
+    WGPUAccelerationStructureUpdateMode updateMode;
+} WGPUBlasDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Descriptor for creating a top level acceleration structure.
+ * Pass to @ref wgpuDeviceCreateTlas.
+ */
+typedef struct WGPUTlasDescriptor
+{
+    WGPUChainedStruct * nextInChain;
+    WGPUStringView label;
+    uint32_t maxInstances;
+    WGPUAccelerationStructureFlags flags;
+    WGPUAccelerationStructureUpdateMode updateMode;
+} WGPUTlasDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Size attributes for one group of triangle geometry in a BLAS.
+ * Used in @ref WGPUBlasSizeDescriptors.
+ */
+typedef struct WGPUBlasTriangleGeometrySizeDescriptor
+{
+    WGPUVertexFormat vertexFormat;
+    uint32_t vertexCount;
+    /** @ref WGPUIndexFormat_Undefined means no index buffer. */
+    WGPUIndexFormat indexFormat;
+    /** Ignored when @ref indexFormat is @ref WGPUIndexFormat_Undefined. */
+    uint32_t indexCount;
+    WGPUAccelerationStructureGeometryFlags flags;
+} WGPUBlasTriangleGeometrySizeDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Size attributes for one group of AABB geometry in a BLAS.
+ * Used in @ref WGPUBlasSizeDescriptors.
+ */
+typedef struct WGPUBlasAABBGeometrySizeDescriptor
+{
+    uint32_t primitiveCount;
+    WGPUAccelerationStructureGeometryFlags flags;
+} WGPUBlasAABBGeometrySizeDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Size descriptors for a BLAS.
+ * Set @ref kind and fill the matching pair of fields.
+ * The other pair should be NULL/0.
+ * Pass to @ref wgpuDeviceCreateBlas.
+ */
+typedef struct WGPUBlasSizeDescriptors
+{
+    WGPUBlasGeometryKind kind;
+    /** Triangle geometry descriptors (used when kind == Triangles). */
+    WGPUBlasTriangleGeometrySizeDescriptor const *triangleDescriptors;
+    size_t triangleDescriptorCount;
+    /** AABB geometry descriptors (used when kind == AABBs). */
+    WGPUBlasAABBGeometrySizeDescriptor const *aabbDescriptors;
+    size_t aabbDescriptorCount;
+} WGPUBlasSizeDescriptors WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Triangle geometry for a BLAS build entry.
+ * Used in @ref WGPUBlasBuildEntry.
+ */
+typedef struct WGPUBlasTriangleGeometry
+{
+    WGPUChainedStruct const *nextInChain;
+    WGPUBlasTriangleGeometrySizeDescriptor const *size;
+    WGPUBuffer vertexBuffer;
+    /** NULL means no index buffer. */
+    WGPU_NULLABLE WGPUBuffer indexBuffer;
+    /** NULL means no transform. */
+    WGPU_NULLABLE WGPUBuffer transformBuffer;
+    uint32_t firstVertex;
+    uint64_t vertexStride;
+    /** Ignored when @ref indexBuffer is NULL. */
+    uint32_t firstIndex;
+    /** Ignored when @ref transformBuffer is NULL. */
+    uint64_t transformBufferOffset;
+} WGPUBlasTriangleGeometry WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * AABB geometry for a BLAS build entry.
+ * Used in @ref WGPUBlasBuildEntry.
+ */
+typedef struct WGPUBlasAABBGeometry
+{
+    WGPUChainedStruct const *nextInChain;
+    WGPUBlasAABBGeometrySizeDescriptor const *size;
+    uint64_t stride;
+    WGPUBuffer aabbBuffer;
+    uint32_t primitiveOffset;
+} WGPUBlasAABBGeometry WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Describes one BLAS and its geometries to build.
+ * Set @ref geometryKind and fill the matching pair of fields.
+ * The other pair should be NULL/0.
+ * Passed as an array to @ref wgpuCommandEncoderBuildAccelerationStructures.
+ */
+typedef struct WGPUBlasBuildEntry
+{
+    WGPUBlas blas;
+    WGPUBlasGeometryKind geometryKind;
+    /** Triangle geometries (used when geometryKind == Triangles). */
+    WGPUBlasTriangleGeometry const *triangleGeometries;
+    size_t triangleGeometryCount;
+    /** AABB geometries (used when geometryKind == AABBs). */
+    WGPUBlasAABBGeometry const *aabbGeometries;
+    size_t aabbGeometryCount;
+} WGPUBlasBuildEntry WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * One instance slot in a @ref WGPUTlasPackage.
+ * Set @ref blas to NULL to mark the slot as inactive.
+ */
+typedef struct WGPUTlasInstance
+{
+    /** NULL means this slot is inactive. */
+    WGPU_NULLABLE WGPUBlas blas;
+    /** Affine transform 3x4, row major (3 rows, 4 columns). */
+    float transform[12];
+    /** Custom index passed to the shader (must fit in 24 bits). */
+    uint32_t customData;
+    /** Visibility mask for ray filtering. */
+    uint8_t mask;
+} WGPUTlasInstance WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Describes one TLAS and its instances to build.
+ * Passed as an array to @ref wgpuCommandEncoderBuildAccelerationStructures.
+ */
+typedef struct WGPUTlasPackage
+{
+    WGPUTlas tlas;
+    WGPUTlasInstance const *instances;
+    size_t instanceCount;
+    /** First unmodified instance index (for partial updates). */
+    uint32_t lowestUnmodified;
+} WGPUTlasPackage WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Internal counters from the HAL layer, returned by @ref wgpuDeviceGetInternalCounters.
+ */
+typedef struct WGPUHalCounters
+{
+    int64_t buffers;
+    int64_t textures;
+    int64_t textureViews;
+    int64_t bindGroups;
+    int64_t bindGroupLayouts;
+    int64_t renderPipelines;
+    int64_t computePipelines;
+    int64_t rayTracingPipelines;
+    int64_t pipelineLayouts;
+    int64_t samplers;
+    int64_t commandEncoders;
+    int64_t shaderModules;
+    int64_t querySets;
+    int64_t fences;
+    int64_t bufferMemory;
+    int64_t textureMemory;
+    int64_t accelerationStructureMemory;
+    int64_t memoryAllocations;
+} WGPUHalCounters WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * All internal counters, returned by @ref wgpuDeviceGetInternalCounters.
+ */
+typedef struct WGPUInternalCounters
+{
+    WGPUHalCounters hal;
+} WGPUInternalCounters WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Callback invoked when a BLAS compaction is ready. */
+typedef void (*WGPUBlasCompactCallback)(WGPUBool success, void *userdata1, void *userdata2);
+
+typedef struct WGPUBlasCompactCallbackInfo
+{
+    WGPUChainedStruct const *nextInChain;
+    WGPUCallbackMode mode;
+    WGPUBlasCompactCallback callback;
+    void *userdata1;
+    void *userdata2;
+} WGPUBlasCompactCallbackInfo WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, void *userdata);
 
 typedef enum WGPUNativeTextureFormat
@@ -1414,7 +2257,59 @@ typedef enum WGPUNativeTextureFormat
      * chrominance (UV) at half width and half height.
      */
     WGPUNativeTextureFormat_P010 = 0x00030008,
+    /* ASTC HDR (floating-point) compressed formats */
+    WGPUNativeTextureFormat_Astc4x4Sfloat = 0x0003000A,
+    WGPUNativeTextureFormat_Astc5x4Sfloat = 0x0003000B,
+    WGPUNativeTextureFormat_Astc5x5Sfloat = 0x0003000C,
+    WGPUNativeTextureFormat_Astc6x5Sfloat = 0x0003000D,
+    WGPUNativeTextureFormat_Astc6x6Sfloat = 0x0003000E,
+    WGPUNativeTextureFormat_Astc8x5Sfloat = 0x0003000F,
+    WGPUNativeTextureFormat_Astc8x6Sfloat = 0x00030010,
+    WGPUNativeTextureFormat_Astc8x8Sfloat = 0x00030011,
+    WGPUNativeTextureFormat_Astc10x5Sfloat = 0x00030012,
+    WGPUNativeTextureFormat_Astc10x6Sfloat = 0x00030013,
+    WGPUNativeTextureFormat_Astc10x8Sfloat = 0x00030014,
+    WGPUNativeTextureFormat_Astc10x10Sfloat = 0x00030015,
+    WGPUNativeTextureFormat_Astc12x10Sfloat = 0x00030016,
+    WGPUNativeTextureFormat_Astc12x12Sfloat = 0x00030017,
 } WGPUNativeTextureFormat;
+
+/**
+ * Timestamp in nanoseconds, returned by @ref wgpuAdapterGetPresentationTimestamp.
+ * Stored as uint64_t; the underlying Rust value is u128 but timestamps will not
+ * exceed 2^64 nanoseconds (roughly 584 years) in practice.
+ */
+typedef struct WGPUPresentationTimestamp {
+    uint64_t nanoseconds;
+} WGPUPresentationTimestamp WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Element type for cooperative matrix inputs/outputs. */
+typedef enum WGPUNativeCooperativeScalarType {
+    WGPUNativeCooperativeScalarType_F32 = 0x00000000,
+    WGPUNativeCooperativeScalarType_F16 = 0x00000001,
+    WGPUNativeCooperativeScalarType_I32 = 0x00000002,
+    WGPUNativeCooperativeScalarType_U32 = 0x00000003,
+    WGPUNativeCooperativeScalarType_Force32 = 0x7FFFFFFF
+} WGPUNativeCooperativeScalarType;
+
+/**
+ * One supported cooperative matrix configuration, returned by
+ * @ref wgpuAdapterGetCooperativeMatrixProperties.
+ */
+typedef struct WGPUCooperativeMatrixProperties {
+    /** Rows in A and C (M dimension). */
+    uint32_t mSize;
+    /** Columns in B and C (N dimension). */
+    uint32_t nSize;
+    /** Columns in A / rows in B (K dimension). */
+    uint32_t kSize;
+    /** Element type of input matrices A and B. */
+    WGPUNativeCooperativeScalarType abType;
+    /** Element type of accumulator matrix C and the result. */
+    WGPUNativeCooperativeScalarType crType;
+    /** Whether saturating accumulation (clamping on overflow) is supported. */
+    WGPUBool saturatingAccumulation;
+} WGPUCooperativeMatrixProperties WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef struct WGPUImageSubresourceRange {
     WGPUTextureAspect aspect;
@@ -1452,6 +2347,144 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_TaskShaderDispatchT
  * undefined behavior and arbitrary memory access.
  */
 static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_MeshShaderPrimitiveIndicesClamp = 0x0000000000000010;
+/**
+ * If set, integer division and modulo by zero (or `i32::MIN / -1`) are checked
+ * and clamped instead of producing undefined behavior.
+ */
+static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_IntDivChecks = 0x0000000000000020;
+
+/**
+ * Bitmask of texture format feature flags returned by
+ * @ref wgpuAdapterGetTextureFormatCapabilities.
+ *
+ * Bit values match those of @c wgpu_types::TextureFormatFeatureFlags.
+ */
+typedef uint32_t WGPUNativeTextureFormatFeatureFlags;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_None = 0x00000000;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Filterable = 0x00000001;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX2 = 0x00000002;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX4 = 0x00000004;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX8 = 0x00000008;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX16 = 0x00000010;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleResolve = 0x00000020;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadOnly = 0x00000040;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageWriteOnly = 0x00000080;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadWrite = 0x00000100;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageAtomic = 0x00000200;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Blendable = 0x00000400;
+
+/**
+ * Bitmask of implemented WGSL language features.
+ *
+ * Returned by @ref wgpuGetWgslLanguageFeatures.
+ */
+typedef uint32_t WGPUWgslLanguageFeatures;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_None = 0x00000000;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures = 0x00000001;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct = 0x00000002;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_PointerCompositeAccess = 0x00000004;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ImmediateAddressSpace = 0x00000008;
+
+/**
+ * Bitmask of downlevel capabilities returned by
+ * @ref wgpuAdapterGetDownlevelCapabilities.
+ *
+ * Bit values match those of @c wgpu_types::DownlevelFlags.
+ */
+typedef uint32_t WGPUDownlevelFlags;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_None = 0x00000000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ComputeShaders = 0x00000001;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentWritableStorage = 0x00000002;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_IndirectExecution = 0x00000004;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_BaseVertex = 0x00000008;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ReadOnlyDepthStencil = 0x00000010;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_NonPowerOfTwoMipmappedTextures = 0x00000020;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_CubeArrayTextures = 0x00000040;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ComparisonSamplers = 0x00000080;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_IndependentBlend = 0x00000100;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_VertexStorage = 0x00000200;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_AnisotropicFiltering = 0x00000400;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentStorage = 0x00000800;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_MultisampledShading = 0x00001000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthTextureAndBufferCopies = 0x00002000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_WebGpuTextureFormatSupport = 0x00004000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_BufferBindingsNot16ByteAligned = 0x00008000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedIndexBuffer = 0x00010000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FullDrawIndexUint32 = 0x00020000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthBiasClamp = 0x00040000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ViewFormats = 0x00080000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedExternalTextureCopies = 0x00100000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_SurfaceViewFormats = 0x00200000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_NonblockingQueryResolve = 0x00400000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ShaderF16InF32 = 0x00800000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_Msl21 = 0x01000000;
+/** The device supports compressed texture formats. */
+static const WGPUDownlevelFlags WGPUDownlevelFlags_TextureCompression = 0x02000000;
+
+/** Shader model supported by the adapter. */
+typedef enum WGPUShaderModel
+{
+    /** Extremely limited shaders (legacy GPUs). */
+    WGPUShaderModel_Sm2 = 2,
+    /** Shader model 4 — missing storage images. */
+    WGPUShaderModel_Sm4 = 4,
+    /** Shader model 5 — the WebGPU baseline. */
+    WGPUShaderModel_Sm5 = 5,
+    WGPUShaderModel_Force32 = 0x7FFFFFFF
+} WGPUShaderModel;
+
+/**
+ * Capabilities of adapters that fall below the WebGPU baseline.
+ *
+ * Returned by @ref wgpuAdapterGetDownlevelCapabilities.
+ */
+typedef struct WGPUDownlevelCapabilities
+{
+    /** Set of @ref WGPUDownlevelFlags bits this adapter supports. */
+    WGPUDownlevelFlags flags;
+    /** Highest shader model this adapter can compile. */
+    WGPUShaderModel shaderModel;
+} WGPUDownlevelCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Texture format capabilities returned by @ref wgpuAdapterGetTextureFormatCapabilities.
+ */
+typedef struct WGPUNativeTextureFormatCapabilities {
+    /** The set of @ref WGPUTextureUsage bits supported for this format on this adapter. */
+    WGPUTextureUsage allowedUsages;
+    /** Feature flags for this format (see @ref WGPUNativeTextureFormatFeatureFlags). */
+    WGPUNativeTextureFormatFeatureFlags flags;
+} WGPUNativeTextureFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Format of the plane(s) backing an external texture. */
+typedef enum WGPUExternalTextureFormat {
+    WGPUExternalTextureFormat_Rgba  = 0x00000000,
+    WGPUExternalTextureFormat_Nv12  = 0x00000001,
+    WGPUExternalTextureFormat_Yu12  = 0x00000002,
+    WGPUExternalTextureFormat_Force32 = 0x7FFFFFFF,
+} WGPUExternalTextureFormat;
+
+/** Gamma-encoding transfer function parameters: tf = k*x (x<b) or a*pow(x,1/g)-(a-1) (x>=b). */
+typedef struct WGPUExternalTextureTransferFunction {
+    float a;
+    float b;
+    float g;
+    float k;
+} WGPUExternalTextureTransferFunction WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Descriptor passed to @ref wgpuDeviceCreateExternalTexture. */
+typedef struct WGPUExternalTextureDescriptor {
+    WGPUStringView label;
+    uint32_t width;
+    uint32_t height;
+    WGPUExternalTextureFormat format;
+    float yuvConversionMatrix[16];
+    float gamutConversionMatrix[9];
+    WGPUExternalTextureTransferFunction srcTransferFunction;
+    WGPUExternalTextureTransferFunction dstTransferFunction;
+    float sampleTransform[6];
+    float loadTransform[6];
+} WGPUExternalTextureDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef enum WGPUNativeAddressMode
 {
@@ -1482,12 +2515,28 @@ extern "C"
     void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
     size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
 
+    /**
+     * Query the actual texture format capabilities supported by this adapter.
+     *
+     * Fills @p capabilities with the allowed usages and feature flags for @p format.
+     * Returns @ref WGPUStatus_Error if @p format is not recognized.
+     */
+    WGPUStatus wgpuAdapterGetTextureFormatCapabilities(WGPUAdapter adapter, WGPUTextureFormat format, WGPUNativeTextureFormatCapabilities *capabilities);
+    /**
+     * Poll all devices owned by this instance.
+     *
+     * If @c wait is true, blocks until all devices are idle.
+     * Returns true if all device queues are empty, false if work remains in flight.
+     */
+    WGPUBool wgpuInstancePollAllDevices(WGPUInstance instance, WGPUBool wait);
+
     WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);
     float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
 
     // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-    WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex);
-    WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const *descriptor);
+    // timeout_ns: max nanoseconds to wait when wait=true; 0 means no timeout.
+    WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex, uint64_t timeout_ns);
+    WGPUShaderModule wgpuDeviceCreateShaderModulePassthrough(WGPUDevice device, WGPUShaderModuleDescriptorPassthrough const *descriptor);
 
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
 
@@ -1528,6 +2577,11 @@ extern "C"
     void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
     void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
 
+    void wgpuRenderPassEncoderDrawMeshTasks(WGPURenderPassEncoder encoder, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+    void wgpuRenderPassEncoderDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset);
+    void wgpuRenderPassEncoderMultiDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
+    void wgpuRenderPassEncoderMultiDrawMeshTasksIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer countBuffer, uint64_t countBufferOffset, uint32_t maxCount);
+
     void wgpuComputePassEncoderBeginPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
     void wgpuComputePassEncoderEndPipelineStatisticsQuery(WGPUComputePassEncoder computePassEncoder);
     void wgpuRenderPassEncoderBeginPipelineStatisticsQuery(WGPURenderPassEncoder renderPassEncoder, WGPUQuerySet querySet, uint32_t queryIndex);
@@ -1543,6 +2597,143 @@ extern "C"
     void wgpuCommandEncoderClearTexture(WGPUCommandEncoder commandEncoder, WGPUTexture texture, WGPUImageSubresourceRange const * range);
 
     WGPUShaderModule wgpuDeviceCreateShaderModuleTrusted(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor, WGPUShaderRuntimeChecks runtimeChecks);
+
+    WGPURenderPipeline wgpuDeviceCreateMeshPipeline(WGPUDevice device, WGPUMeshPipelineDescriptor const * descriptor);
+    WGPUPipelineCache wgpuDeviceCreatePipelineCache(WGPUDevice device, WGPUPipelineCacheDescriptor const * descriptor);
+    /**
+     * Retrieve serialized cache data.
+     *
+     * Call with @c data = NULL to obtain the required buffer size.
+     * Allocate a buffer of that size and call again with @c data pointing to it.
+     * Returns 0 if the cache has no data or an error occurred.
+     */
+    size_t wgpuPipelineCacheGetData(WGPUPipelineCache cache, void * data);
+    void wgpuPipelineCacheAddRef(WGPUPipelineCache cache);
+    void wgpuPipelineCacheRelease(WGPUPipelineCache cache);
+
+    // ── External textures ─────────────────────────────────────────────────────
+
+    /** Create an external texture. @p planes must point to @p planeCount texture views. */
+    WGPUExternalTexture wgpuDeviceCreateExternalTexture(
+        WGPUDevice device,
+        WGPUExternalTextureDescriptor const *descriptor,
+        WGPUTextureView const *planes,
+        size_t planeCount);
+
+    void wgpuExternalTextureAddRef(WGPUExternalTexture externalTexture);
+    void wgpuExternalTextureRelease(WGPUExternalTexture externalTexture);
+
+    // ── Acceleration structures ───────────────────────────────────────────────
+
+    /** Create a bottom level acceleration structure. */
+    WGPUBlas wgpuDeviceCreateBlas(WGPUDevice device, WGPUBlasDescriptor const *descriptor, WGPUBlasSizeDescriptors sizes);
+    /** Create a top level acceleration structure. */
+    WGPUTlas wgpuDeviceCreateTlas(WGPUDevice device, WGPUTlasDescriptor const *descriptor);
+
+    /**
+     * Return the device address handle for a BLAS.
+     * Returns 0 if the handle is not available.
+     */
+    uint64_t wgpuBlasGetHandle(WGPUBlas blas);
+
+    void wgpuBlasAddRef(WGPUBlas blas);
+    void wgpuBlasRelease(WGPUBlas blas);
+    void wgpuTlasAddRef(WGPUTlas tlas);
+    void wgpuTlasRelease(WGPUTlas tlas);
+
+    /** Begin preparing a BLAS for compaction. Calls @p callbackInfo when ready. */
+    void wgpuBlasPrepareCompactAsync(WGPUBlas blas, WGPUBlasCompactCallbackInfo callbackInfo);
+    /** Returns true if the BLAS is ready to be compacted via @ref wgpuQueueCompactBlas. */
+    WGPUBool wgpuBlasReadyForCompaction(WGPUBlas blas);
+
+    /**
+     * Compact a BLAS. Returns a new (smaller) BLAS handle.
+     * The old handle remains valid and must be released separately.
+     */
+    WGPUBlas wgpuQueueCompactBlas(WGPUQueue queue, WGPUBlas blas);
+
+    /** Query internal wgpu-core/HAL resource counters for debugging. */
+    WGPUInternalCounters wgpuDeviceGetInternalCounters(WGPUDevice device);
+
+    /**
+     * Returns a snapshot of the GPU memory allocator's state for this device.
+     *
+     * The returned @ref WGPUAllocatorReport must be freed with
+     * @ref wgpuAllocatorReportFreeMembers when no longer needed.
+     * If the backend does not expose allocator information, @p available will
+     * be false and all other fields will be zero/null.
+     */
+    WGPUAllocatorReport wgpuDeviceGetAllocatorReport(WGPUDevice device);
+
+    /**
+     * Free the memory owned by a @ref WGPUAllocatorReport returned by
+     * @ref wgpuDeviceGetAllocatorReport.
+     */
+    void wgpuAllocatorReportFreeMembers(WGPUAllocatorReport report);
+
+    /** Build acceleration structures on the command encoder. */
+    void wgpuCommandEncoderBuildAccelerationStructures(
+        WGPUCommandEncoder commandEncoder,
+        size_t blasEntryCount, WGPUBlasBuildEntry const *blasEntries,
+        size_t tlasPackageCount, WGPUTlasPackage const *tlasPackages);
+
+    /**
+     * Mark acceleration structures as already built (for external builds).
+     * Registers them with the wgpu-core tracker without issuing GPU commands.
+     */
+    void wgpuCommandEncoderMarkAccelerationStructuresBuilt(
+        WGPUCommandEncoder commandEncoder,
+        size_t blasCount, WGPUBlas const *blases,
+        size_t tlasCount, WGPUTlas const *tlases);
+
+    /**
+     * Returns a bitmask of implemented WGSL language features for this build.
+     *
+     * The returned @ref WGPUWgslLanguageFeatures value reflects which language
+     * extensions the bundled naga WGSL frontend actually supports.
+     */
+    WGPUWgslLanguageFeatures wgpuGetWgslLanguageFeatures(void);
+
+    /**
+     * Discard the current surface texture without presenting it.
+     *
+     * Call this instead of @ref wgpuSurfacePresent when you want to
+     * abandon the frame (e.g. on resize or minimise).
+     */
+    void wgpuSurfaceDiscardTexture(WGPUSurface surface);
+    /**
+     * Query HDR / luminance characteristics of the display @p surface is on, as
+     * seen by @p adapter. Native-only extension.
+     */
+    WGPUDisplayHdrInfo wgpuSurfaceGetDisplayHdrInfo(WGPUSurface surface, WGPUAdapter adapter);
+
+    /** Returns true if this surface can be presented by this adapter. */
+    WGPUBool wgpuAdapterIsSurfaceSupported(WGPUAdapter adapter, WGPUSurface surface);
+
+    /**
+     * Returns the downlevel capabilities of this adapter.
+     *
+     * These describe capabilities that fall below the WebGPU baseline, such as
+     * whether compute shaders and storage images are available.
+     */
+    WGPUDownlevelCapabilities wgpuAdapterGetDownlevelCapabilities(WGPUAdapter adapter);
+
+    /**
+     * Returns a monotonically increasing timestamp in nanoseconds for the current
+     * frame. Used to synchronize presentation timing across multiple outputs.
+     */
+    WGPUPresentationTimestamp wgpuAdapterGetPresentationTimestamp(WGPUAdapter adapter);
+
+    /**
+     * Returns the number of supported cooperative matrix configurations on this adapter.
+     *
+     * If @p propertiesOut is NULL, only the count is returned.
+     * Otherwise, up to @p propertiesCapacity entries are written.
+     */
+    size_t wgpuAdapterGetCooperativeMatrixProperties(
+        WGPUAdapter adapter,
+        WGPUCooperativeMatrixProperties *propertiesOut,
+        size_t propertiesCapacity);
 
 #ifdef __cplusplus
 } // extern "C"
