@@ -59,6 +59,10 @@ typedef enum WGPUNativeSType
     /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
     WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
     WGPUSType_SurfaceCapabilitiesExtras = 0x00030016,
+    /** Identifies @ref WGPUSurfaceSourceUIView. */
+    WGPUSType_SurfaceSourceUIView = 0x00030017,
+    /** Identifies @ref WGPUSurfaceSourceDrm. */
+    WGPUSType_SurfaceSourceDrm = 0x00030018,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1793,6 +1797,40 @@ typedef struct WGPUSurfaceSourceSwapChainPanel
      */
     void *panelNative;
 } WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping an iOS/tvOS `UIView`.
+ *
+ * Set @c chain.sType to @ref WGPUSType_SurfaceSourceUIView.
+ */
+typedef struct WGPUSurfaceSourceUIView
+{
+    WGPUChainedStruct chain;
+    /**
+     * A pointer to the `UIView` that will be wrapped by the @ref WGPUSurface.
+     */
+    void *ui_view;
+} WGPUSurfaceSourceUIView WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a Linux KMS/DRM plane.
+ *
+ * Only available on Linux when neither X11 nor Wayland are present. Requires the `drm` cargo feature.
+ *
+ * Set @c chain.sType to @ref WGPUSType_SurfaceSourceDrm.
+ */
+typedef struct WGPUSurfaceSourceDrm
+{
+    WGPUChainedStruct chain;
+    /**
+     * The DRM file descriptor.
+     */
+    int32_t fd;
+    /**
+     * The primary DRM plane handle.
+     */
+    uint32_t plane;
+} WGPUSurfaceSourceDrm WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Memory allocation strategy for device creation.

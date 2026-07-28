@@ -107,7 +107,7 @@ replay = ["serde", "wgc/replay"]
 #! ### Backend features
 # --------------------------------------------------------------------
 
-## Support creating textures from DRM display/window handles.
+## Support creating surfaces from DRM display/window handles (Linux KMS/DRM, no X11/Wayland).
 drm = ["wgc/drm"]
 
 #! ### External libraries

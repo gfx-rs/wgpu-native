@@ -2239,6 +2239,8 @@ pub unsafe fn map_surface(
     _metal: Option<&native::WGPUSurfaceSourceMetalLayer>,
     android: Option<&native::WGPUSurfaceSourceAndroidNativeWindow>,
     _swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
+    _uiview: Option<&native::WGPUSurfaceSourceUIView>,
+    _drm: Option<&native::WGPUSurfaceSourceDrm>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -2306,6 +2308,22 @@ pub unsafe fn map_surface(
     #[cfg(all(target_os = "windows", feature = "dx12"))]
     if let Some(swap_chain_panel) = _swap_chain_panel {
         return CreateSurfaceParams::SwapChainPanel(swap_chain_panel.panelNative);
+    }
+
+    if let Some(uiview) = _uiview {
+        let ui_view = NonNull::new_unchecked(uiview.ui_view);
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::UiKit(raw_window_handle::UiKitDisplayHandle::new()),
+            raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(ui_view)),
+        ));
+    }
+
+    #[cfg(feature = "drm")]
+    if let Some(drm) = _drm {
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Drm(raw_window_handle::DrmDisplayHandle::new(drm.fd)),
+            raw_window_handle::RawWindowHandle::Drm(raw_window_handle::DrmWindowHandle::new(drm.plane)),
+        ));
     }
 
     panic!("Error: Unsupported Surface");
