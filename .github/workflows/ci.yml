@@ -385,6 +385,16 @@ jobs:
         with:
           msystem: UCRT64
           update: true
+          # Rust comes from rustup (next step), NOT from msys2's `rust:p`:
+          # msys2's package ignores `rust-toolchain.toml` and tracks current
+          # stable, so this job silently drifted ahead of the 1.93 that wgpu
+          # v30 pins. Under the job-wide `-Dwarnings`, newer rustc turns
+          # wgpu-core's `expect(unused)` in `lock/ranked.rs` into a hard
+          # `unfulfilled_lint_expectations` error. `path-type: inherit` keeps
+          # the Windows PATH — and with it rustup's ~/.cargo/bin shims —
+          # visible inside the msys2 shell; msys2 paths still come first, so
+          # gcc/ld/cmake/ninja are the UCRT64 ones.
+          path-type: inherit
           install: >-
             make
             git
@@ -392,9 +402,7 @@ jobs:
             toolchain:p
             cmake:p
             ninja:p
-            rust:p
-      - if: "!contains(matrix.target, 'windows-gnu')"
-        name: Install Rust toolchain
+      - name: Install Rust toolchain
         uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
         with:
           version: ${{ env.CI_RUST_VERSION }}
@@ -405,6 +413,15 @@ jobs:
         # Some later steps install stuff into the .local-wgpu/target folder
         # so we need to set it up before.
         run: python run-wgpu-tests.py --no-run
+      # `.local-wgpu` carries its own `rust-toolchain.toml`, which sits nearer
+      # than the `rustup override` the install-rust step set at the repo root,
+      # so everything under it builds with wgpu's pinned channel rather than
+      # CI_RUST_VERSION. That channel was installed for the host only; on the
+      # cross-compiled gnu target it still needs the target's std.
+      - if: contains(matrix.target, 'windows-gnu')
+        name: Add gnu target to wgpu's pinned toolchain
+        working-directory: .local-wgpu
+        run: rustup target add ${{ matrix.target }}
       - name: Install `cargo-nextest`
         uses: taiki-e/install-action@v2
         with:
