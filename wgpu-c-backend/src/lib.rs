@@ -22,7 +22,8 @@ use std::pin::Pin;
 
 use wgpu::custom::*;
 use wgpu::InstanceDescriptor;
-use wgpu_native::{native, *};
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
 
 /// Instance-factory entry point for the C backend.
 ///
@@ -158,7 +159,7 @@ impl InstanceInterface for CInstance {
             requiredLimits: std::ptr::null(),
         };
 
-        let ptr = unsafe { wgpuCreateInstance(Some(&c_desc)) };
+        let ptr = unsafe { wgpuCreateInstance(std::ptr::from_ref(&c_desc)) };
         CInstance { ptr }
     }
 
@@ -194,7 +195,7 @@ impl InstanceInterface for CInstance {
                         ),
                         label: conv::null_string_view(),
                     };
-                    unsafe { wgpuInstanceCreateSurface(self.ptr, Some(&c_desc)) }
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
                 }
                 #[cfg(target_os = "windows")]
                 RawWindowHandle::Win32(h) => {
@@ -216,7 +217,7 @@ impl InstanceInterface for CInstance {
                         ),
                         label: conv::null_string_view(),
                     };
-                    unsafe { wgpuInstanceCreateSurface(self.ptr, Some(&c_desc)) }
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
                 }
                 #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
                 RawWindowHandle::Wayland(h) => {
@@ -238,7 +239,7 @@ impl InstanceInterface for CInstance {
                         ),
                         label: conv::null_string_view(),
                     };
-                    unsafe { wgpuInstanceCreateSurface(self.ptr, Some(&c_desc)) }
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
                 }
                 #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
                 RawWindowHandle::Xcb(h) => {
@@ -263,7 +264,7 @@ impl InstanceInterface for CInstance {
                         ),
                         label: conv::null_string_view(),
                     };
-                    unsafe { wgpuInstanceCreateSurface(self.ptr, Some(&c_desc)) }
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
                 }
                 #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
                 RawWindowHandle::Xlib(h) => {
@@ -288,7 +289,7 @@ impl InstanceInterface for CInstance {
                         ),
                         label: conv::null_string_view(),
                     };
-                    unsafe { wgpuInstanceCreateSurface(self.ptr, Some(&c_desc)) }
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
                 }
                 _ => panic!("wgpu-c-backend: unsupported window handle type"),
             },
@@ -364,12 +365,12 @@ impl InstanceInterface for CInstance {
             userdata2: std::ptr::null_mut(),
         };
 
-        unsafe { wgpuInstanceRequestAdapter(self.ptr, Some(&c_options), callback_info) };
+        unsafe { wgpuInstanceRequestAdapter(self.ptr, std::ptr::from_ref(&c_options), callback_info) };
         Box::pin(future::ready(out.result.unwrap_or(Err(not_found()))))
     }
 
     fn poll_all_devices(&self, force_wait: bool) -> bool {
-        unsafe { wgpuInstancePollAllDevices(self.ptr, force_wait) }
+        unsafe { wgpuInstancePollAllDevices(self.ptr, force_wait as u32) != 0 }
     }
 
     fn enumerate_adapters(&self, backends: wgpu::Backends) -> Pin<Box<dyn EnumerateAdapterFuture>> {
@@ -380,10 +381,10 @@ impl InstanceInterface for CInstance {
 
         let adapters = unsafe {
             let count =
-                wgpuInstanceEnumerateAdapters(self.ptr, Some(&options), std::ptr::null_mut());
+                wgpuInstanceEnumerateAdapters(self.ptr, std::ptr::from_ref(&options), std::ptr::null_mut());
 
             let mut out: Vec<native::WGPUAdapter> = vec![std::ptr::null_mut(); count];
-            wgpuInstanceEnumerateAdapters(self.ptr, Some(&options), out.as_mut_ptr());
+            wgpuInstanceEnumerateAdapters(self.ptr, std::ptr::from_ref(&options), out.as_mut_ptr());
 
             out.into_iter()
                 .map(|ptr| DispatchAdapter::custom(CAdapter { ptr }))
@@ -394,20 +395,18 @@ impl InstanceInterface for CInstance {
     }
 
     fn wgsl_language_features(&self) -> wgpu::WgslLanguageFeatures {
-        let bits = wgpu_native::wgpuGetWgslLanguageFeatures();
+        let bits = unsafe { wgpuGetWgslLanguageFeatures() };
         let mut out = wgpu::WgslLanguageFeatures::empty();
-        if bits & wgpu_native::native::WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures
-            != 0
-        {
+        if bits & WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures != 0 {
             out |= wgpu::WgslLanguageFeatures::ReadOnlyAndReadWriteStorageTextures;
         }
-        if bits & wgpu_native::native::WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct != 0 {
+        if bits & WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct != 0 {
             out |= wgpu::WgslLanguageFeatures::Packed4x8IntegerDotProduct;
         }
-        if bits & wgpu_native::native::WGPUWgslLanguageFeatures_PointerCompositeAccess != 0 {
+        if bits & WGPUWgslLanguageFeatures_PointerCompositeAccess != 0 {
             out |= wgpu::WgslLanguageFeatures::PointerCompositeAccess;
         }
-        if bits & wgpu_native::native::WGPUWgslLanguageFeatures_ImmediateAddressSpace != 0 {
+        if bits & WGPUWgslLanguageFeatures_ImmediateAddressSpace != 0 {
             out |= wgpu::WgslLanguageFeatures::ImmediateAddressSpace;
         }
         out

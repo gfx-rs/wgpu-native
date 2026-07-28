@@ -1,5 +1,6 @@
 use wgpu::custom::*;
-use wgpu_native::{native, *};
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
 
 use crate::conv;
 use crate::pass::{CComputePass, CRenderPass};
@@ -65,9 +66,9 @@ impl CommandEncoderInterface for CCommandEncoder {
         unsafe {
             wgpuCommandEncoderCopyBufferToTexture(
                 self.ptr,
-                Some(&c_src),
-                Some(&c_dst),
-                Some(&c_size),
+                std::ptr::from_ref(&c_src),
+                std::ptr::from_ref(&c_dst),
+                std::ptr::from_ref(&c_size),
             )
         };
     }
@@ -86,9 +87,9 @@ impl CommandEncoderInterface for CCommandEncoder {
         unsafe {
             wgpuCommandEncoderCopyTextureToBuffer(
                 self.ptr,
-                Some(&c_src),
-                Some(&c_dst),
-                Some(&c_size),
+                std::ptr::from_ref(&c_src),
+                std::ptr::from_ref(&c_dst),
+                std::ptr::from_ref(&c_size),
             )
         };
     }
@@ -107,9 +108,9 @@ impl CommandEncoderInterface for CCommandEncoder {
         unsafe {
             wgpuCommandEncoderCopyTextureToTexture(
                 self.ptr,
-                Some(&c_src),
-                Some(&c_dst),
-                Some(&c_size),
+                std::ptr::from_ref(&c_src),
+                std::ptr::from_ref(&c_dst),
+                std::ptr::from_ref(&c_size),
             )
         };
     }
@@ -140,7 +141,7 @@ impl CommandEncoderInterface for CCommandEncoder {
             label: label_sv,
             timestampWrites: ts_ptr,
         };
-        let ptr = unsafe { wgpuCommandEncoderBeginComputePass(self.ptr, Some(&c_desc)) };
+        let ptr = unsafe { wgpuCommandEncoderBeginComputePass(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchComputePass::custom(CComputePass { ptr })
     }
 
@@ -156,7 +157,7 @@ impl CommandEncoderInterface for CCommandEncoder {
                     let resolve_ptr = att
                         .resolve_target
                         .map(|rv| rv.as_custom::<CTextureView>().unwrap().ptr)
-                        .unwrap_or(std::ptr::null());
+                        .unwrap_or(std::ptr::null_mut());
                     let (load_op, clear_value) = conv::load_op_color_to_native(&att.ops.load);
                     native::WGPURenderPassColorAttachment {
                         nextInChain: std::ptr::null_mut(),
@@ -172,9 +173,9 @@ impl CommandEncoderInterface for CCommandEncoder {
                 } else {
                     native::WGPURenderPassColorAttachment {
                         nextInChain: std::ptr::null_mut(),
-                        view: std::ptr::null(),
+                        view: std::ptr::null_mut(),
                         depthSlice: native::WGPU_DEPTH_SLICE_UNDEFINED,
-                        resolveTarget: std::ptr::null(),
+                        resolveTarget: std::ptr::null_mut(),
                         loadOp: native::WGPULoadOp_Undefined,
                         storeOp: native::WGPUStoreOp_Undefined,
                         clearValue: native::WGPUColor {
@@ -249,7 +250,7 @@ impl CommandEncoderInterface for CCommandEncoder {
         let occlusion_qs = desc
             .occlusion_query_set
             .map(|qs| qs.as_custom::<CQuerySet>().unwrap().ptr)
-            .unwrap_or(std::ptr::null());
+            .unwrap_or(std::ptr::null_mut());
 
         let mut rp_extras = native::WGPURenderPassDescriptorExtras {
             chain: native::WGPUChainedStruct {
@@ -272,18 +273,19 @@ impl CommandEncoderInterface for CCommandEncoder {
             timestampWrites: ts_ptr,
         };
 
-        let ptr = unsafe { wgpuCommandEncoderBeginRenderPass(self.ptr, Some(&c_desc)) };
+        let ptr = unsafe { wgpuCommandEncoderBeginRenderPass(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchRenderPass::custom(CRenderPass { ptr })
     }
 
     fn finish(&mut self) -> DispatchCommandBuffer {
+        let desc = native::WGPUCommandBufferDescriptor {
+            nextInChain: std::ptr::null_mut(),
+            label: conv::null_string_view(),
+        };
         let ptr = unsafe {
             wgpuCommandEncoderFinish(
                 self.ptr,
-                Some(&native::WGPUCommandBufferDescriptor {
-                    nextInChain: std::ptr::null_mut(),
-                    label: conv::null_string_view(),
-                }),
+                std::ptr::from_ref(&desc),
             )
         };
         DispatchCommandBuffer::custom(CCommandBuffer {
@@ -309,7 +311,7 @@ impl CommandEncoderInterface for CCommandEncoder {
                 .array_layer_count
                 .unwrap_or(native::WGPU_ARRAY_LAYER_COUNT_UNDEFINED),
         };
-        unsafe { wgpuCommandEncoderClearTexture(self.ptr, tex_ptr, Some(&c_range)) };
+        unsafe { wgpuCommandEncoderClearTexture(self.ptr, tex_ptr, std::ptr::from_ref(&c_range)) };
     }
 
     fn clear_buffer(
@@ -593,7 +595,7 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
         let bg_ptr = bind_group
             .and_then(|bg| bg.as_custom::<CBindGroup>())
             .map(|bg| bg.ptr)
-            .unwrap_or(std::ptr::null());
+            .unwrap_or(std::ptr::null_mut());
         unsafe {
             wgpuRenderBundleEncoderSetBindGroup(
                 self.ptr,
@@ -635,7 +637,7 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
         let buf_ptr = buffer
             .and_then(|b| b.as_custom::<CBuffer>())
             .map(|b| b.ptr)
-            .unwrap_or(std::ptr::null());
+            .unwrap_or(std::ptr::null_mut());
         let c_size = size.map(|s| s.get()).unwrap_or(u64::MAX);
         unsafe { wgpuRenderBundleEncoderSetVertexBuffer(self.ptr, slot, buf_ptr, offset, c_size) };
     }
@@ -646,7 +648,7 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
                 self.ptr,
                 offset,
                 data.as_ptr().cast(),
-                data.len() as u32,
+                data.len(),
             )
         };
     }
@@ -708,7 +710,7 @@ impl RenderBundleEncoderInterface for CRenderBundleEncoder {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
         };
-        let ptr = unsafe { wgpuRenderBundleEncoderFinish(self.ptr, Some(&c_desc)) };
+        let ptr = unsafe { wgpuRenderBundleEncoderFinish(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchRenderBundle::custom(CRenderBundle { ptr })
     }
 

@@ -1216,6 +1216,14 @@ dependencies = [
  "log",
  "raw-window-metal",
  "wgpu",
+ "wgpu-c-bindings",
+]
+
+[[package]]
+name = "wgpu-c-bindings"
+version = "0.0.0"
+dependencies = [
+ "bindgen",
  "wgpu-native",
 ]
 

@@ -1,5 +1,6 @@
 use wgpu::custom::*;
-use wgpu_native::{native, *};
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
 
 use crate::conv;
 use crate::device::CDevice;
@@ -34,7 +35,7 @@ impl SurfaceInterface for CSurface {
         fmt_extras.chain.sType = native::WGPUSType_SurfaceCapabilitiesExtras;
         let mut caps: native::WGPUSurfaceCapabilities = unsafe { std::mem::zeroed() };
         caps.nextInChain = std::ptr::from_mut(&mut fmt_extras.chain);
-        unsafe { wgpuSurfaceGetCapabilities(self.ptr, adapter_ptr, Some(&mut caps)) };
+        unsafe { wgpuSurfaceGetCapabilities(self.ptr, adapter_ptr, std::ptr::from_mut(&mut caps)) };
 
         let formats = unsafe {
             std::slice::from_raw_parts(caps.formats, caps.formatCount)
@@ -118,7 +119,7 @@ impl SurfaceInterface for CSurface {
                 .unwrap_or(native::WGPUPresentMode_Fifo),
             alphaMode: conv::composite_alpha_to_native(config.alpha_mode),
         };
-        unsafe { wgpuSurfaceConfigure(self.ptr, Some(&c_config)) };
+        unsafe { wgpuSurfaceConfigure(self.ptr, std::ptr::from_ref(&c_config)) };
     }
 
     fn get_current_texture(
@@ -129,7 +130,7 @@ impl SurfaceInterface for CSurface {
         DispatchSurfaceOutputDetail,
     ) {
         let mut surface_texture: native::WGPUSurfaceTexture = unsafe { std::mem::zeroed() };
-        unsafe { wgpuSurfaceGetCurrentTexture(self.ptr, Some(&mut surface_texture)) };
+        unsafe { wgpuSurfaceGetCurrentTexture(self.ptr, std::ptr::from_mut(&mut surface_texture)) };
 
         let status = conv::surface_status_from_native(surface_texture.status);
         let texture = if !surface_texture.texture.is_null() {

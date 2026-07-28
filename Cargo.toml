@@ -18,8 +18,8 @@ categories = ["graphics", "rendering"]
 license = "MIT OR Apache-2.0"
 
 [workspace]
-members = [".", "wgpu-c-backend/"]
-default-members = [".", "wgpu-c-backend/"]
+members = [".", "wgpu-c-backend/", "wgpu-c-bindings/"]
+default-members = [".", "wgpu-c-backend/", "wgpu-c-bindings/"]
 resolver = "2"
 
 [workspace.dependencies.wgpu]

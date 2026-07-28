@@ -4,7 +4,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{Arc, Mutex};
 
 use wgpu::custom::*;
-use wgpu_native::{native, *};
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
 
 use crate::conv;
 use crate::device::{CDevice, CQueue, DeviceLostHandler, ErrorHandler};
@@ -48,7 +49,7 @@ pub(crate) fn get_adapter_info(adapter: native::WGPUAdapter) -> wgpu::AdapterInf
         nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
         ..unsafe { std::mem::zeroed() }
     };
-    unsafe { wgpuAdapterGetInfo(adapter, Some(&mut raw)) };
+    unsafe { wgpuAdapterGetInfo(adapter, std::ptr::from_mut(&mut raw)) };
     let info = adapter_info_with_extras(&raw, &extras);
     unsafe { wgpuAdapterInfoFreeMembers(raw) };
     info
@@ -253,7 +254,7 @@ impl AdapterInterface for CAdapter {
 
         let info = get_adapter_info(self.ptr);
 
-        unsafe { wgpuAdapterRequestDevice(self.ptr, Some(&c_desc), callback_info) };
+        unsafe { wgpuAdapterRequestDevice(self.ptr, std::ptr::from_ref(&c_desc), callback_info) };
 
         let result =
             if out.status == native::WGPURequestDeviceStatus_Success && !out.device.is_null() {
@@ -293,7 +294,7 @@ impl AdapterInterface for CAdapter {
 
     fn features(&self) -> wgpu::Features {
         let mut supported: native::WGPUSupportedFeatures = unsafe { std::mem::zeroed() };
-        unsafe { wgpuAdapterGetFeatures(self.ptr, Some(&mut supported)) };
+        unsafe { wgpuAdapterGetFeatures(self.ptr, std::ptr::from_mut(&mut supported)) };
         let result = conv::map_supported_features(&supported);
         unsafe { wgpuSupportedFeaturesFreeMembers(supported) };
         result
@@ -308,7 +309,7 @@ impl AdapterInterface for CAdapter {
         let mut limits: native::WGPULimits = unsafe { std::mem::zeroed() };
         limits.nextInChain =
             std::ptr::from_mut::<native::WGPUChainedStruct>(&mut native_limits.chain);
-        unsafe { wgpuAdapterGetLimits(self.ptr, Some(&mut limits)) };
+        unsafe { wgpuAdapterGetLimits(self.ptr, std::ptr::from_mut(&mut limits)) };
         conv::map_limits(&limits, Some(&native_limits))
     }
 
@@ -377,7 +378,7 @@ impl AdapterInterface for CAdapter {
             flags: 0,
         };
         let status = unsafe {
-            wgpuAdapterGetTextureFormatCapabilities(self.ptr, native_fmt, Some(&mut caps))
+            wgpuAdapterGetTextureFormatCapabilities(self.ptr, native_fmt, std::ptr::from_mut(&mut caps))
         };
         if status != native::WGPUStatus_Success {
             return format.guaranteed_format_features(self.features());

@@ -3,7 +3,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use wgpu::custom::*;
-use wgpu_native::{native, *};
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
 
 use crate::conv;
 
@@ -146,7 +147,7 @@ impl BufferInterface for CBuffer {
             && !crate::has_callback_panic()
             && std::time::Instant::now() < deadline
         {
-            unsafe { wgpuDevicePoll(self.device_ptr, false, None, 0) };
+            unsafe { wgpuDevicePoll(self.device_ptr, 0u32, std::ptr::null(), 0) };
             std::thread::yield_now();
         }
         // Re-raise any panic that occurred in the callback.
@@ -176,11 +177,11 @@ impl BufferInterface for CBuffer {
             }
             (cp as *mut u8, true)
         } else {
-            (ptr, false)
+            (ptr as *mut u8, false)
         };
 
         Ok(DispatchBufferMappedRange::custom(CBufferMappedRange {
-            ptr: ptr.cast::<u8>(),
+            ptr,
             len: size,
             read_only,
         }))
@@ -265,7 +266,7 @@ impl TextureInterface for CTexture {
                 .map(conv::texture_usage_to_native)
                 .unwrap_or_else(|| unsafe { wgpuTextureGetUsage(self.ptr) }),
         };
-        let ptr = unsafe { wgpuTextureCreateView(self.ptr, Some(&c_desc)) };
+        let ptr = unsafe { wgpuTextureCreateView(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchTextureView::custom(CTextureView { ptr })
     }
 
@@ -475,7 +476,7 @@ impl PipelineCacheInterface for CPipelineCache {
             return None;
         }
         let mut buf = vec![0u8; size];
-        unsafe { wgpuPipelineCacheGetData(self.ptr, buf.as_mut_ptr()) };
+        unsafe { wgpuPipelineCacheGetData(self.ptr, buf.as_mut_ptr().cast()) };
         Some(buf)
     }
 }

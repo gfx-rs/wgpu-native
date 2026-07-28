@@ -8,14 +8,13 @@ from pathlib import Path
 REPO_URL = "https://github.com/inner-daemons/wgpu.git"
 # Branch on the fork that carries the wgpu-side integration glue as a single
 # commit (see apply_glue). Replaces the string-patching this script used to do.
-GLUE_BRANCH = "c-backend-testrig-v30"
+GLUE_BRANCH = "c-backend-testrig-v31"
 # Exact commit of GLUE_BRANCH to apply. Pinned (rather than tracking the branch
 # tip) so a later force-push to the branch can't silently change the glue.
 # Update this when intentionally moving to a new glue commit; the pinned commit
 # must be authored on top of the wgpu revision pinned in Cargo.lock.
-GLUE_COMMIT = "3e2a7edb775682d358f757f4fc29435ca4dcb89d"
+GLUE_COMMIT = "30fdffc30f2b87633d74b21ff9df641d54801204"
 LOCAL_WGPU = Path(".local-wgpu")
-WGPU_C_BACKEND_SRC = Path("wgpu-c-backend")
 CARGO_LOCK = Path("Cargo.lock")
 
 
@@ -43,12 +42,12 @@ def clone_at_commit(commit: str):
     run("git", "-C", str(LOCAL_WGPU), "reset", "--hard", commit)
 
 
-def copy_c_backend():
-    dest = LOCAL_WGPU / WGPU_C_BACKEND_SRC.name
-    print(f"Syncing wgpu-c-backend -> {dest}")
+def copy_folder_into(name):
+    dest = LOCAL_WGPU / Path(name)
+    print(f"Syncing {name} -> {dest}")
     if dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(str(WGPU_C_BACKEND_SRC), str(dest))
+    shutil.copytree(str(name), str(dest))
 
 
 def apply_glue():
@@ -94,13 +93,15 @@ def main():
         commit = get_wgpu_commit()
         print(f"wgpu commit from Cargo.lock: {commit[:12]}")
         clone_at_commit(commit)
-        copy_c_backend()
+        copy_folder_into("wgpu-c-backend")
+        copy_folder_into("wgpu-c-bindings")
+        copy_folder_into("ffi")
         apply_glue()
         # wgpu-c-backend sits one directory deeper under .local-wgpu than it
         # does in the wgpu-native workspace, so fix its path to wgpu-native.
         # This edits our copied-in file, not wgpu, so it stays here.
         patch_file(
-            ".local-wgpu/wgpu-c-backend/Cargo.toml",
+            ".local-wgpu/wgpu-c-bindings/Cargo.toml",
             'wgpu-native = { path = "../"',
             'wgpu-native = { path = "../../"',
         )

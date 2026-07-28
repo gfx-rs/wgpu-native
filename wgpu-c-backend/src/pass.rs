@@ -1,7 +1,8 @@
 use std::ops::Range;
 
 use wgpu::custom::*;
-use wgpu_native::{native, *};
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
 
 use crate::conv;
 use crate::resource::{
@@ -64,7 +65,7 @@ impl ComputePassInterface for CComputePass {
 
     fn set_immediates(&mut self, offset: u32, data: &[u8]) {
         unsafe {
-            wgpuComputePassEncoderSetImmediates(self.ptr, offset, data.as_ptr(), data.len() as u32)
+            wgpuComputePassEncoderSetImmediates(self.ptr, offset, data.as_ptr().cast(), data.len())
         };
     }
 
@@ -210,13 +211,13 @@ impl RenderPassInterface for CRenderPass {
 
     fn set_immediates(&mut self, offset: u32, data: &[u8]) {
         unsafe {
-            wgpuRenderPassEncoderSetImmediates(self.ptr, offset, data.as_ptr(), data.len() as u32)
+            wgpuRenderPassEncoderSetImmediates(self.ptr, offset, data.as_ptr().cast(), data.len())
         };
     }
 
     fn set_blend_constant(&mut self, color: wgpu::Color) {
         let c = conv::color_to_native(color);
-        unsafe { wgpuRenderPassEncoderSetBlendConstant(self.ptr, Some(&c)) };
+        unsafe { wgpuRenderPassEncoderSetBlendConstant(self.ptr, std::ptr::from_ref(&c)) };
     }
 
     fn set_scissor_rect(&mut self, x: u32, y: u32, width: u32, height: u32) {

@@ -1,4 +1,19 @@
-use wgpu_native::native;
+use wgpu_c_bindings as native;
+
+const WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT: native::WGPUTextureFormat = 0x00030009;
+const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAccess = 0x00030001;
+
+pub(crate) unsafe fn string_view_into_str<'a>(sv: native::WGPUStringView) -> Option<&'a str> {
+    if sv.data.is_null() {
+        return if sv.length == usize::MAX { None } else { Some("") };
+    }
+    let bytes = if sv.length == usize::MAX {
+        std::ffi::CStr::from_ptr(sv.data).to_bytes()
+    } else {
+        std::slice::from_raw_parts(sv.data as *const u8, sv.length)
+    };
+    Some(std::str::from_utf8_unchecked(bytes))
+}
 
 // ── Instance ──────────────────────────────────────────────────────────────────
 
@@ -1232,7 +1247,7 @@ pub fn texture_format_to_native(f: wgpu::TextureFormat) -> native::WGPUTextureFo
         TF::R16Snorm => native::WGPUTextureFormat_R16Snorm,
         TF::NV12 => native::WGPUNativeTextureFormat_NV12,
         TF::P010 => native::WGPUNativeTextureFormat_P010,
-        TF::R64Uint => wgpu_native::conv::WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT,
+        TF::R64Uint => WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT,
     }
 }
 
@@ -1812,7 +1827,7 @@ pub fn storage_texture_access_to_native(
         wgpu::StorageTextureAccess::ReadOnly => native::WGPUStorageTextureAccess_ReadOnly,
         wgpu::StorageTextureAccess::ReadWrite => native::WGPUStorageTextureAccess_ReadWrite,
         wgpu::StorageTextureAccess::Atomic => {
-            wgpu_native::conv::WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC
+            WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC
         }
     }
 }

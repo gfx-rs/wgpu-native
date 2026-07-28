@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 log = "0.4"
 wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "drm"] }
-wgpu-native = { path = "../", features = ["vulkan-portability", "angle", "spirv", "glsl", "wgsl"] }
+wgpu-c-bindings = { path = "../wgpu-c-bindings" }
 
 # This is needed to run the tests & examples, but our dxc wrapper doesn't have dxc prebuilt for such systems.
 [target.'cfg(target_pointer_width = "64")'.dependencies]
