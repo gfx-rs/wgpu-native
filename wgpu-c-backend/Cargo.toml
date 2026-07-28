@@ -10,8 +10,12 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 log = "0.4"
-wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "static-dxc", "drm"] }
+wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "drm"] }
 wgpu-native = { path = "../", features = ["vulkan-portability", "angle", "spirv", "glsl", "wgsl"] }
+
+# This is needed to run the tests & examples, but our dxc wrapper doesn't have dxc prebuilt for such systems.
+[target.'cfg(target_pointer_width = "64")'.dependencies]
+wgpu = { workspace = true, features = ["static-dxc"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 raw-window-metal = "1.1.0"
