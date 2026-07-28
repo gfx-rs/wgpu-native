@@ -18,6 +18,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   CACHE_SUFFIX: b
   WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
+  WGPU_CI: true
 
 jobs:
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
