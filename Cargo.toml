@@ -25,27 +25,27 @@ resolver = "2"
 [workspace.dependencies.wgpu]
 package = "wgpu"
 git = "https://github.com/gfx-rs/wgpu.git"
-rev = "8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1" # v30.0.0
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
 git = "https://github.com/gfx-rs/wgpu.git"
-rev = "8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1" # v30.0.0
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
 git = "https://github.com/gfx-rs/wgpu.git"
-rev = "8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1" # v30.0.0
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
 git = "https://github.com/gfx-rs/wgpu.git"
-rev = "8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1" # v30.0.0
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.naga]
 package = "naga"
 git = "https://github.com/gfx-rs/wgpu.git"
-rev = "8bf3e5ff4ab45e2c150e0d6c70d01d25f5b126c1" # v30.0.0
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [lib]
 crate-type = ["cdylib", "rlib", "staticlib"]
