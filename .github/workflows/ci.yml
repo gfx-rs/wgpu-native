@@ -313,12 +313,14 @@ jobs:
           make example-enumerate_adapters
           make example-texture_arrays
           make example-immediates
+          make example-pipeline_cache
       - name: Run examples debug
         run: |
           make run-example-capture
           make run-example-compute
           make run-example-enumerate_adapters
           make run-example-immediates
+          make run-example-pipeline_cache
       - name: Build examples release
         run: |
           make example-capture-release
@@ -327,9 +329,11 @@ jobs:
           make example-enumerate_adapters-release
           make example-texture_arrays-release
           make example-immediates-release
+          make example-pipeline_cache-release
       - name: Run examples release
         run: |
           make run-example-capture-release
           make run-example-compute-release
           make run-example-enumerate_adapters-release
           make run-example-immediates-release
+          make run-example-pipeline_cache-release

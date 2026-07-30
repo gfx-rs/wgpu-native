@@ -2057,6 +2057,20 @@ pub fn map_sampler_border_color_extras(
     }
 }
 
+/// Generic over the pipeline descriptor type, since the same extras struct is
+/// chained onto both render and compute pipeline descriptors.
+///
+/// # Safety
+///
+/// The `pipelineCache` field of `extras`, when set, must be a valid pipeline cache.
+pub unsafe fn map_pipeline_cache_extras<T>(
+    _descriptor: T,
+    extras: Option<&native::WGPUPipelineDescriptorExtras>,
+) -> Option<wgc::id::PipelineCacheId> {
+    let pipeline_cache = extras?.pipelineCache.as_ref()?;
+    Some(pipeline_cache.id)
+}
+
 pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
     if value > u32::MAX.into() {
         return None;

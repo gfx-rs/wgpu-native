@@ -39,6 +39,8 @@ typedef enum WGPUNativeSType
     WGPUSType_PrimitiveStateExtras = 0x0003000A,
     /** Identifies @ref WGPUSamplerDescriptorExtras. */
     WGPUSType_SamplerDescriptorExtras = 0x0003000B,
+    /** Identifies @ref WGPUPipelineDescriptorExtras. */
+    WGPUSType_PipelineDescriptorExtras = 0x0003000C,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1474,6 +1476,45 @@ typedef struct WGPUSamplerDescriptorExtras {
     WGPUSamplerBorderColor samplerBorderColor;
 } WGPUSamplerDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
+/**
+ * An opaque handle to a pipeline cache, used to reuse the result of shader
+ * compilation between executions of the program.
+ *
+ * Requires @ref WGPUNativeFeature_PipelineCache.
+ */
+typedef struct WGPUPipelineCacheImpl* WGPUPipelineCache WGPU_OBJECT_ATTRIBUTE;
+
+typedef struct WGPUPipelineCacheDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    WGPUStringView label;
+    /**
+     * The data used to initialise the cache, which must have been returned by a
+     * previous call to @ref wgpuPipelineCacheGetData. May be NULL, in which case
+     * the cache starts out empty.
+     *
+     * Cache data is specific to the device, driver version and hardware it was
+     * produced on, and is treated as invalid anywhere else. See @ref fallback
+     * for how that case is handled.
+     */
+    WGPU_NULLABLE uint8_t const * data;
+    size_t dataSize;
+    /**
+     * Whether to create an empty cache when @ref data is invalid, rather than
+     * failing. Recommended to set to true.
+     */
+    WGPUBool fallback;
+} WGPUPipelineCacheDescriptor WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained onto @ref WGPURenderPipelineDescriptor or
+ * @ref WGPUComputePipelineDescriptor to reuse compiled shader code from a
+ * pipeline cache.
+ */
+typedef struct WGPUPipelineDescriptorExtras {
+    WGPUChainedStruct chain;
+    WGPU_NULLABLE WGPUPipelineCache pipelineCache;
+} WGPUPipelineDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -1488,6 +1529,27 @@ extern "C"
     // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
     WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex);
     WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const *descriptor);
+
+    /**
+     * Creates a pipeline cache, which can be passed to pipeline creation via
+     * @ref WGPUPipelineDescriptorExtras to reuse previously compiled shader code.
+     *
+     * Requires @ref WGPUNativeFeature_PipelineCache.
+     */
+    WGPUPipelineCache wgpuDeviceCreatePipelineCache(WGPUDevice device, WGPUPipelineCacheDescriptor const *descriptor);
+    /**
+     * Returns the data of a pipeline cache, suitable for persisting to disk and
+     * passing back to @ref wgpuDeviceCreatePipelineCache on a later run.
+     *
+     * Following the same convention as @ref wgpuInstanceEnumerateAdapters, this
+     * is called twice: once with `data` set to NULL to obtain the required size,
+     * then again with a buffer of at least that size. `dataSize` is ignored when
+     * `data` is NULL. Returns the size of the data, which is 0 when the cache has
+     * no data to return.
+     */
+    size_t wgpuPipelineCacheGetData(WGPUPipelineCache pipelineCache, WGPU_NULLABLE uint8_t *data, size_t dataSize);
+    void wgpuPipelineCacheAddRef(WGPUPipelineCache pipelineCache);
+    void wgpuPipelineCacheRelease(WGPUPipelineCache pipelineCache);
 
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
 
