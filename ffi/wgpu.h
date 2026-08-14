@@ -39,6 +39,8 @@ typedef enum WGPUNativeSType
     WGPUSType_PrimitiveStateExtras = 0x0003000A,
     /** Identifies @ref WGPUSamplerDescriptorExtras. */
     WGPUSType_SamplerDescriptorExtras = 0x0003000B,
+    /** Identifies @ref WGPUSurfaceSourceOhosNativeWindow. */
+    WGPUSType_SurfaceSourceOhosNativeWindow = 0x0003000C,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1399,6 +1401,19 @@ typedef struct WGPUSurfaceSourceSwapChainPanel
      */
     void *panelNative;
 } WGPUSurfaceSourceSwapChainPanel WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping
+ * an OpenHarmony @c OHNativeWindow.
+ */
+typedef struct WGPUSurfaceSourceOhosNativeWindow
+{
+    WGPUChainedStruct chain;
+    /**
+     * A pointer to an OpenHarmony @c OHNativeWindow. Must not be NULL.
+     */
+    void *window;
+} WGPUSurfaceSourceOhosNativeWindow WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef enum WGPUPolygonMode
 {

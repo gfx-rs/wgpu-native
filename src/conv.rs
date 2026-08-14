@@ -1879,6 +1879,7 @@ pub unsafe fn map_surface(
     _metal: Option<&native::WGPUSurfaceSourceMetalLayer>,
     android: Option<&native::WGPUSurfaceSourceAndroidNativeWindow>,
     _swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
+    ohos: Option<&native::WGPUSurfaceSourceOhosNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -1940,6 +1941,17 @@ pub unsafe fn map_surface(
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Android(display_handle),
             raw_window_handle::RawWindowHandle::AndroidNdk(window_handle),
+        ));
+    }
+
+    if let Some(ohos) = ohos {
+        let display_handle = raw_window_handle::OhosDisplayHandle::new();
+        let window_handle =
+            raw_window_handle::OhosNdkWindowHandle::new(NonNull::new_unchecked(ohos.window));
+
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Ohos(display_handle),
+            raw_window_handle::RawWindowHandle::OhosNdk(window_handle),
         ));
     }
 

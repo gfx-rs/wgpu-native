@@ -80,6 +80,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   - `WGPUNativeAddressMode_ClampToBorder` address mode
   - `WGPUSamplerBorderColor` enum
   - `WGPUSamplerDescriptorExtras` struct to be chained in `WGPUSamplerDescriptor`
+- Support ohos raw-window-handle: @richerfu
 
 ### Removed
 
