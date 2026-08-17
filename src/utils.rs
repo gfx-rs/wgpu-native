@@ -567,3 +567,28 @@ pub fn test_get_base_device_limits_from_adapter_limits() {
         );
     }
 }
+
+#[test]
+fn base_device_limits_clamp_each_texture_dimension_to_the_adapter() {
+    // Dimensions strictly below every default tier (default, downlevel, and
+    // webgl2 downlevel), so the clamped values are distinguishable from any
+    // fallback branch's own defaults.
+    let adapter_limits = wgt::Limits {
+        max_texture_dimension_1d: 1000,
+        max_texture_dimension_2d: 1000,
+        max_texture_dimension_3d: 100,
+        ..wgt::Limits::default()
+    };
+    // Full-struct equality: an adapter that meets the default limits must get
+    // the default tier with clamped dimensions, not silently degrade to a
+    // downlevel tier (which correct dimensions alone would not distinguish).
+    assert_eq!(
+        get_base_device_limits_from_adapter_limits(&adapter_limits),
+        wgt::Limits {
+            max_texture_dimension_1d: 1000,
+            max_texture_dimension_2d: 1000,
+            max_texture_dimension_3d: 100,
+            ..wgt::Limits::default()
+        },
+    );
+}
