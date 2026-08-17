@@ -951,17 +951,22 @@ static const WGPUInstanceBackend WGPUInstanceBackend_Secondary = (1 << 1);
 static const WGPUInstanceBackend WGPUInstanceBackend_Force32 = 0x7FFFFFFF;
 
 /**
- * Native extension value for @ref WGPULoadOp.
- *
- * The render target has undefined contents at the start of the render pass.
- * This is the fastest option when every pixel is overwritten by the pass, but
- * reading an unwritten pixel is undefined behavior. Backends that don't support
- * it internally fall back to an unspecified load op. Under
- * @ref WGPUInstanceFlag_StrictWebgpuCompliance it is rejected.
+ * Native extension values for @ref WGPULoadOp.
  *
  * Assignable to any @ref WGPULoadOp field (e.g. @ref WGPURenderPassColorAttachment::loadOp).
  */
-#define WGPULoadOp_DontCare 0x00030001
+typedef enum WGPUNativeLoadOp
+{
+    /**
+     * The render target has undefined contents at the start of the render pass.
+     * This is the fastest option when every pixel is overwritten by the pass, but
+     * reading an unwritten pixel is undefined behavior. Backends that don't support
+     * it internally fall back to an unspecified load op. Under
+     * @ref WGPUInstanceFlag_StrictWebgpuCompliance it is rejected.
+     */
+    WGPULoadOp_DontCare = 0x00030001,
+    WGPUNativeLoadOp_Force32 = 0x7FFFFFFF
+} WGPUNativeLoadOp;
 
 /**
  * Native extension value for @ref WGPUBufferUsage.
@@ -979,9 +984,16 @@ static const WGPUBufferUsage WGPUBufferUsage_RayTracingPipelineShaderData = 0x00
  * WGPUTextureFormat_NV12, P010). Not part of the WebGPU standard. Assignable to
  * any @ref WGPUTextureAspect field.
  */
-#define WGPUTextureAspect_Plane0 0x00030000
-#define WGPUTextureAspect_Plane1 0x00030001
-#define WGPUTextureAspect_Plane2 0x00030002
+typedef enum WGPUNativeTextureAspect
+{
+    /** Select plane 0 of a multi-planar texture. */
+    WGPUTextureAspect_Plane0 = 0x00030000,
+    /** Select plane 1 of a multi-planar texture. */
+    WGPUTextureAspect_Plane1 = 0x00030001,
+    /** Select plane 2 of a multi-planar texture. */
+    WGPUTextureAspect_Plane2 = 0x00030002,
+    WGPUNativeTextureAspect_Force32 = 0x7FFFFFFF
+} WGPUNativeTextureAspect;
 
 /**
  * Bitflags controlling instance debugging and validation behavior.
@@ -2394,18 +2406,18 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_IntDivChecks = 0x00
  * Bit values match those of @c wgpu_types::TextureFormatFeatureFlags.
  */
 typedef uint32_t WGPUNativeTextureFormatFeatureFlags;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_None = 0x00000000;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Filterable = 0x00000001;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX2 = 0x00000002;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX4 = 0x00000004;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX8 = 0x00000008;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX16 = 0x00000010;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleResolve = 0x00000020;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadOnly = 0x00000040;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageWriteOnly = 0x00000080;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadWrite = 0x00000100;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageAtomic = 0x00000200;
-static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Blendable = 0x00000400;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_None = 0x0000000000000000;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Filterable = 0x0000000000000001;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX2 = 0x0000000000000002;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX4 = 0x0000000000000004;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX8 = 0x0000000000000008;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX16 = 0x0000000000000010;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleResolve = 0x0000000000000020;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadOnly = 0x0000000000000040;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageWriteOnly = 0x0000000000000080;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageReadWrite = 0x0000000000000100;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_StorageAtomic = 0x0000000000000200;
+static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Blendable = 0x0000000000000400;
 
 /**
  * Bitmask of implemented WGSL language features.
@@ -2413,11 +2425,11 @@ static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureF
  * Returned by @ref wgpuGetWgslLanguageFeatures.
  */
 typedef uint32_t WGPUWgslLanguageFeatures;
-static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_None = 0x00000000;
-static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures = 0x00000001;
-static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct = 0x00000002;
-static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_PointerCompositeAccess = 0x00000004;
-static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ImmediateAddressSpace = 0x00000008;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_None = 0x0000000000000000;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures = 0x0000000000000001;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct = 0x0000000000000002;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_PointerCompositeAccess = 0x0000000000000004;
+static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ImmediateAddressSpace = 0x0000000000000008;
 
 /**
  * Bitmask of downlevel capabilities returned by
@@ -2426,34 +2438,34 @@ static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ImmediateAddressS
  * Bit values match those of @c wgpu_types::DownlevelFlags.
  */
 typedef uint32_t WGPUDownlevelFlags;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_None = 0x00000000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_ComputeShaders = 0x00000001;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentWritableStorage = 0x00000002;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_IndirectExecution = 0x00000004;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_BaseVertex = 0x00000008;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_ReadOnlyDepthStencil = 0x00000010;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_NonPowerOfTwoMipmappedTextures = 0x00000020;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_CubeArrayTextures = 0x00000040;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_ComparisonSamplers = 0x00000080;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_IndependentBlend = 0x00000100;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_VertexStorage = 0x00000200;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_AnisotropicFiltering = 0x00000400;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentStorage = 0x00000800;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_MultisampledShading = 0x00001000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthTextureAndBufferCopies = 0x00002000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_WebGpuTextureFormatSupport = 0x00004000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_BufferBindingsNot16ByteAligned = 0x00008000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedIndexBuffer = 0x00010000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_FullDrawIndexUint32 = 0x00020000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthBiasClamp = 0x00040000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_ViewFormats = 0x00080000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedExternalTextureCopies = 0x00100000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_SurfaceViewFormats = 0x00200000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_NonblockingQueryResolve = 0x00400000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_ShaderF16InF32 = 0x00800000;
-static const WGPUDownlevelFlags WGPUDownlevelFlags_Msl21 = 0x01000000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_None = 0x0000000000000000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ComputeShaders = 0x0000000000000001;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentWritableStorage = 0x0000000000000002;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_IndirectExecution = 0x0000000000000004;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_BaseVertex = 0x0000000000000008;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ReadOnlyDepthStencil = 0x0000000000000010;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_NonPowerOfTwoMipmappedTextures = 0x0000000000000020;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_CubeArrayTextures = 0x0000000000000040;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ComparisonSamplers = 0x0000000000000080;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_IndependentBlend = 0x0000000000000100;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_VertexStorage = 0x0000000000000200;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_AnisotropicFiltering = 0x0000000000000400;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentStorage = 0x0000000000000800;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_MultisampledShading = 0x0000000000001000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthTextureAndBufferCopies = 0x0000000000002000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_WebGpuTextureFormatSupport = 0x0000000000004000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_BufferBindingsNot16ByteAligned = 0x0000000000008000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedIndexBuffer = 0x0000000000010000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_FullDrawIndexUint32 = 0x0000000000020000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_DepthBiasClamp = 0x0000000000040000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ViewFormats = 0x0000000000080000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_UnrestrictedExternalTextureCopies = 0x0000000000100000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_SurfaceViewFormats = 0x0000000000200000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_NonblockingQueryResolve = 0x0000000000400000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_ShaderF16InF32 = 0x0000000000800000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_Msl21 = 0x0000000001000000;
 /** The device supports compressed texture formats. */
-static const WGPUDownlevelFlags WGPUDownlevelFlags_TextureCompression = 0x02000000;
+static const WGPUDownlevelFlags WGPUDownlevelFlags_TextureCompression = 0x0000000002000000;
 
 /** Shader model supported by the adapter. */
 typedef enum WGPUShaderModel
