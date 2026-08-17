@@ -2666,3 +2666,144 @@ pub fn map_presentation_timestamp(
         nanoseconds: u64::try_from(ts.0).unwrap_or(u64::MAX),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wgt::Features;
+
+    fn zeroed_device_descriptor() -> native::WGPUDeviceDescriptor {
+        unsafe { std::mem::zeroed() }
+    }
+
+    fn descriptor_extras(
+        hints: native::WGPUMemoryHints,
+        min: u64,
+        max: u64,
+    ) -> native::WGPUDeviceDescriptorExtras {
+        let mut extras: native::WGPUDeviceDescriptorExtras = unsafe { std::mem::zeroed() };
+        extras.memoryHints = hints;
+        extras.suballocatedDeviceMemoryBlockSizeMin = min;
+        extras.suballocatedDeviceMemoryBlockSizeMax = max;
+        extras
+    }
+
+    fn legacy_device_extras(
+        hints: native::WGPUMemoryHints,
+        start: u64,
+        end: u64,
+    ) -> native::WGPUDeviceExtras {
+        let mut extras: native::WGPUDeviceExtras = unsafe { std::mem::zeroed() };
+        extras.memoryHints = hints;
+        extras.suballocatedDeviceMemoryBlockSizeStart = start;
+        extras.suballocatedDeviceMemoryBlockSizeEnd = end;
+        extras
+    }
+
+    fn mapped_memory_hints(
+        legacy: Option<&native::WGPUDeviceExtras>,
+        extras: Option<&native::WGPUDeviceDescriptorExtras>,
+    ) -> wgt::MemoryHints {
+        let descriptor = zeroed_device_descriptor();
+        let (desc, _) =
+            unsafe { map_device_descriptor(&descriptor, wgt::Limits::default(), legacy, extras) };
+        desc.memory_hints
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_prefer_descriptor_extras_over_legacy_extras() {
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_MemoryUsage, 0, 0);
+        let extras = descriptor_extras(native::WGPUMemoryHints_Manual, 4096, 65536);
+        match mapped_memory_hints(Some(&legacy), Some(&extras)) {
+            wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size,
+            } => assert_eq!(suballocated_device_memory_block_size, 4096..65536),
+            other => panic!("expected Manual from WGPUDeviceDescriptorExtras, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_fall_back_to_legacy_device_extras() {
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_Manual, 1024, 8192);
+        match mapped_memory_hints(Some(&legacy), None) {
+            wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size,
+            } => assert_eq!(suballocated_device_memory_block_size, 1024..8192),
+            other => panic!("expected Manual from legacy WGPUDeviceExtras, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_default_to_performance_without_extras() {
+        assert!(matches!(
+            mapped_memory_hints(None, None),
+            wgt::MemoryHints::Performance
+        ));
+    }
+
+    #[test]
+    fn device_descriptor_zero_initialized_memory_hints_mean_performance() {
+        // WGPUMemoryHints_Undefined (0) must behave like Performance so that
+        // zero-initialized extras keep the previous behavior.
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_Undefined, 0, 0);
+        assert!(matches!(
+            mapped_memory_hints(Some(&legacy), None),
+            wgt::MemoryHints::Performance
+        ));
+    }
+
+    #[test]
+    fn load_op_maps_standard_and_native_extension_values() {
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_Load, 0u32),
+            Some(wgc::command::LoadOp::Load)
+        ));
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_Clear, 7u32),
+            Some(wgc::command::LoadOp::Clear(7))
+        ));
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_DontCare as native::WGPULoadOp, 0u32),
+            Some(wgc::command::LoadOp::DontCare(_))
+        ));
+    }
+
+    #[test]
+    fn load_op_rejects_values_outside_standard_and_native_sets() {
+        assert!(map_load_op(0x7EAD_BEEF as native::WGPULoadOp, 0u32).is_none());
+    }
+
+    #[test]
+    fn multi_draw_indirect_count_feature_round_trips_through_the_c_abi() {
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_MultiDrawIndirectCount),
+            Some(Features::MULTI_DRAW_INDIRECT_COUNT)
+        );
+        assert!(features_to_native(Features::MULTI_DRAW_INDIRECT_COUNT)
+            .contains(&native::WGPUNativeFeature_MultiDrawIndirectCount));
+    }
+
+    #[test]
+    fn retired_multi_draw_indirect_feature_value_is_rejected() {
+        // 0x00030003 was WGPUNativeFeature_MultiDrawIndirect before wgpu made
+        // fixed-count multi-draw unconditional (gfx-rs/wgpu#8162). The hole
+        // must not silently map to another feature.
+        assert_eq!(map_feature(0x00030003 as native::WGPUFeatureName), None);
+    }
+
+    #[test]
+    fn experimental_features_map_to_wgpu_experimental_features() {
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalMeshShader),
+            Some(Features::EXPERIMENTAL_MESH_SHADER)
+        );
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalMeshShaderMultiview),
+            Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW)
+        );
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalRayHitVertexReturn),
+            Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN)
+        );
+    }
+}
