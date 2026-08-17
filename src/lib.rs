@@ -5881,7 +5881,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         update_mode: map_acceleration_structure_update_mode(descriptor.updateMode),
     };
 
-    let wgt_sizes = if sizes.kind == native::WGPUBlasGeometryKind_Triangles {
+    // The geometry kind is inferred from which descriptor array is non-NULL,
+    // mirroring the WGPUBindGroupEntry convention for mutually exclusive members.
+    let has_triangles = !sizes.triangleDescriptors.is_null();
+    let has_aabbs = !sizes.aabbDescriptors.is_null();
+    let wgt_sizes = if has_triangles && !has_aabbs {
         let tri_descs = make_slice(sizes.triangleDescriptors, sizes.triangleDescriptorCount)
             .iter()
             .map(|sd| {
@@ -5915,7 +5919,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         wgt::BlasGeometrySizeDescriptors::Triangles {
             descriptors: tri_descs,
         }
-    } else if sizes.kind == native::WGPUBlasGeometryKind_AABBs {
+    } else if has_aabbs && !has_triangles {
         let aabb_descs = make_slice(sizes.aabbDescriptors, sizes.aabbDescriptorCount)
             .iter()
             .map(|sd| wgt::BlasAABBGeometrySizeDescriptor {
@@ -5926,8 +5930,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         wgt::BlasGeometrySizeDescriptors::AABBs {
             descriptors: aabb_descs,
         }
+    } else if has_triangles {
+        panic!("WGPUBlasSizeDescriptors must not set both triangleDescriptors and aabbDescriptors");
     } else {
-        panic!("unknown WGPUBlasGeometryKind: {}", sizes.kind);
+        panic!("WGPUBlasSizeDescriptors must set one of triangleDescriptors or aabbDescriptors");
     };
 
     let (blas_id, handle, error) = context.device_create_blas(device_id, &desc, wgt_sizes, None);

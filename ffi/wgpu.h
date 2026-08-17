@@ -2172,18 +2172,18 @@ typedef struct WGPUBlasAABBGeometrySizeDescriptor
 
 /**
  * Size descriptors for a BLAS.
- * Set @ref kind and fill the matching pair of fields.
- * The other pair should be NULL/0.
- * Pass to @ref wgpuDeviceCreateBlas.
+ * Exactly one of @ref triangleDescriptors and @ref aabbDescriptors must be
+ * non-NULL; the geometry kind is inferred from which one is set, following
+ * the @ref WGPUBindGroupEntry convention of mutually exclusive nullable
+ * members. Pass to @ref wgpuDeviceCreateBlas.
  */
 typedef struct WGPUBlasSizeDescriptors
 {
-    WGPUBlasGeometryKind kind;
-    /** Triangle geometry descriptors (used when kind == Triangles). */
-    WGPUBlasTriangleGeometrySizeDescriptor const *triangleDescriptors;
+    /** Triangle geometry descriptors. NULL when the BLAS holds AABBs. */
+    WGPU_NULLABLE WGPUBlasTriangleGeometrySizeDescriptor const *triangleDescriptors;
     size_t triangleDescriptorCount;
-    /** AABB geometry descriptors (used when kind == AABBs). */
-    WGPUBlasAABBGeometrySizeDescriptor const *aabbDescriptors;
+    /** AABB geometry descriptors. NULL when the BLAS holds triangles. */
+    WGPU_NULLABLE WGPUBlasAABBGeometrySizeDescriptor const *aabbDescriptors;
     size_t aabbDescriptorCount;
 } WGPUBlasSizeDescriptors WGPU_STRUCTURE_ATTRIBUTE;
 
@@ -2295,6 +2295,11 @@ typedef struct WGPUHalCounters
 
 /**
  * All internal counters, returned by @ref wgpuDeviceGetInternalCounters.
+ *
+ * Mirrors @c wgpu_types::InternalCounters minus its @c core member:
+ * @c CoreCounters contains no fields as of wgpu 30, so it is omitted here
+ * rather than exposing an empty struct through the C ABI. A @c core member
+ * can be added (as a new struct) if wgpu-core grows counters.
  */
 typedef struct WGPUInternalCounters
 {
