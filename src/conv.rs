@@ -2791,4 +2791,91 @@ mod tests {
             Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN)
         );
     }
+
+    #[test]
+    fn feature_name_table_round_trips_every_mapped_feature() {
+        let names = features_to_native(Features::all());
+        assert!(
+            !names.is_empty(),
+            "features_to_native must enumerate the mapped feature names"
+        );
+
+        let mut seen = std::collections::HashSet::new();
+        for name in names {
+            let feature = map_feature(name)
+                .unwrap_or_else(|| panic!("feature name {name:#010x} has no reverse mapping"));
+            assert!(
+                Features::all().contains(feature),
+                "feature name {name:#010x} maps outside Features::all()"
+            );
+            assert!(
+                seen.insert(name),
+                "feature name {name:#010x} is produced by two different features"
+            );
+        }
+
+        // The table is reviewed on every wgpu upgrade: this count changes when
+        // wgpu adds features and the mapping table grows to match.
+        assert_eq!(seen.len(), features_to_native(Features::all()).len());
+    }
+
+    #[test]
+    fn map_features_accumulates_recognized_names_and_ignores_unknown_values() {
+        let names = [
+            native::WGPUFeatureName_TimestampQuery,
+            native::WGPUFeatureName_DepthClipControl,
+            native::WGPUNativeFeature_MultiDrawIndirectCount,
+            0x7EAD_BEE0 as native::WGPUFeatureName,
+        ];
+        let mapped = map_features(&names);
+        assert!(mapped.contains(Features::TIMESTAMP_QUERY));
+        assert!(mapped.contains(Features::DEPTH_CLIP_CONTROL));
+        assert!(mapped.contains(Features::MULTI_DRAW_INDIRECT_COUNT));
+        assert_eq!(map_features(&[]), Features::empty());
+    }
+
+    #[test]
+    fn surface_color_space_maps_every_c_abi_value_and_defaults_unknown_to_auto() {
+        let pairs = [
+            (
+                native::WGPUSurfaceColorSpace_Srgb,
+                wgt::SurfaceColorSpace::Srgb,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedSrgbLinear,
+                wgt::SurfaceColorSpace::ExtendedSrgbLinear,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_DisplayP3,
+                wgt::SurfaceColorSpace::DisplayP3,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_Bt2100Pq,
+                wgt::SurfaceColorSpace::Bt2100Pq,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_Bt2100Hlg,
+                wgt::SurfaceColorSpace::Bt2100Hlg,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedSrgb,
+                wgt::SurfaceColorSpace::ExtendedSrgb,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedDisplayP3,
+                wgt::SurfaceColorSpace::ExtendedDisplayP3,
+            ),
+        ];
+        for (c_value, expected) in pairs {
+            assert_eq!(map_surface_color_space(c_value), expected);
+        }
+        assert_eq!(
+            map_surface_color_space(native::WGPUSurfaceColorSpace_Auto),
+            wgt::SurfaceColorSpace::Auto
+        );
+        assert_eq!(
+            map_surface_color_space(0x7EAD_BEE0 as native::WGPUSurfaceColorSpace),
+            wgt::SurfaceColorSpace::Auto
+        );
+    }
 }
