@@ -2333,7 +2333,7 @@ pub unsafe fn map_surface(
     }
 
     if let Some(uiview) = _uiview {
-        let ui_view = NonNull::new_unchecked(uiview.ui_view);
+        let ui_view = NonNull::new_unchecked(uiview.uiView);
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::UiKit(raw_window_handle::UiKitDisplayHandle::new()),
             raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(

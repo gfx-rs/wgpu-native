@@ -54,19 +54,19 @@ typedef enum WGPUNativeSType
     /** Identifies @ref WGPUAdapterInfoExtras. */
     WGPUSType_AdapterInfoExtras = 0x00030010,
     /** Identifies @ref WGPURenderPassDescriptorExtras. */
-    WGPUSType_RenderPassDescriptorExtras = 0x00030012,
+    WGPUSType_RenderPassDescriptorExtras = 0x00030011,
     /** Identifies @ref WGPURenderBundleEncoderDescriptorExtras. */
-    WGPUSType_RenderBundleEncoderDescriptorExtras = 0x00030013,
+    WGPUSType_RenderBundleEncoderDescriptorExtras = 0x00030012,
     /** Identifies @ref WGPUDeviceDescriptorExtras. */
-    WGPUSType_DeviceDescriptorExtras = 0x00030014,
+    WGPUSType_DeviceDescriptorExtras = 0x00030013,
     /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
-    WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
+    WGPUSType_AccelerationStructureBindingLayout = 0x00030014,
     /** Identifies @ref WGPUSurfaceCapabilitiesExtras. */
-    WGPUSType_SurfaceCapabilitiesExtras = 0x00030016,
+    WGPUSType_SurfaceCapabilitiesExtras = 0x00030015,
     /** Identifies @ref WGPUSurfaceSourceUIView. */
-    WGPUSType_SurfaceSourceUIView = 0x00030017,
+    WGPUSType_SurfaceSourceUIView = 0x00030016,
     /** Identifies @ref WGPUSurfaceSourceDrm. */
-    WGPUSType_SurfaceSourceDrm = 0x00030018,
+    WGPUSType_SurfaceSourceDrm = 0x00030017,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -1793,10 +1793,14 @@ typedef struct WGPUDisplayHeadroom
 typedef struct WGPUDisplayChromaticity
 {
     WGPUBool present;
-    float redX, redY;
-    float greenX, greenY;
-    float blueX, blueY;
-    float whiteX, whiteY;
+    float redX;
+    float redY;
+    float greenX;
+    float greenY;
+    float blueX;
+    float blueY;
+    float whiteX;
+    float whiteY;
 } WGPUDisplayChromaticity WGPU_STRUCTURE_ATTRIBUTE;
 
 /** Coarse, boolean dynamic-range + gamut bucket. */
@@ -1881,7 +1885,7 @@ typedef struct WGPUSurfaceSourceUIView
     /**
      * A pointer to the `UIView` that will be wrapped by the @ref WGPUSurface.
      */
-    void *ui_view;
+    void *uiView;
 } WGPUSurfaceSourceUIView WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
@@ -2643,8 +2647,8 @@ extern "C"
     void wgpuRenderPassEncoderMultiDrawIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
     void wgpuRenderPassEncoderMultiDrawIndexedIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, uint32_t count);
 
-    void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
-    void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer count_buffer, uint64_t count_buffer_offset, uint32_t max_count);
+    void wgpuRenderPassEncoderMultiDrawIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer countBuffer, uint64_t countBufferOffset, uint32_t maxCount);
+    void wgpuRenderPassEncoderMultiDrawIndexedIndirectCount(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset, WGPUBuffer countBuffer, uint64_t countBufferOffset, uint32_t maxCount);
 
     void wgpuRenderPassEncoderDrawMeshTasks(WGPURenderPassEncoder encoder, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
     void wgpuRenderPassEncoderDrawMeshTasksIndirect(WGPURenderPassEncoder encoder, WGPUBuffer buffer, uint64_t offset);
