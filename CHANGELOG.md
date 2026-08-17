@@ -15,7 +15,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 Wgpu-native has reached feature-parity with upstream wgpu. This introduces ray tracing, mesh shaders, passthrough shaders, and more. Now tested against wgpu's test suite.
 
-By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
+By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594), with review fixes (native extension enums, 64-bit flag types, experimental feature naming aligned with wgpu 30, contiguous native SType values, BLAS size-descriptor kind inference, iOS `UIView` surface source) by @matthargett.
 
 ### Added
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
