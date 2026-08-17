@@ -370,7 +370,7 @@ typedef enum WGPUNativeFeature
      * @ref WGPUNativeAddressMode_ClampToBorder address mode itself) are gated
      * by @ref WGPUNativeFeature_AddressModeClampToBorder. The split exists
      * because clamp-to-zero is supported on hardware that lacks arbitrary
-     * border colors; see https://github.com/gfx-rs/wgpu/pull/2364.
+     * border colors; see [gfx-rs/wgpu#2364](https://github.com/gfx-rs/wgpu/pull/2364).
      *
      * This is a native only feature.
      */
