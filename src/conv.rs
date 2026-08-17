@@ -1708,13 +1708,13 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     // WGPUNativeFeature_UniformBufferBindingArrays is not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
-        temp.push(native::WGPUNativeFeature_MeshShader);
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShader);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
-        temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
+        temp.push(native::WGPUNativeFeature_ExperimentalRayHitVertexReturn);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
-        temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShaderMultiview);
     }
     if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
         temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
@@ -1729,7 +1729,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
         temp.push(native::WGPUNativeFeature_SelectiveMultiview);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
-        temp.push(native::WGPUNativeFeature_MeshShaderPoints);
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShaderPoints);
     }
     if features.contains(wgt::Features::MULTISAMPLE_ARRAY) {
         temp.push(native::WGPUNativeFeature_MultisampleArray);
@@ -1835,14 +1835,14 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
         // WGPUNativeFeature_UniformBufferBindingArrays not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
-        native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
-        native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
-        native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
+        native::WGPUNativeFeature_ExperimentalMeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
+        native::WGPUNativeFeature_ExperimentalRayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
+        native::WGPUNativeFeature_ExperimentalMeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
         native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
         native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
         native::WGPUNativeFeature_ShaderBarycentrics => Some(Features::SHADER_BARYCENTRICS),
         native::WGPUNativeFeature_SelectiveMultiview => Some(Features::SELECTIVE_MULTIVIEW),
-        native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
+        native::WGPUNativeFeature_ExperimentalMeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
         native::WGPUNativeFeature_MultisampleArray => Some(Features::MULTISAMPLE_ARRAY),
         native::WGPUNativeFeature_CooperativeMatrix => Some(Features::EXPERIMENTAL_COOPERATIVE_MATRIX),
         native::WGPUNativeFeature_ShaderPerVertex => Some(Features::SHADER_PER_VERTEX),

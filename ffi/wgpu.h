@@ -39,6 +39,7 @@ typedef enum WGPUNativeSType
     WGPUSType_SurfaceConfigurationExtras = 0x00030008,
     /** Identifies @ref WGPUSurfaceSourceSwapChainPanel. */
     WGPUSType_SurfaceSourceSwapChainPanel = 0x00030009,
+    /** Identifies @ref WGPUPrimitiveStateExtras. */
     WGPUSType_PrimitiveStateExtras = 0x0003000A,
     /** Identifies @ref WGPUSamplerDescriptorExtras. */
     WGPUSType_SamplerDescriptorExtras = 0x0003000B,
@@ -60,6 +61,7 @@ typedef enum WGPUNativeSType
     WGPUSType_DeviceDescriptorExtras = 0x00030014,
     /** Identifies @ref WGPUAccelerationStructureBindingLayout. */
     WGPUSType_AccelerationStructureBindingLayout = 0x00030015,
+    /** Identifies @ref WGPUSurfaceCapabilitiesExtras. */
     WGPUSType_SurfaceCapabilitiesExtras = 0x00030016,
     /** Identifies @ref WGPUSurfaceSourceUIView. */
     WGPUSType_SurfaceSourceUIView = 0x00030017,
@@ -363,6 +365,12 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_StorageTextureArrayNonUniformIndexing = 0x00030010,
     /**
      * Allows the use of @ref WGPUSamplerBorderColor_Zero via @ref WGPUSamplerDescriptorExtras.
+     *
+     * This gates only the zero border color; the other border colors (and the
+     * @ref WGPUNativeAddressMode_ClampToBorder address mode itself) are gated
+     * by @ref WGPUNativeFeature_AddressModeClampToBorder. The split exists
+     * because clamp-to-zero is supported on hardware that lacks arbitrary
+     * border colors; see https://github.com/gfx-rs/wgpu/pull/2364.
      *
      * This is a native only feature.
      */
@@ -685,19 +693,28 @@ typedef enum WGPUNativeFeature
     WGPUNativeFeature_TextureInt64Atomic = 0x00030030,
     // TODO: not implemented yet, see https://github.com/gfx-rs/wgpu/issues/7149
     // WGPUNativeFeature_UniformBufferBindingArrays = 0x00030031,
-    WGPUNativeFeature_MeshShader = 0x00030032,
+    /**
+     * Enables mesh shader pipelines (task/mesh stages replacing the vertex
+     * stage) via @ref wgpuDeviceCreateMeshPipeline.
+     *
+     * This is an experimental, native-only feature. Requires
+     * @ref WGPUDeviceDescriptorExtras::experimentalFeaturesEnabled.
+     */
+    WGPUNativeFeature_ExperimentalMeshShader = 0x00030032,
     /**
      * Enables returning hit vertex data from ray tracing shaders.
      *
-     * This is a native only feature.
+     * This is an experimental, native-only feature. Requires
+     * @ref WGPUDeviceDescriptorExtras::experimentalFeaturesEnabled.
      */
-    WGPUNativeFeature_RayHitVertexReturn = 0x00030033,
+    WGPUNativeFeature_ExperimentalRayHitVertexReturn = 0x00030033,
     /**
      * Enables multiview in mesh shaders.
      *
-     * This is a native only feature.
+     * This is an experimental, native-only feature. Requires
+     * @ref WGPUDeviceDescriptorExtras::experimentalFeaturesEnabled.
      */
-    WGPUNativeFeature_MeshShaderMultiview = 0x00030034,
+    WGPUNativeFeature_ExperimentalMeshShaderMultiview = 0x00030034,
     /**
      * Enables extended vertex format support for acceleration structures.
      *
@@ -735,9 +752,15 @@ typedef enum WGPUNativeFeature
     /**
      * Enables point topology in mesh shaders.
      *
+     * This is an experimental, native-only feature. Requires
+     * @ref WGPUDeviceDescriptorExtras::experimentalFeaturesEnabled.
+     */
+    WGPUNativeFeature_ExperimentalMeshShaderPoints = 0x00030039,
+    /**
+     * Enables multisampled 2D array textures.
+     *
      * This is a native only feature.
      */
-    WGPUNativeFeature_MeshShaderPoints = 0x00030039,
     WGPUNativeFeature_MultisampleArray = 0x0003003A,
     /**
      * Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
@@ -881,7 +904,7 @@ static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_Prefe
 static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_LowMemory = 1 << 4;
 /** Use transform buffer during BLAS build (only valid at BLAS creation). */
 static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_UseTransform = 1 << 5;
-/** Allow retrieval of hit triangle vertices. Requires @ref WGPUNativeFeature_RayHitVertexReturn. */
+/** Allow retrieval of hit triangle vertices. Requires @ref WGPUNativeFeature_ExperimentalRayHitVertexReturn. */
 static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_AllowRayHitVertexReturn = 1 << 6;
 static const WGPUAccelerationStructureFlags WGPUAccelerationStructureFlags_Force32 = 0x7FFFFFFF;
 
@@ -2020,7 +2043,7 @@ typedef struct WGPURenderPipelineDescriptorExtras
 /**
  * Describes the mesh shader stage in a @ref WGPUMeshPipelineDescriptor.
  *
- * Requires @ref WGPUNativeFeature_MeshShader.
+ * Requires @ref WGPUNativeFeature_ExperimentalMeshShader.
  */
 typedef struct WGPUMeshState
 {
@@ -2034,7 +2057,7 @@ typedef struct WGPUMeshState
 /**
  * Describes the optional task shader stage in a @ref WGPUMeshPipelineDescriptor.
  *
- * Requires @ref WGPUNativeFeature_MeshShader.
+ * Requires @ref WGPUNativeFeature_ExperimentalMeshShader.
  */
 typedef struct WGPUTaskState
 {
@@ -2051,7 +2074,7 @@ typedef struct WGPUTaskState
  * A mesh pipeline replaces the vertex stage with an optional task stage
  * and a required mesh stage. All other fields mirror @ref WGPURenderPipelineDescriptor.
  *
- * Requires @ref WGPUNativeFeature_MeshShader.
+ * Requires @ref WGPUNativeFeature_ExperimentalMeshShader.
  */
 typedef struct WGPUMeshPipelineDescriptor
 {
@@ -2089,7 +2112,7 @@ typedef struct WGPUMeshPipelineDescriptorExtras
 typedef struct WGPUAccelerationStructureBindingLayout
 {
     WGPUChainedStruct chain;
-    /** Enable vertex return. Requires @ref WGPUNativeFeature_RayHitVertexReturn. */
+    /** Enable vertex return. Requires @ref WGPUNativeFeature_ExperimentalRayHitVertexReturn. */
     WGPUBool vertexReturn;
 } WGPUAccelerationStructureBindingLayout WGPU_STRUCTURE_ATTRIBUTE;
 
