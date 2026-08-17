@@ -1120,9 +1120,10 @@ pub fn map_load_op<T>(
     match command {
         native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
         native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(clear_value)),
-        // `WGPULoadOp_DontCare` is a native-only value (a `#define`, not part of
-        // the standard `WGPULoadOp` enum), so it's compared in a guard rather
-        // than used as a match pattern, with a cast to the enum's repr type.
+        // `WGPULoadOp_DontCare` is a native-only value (a `WGPUNativeLoadOp`
+        // member, not part of the standard `WGPULoadOp` enum), so it's compared
+        // in a guard rather than used as a match pattern, with a cast to the
+        // standard enum's repr type.
         //
         // SAFETY: `DontCare` was explicitly requested by the C caller, opting in
         // to its documented undefined-contents semantics at their own risk.
