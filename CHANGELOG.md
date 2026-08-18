@@ -17,6 +17,9 @@ Wgpu-native has reached feature-parity with upstream wgpu. This introduces ray t
 
 By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
 
+### Added
+- `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
+
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
@@ -83,6 +86,7 @@ By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594).
   - `WGPUNativeAddressMode_ClampToBorder` address mode
   - `WGPUSamplerBorderColor` enum
   - `WGPUSamplerDescriptorExtras` struct to be chained in `WGPUSamplerDescriptor`
+- Support ohos raw-window-handle: @richerfu
 
 ### Removed
 

@@ -494,14 +494,15 @@ unsafe fn map_native_display_handle(
 pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
-    _extras: Option<&native::WGPUDeviceExtras>,
+    extras: Option<&native::WGPUDeviceExtras>,
     device_extras: Option<&native::WGPUDeviceDescriptorExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
 ) {
-    let memory_hints = match device_extras {
-        Some(e) => match e.memoryHints {
+    // WGPUDeviceDescriptorExtras takes precedence over the legacy WGPUDeviceExtras memory fields.
+    let memory_hints = match (device_extras, extras) {
+        (Some(e), _) => match e.memoryHints {
             native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
             native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
                 suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeMin
@@ -509,7 +510,15 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
             },
             _ => wgt::MemoryHints::Performance,
         },
-        None => wgt::MemoryHints::default(),
+        (None, Some(e)) => match e.memoryHints {
+            native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
+            native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeStart
+                    ..e.suballocatedDeviceMemoryBlockSizeEnd,
+            },
+            _ => wgt::MemoryHints::Performance,
+        },
+        (None, None) => wgt::MemoryHints::default(),
     };
     let experimental_features = match device_extras {
         Some(e) if e.experimentalFeaturesEnabled != 0 => unsafe {
@@ -2241,6 +2250,7 @@ pub unsafe fn map_surface(
     _swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
     _uiview: Option<&native::WGPUSurfaceSourceUIView>,
     _drm: Option<&native::WGPUSurfaceSourceDrm>,
+    ohos: Option<&native::WGPUSurfaceSourceOhosNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -2302,6 +2312,17 @@ pub unsafe fn map_surface(
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::Android(display_handle),
             raw_window_handle::RawWindowHandle::AndroidNdk(window_handle),
+        ));
+    }
+
+    if let Some(ohos) = ohos {
+        let display_handle = raw_window_handle::OhosDisplayHandle::new();
+        let window_handle =
+            raw_window_handle::OhosNdkWindowHandle::new(NonNull::new_unchecked(ohos.window));
+
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Ohos(display_handle),
+            raw_window_handle::RawWindowHandle::OhosNdk(window_handle),
         ));
     }
 
