@@ -3345,7 +3345,8 @@ pub unsafe extern "C-unwind" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceSourceAndroidNativeWindow => native::WGPUSurfaceSourceAndroidNativeWindow,
             WGPUSType_SurfaceSourceSwapChainPanel => native::WGPUSurfaceSourceSwapChainPanel,
             WGPUSType_SurfaceSourceUIView => native::WGPUSurfaceSourceUIView,
-            WGPUSType_SurfaceSourceDrm => native::WGPUSurfaceSourceDrm)
+            WGPUSType_SurfaceSourceDrm => native::WGPUSurfaceSourceDrm,
+            WGPUSType_SurfaceSourceOhosNativeWindow => native::WGPUSurfaceSourceOhosNativeWindow)
     );
 
     let surface_id = match create_surface_params {
