@@ -106,6 +106,57 @@ def main():
             'wgpu-native = { path = "../"',
             'wgpu-native = { path = "../../"',
         )
+        # naga's recursion_depth_template drives the WGSL parser to its
+        # depth-200 recursion guard, which needs ~2 MiB of stack in debug
+        # builds (~10 KiB per tracked recursion, measured on macOS arm64;
+        # Windows x64 frames are larger still). nextest runs one process per
+        # test, so the test runs on the process main thread, and the 1 MiB
+        # (MSVC) / 2 MiB (GNU) Windows main-thread stacks die with
+        # STATUS_STACK_OVERFLOW before the guard can fire. Run the check on an
+        # explicitly sized thread instead — the same fix wgsl_errors.rs already
+        # applies to limit_braced_statement_nesting — so the guard fires and
+        # its error stays covered on every platform. Lowering the guard itself
+        # is not an option: it must stay above the brace-nesting limit (127),
+        # or limit_braced_statement_nesting and too_many_unclosed_loops report
+        # the recursion error instead of their own.
+        wgsl_errors = ".local-wgpu/naga/tests/naga/wgsl_errors.rs"
+        patch_file(
+            wgsl_errors,
+            '''fn recursion_depth_template() {
+    check(
+        include_str!("deep-template.wgsl"),
+        r#"error: internal WGSL front end error
+ = note: Parser recursion limit exceeded
+
+"#,
+    );
+}''',
+            '''fn recursion_depth_template() {
+    // Depth 200 needs more stack than a Windows main thread has in debug
+    // builds; use an explicitly sized thread like limit_braced_statement_nesting.
+    std::thread::Builder::new()
+        .stack_size(1024 * 1024 * 4)
+        .spawn(|| {
+            check(
+                include_str!("deep-template.wgsl"),
+                r#"error: internal WGSL front end error
+ = note: Parser recursion limit exceeded
+
+"#,
+            );
+        })
+        .unwrap()
+        .join()
+        .unwrap()
+}''',
+        )
+        with open(wgsl_errors, "rt", encoding="utf-8") as f:
+            if "stack_size(1024 * 1024 * 4)" not in f.read():
+                sys.exit(
+                    "ERROR: failed to move recursion_depth_template onto a sized "
+                    "thread; the test source has drifted — update the patch in "
+                    "run-wgpu-tests.py (or drop it if upstream fixed the test)."
+                )
 
     if "--no-run" not in sys.argv:
         print("+ cargo run --bin wgpu-examples hello_workgroups")
