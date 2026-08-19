@@ -3345,7 +3345,8 @@ pub unsafe extern "C-unwind" fn wgpuInstanceCreateSurface(
             WGPUSType_SurfaceSourceAndroidNativeWindow => native::WGPUSurfaceSourceAndroidNativeWindow,
             WGPUSType_SurfaceSourceSwapChainPanel => native::WGPUSurfaceSourceSwapChainPanel,
             WGPUSType_SurfaceSourceUIView => native::WGPUSurfaceSourceUIView,
-            WGPUSType_SurfaceSourceDrm => native::WGPUSurfaceSourceDrm)
+            WGPUSType_SurfaceSourceDrm => native::WGPUSurfaceSourceDrm,
+            WGPUSType_SurfaceSourceOhosNativeWindow => native::WGPUSurfaceSourceOhosNativeWindow)
     );
 
     let surface_id = match create_surface_params {
@@ -5243,14 +5244,13 @@ pub unsafe extern "C-unwind" fn wgpuQueueSubmitForIndex(
 }
 
 /// `timeout_ns`: max nanoseconds to wait when `wait` is true; `0` means no timeout.
-/// Returns `true` when the queue is empty.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     device: native::WGPUDevice,
     wait: bool,
     submission_index: Option<&native::WGPUSubmissionIndex>,
     timeout_ns: u64,
-) -> bool {
+) -> native::WGPUNativePollStatus {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
@@ -5265,8 +5265,12 @@ pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     };
 
     match context.device_poll(device_id, maintain) {
-        Ok(wgt::PollStatus::QueueEmpty) => true,
-        Ok(_) => false,
+        Ok(wgt::PollStatus::QueueEmpty) => native::WGPUNativePollStatus_QueueEmpty,
+        Ok(wgt::PollStatus::WaitSucceeded) => native::WGPUNativePollStatus_WaitSucceeded,
+        Ok(wgt::PollStatus::Poll) => native::WGPUNativePollStatus_Poll,
+        // Running out of time on a bounded wait is an expectable runtime
+        // condition (the device and queue remain valid), not a fatal error.
+        Err(wgc::device::WaitIdleError::Timeout) => native::WGPUNativePollStatus_Timeout,
         Err(cause) => {
             handle_error_fatal(cause, "wgpuDevicePoll");
         }
@@ -5880,7 +5884,11 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         update_mode: map_acceleration_structure_update_mode(descriptor.updateMode),
     };
 
-    let wgt_sizes = if sizes.kind == native::WGPUBlasGeometryKind_Triangles {
+    // The geometry kind is inferred from which descriptor array is non-NULL,
+    // mirroring the WGPUBindGroupEntry convention for mutually exclusive members.
+    let has_triangles = !sizes.triangleDescriptors.is_null();
+    let has_aabbs = !sizes.aabbDescriptors.is_null();
+    let wgt_sizes = if has_triangles && !has_aabbs {
         let tri_descs = make_slice(sizes.triangleDescriptors, sizes.triangleDescriptorCount)
             .iter()
             .map(|sd| {
@@ -5914,7 +5922,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         wgt::BlasGeometrySizeDescriptors::Triangles {
             descriptors: tri_descs,
         }
-    } else if sizes.kind == native::WGPUBlasGeometryKind_AABBs {
+    } else if has_aabbs && !has_triangles {
         let aabb_descs = make_slice(sizes.aabbDescriptors, sizes.aabbDescriptorCount)
             .iter()
             .map(|sd| wgt::BlasAABBGeometrySizeDescriptor {
@@ -5925,8 +5933,10 @@ pub unsafe extern "C" fn wgpuDeviceCreateBlas(
         wgt::BlasGeometrySizeDescriptors::AABBs {
             descriptors: aabb_descs,
         }
+    } else if has_triangles {
+        panic!("WGPUBlasSizeDescriptors must not set both triangleDescriptors and aabbDescriptors");
     } else {
-        panic!("unknown WGPUBlasGeometryKind: {}", sizes.kind);
+        panic!("WGPUBlasSizeDescriptors must set one of triangleDescriptors or aabbDescriptors");
     };
 
     let (blas_id, handle, error) = context.device_create_blas(device_id, &desc, wgt_sizes, None);

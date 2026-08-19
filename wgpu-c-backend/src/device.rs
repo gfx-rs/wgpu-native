@@ -1275,12 +1275,10 @@ impl DeviceInterface for CDevice {
                     })
                     .collect();
                 let c_sizes = native::WGPUBlasSizeDescriptors {
-                    kind: native::WGPUBlasGeometryKind_Triangles,
-                    triangleDescriptors: if c_tris.is_empty() {
-                        std::ptr::null()
-                    } else {
-                        c_tris.as_ptr()
-                    },
+                    // The geometry kind is inferred from which array is non-NULL;
+                    // an empty list keeps a valid (dangling) non-NULL pointer with
+                    // count 0 so the kind stays expressed.
+                    triangleDescriptors: c_tris.as_ptr(),
                     triangleDescriptorCount: c_tris.len(),
                     aabbDescriptors: std::ptr::null(),
                     aabbDescriptorCount: 0,
@@ -1299,14 +1297,10 @@ impl DeviceInterface for CDevice {
                     })
                     .collect();
                 let c_sizes = native::WGPUBlasSizeDescriptors {
-                    kind: native::WGPUBlasGeometryKind_AABBs,
+                    // See the Triangles arm: kind is inferred from the non-NULL array.
                     triangleDescriptors: std::ptr::null(),
                     triangleDescriptorCount: 0,
-                    aabbDescriptors: if c_aabbs.is_empty() {
-                        std::ptr::null()
-                    } else {
-                        c_aabbs.as_ptr()
-                    },
+                    aabbDescriptors: c_aabbs.as_ptr(),
                     aabbDescriptorCount: c_aabbs.len(),
                 };
                 let ptr =
@@ -1605,10 +1599,12 @@ impl DeviceInterface for CDevice {
         };
         // Re-raise any panic that occurred inside a map callback during polling.
         crate::resume_callback_panic();
-        if result != 0 {
-            Ok(wgpu::PollStatus::QueueEmpty)
-        } else {
-            Ok(wgpu::PollStatus::Poll)
+        match result {
+            native::WGPUNativePollStatus_QueueEmpty => Ok(wgpu::PollStatus::QueueEmpty),
+            native::WGPUNativePollStatus_WaitSucceeded => Ok(wgpu::PollStatus::WaitSucceeded),
+            native::WGPUNativePollStatus_Poll => Ok(wgpu::PollStatus::Poll),
+            native::WGPUNativePollStatus_Timeout => Err(wgpu::PollError::Timeout),
+            other => unreachable!("unknown WGPUNativePollStatus: {other}"),
         }
     }
 

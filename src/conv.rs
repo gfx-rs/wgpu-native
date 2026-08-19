@@ -494,14 +494,15 @@ unsafe fn map_native_display_handle(
 pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
-    _extras: Option<&native::WGPUDeviceExtras>,
+    extras: Option<&native::WGPUDeviceExtras>,
     device_extras: Option<&native::WGPUDeviceDescriptorExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
 ) {
-    let memory_hints = match device_extras {
-        Some(e) => match e.memoryHints {
+    // WGPUDeviceDescriptorExtras takes precedence over the legacy WGPUDeviceExtras memory fields.
+    let memory_hints = match (device_extras, extras) {
+        (Some(e), _) => match e.memoryHints {
             native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
             native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
                 suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeMin
@@ -509,7 +510,15 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
             },
             _ => wgt::MemoryHints::Performance,
         },
-        None => wgt::MemoryHints::default(),
+        (None, Some(e)) => match e.memoryHints {
+            native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
+            native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeStart
+                    ..e.suballocatedDeviceMemoryBlockSizeEnd,
+            },
+            _ => wgt::MemoryHints::Performance,
+        },
+        (None, None) => wgt::MemoryHints::default(),
     };
     let experimental_features = match device_extras {
         Some(e) if e.experimentalFeaturesEnabled != 0 => unsafe {
@@ -1111,9 +1120,10 @@ pub fn map_load_op<T>(
     match command {
         native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
         native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(clear_value)),
-        // `WGPULoadOp_DontCare` is a native-only value (a `#define`, not part of
-        // the standard `WGPULoadOp` enum), so it's compared in a guard rather
-        // than used as a match pattern, with a cast to the enum's repr type.
+        // `WGPULoadOp_DontCare` is a native-only value (a `WGPUNativeLoadOp`
+        // member, not part of the standard `WGPULoadOp` enum), so it's compared
+        // in a guard rather than used as a match pattern, with a cast to the
+        // standard enum's repr type.
         //
         // SAFETY: `DontCare` was explicitly requested by the C caller, opting in
         // to its documented undefined-contents semantics at their own risk.
@@ -1698,13 +1708,13 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     // WGPUNativeFeature_UniformBufferBindingArrays is not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
-        temp.push(native::WGPUNativeFeature_MeshShader);
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShader);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
-        temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
+        temp.push(native::WGPUNativeFeature_ExperimentalRayHitVertexReturn);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
-        temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShaderMultiview);
     }
     if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
         temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
@@ -1719,7 +1729,7 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
         temp.push(native::WGPUNativeFeature_SelectiveMultiview);
     }
     if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
-        temp.push(native::WGPUNativeFeature_MeshShaderPoints);
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShaderPoints);
     }
     if features.contains(wgt::Features::MULTISAMPLE_ARRAY) {
         temp.push(native::WGPUNativeFeature_MultisampleArray);
@@ -1825,14 +1835,14 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
         // WGPUNativeFeature_UniformBufferBindingArrays not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
-        native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
-        native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
-        native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
+        native::WGPUNativeFeature_ExperimentalMeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
+        native::WGPUNativeFeature_ExperimentalRayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
+        native::WGPUNativeFeature_ExperimentalMeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
         native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
         native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
         native::WGPUNativeFeature_ShaderBarycentrics => Some(Features::SHADER_BARYCENTRICS),
         native::WGPUNativeFeature_SelectiveMultiview => Some(Features::SELECTIVE_MULTIVIEW),
-        native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
+        native::WGPUNativeFeature_ExperimentalMeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
         native::WGPUNativeFeature_MultisampleArray => Some(Features::MULTISAMPLE_ARRAY),
         native::WGPUNativeFeature_CooperativeMatrix => Some(Features::EXPERIMENTAL_COOPERATIVE_MATRIX),
         native::WGPUNativeFeature_ShaderPerVertex => Some(Features::SHADER_PER_VERTEX),
@@ -2241,6 +2251,7 @@ pub unsafe fn map_surface(
     _swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
     _uiview: Option<&native::WGPUSurfaceSourceUIView>,
     _drm: Option<&native::WGPUSurfaceSourceDrm>,
+    ohos: Option<&native::WGPUSurfaceSourceOhosNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
         let display_handle = raw_window_handle::WindowsDisplayHandle::new();
@@ -2305,13 +2316,24 @@ pub unsafe fn map_surface(
         ));
     }
 
+    if let Some(ohos) = ohos {
+        let display_handle = raw_window_handle::OhosDisplayHandle::new();
+        let window_handle =
+            raw_window_handle::OhosNdkWindowHandle::new(NonNull::new_unchecked(ohos.window));
+
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Ohos(display_handle),
+            raw_window_handle::RawWindowHandle::OhosNdk(window_handle),
+        ));
+    }
+
     #[cfg(all(target_os = "windows", feature = "dx12"))]
     if let Some(swap_chain_panel) = _swap_chain_panel {
         return CreateSurfaceParams::SwapChainPanel(swap_chain_panel.panelNative);
     }
 
     if let Some(uiview) = _uiview {
-        let ui_view = NonNull::new_unchecked(uiview.ui_view);
+        let ui_view = NonNull::new_unchecked(uiview.uiView);
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::UiKit(raw_window_handle::UiKitDisplayHandle::new()),
             raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(
@@ -2628,4 +2650,232 @@ pub fn map_cooperative_scalar_type(
 #[allow(clippy::unnecessary_cast)]
 pub fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
     s as u32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wgt::Features;
+
+    fn zeroed_device_descriptor() -> native::WGPUDeviceDescriptor {
+        unsafe { std::mem::zeroed() }
+    }
+
+    fn descriptor_extras(
+        hints: native::WGPUMemoryHints,
+        min: u64,
+        max: u64,
+    ) -> native::WGPUDeviceDescriptorExtras {
+        let mut extras: native::WGPUDeviceDescriptorExtras = unsafe { std::mem::zeroed() };
+        extras.memoryHints = hints;
+        extras.suballocatedDeviceMemoryBlockSizeMin = min;
+        extras.suballocatedDeviceMemoryBlockSizeMax = max;
+        extras
+    }
+
+    fn legacy_device_extras(
+        hints: native::WGPUMemoryHints,
+        start: u64,
+        end: u64,
+    ) -> native::WGPUDeviceExtras {
+        let mut extras: native::WGPUDeviceExtras = unsafe { std::mem::zeroed() };
+        extras.memoryHints = hints;
+        extras.suballocatedDeviceMemoryBlockSizeStart = start;
+        extras.suballocatedDeviceMemoryBlockSizeEnd = end;
+        extras
+    }
+
+    fn mapped_memory_hints(
+        legacy: Option<&native::WGPUDeviceExtras>,
+        extras: Option<&native::WGPUDeviceDescriptorExtras>,
+    ) -> wgt::MemoryHints {
+        let descriptor = zeroed_device_descriptor();
+        let (desc, _) =
+            unsafe { map_device_descriptor(&descriptor, wgt::Limits::default(), legacy, extras) };
+        desc.memory_hints
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_prefer_descriptor_extras_over_legacy_extras() {
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_MemoryUsage, 0, 0);
+        let extras = descriptor_extras(native::WGPUMemoryHints_Manual, 4096, 65536);
+        match mapped_memory_hints(Some(&legacy), Some(&extras)) {
+            wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size,
+            } => assert_eq!(suballocated_device_memory_block_size, 4096..65536),
+            other => panic!("expected Manual from WGPUDeviceDescriptorExtras, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_fall_back_to_legacy_device_extras() {
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_Manual, 1024, 8192);
+        match mapped_memory_hints(Some(&legacy), None) {
+            wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size,
+            } => assert_eq!(suballocated_device_memory_block_size, 1024..8192),
+            other => panic!("expected Manual from legacy WGPUDeviceExtras, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_default_to_performance_without_extras() {
+        assert!(matches!(
+            mapped_memory_hints(None, None),
+            wgt::MemoryHints::Performance
+        ));
+    }
+
+    #[test]
+    fn device_descriptor_zero_initialized_memory_hints_mean_performance() {
+        // WGPUMemoryHints_Undefined (0) must behave like Performance so that
+        // zero-initialized extras keep the previous behavior.
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_Undefined, 0, 0);
+        assert!(matches!(
+            mapped_memory_hints(Some(&legacy), None),
+            wgt::MemoryHints::Performance
+        ));
+    }
+
+    #[test]
+    fn load_op_maps_standard_and_native_extension_values() {
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_Load, 0u32),
+            Some(wgc::command::LoadOp::Load)
+        ));
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_Clear, 7u32),
+            Some(wgc::command::LoadOp::Clear(7))
+        ));
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_DontCare as native::WGPULoadOp, 0u32),
+            Some(wgc::command::LoadOp::DontCare(_))
+        ));
+    }
+
+    #[test]
+    fn load_op_rejects_values_outside_standard_and_native_sets() {
+        assert!(map_load_op(0x7EAD_BEEF as native::WGPULoadOp, 0u32).is_none());
+    }
+
+    #[test]
+    fn multi_draw_indirect_count_feature_round_trips_through_the_c_abi() {
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_MultiDrawIndirectCount),
+            Some(Features::MULTI_DRAW_INDIRECT_COUNT)
+        );
+        assert!(features_to_native(Features::MULTI_DRAW_INDIRECT_COUNT)
+            .contains(&native::WGPUNativeFeature_MultiDrawIndirectCount));
+    }
+
+    #[test]
+    fn retired_multi_draw_indirect_feature_value_is_rejected() {
+        // 0x00030003 was WGPUNativeFeature_MultiDrawIndirect before wgpu made
+        // fixed-count multi-draw unconditional (gfx-rs/wgpu#8162). The hole
+        // must not silently map to another feature.
+        assert_eq!(map_feature(0x00030003 as native::WGPUFeatureName), None);
+    }
+
+    #[test]
+    fn experimental_features_map_to_wgpu_experimental_features() {
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalMeshShader),
+            Some(Features::EXPERIMENTAL_MESH_SHADER)
+        );
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalMeshShaderMultiview),
+            Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW)
+        );
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalRayHitVertexReturn),
+            Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN)
+        );
+    }
+
+    #[test]
+    fn feature_name_table_round_trips_every_mapped_feature() {
+        let names = features_to_native(Features::all());
+        assert!(
+            !names.is_empty(),
+            "features_to_native must enumerate the mapped feature names"
+        );
+
+        let mut seen = std::collections::HashSet::new();
+        for name in names {
+            let feature = map_feature(name)
+                .unwrap_or_else(|| panic!("feature name {name:#010x} has no reverse mapping"));
+            assert!(
+                Features::all().contains(feature),
+                "feature name {name:#010x} maps outside Features::all()"
+            );
+            assert!(
+                seen.insert(name),
+                "feature name {name:#010x} is produced by two different features"
+            );
+        }
+
+        // The table is reviewed on every wgpu upgrade: this count changes when
+        // wgpu adds features and the mapping table grows to match.
+        assert_eq!(seen.len(), features_to_native(Features::all()).len());
+    }
+
+    #[test]
+    fn map_features_accumulates_recognized_names_and_ignores_unknown_values() {
+        let names = [
+            native::WGPUFeatureName_TimestampQuery,
+            native::WGPUFeatureName_DepthClipControl,
+            native::WGPUNativeFeature_MultiDrawIndirectCount,
+            0x7EAD_BEE0 as native::WGPUFeatureName,
+        ];
+        let mapped = map_features(&names);
+        assert!(mapped.contains(Features::TIMESTAMP_QUERY));
+        assert!(mapped.contains(Features::DEPTH_CLIP_CONTROL));
+        assert!(mapped.contains(Features::MULTI_DRAW_INDIRECT_COUNT));
+        assert_eq!(map_features(&[]), Features::empty());
+    }
+
+    #[test]
+    fn surface_color_space_maps_every_c_abi_value_and_defaults_unknown_to_auto() {
+        let pairs = [
+            (
+                native::WGPUSurfaceColorSpace_Srgb,
+                wgt::SurfaceColorSpace::Srgb,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedSrgbLinear,
+                wgt::SurfaceColorSpace::ExtendedSrgbLinear,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_DisplayP3,
+                wgt::SurfaceColorSpace::DisplayP3,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_Bt2100Pq,
+                wgt::SurfaceColorSpace::Bt2100Pq,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_Bt2100Hlg,
+                wgt::SurfaceColorSpace::Bt2100Hlg,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedSrgb,
+                wgt::SurfaceColorSpace::ExtendedSrgb,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedDisplayP3,
+                wgt::SurfaceColorSpace::ExtendedDisplayP3,
+            ),
+        ];
+        for (c_value, expected) in pairs {
+            assert_eq!(map_surface_color_space(c_value), expected);
+        }
+        assert_eq!(
+            map_surface_color_space(native::WGPUSurfaceColorSpace_Auto),
+            wgt::SurfaceColorSpace::Auto
+        );
+        assert_eq!(
+            map_surface_color_space(0x7EAD_BEE0 as native::WGPUSurfaceColorSpace),
+            wgt::SurfaceColorSpace::Auto
+        );
+    }
 }

@@ -256,14 +256,16 @@ pub fn map_feature(f: native::WGPUFeatureName) -> Option<wgpu::Features> {
         native::WGPUNativeFeature_CooperativeMatrix => {
             Some(Features::EXPERIMENTAL_COOPERATIVE_MATRIX)
         }
-        native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
-        native::WGPUNativeFeature_RayHitVertexReturn => {
+        native::WGPUNativeFeature_ExperimentalMeshShader => {
+            Some(Features::EXPERIMENTAL_MESH_SHADER)
+        }
+        native::WGPUNativeFeature_ExperimentalRayHitVertexReturn => {
             Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN)
         }
-        native::WGPUNativeFeature_MeshShaderMultiview => {
+        native::WGPUNativeFeature_ExperimentalMeshShaderMultiview => {
             Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW)
         }
-        native::WGPUNativeFeature_MeshShaderPoints => {
+        native::WGPUNativeFeature_ExperimentalMeshShaderPoints => {
             Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS)
         }
         native::WGPUNativeFeature_ShaderPerVertex => Some(Features::SHADER_PER_VERTEX),
@@ -596,19 +598,19 @@ pub fn features_to_native(features: wgpu::Features) -> Vec<native::WGPUFeatureNa
     );
     push!(
         Features::EXPERIMENTAL_MESH_SHADER,
-        native::WGPUNativeFeature_MeshShader
+        native::WGPUNativeFeature_ExperimentalMeshShader
     );
     push!(
         Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN,
-        native::WGPUNativeFeature_RayHitVertexReturn
+        native::WGPUNativeFeature_ExperimentalRayHitVertexReturn
     );
     push!(
         Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW,
-        native::WGPUNativeFeature_MeshShaderMultiview
+        native::WGPUNativeFeature_ExperimentalMeshShaderMultiview
     );
     push!(
         Features::EXPERIMENTAL_MESH_SHADER_POINTS,
-        native::WGPUNativeFeature_MeshShaderPoints
+        native::WGPUNativeFeature_ExperimentalMeshShaderPoints
     );
     push!(
         Features::SHADER_PER_VERTEX,
