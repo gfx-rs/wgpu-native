@@ -5244,14 +5244,13 @@ pub unsafe extern "C-unwind" fn wgpuQueueSubmitForIndex(
 }
 
 /// `timeout_ns`: max nanoseconds to wait when `wait` is true; `0` means no timeout.
-/// Returns `true` when the queue is empty.
 #[no_mangle]
 pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     device: native::WGPUDevice,
     wait: bool,
     submission_index: Option<&native::WGPUSubmissionIndex>,
     timeout_ns: u64,
-) -> bool {
+) -> native::WGPUNativePollStatus {
     let (device_id, context) = {
         let device = device.as_ref().expect("invalid device");
         (device.id, &device.context)
@@ -5266,8 +5265,12 @@ pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     };
 
     match context.device_poll(device_id, maintain) {
-        Ok(wgt::PollStatus::QueueEmpty) => true,
-        Ok(_) => false,
+        Ok(wgt::PollStatus::QueueEmpty) => native::WGPUNativePollStatus_QueueEmpty,
+        Ok(wgt::PollStatus::WaitSucceeded) => native::WGPUNativePollStatus_WaitSucceeded,
+        Ok(wgt::PollStatus::Poll) => native::WGPUNativePollStatus_Poll,
+        // Running out of time on a bounded wait is an expectable runtime
+        // condition (the device and queue remain valid), not a fatal error.
+        Err(wgc::device::WaitIdleError::Timeout) => native::WGPUNativePollStatus_Timeout,
         Err(cause) => {
             handle_error_fatal(cause, "wgpuDevicePoll");
         }

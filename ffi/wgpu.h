@@ -1543,6 +1543,28 @@ typedef struct WGPUNativeLimits
  */
 typedef uint64_t WGPUSubmissionIndex;
 
+/**
+ * Result of @ref wgpuDevicePoll. Mirrors @c wgpu_types::PollStatus, with an
+ * additional value for a wait that ran out of time.
+ */
+typedef enum WGPUNativePollStatus
+{
+    /** All submitted work is complete and the queue is empty. */
+    WGPUNativePollStatus_QueueEmpty = 0x00000001,
+    /** The requested wait completed, but other work may still be in flight. */
+    WGPUNativePollStatus_WaitSucceeded = 0x00000002,
+    /** A non-waiting poll made progress; work may still be in flight. */
+    WGPUNativePollStatus_Poll = 0x00000003,
+    /**
+     * The wait timed out before the requested submission completed.
+     *
+     * This is an expectable runtime condition, not an error: the device and
+     * queue remain valid, and the caller may poll or wait again.
+     */
+    WGPUNativePollStatus_Timeout = 0x00000004,
+    WGPUNativePollStatus_Force32 = 0x7FFFFFFF
+} WGPUNativePollStatus;
+
 typedef struct WGPUShaderDefine
 {
     WGPUStringView name;
@@ -2611,9 +2633,16 @@ extern "C"
     WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);
     float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
 
-    // Returns true if the queue is empty, or false if there are more queue submissions still in flight.
-    // timeout_ns: max nanoseconds to wait when wait=true; 0 means no timeout.
-    WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex, uint64_t timeout_ns);
+    /**
+     * Processes pending work on the device, optionally blocking until it completes.
+     *
+     * When @p wait is true, blocks until @p submissionIndex (or all submitted
+     * work when NULL) has finished, up to @p timeout_ns nanoseconds; a
+     * @p timeout_ns of @c 0 means no timeout. A wait that runs out of time
+     * returns @ref WGPUNativePollStatus_Timeout — a normal runtime condition,
+     * not an error.
+     */
+    WGPUNativePollStatus wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex, uint64_t timeout_ns);
     WGPUShaderModule wgpuDeviceCreateShaderModulePassthrough(WGPUDevice device, WGPUShaderModuleDescriptorPassthrough const *descriptor);
 
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
