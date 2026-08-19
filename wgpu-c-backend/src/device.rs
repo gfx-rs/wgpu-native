@@ -1599,10 +1599,12 @@ impl DeviceInterface for CDevice {
         };
         // Re-raise any panic that occurred inside a map callback during polling.
         crate::resume_callback_panic();
-        if result != 0 {
-            Ok(wgpu::PollStatus::QueueEmpty)
-        } else {
-            Ok(wgpu::PollStatus::Poll)
+        match result {
+            native::WGPUNativePollStatus_QueueEmpty => Ok(wgpu::PollStatus::QueueEmpty),
+            native::WGPUNativePollStatus_WaitSucceeded => Ok(wgpu::PollStatus::WaitSucceeded),
+            native::WGPUNativePollStatus_Poll => Ok(wgpu::PollStatus::Poll),
+            native::WGPUNativePollStatus_Timeout => Err(wgpu::PollError::Timeout),
+            other => unreachable!("unknown WGPUNativePollStatus: {other}"),
         }
     }
 
