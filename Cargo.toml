@@ -84,7 +84,7 @@ spirv = ["naga/spv-in", "wgc/spirv"]
 glsl = ["naga/glsl-in", "wgc/glsl"]
 
 ## Enable accepting WGSL shaders as input.
-wgsl = ["wgc/wgsl"]
+wgsl = ["naga/wgsl-in", "wgc/wgsl"]
 
 #! ### Logging & Tracing
 # --------------------------------------------------------------------
