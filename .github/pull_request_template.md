@@ -7,7 +7,7 @@
 - [ ] [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny/) issues have been fixed or added to `deny.toml`
 - [ ] Human-readable change descriptions added to CHANGELOG.md under the "Unreleased" heading.
   - [ ] If the change does not affect the user (or is a process change), preface the change with "Internal:"
-  - [ ] Add credit to yourself for each change: `Added new functionality. @githubname`
+  - [ ] Add credit to yourself and the PR for each change: `Added new functionality. By @githubname in [#XYZ](https://github.com/gfx-rs/wgpu-native/pull/XYZ).`
 
 ## Description
 
