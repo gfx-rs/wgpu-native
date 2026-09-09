@@ -13,9 +13,15 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ### Added
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
+- Support OpenHarmonyOS raw-window-handle. By @richerfu in [#626](https://github.com/gfx-rs/wgpu-native/pull/626)
 
 ### Fixed
-- `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
+- `wgpuBufferMayAsync` now correctly handles the case where `size` is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
+
+## [v29.0.1.1](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.1.1) - 2026-06-23
+
+
+## [v29.0.0.0](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.0.0) - 2026-04-10
 
 ### Changed
 - `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h, with `size_bytes` renamed to `size` and argument order adjusted. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
@@ -80,7 +86,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   - `WGPUNativeAddressMode_ClampToBorder` address mode
   - `WGPUSamplerBorderColor` enum
   - `WGPUSamplerDescriptorExtras` struct to be chained in `WGPUSamplerDescriptor`
-- Support ohos raw-window-handle: @richerfu
+
 
 ### Removed
 
