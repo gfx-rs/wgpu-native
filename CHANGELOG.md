@@ -13,25 +13,42 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ### Added
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
-- Support OpenHarmonyOS raw-window-handle. By @richerfu in [#626](https://github.com/gfx-rs/wgpu-native/pull/626)
+- Support OpenHarmonyOS raw-window-handle. By @richerfu in [#626](https://github.com/gfx-rs/wgpu-native/pull/626).
 
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where `size` is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
 ## [v29.0.1.1](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.1.1) - 2026-06-23
 
+### Added 
+- `WGPUNativeLimits::maxBindingArraySamplerElementsPerShaderStage` and `WGPUNativeLimits::maxMultiviewViewCount` by @lisyarus in [#575](https://github.com/gfx-rs/wgpu-native/pull/575).
+- `WGPUNativeFeature_StorageTextureArrayNonUniformIndexing`, `WGPUNativeFeature_Multiview`, `WGPUNativeFeature_ShaderFloat32Atomic`, `WGPUNativeFeature_TextureAtomic`, `WGPUNativeFeature_TextureFormatP010`, `WGPUNativeFeature_PipelineCache`, `WGPUNativeFeature_ShaderInt64AtomicMinMax`, `WGPUNativeFeature_ShaderInt64AtomicAllOps`, `WGPUNativeFeature_TextureInt64Atomic`, `WGPUNativeFeature_ShaderBarycentrics`, `WGPUNativeFeature_SelectiveMultiview`, `WGPUNativeFeature_MultisampleArray`, `WGPUNativeFeature_CooperativeMatrix`, `WGPUNativeFeature_ShaderPerVertex`, `WGPUNativeFeature_ShaderDrawIndex`, `WGPUNativeFeature_AccelerationStructureBindingArray`, `WGPUNativeFeature_MemoryDecorationCoherent`, `WGPUNativeFeature_MemoryDecorationVolatile` by @lisyarus in [#576](https://github.com/gfx-rs/wgpu-native/pull/576).
+- `wgpuCommandEncoderClearTexture` by @lisyarus in [#580](https://github.com/gfx-rs/wgpu-native/pull/580/).
+- Sampler address modes ClampToBorder and ClampToZero supported:
+  - `WGPUNativeAddressMode_ClampToBorder` address mode
+  - `WGPUSamplerBorderColor` enum
+  - `WGPUSamplerDescriptorExtras` struct to be chained in `WGPUSamplerDescriptor`
+
+  By @lisyarus in [#581](https://github.com/gfx-rs/wgpu-native/pull/581).
+- `wgpuDeviceCreateShaderModuleTrusted` by @lisyarus in [#582](https://github.com/gfx-rs/wgpu-native/pull/582).
+
+### Changed
+- `WGPUNativeLimits::maxImmediateSize` -> `WGPULimits::maxImmediateSize` by @lisyarus in [#576](https://github.com/gfx-rs/wgpu-native/pull/576).
+- Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
+- `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h, with `size_bytes` renamed to `size` and argument order adjusted. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
+- Moved 16bit norm textures into spec and out of wgpu.h `WGPUNativeTextureFormat_Rgba16Unorm` -> `WGPUTextureFormat_RGBA16Unorm`. By @Vipitis in [#600](https://github.com/gfx-rs/wgpu-native/pull/600).
+
+### Removed
+- `WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing` and `WGPUNativeFeature_SpirvShaderPassthrough` removed. By @lisyarus in [#576](https://github.com/gfx-rs/wgpu-native/pull/576).
 
 ## [v29.0.0.0](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.0.0) - 2026-04-10
 
 ### Changed
-- `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h, with `size_bytes` renamed to `size` and argument order adjusted. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
-- moved 16bit norm textures into spec and out of wgpu.h `WGPUNativeTextureFormat_Rgba16Unorm` -> `WGPUTextureFormat_RGBA16Unorm`. by @Vipitis in [#tbd](tbd)
-- Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
 - Updated all wgpu crates to v29
 - MSRV bumped from 1.82 to 1.87.
 - **Push constants renamed to immediates.** This matches the upstream wgpu rename.
   - `WGPUNativeFeature_PushConstants` -> `WGPUNativeFeature_Immediates`
-  - `WGPUNativeLimits::maxPushConstantSize` -> `WGPULimits::maxImmediateSize` @lisyarus
+  - `WGPUNativeLimits::maxPushConstantSize` -> `WGPUNativeLimits::maxImmediateSize`
   - `WGPUPipelineLayoutExtras` no longer takes an array of `WGPUPushConstantRange`. It now takes a single `uint32_t immediateDataSize` representing the total size in bytes.
     ```c
     // Before
@@ -77,15 +94,6 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
   };
   ```
 - `WGPUSurfaceGetCurrentTextureStatus_Occluded` native extension value for `WGPUSurfaceGetCurrentTextureStatus`. Returned by `wgpuSurfaceGetCurrentTexture` when the window is not visible (e.g. minimized or fully behind another window). Currently only produced by the Metal backend on macOS, where acquiring a drawable while occluded would otherwise block for up to one second waiting for vsync. When you receive this status, no texture is returned and the surface remains valid -- skip rendering for the current frame and retry once the window becomes visible again. No reconfiguration is needed.
-- `WGPUNativeLimits::maxBindingArraySamplerElementsPerShaderStage` @lisyarus
-- `WGPUNativeLimits::maxMultiviewViewCount` @lisyarus
-- `WGPUNativeFeature_StorageTextureArrayNonUniformIndexing`, `WGPUNativeFeature_Multiview`, `WGPUNativeFeature_ShaderFloat32Atomic`, `WGPUNativeFeature_TextureAtomic`, `WGPUNativeFeature_TextureFormatP010`, `WGPUNativeFeature_PipelineCache`, `WGPUNativeFeature_ShaderInt64AtomicMinMax`, `WGPUNativeFeature_ShaderInt64AtomicAllOps`, `WGPUNativeFeature_TextureInt64Atomic`, `WGPUNativeFeature_ShaderBarycentrics`, `WGPUNativeFeature_SelectiveMultiview`, `WGPUNativeFeature_MultisampleArray`, `WGPUNativeFeature_CooperativeMatrix`, `WGPUNativeFeature_ShaderPerVertex`, `WGPUNativeFeature_ShaderDrawIndex`, `WGPUNativeFeature_AccelerationStructureBindingArray`, `WGPUNativeFeature_MemoryDecorationCoherent`, `WGPUNativeFeature_MemoryDecorationVolatile` @lisyarus
-- `wgpuCommandEncoderClearTexture` @lisyarus
-- `wgpuDeviceCreateShaderModuleTrusted` @lisyarus
-- Sampler address modes ClampToBorder and ClampToZero supported: @lisyarus
-  - `WGPUNativeAddressMode_ClampToBorder` address mode
-  - `WGPUSamplerBorderColor` enum
-  - `WGPUSamplerDescriptorExtras` struct to be chained in `WGPUSamplerDescriptor`
 
 
 ### Removed
@@ -93,7 +101,6 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - `WGPUPushConstantRange` struct.
 - `foreign-types-shared` dependency (no longer needed after Metal backend switched to `objc2`).
 - `raw-window-handle` feature on `wgpu-core` dependency (removed upstream).
-- `WGPUNativeFeature_UniformBufferAndStorageTextureArrayNonUniformIndexing` and `WGPUNativeFeature_SpirvShaderPassthrough` removed @lisyarus
 
 ## Diffs
 
