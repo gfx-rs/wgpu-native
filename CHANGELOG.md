@@ -11,9 +11,13 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased
 
-### Feature parity with wgpu
+### Expanded wgpu support
 
-Wgpu-native has reached feature-parity with upstream wgpu. This introduces ray tracing, mesh shaders, passthrough shaders, and more. Now tested against wgpu's test suite.
+Expose additional wgpu 30 functionality, including ray tracing, mesh shaders,
+passthrough shaders, external textures, and native capability queries. This is
+not complete WebGPU API parity: asynchronous pipeline creation, wait-any, and
+other entry points in `src/unimplemented.rs` remain unimplemented. The C-backend
+test harness is submitted separately.
 
 By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594), with review fixes (native extension enums, 64-bit flag types, experimental feature naming aligned with wgpu 30, contiguous native SType values, BLAS size-descriptor kind inference, iOS `UIView` surface source) by @matthargett.
 
@@ -21,6 +25,7 @@ By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594), wit
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
 
 ### Fixed
+- Initialize every native limit to its undefined sentinel; accept external-texture binding layouts; expose valid acceleration-structure buffer usages and atomic texture constants; handle unavailable presentation timestamps and surface-discard validation errors without aborting. By @matthargett.
 - `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
 ### Changed
@@ -28,7 +33,7 @@ By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594), wit
 - `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h, with `size_bytes` renamed to `size` and argument order adjusted. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
 - moved 16bit norm textures into spec and out of wgpu.h `WGPUNativeTextureFormat_Rgba16Unorm` -> `WGPUTextureFormat_RGBA16Unorm`. by @Vipitis in [#tbd](tbd)
 - Immediates no longer uses `WGPUPipelineLayoutExtras` chain, the `WGPUPipelineLayoutDescriptor` takes `uint32_t immediateSize` directily. By @Vipitis in [#583](https://github.com/gfx-rs/wgpu-native/pull/583).
-- Updated all wgpu crates to v29
+- Updated all wgpu crates to the wgpu 30 revision `1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321`.
 - MSRV bumped from 1.82 to 1.87.
 - **Push constants renamed to immediates.** This matches the upstream wgpu rename.
   - `WGPUNativeFeature_PushConstants` -> `WGPUNativeFeature_Immediates`

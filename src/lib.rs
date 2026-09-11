@@ -1044,14 +1044,7 @@ pub unsafe extern "C" fn wgpuAdapterGetPresentationTimestamp(
         (adapter.id, Arc::clone(&adapter.context))
     };
     let ts = context.adapter_get_presentation_timestamp(adapter_id);
-    assert!(
-        ts.0 <= u64::MAX as u128,
-        "presentation timestamp {0} ns overflows u64",
-        ts.0
-    );
-    native::WGPUPresentationTimestamp {
-        nanoseconds: ts.0 as u64,
-    }
+    conv::map_presentation_timestamp(ts)
 }
 
 #[no_mangle]
@@ -2169,7 +2162,8 @@ pub unsafe extern "C" fn wgpuDeviceCreateBindGroupLayout(
         .map(|entry| {
             follow_chain!(map_bind_group_layout_entry((entry),
                 WGPUSType_BindGroupLayoutEntryExtras => native::WGPUBindGroupLayoutEntryExtras,
-                WGPUSType_AccelerationStructureBindingLayout => native::WGPUAccelerationStructureBindingLayout)
+                WGPUSType_AccelerationStructureBindingLayout => native::WGPUAccelerationStructureBindingLayout,
+                WGPUSType_ExternalTextureBindingLayout => native::WGPUExternalTextureBindingLayout)
             )
         })
         .collect::<Vec<_>>();
@@ -4914,16 +4908,22 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuSurfaceDiscardTexture(surface: native::WGPUSurface) {
+pub unsafe extern "C" fn wgpuSurfaceDiscardTexture(
+    surface: native::WGPUSurface,
+) -> native::WGPUStatus {
     let surface = surface.as_ref().expect("invalid surface");
     match surface.context.surface_texture_discard(surface.id) {
         Ok(_) => (),
-        Err(cause) => handle_error_fatal(cause, "wgpuSurfaceDiscardTexture"),
+        Err(cause) => {
+            log::warn!("Surface discard error: {}", cause);
+            return native::WGPUStatus_Error;
+        }
     }
     // Mark as presented so the texture drop doesn't attempt a second discard.
     surface
         .has_surface_presented
         .store(true, atomic::Ordering::SeqCst);
+    native::WGPUStatus_Success
 }
 
 #[no_mangle]

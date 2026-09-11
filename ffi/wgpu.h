@@ -992,13 +992,17 @@ typedef enum WGPUNativeLoadOp
 } WGPUNativeLoadOp;
 
 /**
- * Native extension value for @ref WGPUBufferUsage.
- *
- * The buffer can hold ray-tracing pipeline shader-binding-table data. Requires
- * @ref WGPUNativeFeature_ExperimentalRayTracingPipelines. Not part of the WebGPU
- * standard.
+ * Native extension values for @ref WGPUBufferUsage used as acceleration
+ * structure build inputs. These match the public wgpu BufferUsages flags.
  */
-static const WGPUBufferUsage WGPUBufferUsage_RayTracingPipelineShaderData = 0x0000000000008000;
+static const WGPUBufferUsage WGPUBufferUsage_BlasInput = 0x0000000000000400;
+static const WGPUBufferUsage WGPUBufferUsage_TlasInput = 0x0000000000000800;
+
+/** Native storage texture access for atomic operations. */
+typedef enum WGPUNativeStorageTextureAccess {
+    WGPUStorageTextureAccess_Atomic = 0x00030001,
+    WGPUNativeStorageTextureAccess_Force32 = 0x7FFFFFFF
+} WGPUNativeStorageTextureAccess;
 
 /**
  * Native extension values for @ref WGPUTextureAspect.
@@ -1530,6 +1534,27 @@ typedef struct WGPUNativeLimits
     /*.maxBindingArrayElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxBindingArraySamplerElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
     /*.maxMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBindingArrayAccelerationStructureElementsPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskWorkgroupTotalCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskWorkgroupsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshWorkgroupTotalCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshWorkgroupsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskInvocationsPerWorkgroup=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskInvocationsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshInvocationsPerWorkgroup=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshInvocationsPerDimension=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTaskPayloadSize=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshOutputVertices=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshOutputPrimitives=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshOutputLayers=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxMeshMultiviewViewCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBlasPrimitiveCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBlasGeometryCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxTlasInstanceCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxAccelerationStructuresPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxBuffersAndAccelerationStructuresPerShaderStage=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxRayDispatchCount=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
+    /*.maxRayRecursionDepth=*/WGPU_LIMIT_U32_UNDEFINED _wgpu_COMMA \
 })
 
 /**
@@ -2372,12 +2397,14 @@ typedef enum WGPUNativeTextureFormat
     WGPUNativeTextureFormat_Astc10x10Sfloat = 0x00030015,
     WGPUNativeTextureFormat_Astc12x10Sfloat = 0x00030016,
     WGPUNativeTextureFormat_Astc12x12Sfloat = 0x00030017,
+    WGPUNativeTextureFormat_R64Uint = 0x00030009,
+    WGPUNativeTextureFormat_Force32 = 0x7FFFFFFF,
 } WGPUNativeTextureFormat;
 
 /**
  * Timestamp in nanoseconds, returned by @ref wgpuAdapterGetPresentationTimestamp.
- * Stored as uint64_t; the underlying Rust value is u128 but timestamps will not
- * exceed 2^64 nanoseconds (roughly 584 years) in practice.
+ * UINT64_MAX means the backend has no presentation clock or its timestamp
+ * cannot be represented in 64 bits. Do not use that sentinel in time arithmetic.
  */
 typedef struct WGPUPresentationTimestamp {
     uint64_t nanoseconds;
@@ -2727,8 +2754,6 @@ extern "C"
         WGPUTextureView const *planes,
         size_t planeCount);
 
-    void wgpuExternalTextureAddRef(WGPUExternalTexture externalTexture);
-    void wgpuExternalTextureRelease(WGPUExternalTexture externalTexture);
 
     // ── Acceleration structures ───────────────────────────────────────────────
 
@@ -2759,7 +2784,7 @@ extern "C"
      */
     WGPUBlas wgpuQueueCompactBlas(WGPUQueue queue, WGPUBlas blas);
 
-    /** Query internal wgpu-core/HAL resource counters for debugging. */
+    /** Query internal wgpu-core/HAL resource counters. Requires the counters Cargo feature; otherwise counters are zero. */
     WGPUInternalCounters wgpuDeviceGetInternalCounters(WGPUDevice device);
 
     /**
@@ -2807,7 +2832,7 @@ extern "C"
      * Call this instead of @ref wgpuSurfacePresent when you want to
      * abandon the frame (e.g. on resize or minimise).
      */
-    void wgpuSurfaceDiscardTexture(WGPUSurface surface);
+    WGPUStatus wgpuSurfaceDiscardTexture(WGPUSurface surface);
     /**
      * Query HDR / luminance characteristics of the display @p surface is on, as
      * seen by @p adapter. Native-only extension.

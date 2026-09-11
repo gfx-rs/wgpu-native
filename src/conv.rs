@@ -242,11 +242,11 @@ map_enum!(
     Version2
 );
 
-// 0x00030001: native extension, after standard StorageTextureAccess range.
-pub const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAccess = 0x00030001;
+pub const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAccess =
+    native::WGPUStorageTextureAccess_Atomic as native::WGPUStorageTextureAccess;
 
-// 0x00030009: native extension, immediately after P010 = 0x00030008.
-pub const WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT: native::WGPUTextureFormat = 0x00030009;
+pub const WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT: native::WGPUTextureFormat =
+    native::WGPUNativeTextureFormat_R64Uint as native::WGPUTextureFormat;
 
 pub fn map_storage_texture_access(
     value: native::WGPUStorageTextureAccess,
@@ -884,12 +884,12 @@ impl wgt::error::WebGpuError for ShaderParseError {
 #[inline]
 pub unsafe fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
-    spirv: Option<&native::WGPUShaderSourceSPIRV>,
-    wgsl: Option<&native::WGPUShaderSourceWGSL>,
-    glsl: Option<&native::WGPUShaderSourceGLSL>,
+    _spirv: Option<&native::WGPUShaderSourceSPIRV>,
+    _wgsl: Option<&native::WGPUShaderSourceWGSL>,
+    _glsl: Option<&native::WGPUShaderSourceGLSL>,
 ) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
-    if let Some(wgsl) = wgsl {
+    if let Some(wgsl) = _wgsl {
         let str_slice: &str = string_view_into_str(wgsl.code).unwrap_or("");
         return Ok(wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(
             str_slice,
@@ -897,7 +897,7 @@ pub unsafe fn map_shader_module<'a>(
     }
 
     #[cfg(feature = "spirv")]
-    if let Some(spirv) = spirv {
+    if let Some(spirv) = _spirv {
         let slice = make_slice(spirv.code, spirv.codeSize as usize);
         // Parse the given shader code and store its representation.
         let options = naga::front::spv::Options {
@@ -913,7 +913,7 @@ pub unsafe fn map_shader_module<'a>(
     }
 
     #[cfg(feature = "glsl")]
-    if let Some(glsl) = glsl {
+    if let Some(glsl) = _glsl {
         let str_slice: &str = string_view_into_str(glsl.code).unwrap_or("");
         let mut options = naga::front::glsl::Options::from(
             map_shader_stage(glsl.stage)
@@ -2001,6 +2001,7 @@ pub fn map_bind_group_layout_entry(
     entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
     as_layout: Option<&native::WGPUAccelerationStructureBindingLayout>,
+    external_texture_layout: Option<&native::WGPUExternalTextureBindingLayout>,
 ) -> wgt::BindGroupLayoutEntry {
     let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_BindingNotUsed;
     let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_BindingNotUsed;
@@ -2104,6 +2105,8 @@ pub fn map_bind_group_layout_entry(
         wgt::BindingType::AccelerationStructure {
             vertex_return: as_layout.vertexReturn != 0,
         }
+    } else if external_texture_layout.is_some() {
+        wgt::BindingType::ExternalTexture
     } else {
         panic!("invalid bind group layout entry for bind group layout descriptor");
     };
@@ -2332,8 +2335,12 @@ pub unsafe fn map_surface(
         return CreateSurfaceParams::SwapChainPanel(swap_chain_panel.panelNative);
     }
 
+    #[cfg(all(
+        any(target_os = "ios", target_os = "tvos", target_os = "visionos"),
+        feature = "metal"
+    ))]
     if let Some(uiview) = _uiview {
-        let ui_view = NonNull::new_unchecked(uiview.uiView);
+        let ui_view = NonNull::new(uiview.uiView).expect("UIView surface source must not be null");
         return CreateSurfaceParams::Raw((
             raw_window_handle::RawDisplayHandle::UiKit(raw_window_handle::UiKitDisplayHandle::new()),
             raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(
@@ -2650,4 +2657,12 @@ pub fn map_cooperative_scalar_type(
 #[allow(clippy::unnecessary_cast)]
 pub fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
     s as u32
+}
+
+pub fn map_presentation_timestamp(
+    ts: wgt::PresentationTimestamp,
+) -> native::WGPUPresentationTimestamp {
+    native::WGPUPresentationTimestamp {
+        nanoseconds: u64::try_from(ts.0).unwrap_or(u64::MAX),
+    }
 }
