@@ -7,3 +7,4 @@ build
 dist
 .idea
 /.local-wgpu
+__pycache__/
