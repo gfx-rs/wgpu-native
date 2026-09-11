@@ -31,7 +31,27 @@ jobs:
           submodules: true
       - name: Set up Python
         uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - run: python checks.py
+      - run: python tests/check_headers.py
+      - run: python -m unittest discover -s tests -p 'test_*.py'
+
+  parity-tests:
+    name: C API parity regressions (${{ matrix.features }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features: ["", "wgsl", "metal,wgsl", "metal,wgsl,counters"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
+        with:
+          version: ${{ env.CI_RUST_VERSION }}
+      - run: cargo test --locked -p wgpu-native --no-default-features --features "${{ matrix.features }}" --tests
 
   fmt:
     name: Format

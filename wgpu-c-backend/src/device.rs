@@ -298,6 +298,8 @@ impl DeviceInterface for CDevice {
             Vec::with_capacity(desc.entries.len());
         let mut as_chains: Vec<(usize, Box<native::WGPUAccelerationStructureBindingLayout>)> =
             Vec::new();
+        let mut external_chains: Vec<(usize, Box<native::WGPUExternalTextureBindingLayout>)> =
+            Vec::new();
 
         for e in desc.entries.iter() {
             let mut entry: native::WGPUBindGroupLayoutEntry = unsafe { std::mem::zeroed() };
@@ -360,8 +362,16 @@ impl DeviceInterface for CDevice {
                         }),
                     ));
                 }
-                e => {
-                    panic!("wgpu-c-backend: unsupported BindingType variant: {e:?}");
+                wgpu::BindingType::ExternalTexture => {
+                    external_chains.push((
+                        entries.len(),
+                        Box::new(native::WGPUExternalTextureBindingLayout {
+                            chain: native::WGPUChainedStruct {
+                                next: std::ptr::null_mut(),
+                                sType: native::WGPUSType_ExternalTextureBindingLayout,
+                            },
+                        }),
+                    ));
                 }
             }
             entries.push(entry);
@@ -375,6 +385,12 @@ impl DeviceInterface for CDevice {
                 as *mut native::WGPUChainedStruct;
         }
 
+        for (idx, chain) in &external_chains {
+            entries[*idx].nextInChain =
+                std::ptr::from_ref(chain.as_ref()) as *mut native::WGPUChainedStruct;
+        }
+
+        // The boxes above own all chained descriptors through the C call.
         let c_desc = native::WGPUBindGroupLayoutDescriptor {
             nextInChain: std::ptr::null_mut(),
             label: label_sv,
