@@ -835,6 +835,19 @@ pub unsafe extern "C" fn wgpuAdapterGetLimits(
     true as native::WGPUBool // indicates that we can fill WGPUChainedStructOut
 }
 
+unsafe fn adapter_info_extras_mut(
+    info: &mut native::WGPUAdapterInfo,
+) -> Option<&mut native::WGPUAdapterInfoExtras> {
+    let mut chain = info.nextInChain;
+    while !chain.is_null() {
+        if (*chain).sType == native::WGPUSType_AdapterInfoExtras {
+            return Some(&mut *chain.cast::<native::WGPUAdapterInfoExtras>());
+        }
+        chain = (*chain).next;
+    }
+    None
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterGetInfo(
     adapter: native::WGPUAdapter,
@@ -858,10 +871,7 @@ pub unsafe extern "C" fn wgpuAdapterGetInfo(
     info.subgroupMaxSize = result.subgroup_max_size;
     info.subgroupMinSize = result.subgroup_min_size;
 
-    if !info.nextInChain.is_null()
-        && unsafe { (*info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
-    {
-        let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
+    if let Some(extras) = adapter_info_extras_mut(info) {
         extras.transientSavesMemory = conv::optional_bool_to_native(result.transient_saves_memory);
         extras.devicePciBusId = utils::str_into_owned_string_view(&result.device_pci_bus_id);
     }
@@ -889,17 +899,13 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAdapterInfo) {
+pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(mut adapter_info: native::WGPUAdapterInfo) {
     utils::drop_string_view(adapter_info.vendor);
     utils::drop_string_view(adapter_info.architecture);
     utils::drop_string_view(adapter_info.device);
     utils::drop_string_view(adapter_info.description);
 
-    if !adapter_info.nextInChain.is_null()
-        && unsafe { (*adapter_info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
-    {
-        let extras =
-            unsafe { &mut *(adapter_info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
+    if let Some(extras) = adapter_info_extras_mut(&mut adapter_info) {
         utils::drop_string_view(extras.devicePciBusId);
         extras.devicePciBusId = EMPTY_STRING;
     }
@@ -6440,10 +6446,7 @@ pub unsafe extern "C" fn wgpuDeviceGetAdapterInfo(
     info.subgroupMaxSize = result.subgroup_max_size;
     info.subgroupMinSize = result.subgroup_min_size;
 
-    if !info.nextInChain.is_null()
-        && unsafe { (*info.nextInChain).sType } == native::WGPUSType_AdapterInfoExtras
-    {
-        let extras = unsafe { &mut *(info.nextInChain as *mut native::WGPUAdapterInfoExtras) };
+    if let Some(extras) = adapter_info_extras_mut(info) {
         extras.transientSavesMemory = conv::optional_bool_to_native(result.transient_saves_memory);
         extras.devicePciBusId = utils::str_into_owned_string_view(&result.device_pci_bus_id);
     }

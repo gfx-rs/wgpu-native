@@ -2831,6 +2831,8 @@ extern "C"
      *
      * Call this instead of @ref wgpuSurfacePresent when you want to
      * abandon the frame (e.g. on resize or minimise).
+     * Returns @ref WGPUStatus_Success when the acquired texture was discarded,
+     * or @ref WGPUStatus_Error if the discard could not be performed.
      */
     WGPUStatus wgpuSurfaceDiscardTexture(WGPUSurface surface);
     /**
