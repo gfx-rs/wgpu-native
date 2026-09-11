@@ -81,3 +81,32 @@ fn valid_presentation_timestamps_preserve_nanoseconds() {
         );
     }
 }
+
+#[test]
+fn adapter_info_free_members_visits_later_extensions() {
+    for prefix_count in [0, 1, 2] {
+        let mut extras: native::WGPUAdapterInfoExtras = unsafe { std::mem::zeroed() };
+        extras.chain.sType = native::WGPUSType_AdapterInfoExtras;
+        extras.devicePciBusId = wgpu_native::utils::str_into_owned_string_view("0000:01:00.0");
+        let mut head = std::ptr::from_mut(&mut extras.chain);
+        let mut prefix = vec![
+            native::WGPUChainedStruct {
+                next: std::ptr::null_mut(),
+                sType: 0x7fff_ff01,
+            };
+            prefix_count
+        ];
+        for link in &mut prefix {
+            link.next = head;
+            head = std::ptr::from_mut(link);
+        }
+        let mut info: native::WGPUAdapterInfo = unsafe { std::mem::zeroed() };
+        info.nextInChain = head;
+        unsafe { wgpu_native::wgpuAdapterInfoFreeMembers(info) };
+        let cleared = extras.devicePciBusId.data.is_null() && extras.devicePciBusId.length == 0;
+        if !cleared {
+            unsafe { wgpu_native::utils::drop_string_view(extras.devicePciBusId) };
+        }
+        assert!(cleared, "adapter info extras after {prefix_count} earlier extensions were not freed and cleared");
+    }
+}
