@@ -1,0 +1,21 @@
+[package]
+name = "wgpu-c-backend"
+version = "0.0.0"
+authors = ["Magnus Larsson <magnus.larsson.mn@gmail.com>"]
+edition = "2021"
+rust-version = "1.87"
+homepage = "https://github.com/gfx-rs/wgpu-native"
+repository = "https://github.com/gfx-rs/wgpu-native"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+log = "0.4"
+wgpu = { workspace = true, features = ["custom", "wgsl", "glsl", "spirv", "drm"] }
+wgpu-c-bindings = { path = "../wgpu-c-bindings" }
+
+# This is needed to run the tests & examples, but our dxc wrapper doesn't have dxc prebuilt for such systems.
+[target.'cfg(target_pointer_width = "64")'.dependencies]
+wgpu = { workspace = true, features = ["static-dxc"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+raw-window-metal = "1.1.0"

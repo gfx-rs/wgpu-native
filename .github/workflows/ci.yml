@@ -9,8 +9,8 @@ on:
     branches-ignore: []
 
 env:
-  CI_RUST_VERSION: "1.91"
-  CI_RUST_MSRV: "1.87"
+  CI_RUST_VERSION: "1.93"
+  CI_RUST_MSRV: "1.93"
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
@@ -18,6 +18,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   CACHE_SUFFIX: b
   WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
+  WGPU_CI: true
 
 jobs:
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
@@ -30,7 +31,27 @@ jobs:
           submodules: true
       - name: Set up Python
         uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
       - run: python checks.py
+      - run: python tests/check_headers.py
+      - run: python -m unittest discover -s tests -p 'test_*.py'
+
+  parity-tests:
+    name: C API parity regressions (${{ matrix.features }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features: ["", "wgsl", "metal,wgsl", "metal,wgsl,counters"]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+      - uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
+        with:
+          version: ${{ env.CI_RUST_VERSION }}
+      - run: cargo test --locked -p wgpu-native --no-default-features --features "${{ matrix.features }}" --tests
 
   fmt:
     name: Format
@@ -333,3 +354,159 @@ jobs:
           make run-example-compute-release
           make run-example-enumerate_adapters-release
           make run-example-immediates-release
+
+  wgpu-tests:
+    name: wgpu integration tests (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            shell: bash
+            setup_env: |
+              set -x;
+              sudo apt update -y
+              sudo apt install -y \
+                cmake ninja-build clang \
+                xorg-dev libwayland-dev libxkbcommon-dev wayland-protocols \
+                libegl1-mesa-dev mesa-vulkan-drivers
+          - name: Macos
+            os: macos-14
+            target: aarch64-apple-darwin
+            shell: bash
+            setup_env: brew install cmake ninja
+          - name: Windows gnu
+            os: windows-latest
+            target: x86_64-pc-windows-gnu
+            shell: msys2 {0}
+          - name: Windows msvc
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            shell: cmd
+            setup_env: choco install -y make
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - if: contains(matrix.target, 'windows-msvc')
+        name: Setup msvc
+        uses: ilammy/msvc-dev-cmd@v1
+      - if: contains(matrix.target, 'windows-gnu')
+        name: Setup msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          # Rust comes from rustup (next step), NOT from msys2's `rust:p`:
+          # msys2's package ignores `rust-toolchain.toml` and tracks current
+          # stable, so this job silently drifted ahead of the 1.93 that wgpu
+          # v30 pins. Under the job-wide `-Dwarnings`, newer rustc turns
+          # wgpu-core's `expect(unused)` in `lock/ranked.rs` into a hard
+          # `unfulfilled_lint_expectations` error. `path-type: inherit` keeps
+          # the Windows PATH — and with it rustup's ~/.cargo/bin shims —
+          # visible inside the msys2 shell; msys2 paths still come first, so
+          # gcc/ld/cmake/ninja are the UCRT64 ones.
+          path-type: inherit
+          install: >-
+            make
+            git
+          pacboy: >-
+            toolchain:p
+            cmake:p
+            ninja:p
+      - name: Install Rust toolchain
+        uses: cwfitzgerald/repo-common/.github/actions/install-rust@trunk
+        with:
+          version: ${{ env.CI_RUST_VERSION }}
+          targets: ${{ matrix.target }}
+
+      # Required for wgpu's test suite
+      - name: Setup wgpu patch
+        # Some later steps install stuff into the .local-wgpu/target folder
+        # so we need to set it up before.
+        run: python run-wgpu-tests.py --no-run
+      # `.local-wgpu` carries its own `rust-toolchain.toml`, which sits nearer
+      # than the `rustup override` the install-rust step set at the repo root,
+      # so everything under it builds with wgpu's pinned channel rather than
+      # CI_RUST_VERSION. That channel was installed for the host only; on the
+      # cross-compiled gnu target it still needs the target's std.
+      - if: contains(matrix.target, 'windows-gnu')
+        name: Add gnu target to wgpu's pinned toolchain
+        working-directory: .local-wgpu
+        run: rustup target add ${{ matrix.target }}
+      - name: Install `cargo-nextest`
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: (Windows) Install DXC
+        if: matrix.os == 'windows-latest'
+        uses: gfx-rs/wgpu/.github/actions/install-dxc@trunk
+
+      # WARP/Agility install via `cargo xtask`, which lives in the wgpu checkout
+      # (.local-wgpu), not this repo root — so run there. Use the matrix's default
+      # shell (cmd for msvc, msys2 for gnu), NOT bash: forcing Git bash shadows
+      # MSVC's link.exe and hides the msys2 gnu std. The test binaries build under
+      # target/<triple>/ (CARGO_BUILD_TARGET is set), so WARP goes there.
+      - name: (Windows) Install WARP
+        if: matrix.os == 'windows-latest'
+        working-directory: .local-wgpu
+        run: cargo xtask install-warp --target-dir "target/${{ matrix.target }}/debug"
+
+      # Split by shell so the `$GITHUB_ENV` redirect uses the right syntax.
+      - name: (Windows msvc) Install Agility SDK
+        if: contains(matrix.target, 'windows-msvc')
+        working-directory: .local-wgpu
+        shell: cmd
+        run: |
+          cargo xtask install-agility-sdk >> "%GITHUB_ENV%"
+          echo WGPU_DX12_AGILITY_SDK_REQUIRE=1 >> "%GITHUB_ENV%"
+
+      - name: (Windows gnu) Install Agility SDK
+        if: contains(matrix.target, 'windows-gnu')
+        working-directory: .local-wgpu
+        run: |
+          cargo xtask install-agility-sdk >> "$GITHUB_ENV"
+          echo "WGPU_DX12_AGILITY_SDK_REQUIRE=1" >> "$GITHUB_ENV"
+
+      - name: (Windows) Install Mesa
+        if: matrix.os == 'windows-latest'
+        uses: gfx-rs/wgpu/.github/actions/install-mesa@trunk
+        with:
+          # Copy the DLLs next to the test binaries built by cargo xtask in .local-wgpu.
+          target-dir: ".local-wgpu/target/${{ matrix.target }}/debug"
+
+      - name: (Windows) Install Vulkan SDK
+        if: matrix.os == 'windows-latest'
+        uses: gfx-rs/wgpu/.github/actions/install-vulkan-sdk@trunk
+
+      - name: (Mac) Install Vulkan SDK
+        if: matrix.os == 'macos-14'
+        uses: gfx-rs/wgpu/.github/actions/install-vulkan-sdk@trunk
+
+      - name: (Linux) Install Vulkan SDK
+        if: matrix.os == 'ubuntu-latest'
+        uses: gfx-rs/wgpu/.github/actions/install-vulkan-sdk@trunk
+
+      - name: (Linux) Install Mesa
+        if: matrix.os == 'ubuntu-latest'
+        uses: gfx-rs/wgpu/.github/actions/install-mesa@trunk
+      - name: Set up Python
+        uses: actions/setup-python@v6
+      - name: Setup caching
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wgpu-tests-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+      - name: Setup Environment
+        run: ${{ matrix.setup_env }}
+
+      - name: Run wgpu integration tests
+        run: python run-wgpu-tests.py --no-setup

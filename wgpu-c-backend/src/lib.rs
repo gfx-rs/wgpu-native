@@ -1,0 +1,419 @@
+mod adapter;
+mod command;
+mod conv;
+mod device;
+mod pass;
+mod resource;
+mod surface;
+
+pub use adapter::CAdapter;
+pub use command::{CCommandEncoder, CRenderBundleEncoder};
+pub use device::{CDevice, CQueue};
+pub use pass::{CComputePass, CRenderPass};
+pub use resource::{
+    CBindGroup, CBindGroupLayout, CBuffer, CBufferMappedRange, CCommandBuffer, CComputePipeline,
+    CPipelineCache, CPipelineLayout, CQuerySet, CRenderBundle, CRenderPipeline, CSampler,
+    CShaderModule, CTexture, CTextureView,
+};
+pub use surface::{CSurface, CSurfaceOutputDetail};
+
+use std::future;
+use std::pin::Pin;
+
+use wgpu::custom::*;
+use wgpu::InstanceDescriptor;
+use wgpu_c_bindings as native;
+use wgpu_c_bindings::*;
+
+/// Instance-factory entry point for the C backend.
+///
+/// A wgpu build patched for C-backend integration testing (its `Instance::new`
+/// compiled with `--cfg wgpu_custom_backend`) calls this symbol by name to route
+/// `wgpu::Instance::new` through wgpu-native. This crate is deliberately unaware
+/// of that wiring: it always exports the entry point and carries no test-only
+/// configuration of its own.
+///
+/// Returns `Err(desc)` to hand the request back to wgpu-core for backends that
+/// wgpu-native does not implement.
+///
+/// # ABI
+///
+/// Exported with the Rust ABI under a fixed symbol name. The wgpu that calls it
+/// must be built with the same toolchain (guaranteed within one workspace).
+#[no_mangle]
+#[expect(clippy::result_large_err)]
+extern "Rust" fn __wgpu_custom_backend_new_instance(
+    desc: InstanceDescriptor,
+) -> Result<wgpu::Instance, InstanceDescriptor> {
+    // Backends wgpu-native actually implements.
+    const WGPU_NATIVE_BACKENDS: wgpu::Backends = wgpu::Backends::VULKAN
+        .union(wgpu::Backends::METAL)
+        .union(wgpu::Backends::DX12)
+        .union(wgpu::Backends::GL);
+    if desc.backends.intersection(WGPU_NATIVE_BACKENDS).is_empty() {
+        return Err(desc);
+    }
+    Ok(wgpu::Instance::from_custom(CInstance::new(desc)))
+}
+
+// ── Panic propagation for extern "C" callbacks ────────────────────────────────
+//
+// Rust panics must not cross `extern "C"` boundaries (UB). When a user-supplied
+// Rust closure is called from within one of our `extern "C"` C-API callbacks,
+// we catch any panic with `catch_unwind` and store it here. The caller then
+// checks `resume_callback_panic()` after the C function returns to re-raise it
+// on the Rust side where it can propagate normally.
+//
+// Thread-local storage gives each thread its own slot: no mutex, no cross-thread
+// collision. Spontaneous callbacks on wgpu-native background threads keep their
+// panic on that thread.
+thread_local! {
+    static CALLBACK_PANIC: std::cell::RefCell<Option<Box<dyn std::any::Any + Send + 'static>>> =
+        std::cell::RefCell::new(None);
+}
+
+pub(crate) fn catch_callback_panic<F: FnOnce()>(f: F) {
+    if let Err(payload) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        CALLBACK_PANIC.with(|cell| {
+            let mut slot = cell.borrow_mut();
+            if slot.is_none() {
+                *slot = Some(payload);
+            }
+        });
+    }
+}
+
+pub(crate) fn resume_callback_panic() {
+    let payload = CALLBACK_PANIC.with(|cell| cell.borrow_mut().take());
+    if let Some(payload) = payload {
+        std::panic::resume_unwind(payload);
+    }
+}
+
+pub(crate) fn has_callback_panic() -> bool {
+    CALLBACK_PANIC.with(|cell| cell.borrow().is_some())
+}
+
+#[derive(Debug)]
+pub struct CInstance {
+    ptr: native::WGPUInstance,
+}
+
+unsafe impl Send for CInstance {}
+unsafe impl Sync for CInstance {}
+
+impl Drop for CInstance {
+    fn drop(&mut self) {
+        unsafe { wgpuInstanceRelease(self.ptr) };
+    }
+}
+
+impl InstanceInterface for CInstance {
+    fn new(desc: InstanceDescriptor) -> Self
+    where
+        Self: Sized,
+    {
+        println!("Creating instance through wgpu-c-backend");
+        let backends = conv::backends_to_native(desc.backends);
+        let flags = conv::instance_flags_to_native(desc.flags);
+        let dx12_compiler =
+            conv::dx12_compiler_to_native(&desc.backend_options.dx12.shader_compiler);
+        let dx12_presentation_system =
+            conv::dx12_swapchain_kind_to_native(desc.backend_options.dx12.presentation_system);
+        let gles3_minor_version =
+            conv::gles3_minor_version_to_native(desc.backend_options.gl.gles_minor_version);
+        let gl_fence_behaviour =
+            conv::gl_fence_behavior_to_native(desc.backend_options.gl.fence_behavior);
+
+        // Keep dxc_path alive for the duration of the C call.
+        let dxc_path_str: String;
+        let dxc_path = match &desc.backend_options.dx12.shader_compiler {
+            wgpu::Dx12Compiler::DynamicDxc { dxc_path } => {
+                dxc_path_str = dxc_path.clone();
+                conv::str_to_string_view(&dxc_path_str)
+            }
+            _ => conv::null_string_view(),
+        };
+
+        let mut extras = native::WGPUInstanceExtras {
+            chain: native::WGPUChainedStruct {
+                next: std::ptr::null_mut(),
+                sType: native::WGPUSType_InstanceExtras,
+            },
+            backends,
+            flags,
+            dx12ShaderCompiler: dx12_compiler,
+            gles3MinorVersion: gles3_minor_version,
+            glFenceBehaviour: gl_fence_behaviour,
+            dxcPath: dxc_path,
+            dx12PresentationSystem: dx12_presentation_system,
+            // SAFETY: zero is valid — budgets are optional (null = no limit),
+            // displayHandle type_=0 means WGPUNativeDisplayHandleType_None.
+            ..unsafe { std::mem::zeroed() }
+        };
+
+        let c_desc = native::WGPUInstanceDescriptor {
+            nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(&mut extras.chain),
+            requiredFeatureCount: 0,
+            requiredFeatures: std::ptr::null(),
+            requiredLimits: std::ptr::null(),
+        };
+
+        let ptr = unsafe { wgpuCreateInstance(std::ptr::from_ref(&c_desc)) };
+        CInstance { ptr }
+    }
+
+    unsafe fn create_surface(
+        &self,
+        target: wgpu::SurfaceTargetUnsafe,
+    ) -> Result<DispatchSurface, wgpu::CreateSurfaceError> {
+        #[allow(unused_imports)]
+        use wgpu::rwh::{RawDisplayHandle, RawWindowHandle};
+
+        #[allow(unused_variables)]
+        let ptr: native::WGPUSurface = match target {
+            #[allow(unused_variables)]
+            wgpu::SurfaceTargetUnsafe::RawHandle {
+                raw_display_handle,
+                raw_window_handle,
+            } => match raw_window_handle {
+                #[cfg(target_os = "macos")]
+                RawWindowHandle::AppKit(h) => {
+                    // ns_view is an NSView*, not a CAMetalLayer*. Use raw_window_metal to
+                    // install/retrieve a CAMetalLayer on the view before handing it to wgpu-native.
+                    let layer = unsafe { raw_window_metal::Layer::from_ns_view(h.ns_view) };
+                    let mut src = native::WGPUSurfaceSourceMetalLayer {
+                        chain: native::WGPUChainedStruct {
+                            next: std::ptr::null_mut(),
+                            sType: native::WGPUSType_SurfaceSourceMetalLayer,
+                        },
+                        layer: layer.as_ptr().as_ptr().cast(),
+                    };
+                    let c_desc = native::WGPUSurfaceDescriptor {
+                        nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                            &mut src.chain,
+                        ),
+                        label: conv::null_string_view(),
+                    };
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
+                }
+                #[cfg(target_os = "windows")]
+                RawWindowHandle::Win32(h) => {
+                    let hinstance = h
+                        .hinstance
+                        .map(|p| p.get() as *mut _)
+                        .unwrap_or(std::ptr::null_mut());
+                    let mut src = native::WGPUSurfaceSourceWindowsHWND {
+                        chain: native::WGPUChainedStruct {
+                            next: std::ptr::null_mut(),
+                            sType: native::WGPUSType_SurfaceSourceWindowsHWND,
+                        },
+                        hinstance,
+                        hwnd: h.hwnd.get() as *mut _,
+                    };
+                    let c_desc = native::WGPUSurfaceDescriptor {
+                        nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                            &mut src.chain,
+                        ),
+                        label: conv::null_string_view(),
+                    };
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
+                }
+                #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
+                RawWindowHandle::Wayland(h) => {
+                    let display = match raw_display_handle {
+                        Some(RawDisplayHandle::Wayland(d)) => d.display.as_ptr(),
+                        _ => std::ptr::null_mut(),
+                    };
+                    let mut src = native::WGPUSurfaceSourceWaylandSurface {
+                        chain: native::WGPUChainedStruct {
+                            next: std::ptr::null_mut(),
+                            sType: native::WGPUSType_SurfaceSourceWaylandSurface,
+                        },
+                        display,
+                        surface: h.surface.as_ptr(),
+                    };
+                    let c_desc = native::WGPUSurfaceDescriptor {
+                        nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                            &mut src.chain,
+                        ),
+                        label: conv::null_string_view(),
+                    };
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
+                }
+                #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
+                RawWindowHandle::Xcb(h) => {
+                    let connection = match raw_display_handle {
+                        Some(RawDisplayHandle::Xcb(d)) => d
+                            .connection
+                            .map(|p| p.as_ptr())
+                            .unwrap_or(std::ptr::null_mut()),
+                        _ => std::ptr::null_mut(),
+                    };
+                    let mut src = native::WGPUSurfaceSourceXCBWindow {
+                        chain: native::WGPUChainedStruct {
+                            next: std::ptr::null_mut(),
+                            sType: native::WGPUSType_SurfaceSourceXCBWindow,
+                        },
+                        connection,
+                        window: h.window.get(),
+                    };
+                    let c_desc = native::WGPUSurfaceDescriptor {
+                        nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                            &mut src.chain,
+                        ),
+                        label: conv::null_string_view(),
+                    };
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
+                }
+                #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
+                RawWindowHandle::Xlib(h) => {
+                    let display = match raw_display_handle {
+                        Some(RawDisplayHandle::Xlib(d)) => d
+                            .display
+                            .map(|p| p.as_ptr())
+                            .unwrap_or(std::ptr::null_mut()),
+                        _ => std::ptr::null_mut(),
+                    };
+                    let mut src = native::WGPUSurfaceSourceXlibWindow {
+                        chain: native::WGPUChainedStruct {
+                            next: std::ptr::null_mut(),
+                            sType: native::WGPUSType_SurfaceSourceXlibWindow,
+                        },
+                        display,
+                        window: h.window,
+                    };
+                    let c_desc = native::WGPUSurfaceDescriptor {
+                        nextInChain: std::ptr::from_mut::<native::WGPUChainedStruct>(
+                            &mut src.chain,
+                        ),
+                        label: conv::null_string_view(),
+                    };
+                    unsafe { wgpuInstanceCreateSurface(self.ptr, std::ptr::from_ref(&c_desc)) }
+                }
+                _ => panic!("wgpu-c-backend: unsupported window handle type"),
+            },
+            _ => panic!("wgpu-c-backend: unsupported surface target type"),
+        };
+
+        #[allow(unreachable_code)]
+        if ptr.is_null() {
+            panic!("wgpuInstanceCreateSurface returned null");
+        }
+        Ok(DispatchSurface::custom(surface::CSurface { ptr }))
+    }
+
+    fn request_adapter(
+        &self,
+        options: &wgpu::RequestAdapterOptions<'_, '_>,
+    ) -> Pin<Box<dyn RequestAdapterFuture>> {
+        struct Out {
+            result: Option<Result<DispatchAdapter, wgpu::wgt::RequestAdapterError>>,
+        }
+
+        fn not_found() -> wgpu::wgt::RequestAdapterError {
+            wgpu::wgt::RequestAdapterError::NotFound {
+                active_backends: wgpu::wgt::Backends::empty(),
+                requested_backends: wgpu::wgt::Backends::empty(),
+                supported_backends: wgpu::wgt::Backends::empty(),
+                no_fallback_backends: wgpu::wgt::Backends::empty(),
+                no_adapter_backends: wgpu::wgt::Backends::empty(),
+                incompatible_surface_backends: wgpu::wgt::Backends::empty(),
+            }
+        }
+
+        unsafe extern "C" fn cb(
+            status: native::WGPURequestAdapterStatus,
+            adapter: native::WGPUAdapter,
+            _message: native::WGPUStringView,
+            userdata1: *mut std::ffi::c_void,
+            _userdata2: *mut std::ffi::c_void,
+        ) {
+            let out = &mut *(userdata1 as *mut Out);
+            out.result = Some(match status {
+                native::WGPURequestAdapterStatus_Success => {
+                    Ok(DispatchAdapter::custom(adapter::CAdapter { ptr: adapter }))
+                }
+                _ => Err(not_found()),
+            });
+        }
+
+        // Extract the raw WGPUSurface pointer from the compatible_surface if provided.
+        // Surface::as_custom returns None if the surface was not created by this backend,
+        // in which case we fall back to null (no surface constraint).
+        let compatible_surface_ptr: native::WGPUSurface = options
+            .compatible_surface
+            .and_then(|s| s.as_custom::<surface::CSurface>())
+            .map(|cs| cs.ptr)
+            .unwrap_or(std::ptr::null_mut());
+
+        let c_options = native::WGPURequestAdapterOptions {
+            nextInChain: std::ptr::null_mut(),
+            featureLevel: native::WGPUFeatureLevel_Undefined,
+            powerPreference: conv::power_preference_to_native(options.power_preference),
+            forceFallbackAdapter: options.force_fallback_adapter as u32,
+            backendType: native::WGPUBackendType_Undefined,
+            compatibleSurface: compatible_surface_ptr,
+        };
+
+        let mut out = Out { result: None };
+        let callback_info = native::WGPURequestAdapterCallbackInfo {
+            nextInChain: std::ptr::null_mut(),
+            mode: native::WGPUCallbackMode_AllowSpontaneous,
+            callback: Some(cb),
+            userdata1: std::ptr::addr_of_mut!(out).cast(),
+            userdata2: std::ptr::null_mut(),
+        };
+
+        unsafe {
+            wgpuInstanceRequestAdapter(self.ptr, std::ptr::from_ref(&c_options), callback_info)
+        };
+        Box::pin(future::ready(out.result.unwrap_or(Err(not_found()))))
+    }
+
+    fn poll_all_devices(&self, force_wait: bool) -> bool {
+        unsafe { wgpuInstancePollAllDevices(self.ptr, force_wait as u32) != 0 }
+    }
+
+    fn enumerate_adapters(&self, backends: wgpu::Backends) -> Pin<Box<dyn EnumerateAdapterFuture>> {
+        let options = native::WGPUInstanceEnumerateAdapterOptions {
+            backends: conv::backends_to_native(backends),
+            nextInChain: std::ptr::null(),
+        };
+
+        let adapters = unsafe {
+            let count = wgpuInstanceEnumerateAdapters(
+                self.ptr,
+                std::ptr::from_ref(&options),
+                std::ptr::null_mut(),
+            );
+
+            let mut out: Vec<native::WGPUAdapter> = vec![std::ptr::null_mut(); count];
+            wgpuInstanceEnumerateAdapters(self.ptr, std::ptr::from_ref(&options), out.as_mut_ptr());
+
+            out.into_iter()
+                .map(|ptr| DispatchAdapter::custom(CAdapter { ptr }))
+                .collect::<Vec<_>>()
+        };
+
+        Box::pin(future::ready(adapters))
+    }
+
+    fn wgsl_language_features(&self) -> wgpu::WgslLanguageFeatures {
+        let bits = unsafe { wgpuGetWgslLanguageFeatures() };
+        let mut out = wgpu::WgslLanguageFeatures::empty();
+        if bits & WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures != 0 {
+            out |= wgpu::WgslLanguageFeatures::ReadOnlyAndReadWriteStorageTextures;
+        }
+        if bits & WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct != 0 {
+            out |= wgpu::WgslLanguageFeatures::Packed4x8IntegerDotProduct;
+        }
+        if bits & WGPUWgslLanguageFeatures_PointerCompositeAccess != 0 {
+            out |= wgpu::WgslLanguageFeatures::PointerCompositeAccess;
+        }
+        if bits & WGPUWgslLanguageFeatures_ImmediateAddressSpace != 0 {
+            out |= wgpu::WgslLanguageFeatures::ImmediateAddressSpace;
+        }
+        out
+    }
+}
