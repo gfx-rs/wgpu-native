@@ -30,7 +30,7 @@ By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594), wit
 - `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
 ### Changed
-- `wgpuDevicePoll` now takes a fourth argument, `timeout_ns`, and returns `WGPUNativePollStatus` (`QueueEmpty`/`WaitSucceeded`/`Poll`/`Timeout`) instead of `WGPUBool`. Callers must be rebuilt against the new signature; use `UINT64_MAX` for an unbounded wait. A bounded wait that runs out of time reports `WGPUNativePollStatus_Timeout` instead of panicking; the device and queue remain valid and the caller may wait again. By @matthargett.
+- `wgpuDevicePoll` now takes a fourth argument, `timeout_ns`, and returns `WGPUNativePollStatus` (`QueueEmpty`/`WaitSucceeded`/`Poll`/`Timeout`) instead of `WGPUBool`. Callers must be rebuilt against the new signature; use `0` for an unbounded wait. A bounded wait that runs out of time reports `WGPUNativePollStatus_Timeout` instead of panicking; the device and queue remain valid and the caller may wait again. By @matthargett.
 - `wgpuSurfaceDiscardTexture` returns `WGPUStatus` so callers can handle discard failures. By @matthargett.
 - `...EncoderSetImmediates` removed from wgpu.h as it's now in webgpu.h, with `size_bytes` renamed to `size` and argument order adjusted. By @Vipitis in [#592](https://github.com/gfx-rs/wgpu-native/pull/592).
 - moved 16bit norm textures into spec and out of wgpu.h `WGPUNativeTextureFormat_Rgba16Unorm` -> `WGPUTextureFormat_RGBA16Unorm`. by @Vipitis in [#tbd](tbd)
