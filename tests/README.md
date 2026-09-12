@@ -65,3 +65,27 @@ The default native callbacks remain fatal. This is not permission to unwind
 through an arbitrary C caller, nor a general panic-recovery contract for the
 native runtime. Compile-time tests check the consumer declarations and the
 32-bit `WGPUBool` polling signatures on both sides of the boundary.
+
+## Metal surface lifetime regressions
+
+On a macOS host with a Metal adapter and a window-server session:
+
+```sh
+python3 tests/run_metal_surface_tests.py --native-source /path/to/feature-checkout --target-dir /path/to/cargo-target --output /path/to/surface-results
+```
+
+The runner builds the selected runtime's static library and compiles an
+Objective-C++ consumer of the public C API. Twelve isolated cases cover old
+frame handles across present/discard/reconfigure, concurrent old-frame release,
+surface-before-texture release, unconfiguration with retained/acquired frames,
+destroyed textures, automatic discard, and explicit discard status. Every case
+checks that surface/texture/view registry entries are released. A missing Metal
+adapter fails; it is not counted as passing coverage. The JSON ledger records
+source revision/diff and library hash. `--library` is for explicitly prebuilt
+diagnostic inputs and is marked as such in the ledger.
+
+Ten cases failed against the prior runtime on M4 Max/macOS 27; the ordinary
+drop and discard-status controls passed. All twelve pass with per-acquisition
+identity tracking and retained surface ownership. This is lifetime validation,
+not screenshot, performance, or complete surface-unconfiguration coverage:
+the pinned wgpu-core API does not expose a standalone backend unconfigure call.
