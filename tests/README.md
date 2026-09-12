@@ -36,3 +36,23 @@ Header defaults can also be checked directly against the first checkout:
 ```sh
 python tests/check_headers.py --native-source /absolute/path/to/feature-checkout
 ```
+
+## Metal prerequisites and known driver behavior
+
+Shader passthrough tests need both `dxc` on PATH and the Xcode Metal Toolchain
+component (`xcodebuild -downloadComponent MetalToolchain`). They generate
+multiple shader representations even when testing only Metal.
+
+Setup applies `wgpu-metal-subgroups.patch` to the pinned upstream test. macOS
+27 on Apple M4 Max passes all 37 subgroup checks through both C dispatch and
+direct Rust wgpu. The old mandatory Metal expected-failure rule rejected this
+success. The patch permits success without broadening the three specific
+accepted older-driver panic patterns or skipping any GPU assertions. Existing
+prepared checkouts need the patch applied explicitly before `--no-setup`.
+
+The same host intermittently returns zero from the written-timestamp query
+test through both backends (4 failures in 10 isolated runs each). Its assertions
+are unchanged; preserve failed runs as evidence, not as a C-only regression or
+a passing test. `WGPU_NO_CUSTOM_BACKEND=1` runs the identical prepared test
+binary through direct Rust wgpu for comparison. Do not set it for C-backend
+acceptance; the runner's preflight intentionally rejects that bypass.

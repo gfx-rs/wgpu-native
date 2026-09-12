@@ -52,6 +52,19 @@ class RunnerTests(unittest.TestCase):
                 RUNNER.patch_file(source, "expected", "replacement")
             self.assertEqual(source.read_text(), "changed upstream")
 
+    def test_upstream_test_patch_is_checked_before_application(self):
+        with patch.object(RUNNER, "run") as run:
+            RUNNER.apply_test_patches()
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[0].args[3:5], ("apply", "--check"))
+        self.assertEqual(run.call_args_list[1].args[3], "apply")
+
+    def test_upstream_test_patch_drift_stops_application(self):
+        with patch.object(RUNNER, "run", side_effect=RuntimeError("patch drift")) as run:
+            with self.assertRaises(RuntimeError):
+                RUNNER.apply_test_patches()
+        self.assertEqual(run.call_count, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

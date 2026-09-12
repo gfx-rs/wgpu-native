@@ -1,0 +1,14 @@
+diff --git a/tests/tests/wgpu-gpu/subgroup_operations/mod.rs b/tests/tests/wgpu-gpu/subgroup_operations/mod.rs
+--- a/tests/tests/wgpu-gpu/subgroup_operations/mod.rs
++++ b/tests/tests/wgpu-gpu/subgroup_operations/mod.rs
+@@ -30,6 +30,10 @@ static SUBGROUP_OPERATIONS: GpuTestConfiguration = GpuTestConfiguration::new()
+             )
+             .expect_fail(
+                 wgpu_test::FailureCase::backend(wgpu::Backends::METAL)
++                    // macOS 27 on M4 passes all 37 checks through both native
++                    // Rust wgpu and the C backend. Allow successful execution
++                    // while accepting only the known older-driver failures below.
++                    .flaky()
+                     // 26.0 fails only test 28, and not on thread 0
+                     .panic("thread 1 failed tests: 28,\n")
+                     // 14.3 fails 27 and 28

@@ -99,6 +99,12 @@ def patch_file(file, search_for, replace):
         f.write(new_contents)
 
 
+def apply_test_patches():
+    patch = Path(__file__).resolve().parent / "tests/wgpu-metal-subgroups.patch"
+    run("git", "-C", str(LOCAL_WGPU), "apply", "--check", str(patch))
+    run("git", "-C", str(LOCAL_WGPU), "apply", str(patch))
+
+
 def main():
     global LOCAL_WGPU
     parser = argparse.ArgumentParser(description="Run wgpu tests through a selected wgpu-native runtime checkout (Python 3.11+).")
@@ -123,6 +129,7 @@ def main():
         copy_folder_into("wgpu-c-bindings")
         copy_folder_into("ffi")
         apply_glue(args.offline)
+        apply_test_patches()
         # wgpu-c-backend sits one directory deeper under .local-wgpu than it
         # does in the wgpu-native workspace, so fix its path to wgpu-native.
         # This edits our copied-in file, not wgpu, so it stays here.
