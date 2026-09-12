@@ -395,14 +395,13 @@ impl Drop for WGPUShaderModuleImpl {
 struct SurfaceData {
     error_sink: ErrorSink,
     texture_data: TextureData,
+    acquired_texture: Option<id::TextureId>,
 }
 
 pub struct WGPUSurfaceImpl {
     context: Arc<Context>,
     id: id::SurfaceId,
     data: Mutex<Option<SurfaceData>>,
-    // Shared bool between Texture & Surface to track surface_present calls
-    has_surface_presented: Arc<atomic::AtomicBool>,
 }
 impl Drop for WGPUSurfaceImpl {
     fn drop(&mut self) {
@@ -427,20 +426,26 @@ pub struct WGPUTextureImpl {
     id: id::TextureId,
     error_sink: ErrorSink,
     data: TextureData,
-    surface_id: Option<id::SurfaceId>,
-    // Shared bool between Texture & Surface to track surface_present calls
-    has_surface_presented: Arc<atomic::AtomicBool>,
+    // Keep the surface registry entry alive until its last texture is released.
+    surface: Option<Arc<WGPUSurfaceImpl>>,
 }
 impl Drop for WGPUTextureImpl {
     fn drop(&mut self) {
         if thread::panicking() {
             return;
         }
-        if let Some(surface_id) = self.surface_id {
-            if !self.has_surface_presented.load(atomic::Ordering::SeqCst) {
-                match self.context.surface_texture_discard(surface_id) {
-                    Ok(_) => (),
-                    Err(cause) => handle_error_fatal(cause, "wgpuTextureRelease"),
+        if let Some(surface) = &self.surface {
+            let mut data = surface.data.lock();
+            if let Some(data) = data.as_mut() {
+                // A retained texture from an earlier presentation must never
+                // discard a newer acquisition. Serialize release with acquire,
+                // present, configure, and explicit discard on this surface.
+                if data.acquired_texture == Some(self.id) {
+                    data.acquired_texture = None;
+                    match self.context.surface_texture_discard(surface.id) {
+                        Ok(()) | Err(wgc::present::SurfaceError::TextureDestroyed) => (),
+                        Err(cause) => handle_error_fatal(cause, "wgpuTextureRelease"),
+                    }
                 }
             }
         }
@@ -3107,8 +3112,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
         context: context.clone(),
         id: texture_id,
         error_sink: error_sink.clone(),
-        surface_id: None,
-        has_surface_presented: Arc::default(),
+        surface: None,
         data: TextureData {
             usage: descriptor.usage,
             dimension: descriptor.dimension,
@@ -3376,7 +3380,6 @@ pub unsafe extern "C-unwind" fn wgpuInstanceCreateSurface(
         context: context.clone(),
         id: surface_id,
         data: Mutex::default(),
-        has_surface_presented: Arc::default(),
     }))
 }
 
@@ -4700,12 +4703,13 @@ pub unsafe extern "C-unwind" fn wgpuSurfaceConfigure(
         WGPUSType_SurfaceConfigurationExtras => native::WGPUSurfaceConfigurationExtras
     ));
 
+    let mut surface_data_guard = surface.data.lock();
     match context.surface_configure(surface.id, device.id, &surface_config) {
         Some(cause) => handle_error_fatal(cause, "wgpuSurfaceConfigure"),
         None => {
-            let mut surface_data_guard = surface.data.lock();
             *surface_data_guard = Some(SurfaceData {
                 error_sink: device.error_sink.clone(),
+                acquired_texture: None,
                 texture_data: TextureData {
                     usage: config.usage,
                     dimension: native::WGPUTextureDimension_2D,
@@ -4719,9 +4723,6 @@ pub unsafe extern "C-unwind" fn wgpuSurfaceConfigure(
                     sample_count: 1,
                 },
             });
-            surface
-                .has_surface_presented
-                .store(false, atomic::Ordering::SeqCst);
         }
     };
 }
@@ -4843,12 +4844,13 @@ pub unsafe extern "C-unwind" fn wgpuSurfaceGetCurrentTexture(
     surface: native::WGPUSurface,
     surface_texture: Option<&mut native::WGPUSurfaceTexture>,
 ) {
+    let surface_handle = surface;
     let surface = surface.as_ref().expect("invalid surface");
     let context = &surface.context;
     let surface_texture = surface_texture.expect("invalid return pointer \"surface_texture\"");
 
-    let surface_data_guard = surface.data.lock();
-    let surface_data = match surface_data_guard.as_ref() {
+    let mut surface_data_guard = surface.data.lock();
+    let surface_data = match surface_data_guard.as_mut() {
         Some(surface_data) => surface_data,
         None => handle_error_fatal(
             wgc::present::SurfaceError::NotConfigured,
@@ -4858,9 +4860,6 @@ pub unsafe extern "C-unwind" fn wgpuSurfaceGetCurrentTexture(
 
     match context.surface_get_current_texture(surface.id, None) {
         Ok(wgc::present::SurfaceOutput { status, texture }) => {
-            surface
-                .has_surface_presented
-                .store(false, atomic::Ordering::SeqCst);
             surface_texture.status = match status {
                 wgt::SurfaceStatus::Good => {
                     native::WGPUSurfaceGetCurrentTextureStatus_SuccessOptimal
@@ -4878,14 +4877,19 @@ pub unsafe extern "C-unwind" fn wgpuSurfaceGetCurrentTexture(
                 }
             };
             surface_texture.texture = match texture {
-                Some(texture_id) => Arc::into_raw(Arc::new(WGPUTextureImpl {
-                    context: context.clone(),
-                    id: texture_id,
-                    error_sink: surface_data.error_sink.clone(),
-                    data: surface_data.texture_data,
-                    surface_id: Some(surface.id),
-                    has_surface_presented: surface.has_surface_presented.clone(),
-                })),
+                Some(texture_id) => {
+                    surface_data.acquired_texture = Some(texture_id);
+                    // The caller owns a live Arc-backed surface handle. Retain
+                    // a separate reference for the returned texture handle.
+                    Arc::increment_strong_count(surface_handle);
+                    Arc::into_raw(Arc::new(WGPUTextureImpl {
+                        context: context.clone(),
+                        id: texture_id,
+                        error_sink: surface_data.error_sink.clone(),
+                        data: surface_data.texture_data,
+                        surface: Some(Arc::from_raw(surface_handle)),
+                    }))
+                }
                 None => std::ptr::null_mut(),
             };
         }
@@ -4898,6 +4902,12 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
     let surface = surface.as_ref().expect("invalid surface");
     let context = &surface.context;
 
+    let mut data = surface.data.lock();
+    if let Some(data) = data.as_mut() {
+        // Core consumes the acquired image even when presentation subsequently
+        // fails, e.g. because the caller explicitly destroyed the texture.
+        data.acquired_texture = None;
+    }
     let _status = match context.surface_present(surface.id) {
         Ok(status) => status,
         Err(cause) => {
@@ -4905,10 +4915,6 @@ pub unsafe extern "C" fn wgpuSurfacePresent(surface: native::WGPUSurface) -> nat
             return native::WGPUStatus_Error;
         }
     };
-
-    surface
-        .has_surface_presented
-        .store(true, atomic::Ordering::SeqCst);
 
     native::WGPUStatus_Success
 }
@@ -4918,6 +4924,10 @@ pub unsafe extern "C" fn wgpuSurfaceDiscardTexture(
     surface: native::WGPUSurface,
 ) -> native::WGPUStatus {
     let surface = surface.as_ref().expect("invalid surface");
+    let mut data = surface.data.lock();
+    if let Some(data) = data.as_mut() {
+        data.acquired_texture = None;
+    }
     match surface.context.surface_texture_discard(surface.id) {
         Ok(_) => (),
         Err(cause) => {
@@ -4925,10 +4935,6 @@ pub unsafe extern "C" fn wgpuSurfaceDiscardTexture(
             return native::WGPUStatus_Error;
         }
     }
-    // Mark as presented so the texture drop doesn't attempt a second discard.
-    surface
-        .has_surface_presented
-        .store(true, atomic::Ordering::SeqCst);
     native::WGPUStatus_Success
 }
 
@@ -4936,10 +4942,14 @@ pub unsafe extern "C" fn wgpuSurfaceDiscardTexture(
 pub unsafe extern "C" fn wgpuSurfaceUnconfigure(surface: native::WGPUSurface) {
     let surface = surface.as_ref().expect("invalid surface");
     let mut surface_data_guard = surface.data.lock();
-    let _ = surface_data_guard.take(); // drop SurfaceData
-    surface
-        .has_surface_presented
-        .store(false, atomic::Ordering::SeqCst);
+    if let Some(data) = surface_data_guard.take() {
+        if data.acquired_texture.is_some() {
+            match surface.context.surface_texture_discard(surface.id) {
+                Ok(()) | Err(wgc::present::SurfaceError::TextureDestroyed) => (),
+                Err(cause) => handle_error_fatal(cause, "wgpuSurfaceUnconfigure"),
+            }
+        }
+    }
 }
 
 #[no_mangle]

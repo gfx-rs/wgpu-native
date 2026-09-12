@@ -25,6 +25,7 @@ By @inner-daemons in [#594](https://github.com/gfx-rs/wgpu-native/pull/594), wit
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
 
 ### Fixed
+- Track surface acquisitions by texture identity and retain the surface until its textures are released. Dropping an older presented or discarded texture no longer discards a newer frame; unconfiguration releases outstanding acquisitions, and destroyed textures do not trigger duplicate discard failures. By @matthargett.
 - Populate and free adapter-info extras anywhere in the output chain, not only at its head. By @matthargett.
 - Initialize every native limit to its undefined sentinel; accept external-texture binding layouts; expose valid acceleration-structure buffer usages and atomic texture constants; handle unavailable presentation timestamps and surface-discard validation errors without aborting. By @matthargett.
 - `wgpuBufferMayAsync` now correctly handles the case where size is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
