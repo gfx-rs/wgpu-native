@@ -9,8 +9,8 @@ on:
     branches-ignore: []
 
 env:
-  CI_RUST_VERSION: "1.91"
-  CI_RUST_MSRV: "1.87"
+  CI_RUST_VERSION: "1.93"
+  CI_RUST_MSRV: "1.93"
   CARGO_INCREMENTAL: false
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: full
