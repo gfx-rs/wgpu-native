@@ -9,6 +9,7 @@ CPU checks (Python 3.11+ and C/C++ compilers are required):
 ```sh
 cargo test --locked -p wgpu-native --tests
 cargo test --locked -p wgpu-native --no-default-features --tests
+cargo test --locked -p wgpu-c-bindings --tests
 python tests/check_headers.py
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -56,3 +57,11 @@ are unchanged; preserve failed runs as evidence, not as a C-only regression or
 a passing test. `WGPU_NO_CUSTOM_BACKEND=1` runs the identical prepared test
 binary through direct Rust wgpu for comparison. Do not set it for C-backend
 acceptance; the runner's preflight intentionally rejects that bypass.
+
+The generated Rust bindings preserve `C-unwind` only for the 14 runtime exports
+with that ABI. Callback types remain `extern "C"`; Rust callbacks must catch
+panics before returning and resume them only after the C call has completed.
+The default native callbacks remain fatal. This is not permission to unwind
+through an arbitrary C caller, nor a general panic-recovery contract for the
+native runtime. Compile-time tests check the consumer declarations and the
+32-bit `WGPUBool` polling signatures on both sides of the boundary.

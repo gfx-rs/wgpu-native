@@ -40,8 +40,7 @@ unsafe impl Sync for CDevice {}
 
 impl Drop for CDevice {
     fn drop(&mut self) {
-        // Panics from wgpuDeviceRelease abort (extern "C" + Rust 1.71 RFC 2945).
-        // Needs extern "C-unwind" in wgpu-native to become catchable.
+        // This export and its generated declaration both permit Rust unwinding.
         unsafe { wgpuDeviceRelease(self.ptr) };
     }
 }
@@ -1964,11 +1963,8 @@ impl QueueInterface for CQueue {
                 cb.ptr
             })
             .collect();
-        // NOTE: wgpu-native routes submit errors through handle_error (→ uncaptured error
-        // callback) for validation errors, and handle_error_fatal for fatal ones. Fatal
-        // errors panic inside extern "C" → process aborts before any catch_unwind on our
-        // side can fire. Validation errors surface via resume_callback_panic() at the next
-        // device operation.
+        // Fatal errors may unwind through this C-unwind export. Callback panics
+        // are caught at the C callback boundary and resumed by device operations.
         unsafe { wgpuQueueSubmitForIndex(self.ptr, ptrs.len(), ptrs.as_ptr()) }
     }
 

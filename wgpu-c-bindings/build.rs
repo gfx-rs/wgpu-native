@@ -38,6 +38,27 @@ fn main() {
         .layout_tests(true)
         .clang_macro_fallback();
 
+    // The C header cannot encode Rust unwind semantics. Match only the runtime
+    // exports that explicitly permit unwinding; callbacks remain plain C.
+    for function in [
+        "wgpuBufferGetConstMappedRange",
+        "wgpuBufferGetMappedRange",
+        "wgpuDeviceCreateRenderBundleEncoder",
+        "wgpuDeviceRelease",
+        "wgpuInstanceCreateSurface",
+        "wgpuInstanceProcessEvents",
+        "wgpuInstancePollAllDevices",
+        "wgpuQueueSubmit",
+        "wgpuRenderBundleEncoderFinish",
+        "wgpuSurfaceConfigure",
+        "wgpuSurfaceGetCurrentTexture",
+        "wgpuTextureRelease",
+        "wgpuQueueSubmitForIndex",
+        "wgpuDevicePoll",
+    ] {
+        builder = builder.override_abi(bindgen::Abi::CUnwind, function);
+    }
+
     if let Ok(target) = env::var("TARGET") {
         match target.as_str() {
             "aarch64-apple-ios" => {
