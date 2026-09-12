@@ -3534,11 +3534,11 @@ pub unsafe extern "C" fn wgpuInstanceRelease(instance: native::WGPUInstance) {
 #[no_mangle]
 pub unsafe extern "C-unwind" fn wgpuInstancePollAllDevices(
     instance: native::WGPUInstance,
-    wait: bool,
-) -> bool {
+    wait: native::WGPUBool,
+) -> native::WGPUBool {
     let context = &instance.as_ref().expect("invalid instance").context;
-    match context.poll_all_devices(wait) {
-        Ok(all_empty) => all_empty,
+    match context.poll_all_devices(wait != 0) {
+        Ok(all_empty) => all_empty as native::WGPUBool,
         Err(cause) => handle_error_fatal(cause, "wgpuInstancePollAllDevices"),
     }
 }
@@ -5253,7 +5253,7 @@ pub unsafe extern "C-unwind" fn wgpuQueueSubmitForIndex(
 #[no_mangle]
 pub unsafe extern "C-unwind" fn wgpuDevicePoll(
     device: native::WGPUDevice,
-    wait: bool,
+    wait: native::WGPUBool,
     submission_index: Option<&native::WGPUSubmissionIndex>,
     timeout_ns: u64,
 ) -> native::WGPUNativePollStatus {
@@ -5262,7 +5262,7 @@ pub unsafe extern "C-unwind" fn wgpuDevicePoll(
         (device.id, &device.context)
     };
 
-    let maintain = match wait {
+    let maintain = match wait != 0 {
         true => wgt::PollType::Wait {
             submission_index: submission_index.copied(),
             timeout: (timeout_ns != 0).then(|| std::time::Duration::from_nanos(timeout_ns)),
