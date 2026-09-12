@@ -19,6 +19,7 @@ skip = [
     { crate = "hashbrown@0.15", reason = "gpu-descriptor and petgraph lag behind" },
     { crate = "hashbrown@0.16", reason = "gpu-allocator and naga lag behind" },
     { crate = "rustc-hash@1", reason = "wgpu deps still use v1" },
+    { crate = "linux-raw-sys", reason = "drm crate depends on multiple versions" },
     { crate = "syn@2", reason = "transitive dependencies have not migrated to syn 3" },
 ]
 
