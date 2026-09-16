@@ -120,13 +120,9 @@ struct WGPULogCallbackInfo;
  * @{
  */
 
-/**
- * FIXME: WGPUAddressMode => WGPUNativeAddressMode
- */
-_wgpu_EXTEND_ENUM(WGPUAddressMode, WGPUAddressMode_ClampToBorder, 0x00000004);
+_wgpu_EXTEND_ENUM(WGPUAddressMode, WGPUNativeAddressMode_ClampToBorder, 0x00000004);
 
 /**
- * FIXME: WGPUFeatureName => WGPUNativeFeature
  * Native-only device features.
  *
  * These extend the standard @c WGPUFeatureName values and can be passed to
@@ -162,7 +158,7 @@ _wgpu_EXTEND_ENUM(WGPUAddressMode, WGPUAddressMode_ClampToBorder, 0x00000004);
  *
  * This is a web and native feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_Immediates, 0x00030001);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_Immediates, 0x00030001);
 /**
  * Enables device-specific texture format features.
  *
@@ -181,7 +177,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_Immediates, 0x00030001);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureAdapterSpecificFormatFeatures, 0x00030002);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureAdapterSpecificFormatFeatures, 0x00030002);
 /**
  * Allows the use of a buffer containing the actual number of draw calls.
  *
@@ -199,7 +195,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureAdapterSpecificFormatF
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MultiDrawIndirectCount, 0x00030004);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_MultiDrawIndirectCount, 0x00030004);
 /**
  * Enables bindings of writable storage buffers and textures visible
  * to vertex shaders.
@@ -212,7 +208,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MultiDrawIndirectCount, 0x000
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_VertexWritableStorage, 0x00030005);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_VertexWritableStorage, 0x00030005);
 /**
  * Allows the user to create uniform arrays of textures in shaders:
  *
@@ -233,7 +229,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_VertexWritableStorage, 0x0003
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureBindingArray, 0x00030006);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureBindingArray, 0x00030006);
 /**
  * Allows shaders to index sampled texture and storage buffer resource
  * arrays with dynamically non-uniform values:
@@ -257,7 +253,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureBindingArray, 0x000300
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SampledTextureAndStorageBufferArrayNonUniformIndexing, 0x00030007);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_SampledTextureAndStorageBufferArrayNonUniformIndexing, 0x00030007);
 /**
  * Enables use of Pipeline Statistics Queries. These queries report the
  * count of various operations performed between the start and stop call.
@@ -276,7 +272,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SampledTextureAndStorageBuffe
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PipelineStatisticsQuery, 0x00030008);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_PipelineStatisticsQuery, 0x00030008);
 /**
  * Allows the user to create uniform arrays of storage buffers or
  * textures in shaders, if @ref WGPUNativeFeature_BufferBindingArray
@@ -292,7 +288,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PipelineStatisticsQuery, 0x00
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_StorageResourceBindingArray, 0x00030009);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_StorageResourceBindingArray, 0x00030009);
 /**
  * Allows the user to create bind groups containing arrays with fewer
  * bindings than the @c WGPUBindGroupLayout requires.
@@ -303,7 +299,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_StorageResourceBindingArray, 
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PartiallyBoundBindingArray, 0x0003000A);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_PartiallyBoundBindingArray, 0x0003000A);
 /**
  * Enables normalized 16-bit texture formats:
  * @ref WGPUTextureFormat_R16Unorm, @ref WGPUTextureFormat_R16Snorm,
@@ -317,7 +313,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PartiallyBoundBindingArray, 0
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureFormat16bitNorm, 0x0003000B);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureFormat16bitNorm, 0x0003000B);
 /**
  * Enables ASTC HDR family of compressed textures.
  *
@@ -337,7 +333,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureFormat16bitNorm, 0x000
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureCompressionAstcHdr, 0x0003000C);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureCompressionAstcHdr, 0x0003000C);
 /**
  * Removes the WebGPU restriction that @c MAP_READ and @c MAP_WRITE
  * buffer usages must be paired exclusively with @c COPY_DST and
@@ -354,7 +350,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureCompressionAstcHdr, 0x
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MappablePrimaryBuffers, 0x0003000E);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_MappablePrimaryBuffers, 0x0003000E);
 /**
  * Allows the user to create arrays of buffers in shaders:
  *
@@ -372,16 +368,16 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MappablePrimaryBuffers, 0x000
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_BufferBindingArray, 0x0003000F);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_BufferBindingArray, 0x0003000F);
 /**
  * Allows shaders to index storage texture resource
  * arrays with dynamically non-uniform values.
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_StorageTextureArrayNonUniformIndexing, 0x00030010);
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_AddressModeClampToZero, 0x00030011);
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_AddressModeClampToBorder, 0x00030012);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_StorageTextureArrayNonUniformIndexing, 0x00030010);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_AddressModeClampToZero, 0x00030011);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_AddressModeClampToBorder, 0x00030012);
 /**
  * Allows the user to set @ref WGPUPolygonMode_Line in
  * @ref WGPUPrimitiveStateExtras::polygonMode.
@@ -396,7 +392,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_AddressModeClampToBorder, 0x0
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PolygonModeLine, 0x00030013);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_PolygonModeLine, 0x00030013);
 /**
  * Allows the user to set @ref WGPUPolygonMode_Point in
  * @ref WGPUPrimitiveStateExtras::polygonMode.
@@ -409,7 +405,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PolygonModeLine, 0x00030013);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PolygonModePoint, 0x00030014);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_PolygonModePoint, 0x00030014);
 /**
  * Allows the user to enable overestimation conservative rasterization
  * via @ref WGPUPrimitiveStateExtras::conservative.
@@ -422,7 +418,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PolygonModePoint, 0x00030014)
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ConservativeRasterization, 0x00030015);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ConservativeRasterization, 0x00030015);
 /**
  * Enables clear to zero for textures.
  *
@@ -431,7 +427,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ConservativeRasterization, 0x
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ClearTexture, 0x00030016);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ClearTexture, 0x00030016);
 /**
  * Enables multiview render passes and `builtin(view_index)` in vertex/mesh shaders.
  *
@@ -443,7 +439,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ClearTexture, 0x00030016);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_Multiview, 0x00030018);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_Multiview, 0x00030018);
 /**
  * Enables using 64-bit types for vertex attributes.
  *
@@ -451,7 +447,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_Multiview, 0x00030018);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_VertexAttribute64bit, 0x00030019);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_VertexAttribute64bit, 0x00030019);
 /**
  * Allows for creation of textures of format
  * @ref WGPUNativeTextureFormat_NV12.
@@ -462,7 +458,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_VertexAttribute64bit, 0x00030
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureFormatNv12, 0x0003001A);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureFormatNv12, 0x0003001A);
 /**
  * Allows for the creation of ray-tracing queries within shaders.
  *
@@ -474,7 +470,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureFormatNv12, 0x0003001A
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_RayQuery, 0x0003001C);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_RayQuery, 0x0003001C);
 /**
  * Enables 64-bit floating point types in SPIR-V shaders.
  *
@@ -487,7 +483,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_RayQuery, 0x0003001C);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderF64, 0x0003001D);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderF64, 0x0003001D);
 /**
  * Allows shaders to use i16. Not currently supported in naga, only
  * available through SPIR-V passthrough.
@@ -497,7 +493,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderF64, 0x0003001D);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderI16, 0x0003001E);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderI16, 0x0003001E);
 /**
  * Allows shaders to use the @c early_depth_test attribute.
  *
@@ -519,7 +515,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderI16, 0x0003001E);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderEarlyDepthTest, 0x00030020);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderEarlyDepthTest, 0x00030020);
 /**
  * Allows compute and fragment shaders to use the subgroup operation
  * built-ins and perform subgroup operations (except barriers).
@@ -531,7 +527,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderEarlyDepthTest, 0x00030
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_Subgroup, 0x00030021);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_Subgroup, 0x00030021);
 /**
  * Allows vertex shaders to use the subgroup operation built-ins and
  * perform subgroup operations (except barriers).
@@ -541,7 +537,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_Subgroup, 0x00030021);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SubgroupVertex, 0x00030022);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_SubgroupVertex, 0x00030022);
 /**
  * Allows compute shaders to use the subgroup barrier.
  *
@@ -553,7 +549,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SubgroupVertex, 0x00030022);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SubgroupBarrier, 0x00030023);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_SubgroupBarrier, 0x00030023);
 /**
  * Allows for timestamp queries directly on command encoders.
  *
@@ -567,7 +563,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SubgroupBarrier, 0x00030023);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TimestampQueryInsideEncoders, 0x00030024);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TimestampQueryInsideEncoders, 0x00030024);
 /**
  * Allows for timestamp queries inside render and compute passes.
  *
@@ -587,7 +583,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TimestampQueryInsideEncoders,
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TimestampQueryInsidePasses, 0x00030025);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TimestampQueryInsidePasses, 0x00030025);
 /**
  * Allows shaders to use i64 and u64.
  *
@@ -598,7 +594,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TimestampQueryInsidePasses, 0
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderInt64, 0x00030026);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderInt64, 0x00030026);
 /**
  * Allows shaders to use f32 atomic load, store, add, sub, and exchange.
  *
@@ -608,7 +604,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderInt64, 0x00030026);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderFloat32Atomic, 0x00030027);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderFloat32Atomic, 0x00030027);
 /**
  * Enables image atomic fetch add, and, xor, or, min, and max for R32Uint and R32Sint textures.
  *
@@ -619,7 +615,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderFloat32Atomic, 0x000300
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureAtomic, 0x00030028);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureAtomic, 0x00030028);
 /**
  * Allows for creation of textures of format
  * @ref WGPUNativeTextureFormat_P010.
@@ -630,7 +626,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureAtomic, 0x00030028);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureFormatP010, 0x00030029);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureFormatP010, 0x00030029);
 /**
  * Allows the use of pipeline cache objects
  *
@@ -641,7 +637,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureFormatP010, 0x00030029
  * - DX12
  * - Metal
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PipelineCache, 0x0003002B);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_PipelineCache, 0x0003002B);
 /**
  * Allows shaders to use i64 and u64 atomic min and max.
  *
@@ -652,7 +648,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_PipelineCache, 0x0003002B);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderInt64AtomicMinMax, 0x0003002C);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderInt64AtomicMinMax, 0x0003002C);
 /**
  * Allows shaders to use all i64 and u64 atomic operations.
  *
@@ -662,7 +658,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderInt64AtomicMinMax, 0x00
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderInt64AtomicAllOps, 0x0003002D);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderInt64AtomicAllOps, 0x0003002D);
 /**
  * Enables R64Uint image atomic min and max.
  *
@@ -673,7 +669,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderInt64AtomicAllOps, 0x00
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureInt64Atomic, 0x00030030);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_TextureInt64Atomic, 0x00030030);
 /**
  * Enables shader barycentric coordinates.
  *
@@ -684,7 +680,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_TextureInt64Atomic, 0x0003003
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderBarycentrics, 0x00030037);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderBarycentrics, 0x00030037);
 /**
  * Enables using multiview where not all texture array layers are rendered to in a single render pass/render pipeline. Making
  * use of this feature also requires enabling `Features::MULTIVIEW`.
@@ -695,8 +691,8 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderBarycentrics, 0x0003003
  *
  * While metal supports this in theory, the behavior of `view_index` differs from vulkan and dx12 so the feature isn't exposed.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_SelectiveMultiview, 0x00030038);
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MultisampleArray, 0x0003003A);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_SelectiveMultiview, 0x00030038);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_MultisampleArray, 0x0003003A);
 /**
  * Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
  * or simdgroup matrix operations on Apple GPUs).
@@ -719,7 +715,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MultisampleArray, 0x0003003A)
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_CooperativeMatrix, 0x0003003B);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_CooperativeMatrix, 0x0003003B);
 /**
  * Enables shader per-vertex attributes.
  *
@@ -728,7 +724,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_CooperativeMatrix, 0x0003003B
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderPerVertex, 0x0003003C);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderPerVertex, 0x0003003C);
 /**
  * Enables shader `draw_index` builtin.
  *
@@ -742,7 +738,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderPerVertex, 0x0003003C);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderDrawIndex, 0x0003003D);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_ShaderDrawIndex, 0x0003003D);
 /**
  * Allows the user to create arrays of acceleration structures in shaders:
  *
@@ -757,7 +753,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_ShaderDrawIndex, 0x0003003D);
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_AccelerationStructureBindingArray, 0x0003003E);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_AccelerationStructureBindingArray, 0x0003003E);
 /**
  * Enables the `@coherent` memory decoration on storage buffer variables.
  *
@@ -769,7 +765,7 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_AccelerationStructureBindingA
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MemoryDecorationCoherent, 0x0003003F);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_MemoryDecorationCoherent, 0x0003003F);
 /**
  * Enables the `@volatile` memory decoration on storage buffer variables.
  *
@@ -779,12 +775,9 @@ _wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MemoryDecorationCoherent, 0x0
  *
  * This is a native only feature.
  */
-_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUFeatureName_MemoryDecorationVolatile, 0x00030040);
+_wgpu_EXTEND_ENUM(WGPUFeatureName, WGPUNativeFeature_MemoryDecorationVolatile, 0x00030040);
 
-/**
- * FIXME: WGPUQueryType => WGPUNativeQueryType
- */
-_wgpu_EXTEND_ENUM(WGPUQueryType, WGPUQueryType_PipelineStatistics, 0x00030000);
+_wgpu_EXTEND_ENUM(WGPUQueryType, WGPUNativeQueryType_PipelineStatistics, 0x00030000);
 
 /**
  * Identifies @ref WGPUDeviceExtras.
@@ -869,21 +862,18 @@ _wgpu_EXTEND_ENUM(WGPUSType, WGPUSType_SurfaceSourceOhosNativeWindow, 0x0003000C
 _wgpu_EXTEND_ENUM(WGPUSurfaceGetCurrentTextureStatus, WGPUSurfaceGetCurrentTextureStatus_Occluded, 0x00030001);
 
 /**
- * FIXME: WGPUTextureFormat => WGPUNativeTextureFormat
- */
-/**
  * YUV 4:2:0 chroma subsampled format (NV12).
  * Plane 0 contains R8Unorm luminance (Y), Plane 1 contains Rg8Unorm
  * chrominance (UV) at half width and half height.
  * Requires @ref WGPUNativeFeature_TextureFormatNv12.
  */
-_wgpu_EXTEND_ENUM(WGPUTextureFormat, WGPUTextureFormat_NV12, 0x00030007);
+_wgpu_EXTEND_ENUM(WGPUTextureFormat, WGPUNativeTextureFormat_NV12, 0x00030007);
 /**
  * YUV 4:2:0 with 10 bits used from 16-bit channels (P010).
  * Plane 0 contains R16Unorm luminance (Y), Plane 1 contains Rg16Unorm
  * chrominance (UV) at half width and half height.
  */
-_wgpu_EXTEND_ENUM(WGPUTextureFormat, WGPUTextureFormat_P010, 0x00030008);
+_wgpu_EXTEND_ENUM(WGPUTextureFormat, WGPUNativeTextureFormat_P010, 0x00030008);
 
 /**
  * Discriminant for WGPUNativeDisplayHandle.
@@ -957,42 +947,39 @@ typedef enum WGPUDx12SwapchainKind {
     WGPUDx12SwapchainKind_Force32 = 0x7FFFFFFF
 } WGPUDx12SwapchainKind WGPU_ENUM_ATTRIBUTE;
 
-/**
- * FIXME: V60 => V6_0, etc.
- */
 typedef enum WGPUDxcMaxShaderModel {
     /**
      * `0`.
      */
-    WGPUDxcMaxShaderModel_V60 = 0x00000000,
+    WGPUDxcMaxShaderModel_V6_0 = 0x00000000,
     /**
      * Shader Model 6.1
      */
-    WGPUDxcMaxShaderModel_V61 = 0x00000001,
+    WGPUDxcMaxShaderModel_V6_1 = 0x00000001,
     /**
      * Shader Model 6.2
      */
-    WGPUDxcMaxShaderModel_V62 = 0x00000002,
+    WGPUDxcMaxShaderModel_V6_2 = 0x00000002,
     /**
      * Shader Model 6.3
      */
-    WGPUDxcMaxShaderModel_V63 = 0x00000003,
+    WGPUDxcMaxShaderModel_V6_3 = 0x00000003,
     /**
      * Shader Model 6.4
      */
-    WGPUDxcMaxShaderModel_V64 = 0x00000004,
+    WGPUDxcMaxShaderModel_V6_4 = 0x00000004,
     /**
      * Shader Model 6.5
      */
-    WGPUDxcMaxShaderModel_V65 = 0x00000005,
+    WGPUDxcMaxShaderModel_V6_5 = 0x00000005,
     /**
      * Shader Model 6.6
      */
-    WGPUDxcMaxShaderModel_V66 = 0x00000006,
+    WGPUDxcMaxShaderModel_V6_6 = 0x00000006,
     /**
      * Shader Model 6.7
      */
-    WGPUDxcMaxShaderModel_V67 = 0x00000007,
+    WGPUDxcMaxShaderModel_V6_7 = 0x00000007,
     WGPUDxcMaxShaderModel_Force32 = 0x7FFFFFFF
 } WGPUDxcMaxShaderModel WGPU_ENUM_ATTRIBUTE;
 
@@ -1359,14 +1346,12 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_MeshShaderPrimitive
  */
 
 /**
- * FIXME: remove WGPULogCallbackInfo, remove userdata2, userdata1 => userdata
- *
  * See also @ref CallbackError.
  *
  * @param message
  * This parameter is @ref PassedWithoutOwnership.
  */
-typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, WGPU_NULLABLE void* userdata1, WGPU_NULLABLE void* userdata2) WGPU_FUNCTION_ATTRIBUTE;
+typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, WGPU_NULLABLE void* userdata) WGPU_FUNCTION_ATTRIBUTE;
 
 /** @} */
 
@@ -1384,26 +1369,6 @@ typedef void (*WGPULogCallback)(WGPULogLevel level, WGPUStringView message, WGPU
  * @{
  */
 
-/**
- * FIXME: remove WGPULogCallbackInfo, remove userdata2, userdata1 => userdata
- */
-typedef struct WGPULogCallbackInfo {
-    WGPUChainedStruct * nextInChain;
-    WGPULogCallback callback;
-    WGPU_NULLABLE void* userdata1;
-    WGPU_NULLABLE void* userdata2;
-} WGPULogCallbackInfo WGPU_STRUCTURE_ATTRIBUTE;
-
-/**
- * Initializer for @ref WGPULogCallbackInfo.
- */
-#define WGPU_LOG_CALLBACK_INFO_INIT _wgpu_MAKE_INIT_STRUCT(WGPULogCallbackInfo, { \
-    /*.nextInChain=*/NULL _wgpu_COMMA \
-    /*.callback=*/NULL _wgpu_COMMA \
-    /*.userdata1=*/NULL _wgpu_COMMA \
-    /*.userdata2=*/NULL _wgpu_COMMA \
-})
-
 /** @} */
 
 /**
@@ -1412,35 +1377,29 @@ typedef struct WGPULogCallbackInfo {
 typedef struct WGPUBindGroupEntryExtras {
     WGPUChainedStruct chain;
     /**
+     * The `INIT` macro sets this to `NULL`.
+     */
+    WGPU_NULLABLE WGPUBuffer const * buffers;
+    /**
      * Array count for `buffers`. The `INIT` macro sets this to 0.
      */
     size_t bufferCount;
     /**
-     * FIXME: swap count and pointer
-     *
      * The `INIT` macro sets this to `NULL`.
      */
-    WGPU_NULLABLE WGPUBuffer const * buffers;
+    WGPU_NULLABLE WGPUSampler const * samplers;
     /**
      * Array count for `samplers`. The `INIT` macro sets this to 0.
      */
     size_t samplerCount;
     /**
-     * FIXME: swap count and pointer
-     *
      * The `INIT` macro sets this to `NULL`.
      */
-    WGPU_NULLABLE WGPUSampler const * samplers;
+    WGPU_NULLABLE WGPUTextureView const * textureViews;
     /**
      * Array count for `textureViews`. The `INIT` macro sets this to 0.
      */
     size_t textureViewCount;
-    /**
-     * FIXME: swap count and pointer
-     *
-     * The `INIT` macro sets this to `NULL`.
-     */
-    WGPU_NULLABLE WGPUTextureView const * textureViews;
 } WGPUBindGroupEntryExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
@@ -1692,15 +1651,13 @@ typedef struct WGPUPrimitiveStateExtras {
 typedef struct WGPUQuerySetDescriptorExtras {
     WGPUChainedStruct chain;
     /**
-     * Array count for `pipelineStatistics`. The `INIT` macro sets this to 0.
-     */
-    size_t pipelineStatisticCount;
-    /**
-     * FIXME: swap count and pointer
-     *
      * The `INIT` macro sets this to `NULL`.
      */
     WGPUPipelineStatisticName const * pipelineStatistics;
+    /**
+     * Array count for `pipelineStatistics`. The `INIT` macro sets this to 0.
+     */
+    size_t pipelineStatisticCount;
 } WGPUQuerySetDescriptorExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
@@ -1989,8 +1946,6 @@ typedef struct WGPUXlibDisplayHandle {
 })
 
 /**
- * FIXME: Needs `data` union
- *
  * Platform display connection, passed as a field of @ref WGPUInstanceExtras.
  *
  * This is a tagged union. Set @c type to indicate which variant is active, then
@@ -2000,37 +1955,16 @@ typedef struct WGPUXlibDisplayHandle {
  * Currently required by the GLES backend when presenting on Wayland. Other
  * backends ignore this field. If the instance is created with a display handle,
  * all surfaces created from it must use the same display connection.
- *
- * Default values can be set using @ref WGPU_NATIVE_DISPLAY_HANDLE_INIT as initializer.
  */
 typedef struct WGPUNativeDisplayHandle {
-    /**
-     * The `INIT` macro sets this to (@ref WGPUNativeDisplayHandleType)0.
-     */
     WGPUNativeDisplayHandleType type;
-    /**
-     * The `INIT` macro sets this to @ref WGPU_XLIB_DISPLAY_HANDLE_INIT.
-     */
-    WGPUXlibDisplayHandle xlib;
-    /**
-     * The `INIT` macro sets this to @ref WGPU_XCB_DISPLAY_HANDLE_INIT.
-     */
-    WGPUXcbDisplayHandle xcb;
-    /**
-     * The `INIT` macro sets this to @ref WGPU_WAYLAND_DISPLAY_HANDLE_INIT.
-     */
-    WGPUWaylandDisplayHandle wayland;
-} WGPUNativeDisplayHandle WGPU_STRUCTURE_ATTRIBUTE;
 
-/**
- * Initializer for @ref WGPUNativeDisplayHandle.
- */
-#define WGPU_NATIVE_DISPLAY_HANDLE_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeDisplayHandle, { \
-    /*.type=*/_wgpu_ENUM_ZERO_INIT(WGPUNativeDisplayHandleType) _wgpu_COMMA \
-    /*.xlib=*/WGPU_XLIB_DISPLAY_HANDLE_INIT _wgpu_COMMA \
-    /*.xcb=*/WGPU_XCB_DISPLAY_HANDLE_INIT _wgpu_COMMA \
-    /*.wayland=*/WGPU_WAYLAND_DISPLAY_HANDLE_INIT _wgpu_COMMA \
-})
+    union {
+        WGPUXlibDisplayHandle xlib;
+        WGPUXcbDisplayHandle xcb;
+        WGPUWaylandDisplayHandle wayland;
+    } data;
+} WGPUNativeDisplayHandle WGPU_STRUCTURE_ATTRIBUTE;
 
 /**
  * Default values can be set using @ref WGPU_HUB_REPORT_INIT as initializer.
