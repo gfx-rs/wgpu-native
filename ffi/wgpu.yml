@@ -2,530 +2,1320 @@ copyright: |
   Copyright 2019-2023 wgpu-native developers
 
   SPDX-License-Identifier: BSD-3-Clause
-name: wgpu
-enum_prefix: '0x0003'
+name: native # required to match the current convention of `Native` in names
+doc: |
+  @file wgpu.h
+  @brief wgpu-native specific extensions to the standard WebGPU C API.
+
+  This header defines native-only types, enumerations, structures, and functions
+  that extend the WebGPU specification defined in @c webgpu.h. All extension
+  enum values and struct type identifiers (@ref WGPUNativeSType) are allocated
+  within the @c 0x0003XXXX range reserved for wgpu-native.
+
+  Include this header after @c webgpu.h (it is included automatically).
+enum_prefix: 0x0003
 constants: []
-typedefs: []
-# Core enumerations exposed by the wgpu-native API.
-enums:
-  - name: native_stype
+typedefs:
+  - name: submission_index
+    namespace: webgpu
     doc: |
-      Type identifiers for wgpu-native extension structs.
+      Identifier for a particular call to @ref wgpuQueueSubmitForIndex.
+
+      Can be passed to @ref wgpuDevicePoll to block until a particular
+      submission has finished execution.
+
+      This type is unique to wgpu-native; there is no analogue in the
+      WebGPU specification.
+    type: uint64
+enums:
+  - name: s_type
+    extended: True
+    doc: |
+      TODO
     entries:
+      - null
       - name: device_extras
         doc: |
-          TODO
+          Identifies @ref WGPUDeviceExtras.
       - name: native_limits
         doc: |
-          TODO
-      - name: pipeline_layout_extras
+          Identifies @ref WGPUNativeLimits.
+      - name: shader_source_g_l_s_l
         doc: |
-          TODO
-      - name: shader_source_glsl
-        doc: |
-          TODO
+          Identifies @ref WGPUShaderSourceGLSL.
       - name: instance_extras
         doc: |
-          TODO
+          Identifies @ref WGPUInstanceExtras.
       - name: bind_group_entry_extras
         doc: |
-          TODO
+          Identifies @ref WGPUBindGroupEntryExtras.
       - name: bind_group_layout_entry_extras
         doc: |
-          TODO
+          Identifies @ref WGPUBindGroupLayoutEntryExtras.
       - name: query_set_descriptor_extras
         doc: |
-          TODO
+          Identifies @ref WGPUQuerySetDescriptorExtras.
       - name: surface_configuration_extras
         doc: |
-          TODO
+          Identifies @ref WGPUSurfaceConfigurationExtras.
       - name: surface_source_swap_chain_panel
         doc: |
-          TODO
+          Identifies @ref WGPUSurfaceSourceSwapChainPanel.
       - name: primitive_state_extras
         doc: |
-          TODO
-  - name: native_feature
-    doc: |
-      Native-only device features that extend the WebGPU feature set.
-    entries:
-      - name: push_constants
+          Identifies @ref WGPUPrimitiveStateExtras.
+      - name: sampler_descriptor_extras
         doc: |
-          TODO
+          Identifies @ref WGPUSamplerDescriptorExtras.
+      - name: surface_source_ohos_native_window
+        doc: |
+          Identifies @ref WGPUSurfaceSourceOhosNativeWindow.
+  - name: feature_name
+    extended: True
+    doc: |
+      FIXME: WGPUFeatureName => WGPUNativeFeature
+      Native-only device features.
+
+      These extend the standard @c WGPUFeatureName values and can be passed to
+      @c WGPUDeviceDescriptor::requiredFeatures to request additional
+      capabilities when creating a device.
+    entries:
+      - null
+      - name: immediates
+        doc: |
+          Allows the use of immediate data: small, fast blocks of memory
+          that can be updated inside a render pass, compute pass, or render
+          bundle encoder.
+
+          Enables @ref wgpuRenderPassEncoderSetImmediates,
+          @ref wgpuComputePassEncoderSetImmediates,
+          @ref wgpuRenderBundleEncoderSetImmediates,
+          non-zero @c immediateSize in @ref WGPUPipelineLayout,
+          and non-zero @c maxImmediateSize in @ref WGPULimits.
+
+          A block of immediate data can be declared in WGSL with
+          @c var<immediate>:
+          @code
+          struct Immediates { example: f32, }
+          var<immediate> c: Immediates;
+          @endcode
+
+          In GLSL, this corresponds to @c layout(immediates) @c uniform @c Name @c {..}.
+
+          Supported platforms:
+          - DX12
+          - Vulkan
+          - Metal
+          - OpenGL (emulated with uniforms)
+          - WebGPU
+
+          This is a web and native feature.
       - name: texture_adapter_specific_format_features
         doc: |
-          TODO
+          Enables device-specific texture format features.
+
+          By default only texture format properties as defined by the WebGPU
+          specification are allowed. Enabling this feature flag extends the
+          features of each format to the ones supported by the current device.
+          Note that without this flag, read/write storage access is not allowed
+          at all.
+
+          This extension does not enable additional formats.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal
+
+          This is a native only feature.
+      - null
       - name: multi_draw_indirect_count
         doc: |
-          TODO
+          Allows the use of a buffer containing the actual number of draw calls.
+
+          Enables @ref wgpuRenderPassEncoderMultiDrawIndirectCount and
+          @ref wgpuRenderPassEncoderMultiDrawIndexedIndirectCount.
+
+          This feature being present also implies that all calls to
+          @ref wgpuRenderPassEncoderMultiDrawIndirect and
+          @ref wgpuRenderPassEncoderMultiDrawIndexedIndirect are not being
+          emulated with a series of @c draw_indirect calls.
+
+          Supported platforms:
+          - DX12
+          - Vulkan 1.2+ (or VK_KHR_draw_indirect_count)
+
+          This is a native only feature.
       - name: vertex_writable_storage
         doc: |
-          TODO
+          Enables bindings of writable storage buffers and textures visible
+          to vertex shaders.
+
+          Note: some (tiled-based) platforms do not support vertex shaders
+          with any side-effects.
+
+          Supported platforms:
+          - All
+
+          This is a native only feature.
       - name: texture_binding_array
         doc: |
-          TODO
+          Allows the user to create uniform arrays of textures in shaders:
+
+          - WGSL: @c var @c textures: @c binding_array<texture_2d<f32>, @c 10>
+          - GLSL: @c uniform @c texture2D @c textures[10]
+
+          If @ref WGPUNativeFeature_StorageResourceBindingArray is supported
+          as well as this, the user may also create uniform arrays of storage
+          textures.
+
+          This capability allows them to exist and to be indexed by dynamically
+          uniform values.
+
+          Supported platforms:
+          - DX12
+          - Metal (with MSL 2.0+ on macOS 10.13+)
+          - Vulkan
+
+          This is a native only feature.
       - name: sampled_texture_and_storage_buffer_array_non_uniform_indexing
         doc: |
-          TODO
+          Allows shaders to index sampled texture and storage buffer resource
+          arrays with dynamically non-uniform values:
+
+          e.g. @c texture_array[vertex_data]
+
+          In order to use this capability, the corresponding GLSL extension must
+          be enabled:
+
+          @c \#extension @c GL_EXT_nonuniform_qualifier @c : @c require
+
+          and then used either as @c nonuniformEXT qualifier in variable
+          declaration or as @c nonuniformEXT constructor.
+
+          WGSL and HLSL do not need any extension.
+
+          Supported platforms:
+          - DX12
+          - Metal (with MSL 2.0+ on macOS 10.13+)
+          - Vulkan 1.2+ (or VK_EXT_descriptor_indexing)
+
+          This is a native only feature.
       - name: pipeline_statistics_query
         doc: |
-          TODO
+          Enables use of Pipeline Statistics Queries. These queries report the
+          count of various operations performed between the start and stop call.
+
+          Use @ref wgpuRenderPassEncoderBeginPipelineStatisticsQuery /
+          @ref wgpuRenderPassEncoderEndPipelineStatisticsQuery (or the compute
+          pass equivalents) to start and stop a query.
+
+          They must be resolved using @c wgpuCommandEncoderResolveQuerySet into
+          a buffer. See @ref WGPUPipelineStatisticName for the list of available
+          statistics.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+
+          This is a native only feature.
       - name: storage_resource_binding_array
         doc: |
-          TODO
+          Allows the user to create uniform arrays of storage buffers or
+          textures in shaders, if @ref WGPUNativeFeature_BufferBindingArray
+          or @ref WGPUNativeFeature_TextureBindingArray (respectively)
+          is also supported.
+
+          This capability allows them to exist and to be indexed by dynamically
+          uniform values.
+
+          Supported platforms:
+          - Metal (with MSL 2.2+ on macOS 10.13+)
+          - Vulkan
+
+          This is a native only feature.
       - name: partially_bound_binding_array
         doc: |
-          TODO
+          Allows the user to create bind groups containing arrays with fewer
+          bindings than the @c WGPUBindGroupLayout requires.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+
+          This is a native only feature.
       - name: texture_format_16bit_norm
         doc: |
-          TODO
+          Enables normalized 16-bit texture formats:
+          @ref WGPUTextureFormat_R16Unorm, @ref WGPUTextureFormat_R16Snorm,
+          @ref WGPUTextureFormat_RG16Unorm, @ref WGPUTextureFormat_RG16Snorm,
+          @ref WGPUTextureFormat_RGBA16Unorm, @ref WGPUTextureFormat_RGBA16Snorm.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal
+
+          This is a native only feature.
       - name: texture_compression_astc_hdr
         doc: |
-          TODO
+          Enables ASTC HDR family of compressed textures.
+
+          Compressed textures sacrifice some quality in exchange for
+          significantly reduced bandwidth usage.
+
+          Support for this feature guarantees availability of
+          @c COPY_SRC | @c COPY_DST | @c TEXTURE_BINDING for ASTC formats
+          with the HDR channel type.
+          @ref WGPUNativeFeature_TextureAdapterSpecificFormatFeatures may
+          enable additional usages.
+
+          Supported platforms:
+          - Metal
+          - Vulkan
+          - OpenGL
+
+          This is a native only feature.
+      - null
       - name: mappable_primary_buffers
         doc: |
-          TODO
+          Removes the WebGPU restriction that @c MAP_READ and @c MAP_WRITE
+          buffer usages must be paired exclusively with @c COPY_DST and
+          @c COPY_SRC respectively.
+
+          This is only beneficial on systems that share memory between CPU and
+          GPU. If enabled on a system that doesn't, this can severely hinder
+          performance. Only use if you understand the consequences.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal
+
+          This is a native only feature.
       - name: buffer_binding_array
         doc: |
+          Allows the user to create arrays of buffers in shaders:
+
+          - WGSL: @c var<uniform> @c buffer_array: @c array<MyBuffer, @c 10>
+          - GLSL: @c uniform @c myBuffer @c { @c ... @c } @c buffer_array[10]
+
+          This capability allows them to exist and to be indexed by dynamically
+          uniform values.
+
+          If @ref WGPUNativeFeature_StorageResourceBindingArray is supported as
+          well as this, the user may also create arrays of storage buffers.
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
+      - name: storage_texture_array_non_uniform_indexing
+        doc: |
+          Allows shaders to index storage texture resource
+          arrays with dynamically non-uniform values.
+
+          This is a native only feature.
+      - name: address_mode_clamp_to_zero
+        doc: |
           TODO
-      - name: uniform_buffer_and_storage_texture_array_non_uniform_indexing
+      - name: address_mode_clamp_to_border
         doc: |
           TODO
       - name: polygon_mode_line
         doc: |
-          TODO
+          Allows the user to set @ref WGPUPolygonMode_Line in
+          @ref WGPUPrimitiveStateExtras::polygonMode.
+
+          This allows drawing polygons/triangles as lines (wireframe) instead
+          of filled.
+
+          Supported platforms:
+          - DX12
+          - Vulkan
+          - Metal
+
+          This is a native only feature.
       - name: polygon_mode_point
         doc: |
-          TODO
+          Allows the user to set @ref WGPUPolygonMode_Point in
+          @ref WGPUPrimitiveStateExtras::polygonMode.
+
+          This allows only drawing the vertices of polygons/triangles instead
+          of filled.
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
       - name: conservative_rasterization
         doc: |
-          TODO
-      - name: spirv_shader_passthrough
+          Allows the user to enable overestimation conservative rasterization
+          via @ref WGPUPrimitiveStateExtras::conservative.
+
+          Processing of degenerate triangles/lines is hardware specific.
+          Only triangles are supported.
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
+      - name: clear_texture
         doc: |
-          TODO
+          Enables clear to zero for textures.
+
+          Supported platforms:
+          - All
+
+          This is a native only feature.
+      - null
+      - name: multiview
+        doc: |
+          Enables multiview render passes and `builtin(view_index)` in vertex/mesh shaders.
+
+          Supported platforms:
+          - Vulkan
+          - Metal
+          - DX12
+          - OpenGL (web only)
+
+          This is a native only feature.
       - name: vertex_attribute_64bit
         doc: |
-          TODO
+          Enables using 64-bit types for vertex attributes.
+
+          Requires @ref WGPUNativeFeature_ShaderF64.
+
+          This is a native only feature.
       - name: texture_format_nv12
         doc: |
-          TODO
+          Allows for creation of textures of format
+          @ref WGPUNativeTextureFormat_NV12.
+
+          Supported platforms:
+          - DX12
+          - Vulkan
+
+          This is a native only feature.
+      - null
       - name: ray_query
         doc: |
-          TODO
+          Allows for the creation of ray-tracing queries within shaders.
+
+          @b EXPERIMENTAL: Features enabled by this may have major bugs and are
+          expected to be subject to breaking changes.
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
       - name: shader_f64
         doc: |
-          TODO
+          Enables 64-bit floating point types in SPIR-V shaders.
+
+          Note: even when supported by GPU hardware, 64-bit floating point
+          operations are frequently between 16 and 64 @e times slower than
+          equivalent operations on 32-bit floats.
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
       - name: shader_i16
         doc: |
-          TODO
-      - name: shader_primitive_index
-        doc: |
-          TODO
+          Allows shaders to use i16. Not currently supported in naga, only
+          available through SPIR-V passthrough.
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
+      - null
       - name: shader_early_depth_test
         doc: |
-          TODO
+          Allows shaders to use the @c early_depth_test attribute.
+
+          The attribute is applied to the fragment shader entry point and can be
+          used in two ways:
+
+          1. Force early depth/stencil tests:
+             - WGSL: @c \@early_depth_test(force)
+             - GLSL: @c layout(early_fragment_tests) @c in;
+
+          2. Provide a conservative depth specifier that allows an additional
+             early depth test under certain conditions:
+             - WGSL: @c \@early_depth_test(greater_equal/less_equal/unchanged)
+             - GLSL: @c layout(depth_<greater/less/unchanged>) @c out @c float @c gl_FragDepth;
+
+          Supported platforms:
+          - Vulkan
+          - GLES 3.1+
+
+          This is a native only feature.
       - name: subgroup
         doc: |
-          TODO
+          Allows compute and fragment shaders to use the subgroup operation
+          built-ins and perform subgroup operations (except barriers).
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal
+
+          This is a native only feature.
       - name: subgroup_vertex
         doc: |
-          TODO
+          Allows vertex shaders to use the subgroup operation built-ins and
+          perform subgroup operations (except barriers).
+
+          Supported platforms:
+          - Vulkan
+
+          This is a native only feature.
       - name: subgroup_barrier
         doc: |
-          TODO
+          Allows compute shaders to use the subgroup barrier.
+
+          Requires @ref WGPUNativeFeature_Subgroup. Without it, enables nothing.
+
+          Supported platforms:
+          - Vulkan
+          - Metal
+
+          This is a native only feature.
       - name: timestamp_query_inside_encoders
         doc: |
-          TODO
+          Allows for timestamp queries directly on command encoders.
+
+          Implies @c WGPUFeatureName_TimestampQuery is supported.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal
+          - OpenGL (with GL_ARB_timer_query)
+
+          This is a native only feature.
       - name: timestamp_query_inside_passes
         doc: |
-          TODO
+          Allows for timestamp queries inside render and compute passes.
+
+          Implies @c WGPUFeatureName_TimestampQuery and
+          @ref WGPUNativeFeature_TimestampQueryInsideEncoders are supported.
+
+          Enables @ref wgpuRenderPassEncoderWriteTimestamp and
+          @ref wgpuComputePassEncoderWriteTimestamp.
+
+          This is generally not available on tile-based rasterization GPUs.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal (AMD & Intel, not Apple GPUs)
+          - OpenGL (with GL_ARB_timer_query)
+
+          This is a native only feature.
       - name: shader_int64
         doc: |
+          Allows shaders to use i64 and u64.
+
+          Supported platforms:
+          - Vulkan
+          - DX12 (DXC only)
+          - Metal (with MSL 2.3+)
+
+          This is a native only feature.
+      - name: shader_float32_atomic
+        doc: |
+          Allows shaders to use f32 atomic load, store, add, sub, and exchange.
+
+          Supported platforms:
+          - Metal (with MSL 3.0+ and Apple7+/Mac2)
+          - Vulkan (with [VK_EXT_shader_atomic_float])
+
+          This is a native only feature.
+      - name: texture_atomic
+        doc: |
+          Enables image atomic fetch add, and, xor, or, min, and max for R32Uint and R32Sint textures.
+
+          Supported platforms:
+          - Vulkan
+          - DX12
+          - Metal (with MSL 3.1+)
+
+          This is a native only feature.
+      - name: texture_format_p010
+        doc: |
+          Allows for creation of textures of format
+          @ref WGPUNativeTextureFormat_P010.
+
+          Supported platforms:
+          - DX12
+          - Vulkan
+
+          This is a native only feature.
+      - null
+      - name: pipeline_cache
+        doc: |
+          Allows the use of pipeline cache objects
+
+          Supported platforms:
+          - Vulkan
+
+          Unimplemented Platforms:
+          - DX12
+          - Metal
+      - name: shader_int64_atomic_min_max
+        doc: |
+          Allows shaders to use i64 and u64 atomic min and max.
+
+          Supported platforms:
+          - Vulkan (with VK_KHR_shader_atomic_int64)
+          - DX12 (with SM 6.6+)
+          - Metal (with MSL 2.4+)
+
+          This is a native only feature.
+      - name: shader_int64_atomic_all_ops
+        doc: |
+          Allows shaders to use all i64 and u64 atomic operations.
+
+          Supported platforms:
+          - Vulkan (with VK_KHR_shader_atomic_int64)
+          - DX12 (with SM 6.6+)
+
+          This is a native only feature.
+      - null
+      - null
+      - name: texture_int64_atomic
+        doc: |
+          Enables R64Uint image atomic min and max.
+
+          Supported platforms:
+          - Vulkan (with VK_EXT_shader_image_atomic_int64)
+          - DX12 (with SM 6.6+)
+          - Metal (with MSL 3.1+)
+
+          This is a native only feature.
+      - null
+      - null
+      - null
+      - null
+      - null
+      - null
+      - name: shader_barycentrics
+        doc: |
+          Enables shader barycentric coordinates.
+
+          Supported platforms:
+          - Vulkan (with VK_KHR_fragment_shader_barycentric)
+          - DX12 (with SM 6.1+)
+          - Metal (with MSL 2.2+)
+
+          This is a native only feature.
+      - name: selective_multiview
+        doc: |
+          Enables using multiview where not all texture array layers are rendered to in a single render pass/render pipeline. Making
+          use of this feature also requires enabling `Features::MULTIVIEW`.
+
+          Supported platforms
+          - Vulkan
+          - DX12
+
+          While metal supports this in theory, the behavior of `view_index` differs from vulkan and dx12 so the feature isn't exposed.
+      - null
+      - name: multisample_array
+        doc: |
           TODO
+      - name: cooperative_matrix
+        doc: |
+          Enables cooperative matrix operations (also known as tensor cores on NVIDIA GPUs
+          or simdgroup matrix operations on Apple GPUs).
+
+          Cooperative matrices allow a workgroup to collectively load, store, and perform
+          matrix multiply-accumulate operations on small tiles of data, enabling
+          hardware-accelerated matrix math.
+
+          @b EXPERIMENTAL: Features enabled by this may have major bugs and are
+          expected to be subject to breaking changes.
+
+          **Current limitations:** The implementation currently only supports 8x8 f32 matrices.
+          On Vulkan, support is determined by querying `vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR`
+          for configurations matching 8x8x8 f32. Most Vulkan implementations (NVIDIA, AMD) primarily
+          support f16 inputs at larger sizes (e.g., 16x16), so Vulkan support may be limited.
+
+          Supported platforms:
+          - Metal (with MSL 2.3+ and Apple7+/Mac2+, using simdgroup matrix operations)
+          - Vulkan (with [VK_KHR_cooperative_matrix](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_cooperative_matrix.html), if 8x8 f32 is supported)
+
+          This is a native only feature.
+      - name: shader_per_vertex
+        doc: |
+          Enables shader per-vertex attributes.
+
+          Supported platforms:
+          - Vulkan (with VK_KHR_fragment_shader_barycentric)
+
+          This is a native only feature.
+      - name: shader_draw_index
+        doc: |
+          Enables shader `draw_index` builtin.
+
+          Supported platforms:
+          - GLES
+          - Vulkan
+
+          Potential platforms:
+          - DX12
+          - Metal
+
+          This is a native only feature.
+      - name: acceleration_structure_binding_array
+        doc: |
+          Allows the user to create arrays of acceleration structures in shaders:
+
+          ex.
+          - `var tlas: binding_array<acceleration_structure, 10>` (WGSL)
+
+          This capability allows them to exist and to be indexed by dynamically uniform values.
+
+          Supported platforms:
+          - DX12
+          - Vulkan
+
+          This is a native only feature.
+      - name: memory_decoration_coherent
+        doc: |
+          Enables the `@coherent` memory decoration on storage buffer variables.
+
+          Backend mapping:
+          - Vulkan
+          - DX12
+          - Metal (3.2+)
+          - GLES (ES 3.1+ / GL 4.3+)
+
+          This is a native only feature.
+      - name: memory_decoration_volatile
+        doc: |
+          Enables the `@volatile` memory decoration on storage buffer variables.
+
+          Backend mapping:
+          - Vulkan
+          - GLES (ES 3.1+ / GL 4.3+)
+
+          This is a native only feature.
   - name: log_level
+    namespace: webgpu
     doc: |
-      Logging verbosity levels for wgpu-native.
+      TODO
     entries:
       - name: off
         doc: |
           TODO
-        value: 0x00000000
       - name: error
         doc: |
           Only error messages.
-        value: 0x00000001
       - name: warn
         doc: |
           Errors and warnings.
-        value: 0x00000002
       - name: info
         doc: |
           Errors, warnings, and informational messages.
-        value: 0x00000003
       - name: debug
         doc: |
-          TODO
-        value: 0x00000004
+          Errors, warnings, informational, and debug messages.
       - name: trace
         doc: |
           All messages, including very verbose trace-level output.
-        value: 0x00000005
+  - name: surface_get_current_texture_status
+    extended: True
+    doc: |
+      Additional surface-get-current-texture status codes defined by wgpu-native.
+
+      These extend the standard @c WGPUSurfaceGetCurrentTextureStatus values.
+    entries:
+      - null
+      - name: occluded
+        doc: |
+          The surface texture was not acquired because the window is occluded
+          (e.g. minimized or fully covered by another window).
+
+          No texture is returned and the @c texture field of
+          @c WGPUSurfaceTexture will be NULL. The surface and swapchain remain
+          valid -- there is no need to reconfigure or recreate the surface.
+
+          Applications should skip rendering for the current frame and try
+          again once the window is no longer occluded. If you are using a
+          windowing library such as winit, listen for the window's "occluded"
+          event and request a new redraw when the window becomes visible again.
+
+          When does this occur?
+
+          Currently this status is only produced by the Metal backend on macOS.
+          When a window is not visible (checked via the @c NSWindow
+          @c occlusionState property), acquiring the next drawable would block
+          for up to one second waiting for vsync. wgpu-native returns
+          @c Occluded instead to avoid that hang.
+
+          Other backends (Vulkan, DX12, GL) do not currently report this
+          status; an occluded window on those backends may produce
+          @c WGPUSurfaceGetCurrentTextureStatus_Timeout or simply succeed
+          normally.
   - name: dx12_compiler
+    namespace: webgpu
     doc: |
       TODO
     entries:
       - name: undefined
         doc: |
           TODO
-        value: 0x00000000
       - name: fxc
         doc: |
-          TODO
-        value: 0x00000001
+          Use the FXC (D3DCompile) shader compiler.
+
+          The FXC compiler is old, slow, and unmaintained. However, it doesn't
+          require any additional DLLs to be shipped with the application.
       - name: dxc
         doc: |
-          TODO
-        value: 0x00000002
+          Use the DXC (DirectX Shader Compiler).
   - name: gles3_minor_version
+    namespace: webgpu
     doc: |
       TODO
     entries:
       - name: automatic
         doc: |
           TODO
-        value: 0x00000000
       - name: version0
         doc: |
-          TODO
-        value: 0x00000001
+          Request an ES 3.0 context.
       - name: version1
         doc: |
-          TODO
-        value: 0x00000002
+          Request an ES 3.1 context.
       - name: version2
         doc: |
-          TODO
-        value: 0x00000003
+          Request an ES 3.2 context.
   - name: pipeline_statistic_name
+    namespace: webgpu
     doc: |
       TODO
     entries:
       - name: vertex_shader_invocations
         doc: |
           TODO
-        value: 0x00000000
       - name: clipper_invocations
         doc: |
-          TODO
-        value: 0x00000001
+          Number of times the clipper is invoked. This is also the number of
+          triangles output by the vertex shader.
       - name: clipper_primitives_out
         doc: |
-          TODO
-        value: 0x00000002
+          Number of primitives that are not culled by the clipper. This is the
+          number of triangles that are actually on screen and will be rasterized
+          and rendered.
       - name: fragment_shader_invocations
         doc: |
-          TODO
-        value: 0x00000003
+          Number of times the fragment shader is invoked. Accounts for fragment
+          shaders running in 2x2 blocks in order to get derivatives.
       - name: compute_shader_invocations
         doc: |
-          TODO
-        value: 0x00000004
-  - name: native_query_type
+          Number of times a compute shader is invoked. This will be equivalent
+          to the dispatch count times the workgroup size.
+  - name: query_type
+    extended: True
     doc: |
-      TODO
+      FIXME: WGPUQueryType => WGPUNativeQueryType
     entries:
       - name: pipeline_statistics
         doc: |
           TODO
   - name: dxc_max_shader_model
+    namespace: webgpu
     doc: |
-      TODO
+      FIXME: V60 => V6_0, etc.
     entries:
       - name: v6_0
         doc: |
           TODO
-        value: 0x00000000
       - name: v6_1
         doc: |
-          TODO
-        value: 0x00000001
+          Shader Model 6.1
       - name: v6_2
         doc: |
-          TODO
-        value: 0x00000002
+          Shader Model 6.2
       - name: v6_3
         doc: |
-          TODO
-        value: 0x00000003
+          Shader Model 6.3
       - name: v6_4
         doc: |
-          TODO
-        value: 0x00000004
+          Shader Model 6.4
       - name: v6_5
         doc: |
-          TODO
-        value: 0x00000005
+          Shader Model 6.5
       - name: v6_6
         doc: |
-          TODO
-        value: 0x00000006
+          Shader Model 6.6
       - name: v6_7
         doc: |
-          TODO
-        value: 0x00000007
-  - name: gl_fence_behaviour
+          Shader Model 6.7
+  - name: g_l_fence_behaviour
+    namespace: webgpu
     doc: |
       TODO
     entries:
       - name: normal
         doc: |
           TODO
-        value: 0x00000000
       - name: auto_finish
         doc: |
-          TODO
-        value: 0x00000001
+          Fences are short-circuited to always report completion immediately.
+
+          This solves a specific issue that arose due to a bug in wgpu-core that
+          made many WebGL programs work when they shouldn't have. If you have
+          code that calls @ref wgpuDevicePoll with @c wait=true on WebGL, you
+          may need to enable this option for "wait" to behave how you expect.
+
+          When this is set, @c wgpuQueueOnCompletedWorkDone callbacks will fire
+          the next time the device is polled, not when work is actually done on
+          the GPU.
   - name: dx12_swapchain_kind
+    namespace: webgpu
     doc: |
       TODO
     entries:
       - name: undefined
         doc: |
           TODO
-        value: 0x00000000
       - name: dxgi_from_hwnd
         doc: |
-          TODO
-        value: 0x00000001
+          Use a DXGI swapchain created directly from the window's HWND.
+
+          This does not support transparency but has better support from
+          developer tooling such as RenderDoc.
       - name: dxgi_from_visual
         doc: |
-          TODO
-        value: 0x00000002
+          Use a DXGI swapchain created from a DirectComposition visual made
+          automatically from the window's HWND.
+
+          This creates a single @c IDCompositionVisual over the entire window.
+          Supports transparency. If you want to manage the composition tree
+          yourself, create your own device and composition and pass the relevant
+          visual via the surface target.
+  - name: display_handle_type
+    doc: |
+      Discriminant for WGPUNativeDisplayHandle.
+
+      Identifies which platform's display connection is stored in the tagged union.
+      Use @ref WGPUNativeDisplayHandleType_None (the default when zero-initialized) when
+      no display handle is needed. Platforms with no display connection data (Windows,
+      macOS, iOS, Android) should use @ref WGPUNativeDisplayHandleType_None.
+    entries:
+      - name: none
+        doc: |
+          No display handle provided.
+      - name: xlib
+        doc: |
+          X11 display connection via Xlib. See @ref WGPUXlibDisplayHandle.
+      - name: xcb
+        doc: |
+          X11 display connection via XCB. See @ref WGPUXcbDisplayHandle.
+      - name: wayland
+        doc: |
+          Wayland display connection. See @ref WGPUWaylandDisplayHandle.
+  - name: memory_hints
+    namespace: webgpu
+    doc: |
+      TODO
+    entries:
+      - name: undefined
+        doc: |
+          Same as Performance (the wgpu default).
+      - name: performance
+        doc: |
+          Favor performance over memory usage.
+      - name: memory_usage
+        doc: |
+          Favor memory usage over performance.
+      - name: manual
+        doc: |
+          Choose the suballocated memory block size range explicitly via
+          @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeStart and
+          @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeEnd.
   - name: polygon_mode
+    namespace: webgpu
     doc: |
       TODO
     entries:
       - name: fill
         doc: |
           TODO
-        value: 0x00000000
       - name: line
         doc: |
-          TODO
-        value: 0x00000001
+          Polygons are drawn as line segments (wireframe).
+          Requires @ref WGPUNativeFeature_PolygonModeLine.
       - name: point
         doc: |
+          Polygons are drawn as points (vertices only).
+          Requires @ref WGPUNativeFeature_PolygonModePoint.
+  - name: address_mode
+    namespace: webgpu
+    extended: True
+    doc: |
+      FIXME: WGPUAddressMode => WGPUNativeAddressMode
+    entries:
+      - name: clamp_to_border
+        doc: |
           TODO
-        value: 0x00000002
-  - name: native_texture_format
+        value: 4
+  - name: sampler_border_color
+    namespace: webgpu
     doc: |
       TODO
     entries:
-      - name: r16_unorm
+      - name: undefined
         doc: |
           TODO
-      - name: r16_snorm
+      - name: transparent_black
         doc: |
           TODO
-      - name: rg16_unorm
+      - name: opaque_black
         doc: |
           TODO
-      - name: rg16_snorm
+      - name: opaque_white
         doc: |
           TODO
-      - name: rgba16_unorm
+      - name: zero
         doc: |
           TODO
-      - name: rgba16_snorm
+  - name: texture_format
+    extended: True
+    doc: |
+      FIXME: WGPUTextureFormat => WGPUNativeTextureFormat
+    entries:
+      - name: n_v12
         doc: |
-          TODO
-      - name: nv12
-        doc: |
-          TODO
+          YUV 4:2:0 chroma subsampled format (NV12).
+          Plane 0 contains R8Unorm luminance (Y), Plane 1 contains Rg8Unorm
+          chrominance (UV) at half width and half height.
+          Requires @ref WGPUNativeFeature_TextureFormatNv12.
+        value: 7
       - name: p010
         doc: |
-          TODO
+          YUV 4:2:0 with 10 bits used from 16-bit channels (P010).
+          Plane 0 contains R16Unorm luminance (Y), Plane 1 contains Rg16Unorm
+          chrominance (UV) at half width and half height.
+        value: 8
 bitflags:
   - name: instance_backend
+    namespace: webgpu
     doc: |
-      Bitflags selecting which graphics backends the instance should enable.
+      Bitflags selecting which graphics backends the @ref WGPUInstance should
+      enable.
+
+      Pass in the @c backends field of @ref WGPUInstanceExtras.
     entries:
       - name: all
         doc: |
-          TODO
-        value: 0x00000000
+          All backends (the default when zero-initialized).
       - name: vulkan
         doc: |
           Vulkan backend.
-        value: 0x00000001
-      - name: gl
+          Supported on Windows, Linux/Android, and macOS/iOS via Vulkan Portability.
+      - name: g_l
         doc: |
           OpenGL / OpenGL ES backend.
-        value: 0x00000002
+          Supported on Linux/Android, the web via WebGL, and Windows/macOS via ANGLE.
       - name: metal
         doc: |
           Metal backend.
-        value: 0x00000004
-      - name: dx12
+          Supported on macOS and iOS.
+      - name: d_x12
         doc: |
           Direct3D 12 backend.
-        value: 0x00000008
-      - name: dx11
-        doc: |
-          TODO
-        value: 0x00000010
-      - name: browser_webgpu
+          Supported on Windows 10 and later.
+      - name: browser_web_g_p_u
         doc: |
           Browser WebGPU backend.
-        value: 0x00000020
+          Supported when targeting the web through WebAssembly.
+        value: 32 # 1 << 5
       - name: primary
         doc: |
-          TODO
+          Primary (first-tier) backends: Vulkan, Metal, DX12, and BrowserWebGPU.
         value_combination:
           - vulkan
           - metal
-          - dx12
-          - browser_webgpu
+          - d_x12
+          - browser_web_g_p_u
       - name: secondary
         doc: |
-          TODO
+          Secondary (second-tier) backends: GL.
         value_combination:
-          - gl
-          - dx11
-      - name: force32
-        doc: |
-          TODO
-        value: 0x7FFFFFFF
+          - g_l
   - name: instance_flag
+    namespace: webgpu
     doc: |
       Bitflags controlling instance debugging and validation behavior.
+
+      These are not part of the WebGPU standard.
+
+      Pass in the @c flags field of @ref WGPUInstanceExtras.
     entries:
-      - name: default
+      - name: empty
         doc: |
-          TODO
-        value: 0x00000000
+          No flags set.
       - name: debug
         doc: |
-          TODO
-        value: 0x00000001
+          Generate debug information in shaders and objects.
+
+          When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+          @c WGPU_DEBUG environment variable.
       - name: validation
         doc: |
-          Enable validation in the backend API, if possible.
-        value: 0x00000002
+          Enable validation in the backend API, if possible:
+
+          - On the DX12 backend, this calls @c ID3D12Debug::EnableDebugLayer.
+          - On the Vulkan backend, this enables the Vulkan Validation Layers.
+          - On the GLES backend (Windows), this enables debug output.
+          - On the GLES backend (non-Windows), this calls @c eglDebugMessageControlKHR.
+
+          When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+          @c WGPU_VALIDATION environment variable.
       - name: discard_hal_labels
         doc: |
-          Do not pass labels to the backend API.
-        value: 0x00000004
-      - name: force32
+          Don't pass labels to the backend API (wgpu-hal).
+
+          When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+          @c WGPU_DISCARD_HAL_LABELS environment variable.
+      - name: allow_underlying_noncompliant_adapter
         doc: |
-          TODO
-        value: 0x7FFFFFFF
+          Whether wgpu should expose adapters that run on top of non-compliant
+          adapters.
+
+          Turning this on might mean that some of the functionality provided by the
+          wgpu adapter/device is not working or broken. This mainly applies to a
+          Vulkan driver's compliance version. If the major compliance version is 0,
+          then the driver is ignored unless this flag is set.
+
+          When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+          @c WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER environment variable.
+      - name: gpu_based_validation
+        doc: |
+          Enable GPU-based validation. Implies @ref WGPUInstanceFlag_Validation.
+          Currently only changes behavior on the DX12 and Vulkan backends.
+
+          - D3D12: Called "GPU-based validation" (GBV).
+          - Vulkan: Called "GPU-Assisted Validation" via VK_LAYER_KHRONOS_validation.
+
+          When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+          @c WGPU_GPU_BASED_VALIDATION environment variable.
+      - name: validation_indirect_call
+        doc: |
+          Validate indirect buffer content prior to issuing indirect draws/dispatches.
+
+          This validation will transform indirect calls into no-ops if they are not
+          valid. For example, @c dispatch_workgroups_indirect arguments must be less
+          than the @c max_compute_workgroups_per_dimension device limit.
+
+          When using @ref WGPUInstanceFlag_WithEnv, takes value from the
+          @c WGPU_VALIDATION_INDIRECT_CALL environment variable.
+      - name: automatic_timestamp_normalization
+        doc: |
+          Enable automatic timestamp normalization. When enabled,
+          @c wgpuCommandEncoderResolveQuerySet will automatically normalize timestamps
+          to nanoseconds instead of returning raw timestamp values.
+
+          This introduces a compute shader into the resolution of query sets. When
+          enabled, the timestamp period returned by @ref wgpuQueueGetTimestampPeriod
+          will always be @c 1.0.
+      - name: default
+        doc: |
+          Use the default flags for the current build configuration.
+          In debug builds, this typically enables @ref WGPUInstanceFlag_Debug and
+          @ref WGPUInstanceFlag_Validation.
+        value: 16777216 # 1 << 24
+      - name: debugging
+        doc: |
+          Convenience alias that enables @ref WGPUInstanceFlag_Debug and
+          @ref WGPUInstanceFlag_Validation.
+        value: 33554432 # 1 << 25
+      - name: advanced_debugging
+        doc: |
+          Convenience alias that enables @ref WGPUInstanceFlag_Debug,
+          @ref WGPUInstanceFlag_Validation, and
+          @ref WGPUInstanceFlag_GPUBasedValidation.
+        value: 67108864 # 1 << 26
+      - name: with_env
+        doc: |
+          Modify the flags based on environment variables. Flags with environment
+          variable support (e.g. @c WGPU_DEBUG, @c WGPU_VALIDATION) will be read
+          from the process environment and applied on top of the explicitly set flags.
+        value: 134217728 # 1 << 27
+  - name: shader_runtime_checks
+    namespace: webgpu
+    doc: |
+      Describes how shader bound checks should be performed.
+    entries:
+      - name: none
+        doc: |
+          No runtime checks set.
+      - name: bounds_checks
+        doc: |
+          Enforce bounds checks in shaders, even if the underlying driver doesn’t support doing so natively.
+      - name: force_loop_bounding
+        doc: |
+          If not set, the caller MUST ensure that all passed shaders do not contain any infinite loops.
+      - name: ray_query_initialization_tracking
+        doc: |
+          If not set, the caller MUST ensure that in all passed shaders every function operating on a ray
+          query must obey these rules (functions using wgsl naming).
+      - name: task_shader_dispatch_tracking
+        doc: |
+          If not set, task shaders will not validate that the mesh shader grid they dispatch is within legal limits.
+      - name: mesh_shader_primitive_indices_clamp
+        doc: |
+          If not set, mesh shaders won’t clamp the output primitives’ vertex indices, which can lead to
+          undefined behavior and arbitrary memory access.
 structs:
   - name: instance_extras
+    namespace: webgpu
     doc: |
-      Additional instance creation parameters used by wgpu-native.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - instance_descriptor
     members:
       - name: backends
         doc: |
-          TODO
+          Which backends to enable.
+          Zero (@ref WGPUInstanceBackend_All) enables all backends.
         type: bitflag.instance_backend
       - name: flags
         doc: |
-          Flags controlling debug and validation behavior.
+          Flags controlling debug/validation behavior.
+          See @ref WGPUInstanceFlag for available flags.
         type: bitflag.instance_flag
       - name: dx12_shader_compiler
         doc: |
-          Which DX12 shader compiler to use. Ignored on non-DX12 backends.
+          Which DX12 shader compiler to use.
+          See @ref WGPUDx12Compiler. Ignored on non-DX12 backends.
         type: enum.dx12_compiler
       - name: gles3_minor_version
         doc: |
-          Which OpenGL ES 3 minor version to request. Ignored on non-GL backends.
+          Which OpenGL ES 3 minor version to request.
+          See @ref WGPUGles3MinorVersion. Ignored on non-GL backends.
         type: enum.gles3_minor_version
       - name: gl_fence_behaviour
         doc: |
-          Controls OpenGL fence synchronization behavior. Ignored on non-GL backends.
-        type: enum.gl_fence_behaviour
+          Controls OpenGL fence synchronization behavior.
+          See @ref WGPUGLFenceBehaviour. Ignored on non-GL backends.
+        type: enum.g_l_fence_behaviour
       - name: dxc_path
         doc: |
-          File system path to dxcompiler.dll for dynamic DXC loading.
+          File system path to @c dxcompiler.dll for dynamic DXC loading.
+          Only used when @c dx12ShaderCompiler is @ref WGPUDx12Compiler_Dxc.
+          An empty/undefined string view means the DLL will be searched for
+          on the system PATH.
         type: string_with_default_empty
       - name: dxc_max_shader_model
         doc: |
           Maximum HLSL shader model version that DXC should target.
+          See @ref WGPUDxcMaxShaderModel. Only used with the DXC compiler.
         type: enum.dxc_max_shader_model
       - name: dx12_presentation_system
         doc: |
-          Which DX12 presentation system or swapchain kind to use. Ignored on non-DX12 backends.
+          Which DX12 presentation system (swapchain kind) to use.
+          See @ref WGPUDx12SwapchainKind. Ignored on non-DX12 backends.
         type: enum.dx12_swapchain_kind
       - name: budget_for_device_creation
         doc: |
           TODO
-        type: c_void
+        type: uint8
         pointer: immutable
         optional: true
       - name: budget_for_device_loss
         doc: |
           TODO
-        type: c_void
+        type: uint8
         pointer: immutable
         optional: true
+      - name: display_handle
+        doc: |
+          Platform display connection to associate with this instance.
+          Zero-initialized yields @ref WGPUNativeDisplayHandleType_None (no handle).
+        type: struct.display_handle
   - name: device_extras
+    namespace: webgpu
     doc: |
-      Additional device creation parameters used by wgpu-native.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - device_descriptor
     members:
       - name: trace_path
         doc: |
-          TODO
+          File system path for API trace output.
+
+          When set to a non-empty path, wgpu will record all API calls to
+          the given directory, which can later be replayed for debugging.
+          An empty/undefined string view disables tracing.
         type: string_with_default_empty
-  - name: native_limits
-    doc: |
-      Native-only limits that extend the standard WebGPU limits.
-    type: extension_out
-    members:
-      - name: max_push_constant_size
+      - name: memory_hints
         doc: |
-          TODO
-        type: uint32
+          Hints to the backend memory allocator.
+          Zero-initialized yields @ref WGPUMemoryHints_Undefined (Performance).
+        type: enum.memory_hints
+      - name: suballocated_device_memory_block_size_start
+        doc: |
+          Initial suballocated device-memory block size, in bytes. Only used
+          with @ref WGPUMemoryHints_Manual.
+
+          After running out of space in existing blocks, the backend may grow
+          subsequent block sizes up to
+          @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeEnd. This does
+          not limit resource sizes: a resource that does not fit is typically
+          placed in a dedicated memory block.
+        type: uint64
+      - name: suballocated_device_memory_block_size_end
+        doc: |
+          See @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeStart.
+        type: uint64
+  - name: native_limits
+    namespace: webgpu
+    doc: |
+      TODO
+    type: extension
+    extends:
+      - limits
+    members:
       - name: max_non_sampler_bindings
         doc: |
-          Maximum number of live non-sampler bindings. Only meaningful on D3D12.
+          Maximum number of live non-sampler bindings.
+
+          Default is 1,000,000. Only meaningful on D3D12.
+
+          @b Warning: On integrated GPUs, large values can cause significant
+          system RAM consumption.
         type: uint32
+        default: constant.limit_u32_undefined
       - name: max_binding_array_elements_per_shader_stage
         doc: |
-          Maximum number of individual resources within binding arrays that can be accessed in a single shader stage.
+          Maximum number of individual resources within binding arrays that can be accessed
+          in a single shader stage. Applies to all types of bindings except samplers.
         type: uint32
-  - name: push_constant_range
-    doc: |
-      A range of push constants within a pipeline layout.
-    type: standalone
-    members:
-      - name: stages
+        default: constant.limit_u32_undefined
+      - name: max_binding_array_sampler_elements_per_shader_stage
         doc: |
-          TODO
-        type: enum.shader_stage
-      - name: start
-        doc: |
-          TODO
+          Maximum number of individual samplers within binding arrays that
+          can be accessed in a single shader stage.
         type: uint32
-      - name: end
+        default: constant.limit_u32_undefined
+      - name: max_multiview_view_count
         doc: |
-          TODO
+          The maximum number of views that can be used in multiview rendering.
         type: uint32
-  - name: pipeline_layout_extras
-    doc: |
-      Additional pipeline layout information used by wgpu-native.
-    type: extension_in
-    members:
-      - name: push_constant_ranges
-        doc: |
-          TODO
-        type: array<struct.push_constant_range>
-        pointer: immutable
+        default: constant.limit_u32_undefined
   - name: shader_define
+    namespace: webgpu
     doc: |
-      A preprocessor macro definition used by GLSL shader sources.
+      TODO
     type: standalone
     members:
       - name: name
@@ -534,33 +1324,34 @@ structs:
         type: string_with_default_empty
       - name: value
         doc: |
-          TODO
+          The value of the preprocessor macro (e.g. @c "1").
         type: string_with_default_empty
-  - name: shader_source_glsl
+  - name: shader_source_g_l_s_l
+    namespace: webgpu
     doc: |
-      GLSL shader source and associated preprocessor definitions.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - shader_module_descriptor
     members:
       - name: stage
         doc: |
-          TODO
-        type: enum.shader_stage
+          The shader stage this GLSL source targets.
+        type: bitflag.shader_stage
       - name: code
         doc: |
           GLSL source code.
         type: string_with_default_empty
-      - name: define_count
-        doc: |
-          Number of entries in defines.
-        type: uint32
       - name: defines
         doc: |
           TODO
         type: array<struct.shader_define>
-        pointer: mutable
+        pointer: immutable
+        optional: true
   - name: shader_module_descriptor_spir_v
+    namespace: webgpu
     doc: |
-      Descriptor for creating a SPIR-V shader module.
+      TODO
     type: standalone
     members:
       - name: label
@@ -569,16 +1360,17 @@ structs:
         type: string_with_default_empty
       - name: source_size
         doc: |
-          Number of 32-bit words in source.
+          Number of 32-bit words in @c source.
         type: uint32
       - name: source
         doc: |
-          The SPIR-V source words.
+          TODO
         type: uint32
         pointer: immutable
   - name: registry_report
+    namespace: webgpu
     doc: |
-      Resource accounting statistics for one registry bucket.
+      TODO
     type: standalone
     members:
       - name: num_allocated
@@ -598,8 +1390,9 @@ structs:
           TODO
         type: usize
   - name: hub_report
+    namespace: webgpu
     doc: |
-      Resource accounting statistics grouped by backend hub.
+      TODO
     type: standalone
     members:
       - name: adapters
@@ -671,8 +1464,9 @@ structs:
           TODO
         type: struct.registry_report
   - name: global_report
+    namespace: webgpu
     doc: |
-      Global resource accounting statistics, including surfaces and hub data.
+      TODO
     type: standalone
     members:
       - name: surfaces
@@ -681,126 +1475,315 @@ structs:
         type: struct.registry_report
       - name: hub
         doc: |
-          TODO
+          Statistics for all other resource types, grouped by backend hub.
         type: struct.hub_report
   - name: instance_enumerate_adapter_options
+    namespace: webgpu
     doc: |
-      Options controlling which adapters are enumerated for an instance.
-    type: base_in
+      TODO
+    type: extensible
     members:
-      - name: next_in_chain
-        doc: |
-          TODO
-        type: struct.chained_struct
-        pointer: immutable
-        optional: true
       - name: backends
         doc: |
           TODO
         type: bitflag.instance_backend
   - name: bind_group_entry_extras
+    namespace: webgpu
     doc: |
-      Additional bind-group entry resources supported by wgpu-native.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - bind_group_entry
     members:
       - name: buffers
         doc: |
-          TODO
-        type: object.buffer
+          FIXME: swap count and pointer
+        type: array<object.buffer>
         pointer: immutable
-      - name: buffer_count
-        doc: |
-          TODO
-        type: usize
+        optional: true
       - name: samplers
         doc: |
-          TODO
-        type: object.sampler
+          FIXME: swap count and pointer
+        type: array<object.sampler>
         pointer: immutable
-      - name: sampler_count
-        doc: |
-          TODO
-        type: usize
+        optional: true
       - name: texture_views
         doc: |
-          TODO
-        type: object.texture_view
+          FIXME: swap count and pointer
+        type: array<object.texture_view>
         pointer: immutable
-      - name: texture_view_count
-        doc: |
-          TODO
-        type: usize
+        optional: true
   - name: bind_group_layout_entry_extras
+    namespace: webgpu
     doc: |
-      Additional bind-group layout entry information supported by wgpu-native.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - bind_group_layout_entry
     members:
       - name: count
         doc: |
-          TODO
+          Number of resources in this binding array slot. Corresponds to the
+          array size in the shader (e.g. @c binding_array<T, @c N>).
         type: uint32
   - name: query_set_descriptor_extras
+    namespace: webgpu
     doc: |
-      Additional query-set descriptor information for pipeline statistics.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - query_set_descriptor
     members:
       - name: pipeline_statistics
         doc: |
-          TODO
+          FIXME: swap count and pointer
         type: array<enum.pipeline_statistic_name>
         pointer: immutable
   - name: surface_configuration_extras
+    namespace: webgpu
     doc: |
-      Additional surface configuration parameters used by wgpu-native.
-    type: extension_in
+      TODO
+    type: extension
+    extends:
+      - surface_configuration
     members:
       - name: desired_maximum_frame_latency
         doc: |
-          TODO
+          Desired maximum number of frames in flight (i.e. the number of monitor
+          refreshes between @c wgpuSurfaceGetCurrentTexture and presentation).
+
+          - 1: Minimize latency (CPU and GPU cannot run in parallel).
+          - 2: Balance between latency and throughput (the default).
+          - 3+: Maximize throughput.
         type: uint32
   - name: surface_source_swap_chain_panel
+    namespace: webgpu
     doc: |
-      Chained surface descriptor data for wrapping a WinUI SwapChainPanel.
-    type: extension_in
+      Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping a WinUI [`SwapChainPanel`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel).
+    type: extension
+    extends:
+      - surface_descriptor
     members:
       - name: panel_native
+        doc: |
+          A pointer to the [`ISwapChainPanelNative`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/win32/microsoft.ui.xaml.media.dxinterop/nn-microsoft-ui-xaml-media-dxinterop-iswapchainpanelnative)
+          interface of the SwapChainPanel that will be wrapped by the @ref WGPUSurface.
+        type: c_void
+        pointer: mutable
+  - name: primitive_state_extras
+    namespace: webgpu
+    doc: |
+      TODO
+    type: extension
+    extends:
+      - primitive_state
+    members:
+      - name: polygon_mode
+        doc: |
+          Controls the way each polygon is rasterized.
+          See @ref WGPUPolygonMode. Defaults to @ref WGPUPolygonMode_Fill.
+        type: enum.polygon_mode
+      - name: conservative
+        doc: |
+          If set to true, the primitives are rendered with conservative
+          overestimation. Only valid when @c polygonMode is
+          @ref WGPUPolygonMode_Fill.
+          Requires @ref WGPUNativeFeature_ConservativeRasterization.
+        type: bool
+  - name: surface_source_ohos_native_window
+    namespace: webgpu
+    doc: |
+      Chained in @ref WGPUSurfaceDescriptor to make a @ref WGPUSurface wrapping
+      an OpenHarmony @c OHNativeWindow.
+    type: extension
+    extends:
+      - surface_descriptor
+    members:
+      - name: window
+        doc: |
+          A pointer to an OpenHarmony @c OHNativeWindow. Must not be NULL.
+        type: c_void
+        pointer: mutable
+  - name: xlib_display_handle
+    namespace: webgpu
+    doc: |
+      Xlib display connection data for @ref WGPUNativeDisplayHandle.
+    type: standalone
+    members:
+      - name: display
+        doc: |
+          Pointer to the X11 @c Display (i.e. @c Display*). Must not be NULL.
+        type: c_void
+        pointer: mutable
+      - name: screen
+        doc: |
+          X11 screen number.
+        type: int32
+  - name: xcb_display_handle
+    namespace: webgpu
+    doc: |
+      XCB display connection data for @ref WGPUNativeDisplayHandle.
+    type: standalone
+    members:
+      - name: connection
+        doc: |
+          Pointer to the XCB connection (i.e. @c xcb_connection_t*). Must not be NULL.
+        type: c_void
+        pointer: mutable
+      - name: screen
+        doc: |
+          X11 screen number.
+        type: int32
+  - name: wayland_display_handle
+    namespace: webgpu
+    doc: |
+      Wayland display connection data for @ref WGPUNativeDisplayHandle.
+    type: standalone
+    members:
+      - name: display
+        doc: |
+          Pointer to the Wayland display (i.e. @c wl_display*). Must not be NULL.
+        type: c_void
+        pointer: mutable
+  - name: display_handle
+    doc: |
+      FIXME: Needs `data` union
+
+      Platform display connection, passed as a field of @ref WGPUInstanceExtras.
+
+      This is a tagged union. Set @c type to indicate which variant is active, then
+      populate the corresponding field in @c data. Zero-initialization yields
+      @ref WGPUNativeDisplayHandleType_None, meaning no display handle is provided.
+
+      Currently required by the GLES backend when presenting on Wayland. Other
+      backends ignore this field. If the instance is created with a display handle,
+      all surfaces created from it must use the same display connection.
+    type: standalone
+    members:
+      - name: type
+        doc: |
+          TODO
+        type: enum.display_handle_type
+      - name: xlib
+        doc: |
+          TODO
+        type: struct.xlib_display_handle
+      - name: xcb
+        doc: |
+          TODO
+        type: struct.xcb_display_handle
+      - name: wayland
+        doc: |
+          TODO
+        type: struct.wayland_display_handle
+  - name: image_subresource_range
+    namespace: webgpu
+    doc: |
+      TODO
+    type: standalone
+    members:
+      - name: aspect
+        doc: |
+          TODO
+        type: bitflag.texture_aspect
+      - name: base_mip_level
+        doc: |
+          TODO
+        type: uint32
+      - name: mip_level_count
+        doc: |
+          TODO
+        type: uint32
+      - name: base_array_layer
+        doc: |
+          TODO
+        type: uint32
+      - name: array_layer_count
+        doc: |
+          TODO
+        type: uint32
+  - name: sampler_descriptor_extras
+    namespace: webgpu
+    doc: |
+      TODO
+    type: extension
+    extends:
+      - sampler_descriptor
+    members:
+      - name: sampler_border_color
+        doc: |
+          TODO
+        type: enum.sampler_border_color
+callbacks:
+  - name: log
+    namespace: webgpu
+    doc: |
+      FIXME: remove WGPULogCallbackInfo, remove userdata2, userdata1 => userdata
+    style: immediate
+    args:
+      - name: level
+        doc: |
+          TODO
+        type: enum.log_level
+      - name: message
+        doc: |
+          TODO
+        type: out_string
+        passed_with_ownership: false
+functions:
+  - name: generate_report
+    namespace: webgpu
+    doc: |
+      TODO
+    args:
+      - name: instance
+        doc: |
+          TODO
+        type: object.instance
+      - name: report
+        doc: |
+          TODO
+        type: struct.global_report
+        pointer: mutable
+  - name: set_log_callback
+    namespace: webgpu
+    doc: |
+      TODO
+    args:
+      - name: callback
+        doc: |
+          TODO
+        type: callback.log_callback
+      - name: userdata
         doc: |
           TODO
         type: c_void
         pointer: mutable
-  - name: primitive_state_extras
+        optional: true
+  - name: set_log_level
+    namespace: webgpu
     doc: |
-      Additional primitive rasterization state used by wgpu-native.
-    type: extension_in
-    members:
-      - name: polygon_mode
+      TODO
+    args:
+      - name: level
         doc: |
           TODO
-        type: enum.polygon_mode
-      - name: conservative
-        doc: |
-          If set to true, the primitives are rendered with conservative overestimation.
-        type: bool
-# Callback signatures used by the bindings.
-callbacks: []
-# Extension methods grouped by the object they extend.
-extension-objects:
+        type: enum.log_level
+  - name: get_version
+    namespace: webgpu
+    doc: |
+      TODO
+    returns:
+      doc: |
+        TODO
+      type: uint32
+objects:
   - name: instance
-    functions:
-      - name: generate_report
-        doc: |
-          TODO
-        args:
-          - name: instance
-            doc: |
-              TODO
-            type: object.instance
-          - name: report
-            doc: |
-              TODO
-            type: struct.global_report
-            pointer: mutable
-      - name: instance_enumerate_adapters
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: enumerate_adapters
         doc: |
           TODO
         returns:
@@ -808,10 +1791,6 @@ extension-objects:
             TODO
           type: usize
         args:
-          - name: instance
-            doc: |
-              TODO
-            type: object.instance
           - name: options
             doc: |
               TODO
@@ -824,43 +1803,48 @@ extension-objects:
             type: object.adapter
             pointer: mutable
   - name: queue
-    functions:
-      - name: queue_submit_for_index
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: submit_for_index
         doc: |
-          Identifies a particular call to queue_submit_for_index and can be used with device_poll.
+          TODO
         returns:
           doc: |
             TODO
-          type: uint64
+          type: typedef.submission_index
         args:
-          - name: queue
-            doc: |
-              TODO
-            type: object.queue
-          - name: command_count
-            doc: |
-              TODO
-            type: usize
           - name: commands
             doc: |
               TODO
-            type: object.command_buffer
+            type: array<object.command_buffer>
             pointer: immutable
-      - name: queue_get_timestamp_period
+      - name: get_timestamp_period
         doc: |
           TODO
         returns:
           doc: |
             TODO
           type: float32
-        args:
-          - name: queue
-            doc: |
-              TODO
-            type: object.queue
+      - name: get_native_metal_command_queue
+        doc: |
+          Returns the backend-native `id<MTLCommandQueue>` as an opaque pointer.
+
+          The returned pointer is borrowed and remains valid only while `queue` is alive.
+          Ownership is retained by wgpu-native; callers must not release or destroy it.
+          Returns NULL when the active backend is not Metal or when the handle is unavailable.
+        returns:
+          doc: |
+            TODO
+          type: c_void
+          pointer: mutable
   - name: device
-    functions:
-      - name: device_poll
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: poll
         doc: |
           Returns true if the queue is empty, or false if there are more queue submissions still in flight.
         returns:
@@ -868,10 +1852,6 @@ extension-objects:
             TODO
           type: bool
         args:
-          - name: device
-            doc: |
-              TODO
-            type: object.device
           - name: wait
             doc: |
               TODO
@@ -879,89 +1859,89 @@ extension-objects:
           - name: submission_index
             doc: |
               TODO
-            type: uint64
+            type: typedef.submission_index
             pointer: immutable
             optional: true
-      - name: device_create_shader_module_spir_v
+      - name: create_shader_module_spir_v
         doc: |
           TODO
         returns:
           doc: |
             TODO
           type: object.shader_module
+          passed_with_ownership: true
         args:
-          - name: device
-            doc: |
-              TODO
-            type: object.device
           - name: descriptor
             doc: |
               TODO
             type: struct.shader_module_descriptor_spir_v
             pointer: immutable
-      - name: device_get_native_metal_device
+      - name: get_native_metal_device
         doc: |
-          Returns the backend-native id<MTLDevice> as an opaque pointer.
+          Returns the backend-native `id<MTLDevice>` as an opaque pointer.
+
+          The returned pointer is borrowed and remains valid only while `device` is alive.
+          Ownership is retained by wgpu-native; callers must not release or destroy it.
+          Returns NULL when the active backend is not Metal or when the handle is unavailable.
         returns:
           doc: |
             TODO
           type: c_void
           pointer: mutable
-        args:
-          - name: device
-            doc: |
-              TODO
-            type: object.device
-  - name: texture
-    functions:
-      - name: texture_get_native_metal_texture
+      - name: start_graphics_debugger_capture
         doc: |
-          Returns the backend-native id<MTLTexture> as an opaque pointer.
+          Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.
         returns:
           doc: |
             TODO
-          type: c_void
-          pointer: mutable
-        args:
-          - name: texture
-            doc: |
-              TODO
-            type: object.texture
-  - name: render_pass_encoder
-    functions:
-      - name: render_pass_encoder_set_push_constants
+          type: bool
+      - name: stop_graphics_debugger_capture
         doc: |
           TODO
+      - name: create_shader_module_trusted
+        doc: |
+          TODO
+        returns:
+          doc: |
+            TODO
+          type: object.shader_module
+          passed_with_ownership: true
         args:
-          - name: encoder
+          - name: descriptor
             doc: |
               TODO
-            type: object.render_pass_encoder
-          - name: stages
-            doc: |
-              TODO
-            type: enum.shader_stage
-          - name: offset
-            doc: |
-              TODO
-            type: uint32
-          - name: size_bytes
-            doc: |
-              TODO
-            type: uint32
-          - name: data
-            doc: |
-              TODO
-            type: c_void
+            type: struct.shader_module_descriptor
             pointer: immutable
-      - name: render_pass_encoder_multi_draw_indirect
+          - name: runtime_checks
+            doc: |
+              TODO
+            type: enum.shader_runtime_checks
+  - name: texture
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: get_native_metal_texture
+        doc: |
+          Returns the backend-native `id<MTLTexture>` as an opaque pointer.
+
+          The returned pointer is borrowed and remains valid only while `texture` is alive.
+          Ownership is retained by wgpu-native; callers must not release or destroy it.
+          Returns NULL when the active backend is not Metal or when the handle is unavailable.
+        returns:
+          doc: |
+            TODO
+          type: c_void
+          pointer: mutable
+  - name: render_pass_encoder
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: multi_draw_indirect
         doc: |
           TODO
         args:
-          - name: encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
           - name: buffer
             doc: |
               TODO
@@ -974,14 +1954,10 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-      - name: render_pass_encoder_multi_draw_indexed_indirect
+      - name: multi_draw_indexed_indirect
         doc: |
           TODO
         args:
-          - name: encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
           - name: buffer
             doc: |
               TODO
@@ -994,14 +1970,10 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-      - name: render_pass_encoder_multi_draw_indirect_count
+      - name: multi_draw_indirect_count
         doc: |
           TODO
         args:
-          - name: encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
           - name: buffer
             doc: |
               TODO
@@ -1022,14 +1994,10 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-      - name: render_pass_encoder_multi_draw_indexed_indirect_count
+      - name: multi_draw_indexed_indirect_count
         doc: |
           TODO
         args:
-          - name: encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
           - name: buffer
             doc: |
               TODO
@@ -1050,14 +2018,10 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-      - name: render_pass_encoder_begin_pipeline_statistics_query
+      - name: begin_pipeline_statistics_query
         doc: |
           TODO
         args:
-          - name: render_pass_encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
           - name: query_set
             doc: |
               TODO
@@ -1066,22 +2030,13 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-      - name: render_pass_encoder_end_pipeline_statistics_query
+      - name: end_pipeline_statistics_query
+        doc: |
+          TODO
+      - name: write_timestamp
         doc: |
           TODO
         args:
-          - name: render_pass_encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
-      - name: render_pass_encoder_write_timestamp
-        doc: |
-          TODO
-        args:
-          - name: render_pass_encoder
-            doc: |
-              TODO
-            type: object.render_pass_encoder
           - name: query_set
             doc: |
               TODO
@@ -1091,36 +2046,14 @@ extension-objects:
               TODO
             type: uint32
   - name: compute_pass_encoder
-    functions:
-      - name: compute_pass_encoder_set_push_constants
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: begin_pipeline_statistics_query
         doc: |
           TODO
         args:
-          - name: encoder
-            doc: |
-              TODO
-            type: object.compute_pass_encoder
-          - name: offset
-            doc: |
-              TODO
-            type: uint32
-          - name: size_bytes
-            doc: |
-              TODO
-            type: uint32
-          - name: data
-            doc: |
-              TODO
-            type: c_void
-            pointer: immutable
-      - name: compute_pass_encoder_begin_pipeline_statistics_query
-        doc: |
-          TODO
-        args:
-          - name: compute_pass_encoder
-            doc: |
-              TODO
-            type: object.compute_pass_encoder
           - name: query_set
             doc: |
               TODO
@@ -1129,22 +2062,13 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-      - name: compute_pass_encoder_end_pipeline_statistics_query
+      - name: end_pipeline_statistics_query
+        doc: |
+          TODO
+      - name: write_timestamp
         doc: |
           TODO
         args:
-          - name: compute_pass_encoder
-            doc: |
-              TODO
-            type: object.compute_pass_encoder
-      - name: compute_pass_encoder_write_timestamp
-        doc: |
-          TODO
-        args:
-          - name: compute_pass_encoder
-            doc: |
-              TODO
-            type: object.compute_pass_encoder
           - name: query_set
             doc: |
               TODO
@@ -1153,63 +2077,21 @@ extension-objects:
             doc: |
               TODO
             type: uint32
-  - name: render_bundle_encoder
-    functions:
-      - name: render_bundle_encoder_set_push_constants
+  - name: command_encoder
+    doc: |
+      TODO
+    extended: true
+    methods:
+      - name: clear_texture
         doc: |
           TODO
         args:
-          - name: encoder
+          - name: texture
             doc: |
               TODO
-            type: object.render_bundle_encoder
-          - name: stages
+            type: object.texture
+          - name: range
             doc: |
               TODO
-            type: enum.shader_stage
-          - name: offset
-            doc: |
-              TODO
-            type: uint32
-          - name: size_bytes
-            doc: |
-              TODO
-            type: uint32
-          - name: data
-            doc: |
-              TODO
-            type: c_void
+            type: struct.image_subresource_range
             pointer: immutable
-  - name: global
-    functions:
-      - name: set_log_callback
-        doc: |
-          TODO
-        args:
-          - name: callback
-            doc: |
-              TODO
-            type: c_void
-            pointer: mutable
-          - name: userdata
-            doc: |
-              TODO
-            type: c_void
-            pointer: mutable
-      - name: set_log_level
-        doc: |
-          TODO
-        args:
-          - name: level
-            doc: |
-              TODO
-            type: enum.log_level
-      - name: get_version
-        doc: |
-          TODO
-        returns:
-          doc: |
-            TODO
-          type: uint32
-# Object types exposed by the API.
-objects: []
