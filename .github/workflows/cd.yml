@@ -402,5 +402,6 @@ jobs:
             The Linux builds are built on AlmaLinux 8 [manylinux_2_28](https://github.com/pypa/manylinux#manylinux).
             The MacOS builds target MacOS 10.13 High Sierra and up.
             The Windows builds are built using MSVC on all architectures and GNU on x64.
+            Find the the most recent changes in the [changelog](https://github.com/gfx-rs/wgpu-native/blob/trunk/CHANGELOG.md).
           draft: false
           prerelease: false
