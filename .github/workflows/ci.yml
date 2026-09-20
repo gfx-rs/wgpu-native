@@ -3,10 +3,11 @@
 name: CI
 
 on:
-  push:
-    branches: ["*"]
   pull_request:
-    branches-ignore: []
+  # Runs on `trunk` to save the build caches that pull requests read.
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
 
 env:
   CI_RUST_VERSION: "1.91"
@@ -18,6 +19,10 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   CACHE_SUFFIX: b
   WGPU_ANDROID_NDK_VERSION: r29 # 29.0.14206865"
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: ${{github.event_name == 'pull_request'}}
 
 jobs:
   # A build that does some "meta" checks on the code integrity where the Rust compiler can't.
@@ -218,6 +223,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: clippy-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+          save-if: ${{ github.ref == 'refs/heads/trunk' }}
       - if: contains(matrix.target, 'android')
         name: Setup Android NDK
         run: |
@@ -301,6 +307,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: examples-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+          save-if: ${{ github.ref == 'refs/heads/trunk' }}
       - name: Setup Environment
         run: ${{ matrix.setup_env }}
       - name: Run tests
