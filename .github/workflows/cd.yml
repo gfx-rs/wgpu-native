@@ -1,6 +1,6 @@
 # This workflow builds the binaries, which are released when a "v*" tag is pushed.
 # These also include builds for 32bit platforms, which are thus tested as a side-effect.
-# This workflow only runs on a push to master and when pushing a version-tag.
+# This workflow runs for pull requests, trunk pushes, version tags, and manual requests.
 #
 # The Linux builds are performed on a "manylinux" container. This container
 # is designed such that that the resulting binary has minimal dependencies on system
@@ -27,9 +27,12 @@ on:
   workflow_dispatch:
   push:
     tags: ["v*"]
-    branches: ["*"]
+    branches: [trunk]
   pull_request:
-    branches-ignore: []
+
+concurrency:
+  group: ${{github.workflow}}-${{github.ref}}
+  cancel-in-progress: ${{github.event_name == 'pull_request'}}
 
 jobs:
   # -----
@@ -71,6 +74,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+          save-if: ${{ github.ref == 'refs/heads/trunk' }}
       # Build
       - name: Build
         run: make package
@@ -189,6 +193,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+          save-if: ${{ github.ref == 'refs/heads/trunk' }}
       - name: Setup Android NDK
         run: |
           mkdir -p $HOME/wgpu-deps/ndk
@@ -304,6 +309,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: build-${{ matrix.target }}-${{ env.CACHE_SUFFIX }}
+          save-if: ${{ github.ref == 'refs/heads/trunk' }}
       # Build
       - name: Build
         run: make package
@@ -352,6 +358,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           key: build-${{ env.TARGET }}-${{ env.CACHE_SUFFIX }}
+          save-if: ${{ github.ref == 'refs/heads/trunk' }}
       # Build
       - name: Build
         run: make package
