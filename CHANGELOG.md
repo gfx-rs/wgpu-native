@@ -10,6 +10,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 - [Diffs](#diffs)
 
 ## Unreleased
+- `wgpuDeviceCreateExportableBuffer` to create a buffer whose memory is exported as an opaque POSIX fd for interop with external APIs such as CUDA (Vulkan on Linux/Android only). By @clewis7 in [#635](https://github.com/gfx-rs/wgpu-native/pull/635).
 
 ### Added
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
