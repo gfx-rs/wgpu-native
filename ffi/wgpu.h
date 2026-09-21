@@ -1539,6 +1539,17 @@ extern "C"
     WGPUBool wgpuDevicePoll(WGPUDevice device, WGPUBool wait, WGPU_NULLABLE WGPUSubmissionIndex const *submissionIndex);
     WGPUShaderModule wgpuDeviceCreateShaderModuleSpirV(WGPUDevice device, WGPUShaderModuleDescriptorSpirV const *descriptor);
 
+    /**
+     * Creates a buffer whose memory is exportable as an opaque POSIX file descriptor
+     * (VK_KHR_external_memory_fd), e.g. for `cuImportExternalMemory`.
+     *
+     * Only supported on the Vulkan backend on Linux and Android; returns NULL otherwise.
+     * The buffer cannot be mapped (MapRead/MapWrite usage and mappedAtCreation are rejected).
+     * Ownership of `*fd` passes to the caller. The memory is freed when the buffer is
+     * released, so destroy any external import of it first.
+     */
+    WGPUBuffer wgpuDeviceCreateExportableBuffer(WGPUDevice device, WGPUBufferDescriptor const * descriptor, int * fd, uint64_t * allocationSize);
+
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
 
     void wgpuSetLogLevel(WGPULogLevel level);
