@@ -2004,6 +2004,193 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     }))
 }
 
+#[cfg(all(
+    feature = "vulkan",
+    unix,
+    not(target_os = "ios"),
+    not(target_os = "macos")
+))]
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
+    device: native::WGPUDevice,
+    descriptor: Option<&native::WGPUBufferDescriptor>,
+    fd: Option<&mut std::ffi::c_int>,
+    allocation_size: Option<&mut u64>,
+) -> native::WGPUBuffer {
+    use std::os::fd::{FromRawFd, OwnedFd};
+
+    let (device_id, context, error_sink) = {
+        let device = device.as_ref().expect("invalid device");
+        (device.id, &device.context, &device.error_sink)
+    };
+    let descriptor = descriptor.expect("invalid descriptor");
+    let fd = fd.expect("invalid fd");
+    let allocation_size = allocation_size.expect("invalid allocation size");
+    *fd = -1;
+    *allocation_size = 0;
+
+    let desc = wgt::BufferDescriptor {
+        label: string_view_into_label(descriptor.label),
+        size: descriptor.size,
+        usage: from_u64_bits(descriptor.usage).expect("invalid buffer usage"),
+        mapped_at_creation: false,
+    };
+    assert!(
+        descriptor.mappedAtCreation == 0
+            && !desc
+                .usage
+                .intersects(wgt::BufferUsages::MAP_READ | wgt::BufferUsages::MAP_WRITE),
+        "exportable buffers cannot be mapped"
+    );
+
+    let (hal_buffer, raw_fd, raw_allocation_size) = {
+        let Some(hal_device) = context.device_as_hal::<hal::api::Vulkan>(device_id) else {
+            log::error!("wgpuDeviceCreateExportableBuffer: device is not a Vulkan device");
+            return std::ptr::null_mut();
+        };
+        match create_exportable_vk_buffer(&hal_device, desc.size) {
+            Ok(result) => result,
+            Err(err) => {
+                log::error!("wgpuDeviceCreateExportableBuffer: {err}");
+                return std::ptr::null_mut();
+            }
+        }
+    };
+
+    let (buffer_id, error) =
+        context.create_buffer_from_hal::<hal::api::Vulkan>(hal_buffer, device_id, &desc, None);
+    if let Some(cause) = error {
+        drop(OwnedFd::from_raw_fd(raw_fd));
+        handle_error(
+            error_sink,
+            cause,
+            desc.label,
+            "wgpuDeviceCreateExportableBuffer",
+        );
+    } else {
+        *fd = raw_fd;
+        *allocation_size = raw_allocation_size;
+    }
+
+    Arc::into_raw(Arc::new(WGPUBufferImpl {
+        context: context.clone(),
+        id: buffer_id,
+        error_sink: error_sink.clone(),
+        data: BufferData {
+            usage: descriptor.usage,
+            size: descriptor.size,
+        },
+    }))
+}
+
+#[cfg(not(all(
+    feature = "vulkan",
+    unix,
+    not(target_os = "ios"),
+    not(target_os = "macos")
+)))]
+#[no_mangle]
+pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
+    _device: native::WGPUDevice,
+    _descriptor: Option<&native::WGPUBufferDescriptor>,
+    _fd: Option<&mut std::ffi::c_int>,
+    _allocation_size: Option<&mut u64>,
+) -> native::WGPUBuffer {
+    log::error!("wgpuDeviceCreateExportableBuffer: only supported on Vulkan on Linux and Android");
+    std::ptr::null_mut()
+}
+
+#[cfg(all(
+    feature = "vulkan",
+    unix,
+    not(target_os = "ios"),
+    not(target_os = "macos")
+))]
+unsafe fn create_exportable_vk_buffer(
+    hal_device: &hal::vulkan::Device,
+    size: u64,
+) -> Result<(hal::vulkan::Buffer, std::ffi::c_int, u64), String> {
+    use ash::vk;
+
+    if !hal_device
+        .enabled_device_extensions()
+        .contains(&ash::khr::external_memory_fd::NAME)
+    {
+        return Err("VK_KHR_external_memory_fd is not enabled".to_string());
+    }
+
+    let raw = hal_device.raw_device();
+    let instance = hal_device.shared_instance().raw_instance();
+
+    let mut external_info = vk::ExternalMemoryBufferCreateInfo::default()
+        .handle_types(vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD);
+    let buffer_info = vk::BufferCreateInfo::default()
+        .size(size)
+        .usage(
+            vk::BufferUsageFlags::TRANSFER_SRC
+                | vk::BufferUsageFlags::TRANSFER_DST
+                | vk::BufferUsageFlags::UNIFORM_BUFFER
+                | vk::BufferUsageFlags::STORAGE_BUFFER
+                | vk::BufferUsageFlags::INDEX_BUFFER
+                | vk::BufferUsageFlags::VERTEX_BUFFER
+                | vk::BufferUsageFlags::INDIRECT_BUFFER,
+        )
+        .sharing_mode(vk::SharingMode::EXCLUSIVE)
+        .push_next(&mut external_info);
+    let vk_buffer = raw
+        .create_buffer(&buffer_info, None)
+        .map_err(|e| format!("vkCreateBuffer failed: {e}"))?;
+    let requirements = raw.get_buffer_memory_requirements(vk_buffer);
+
+    let memory_properties =
+        instance.get_physical_device_memory_properties(hal_device.raw_physical_device());
+    let Some(memory_type_index) = (0..memory_properties.memory_type_count).find(|&i| {
+        requirements.memory_type_bits & (1 << i) != 0
+            && memory_properties.memory_types[i as usize]
+                .property_flags
+                .contains(vk::MemoryPropertyFlags::DEVICE_LOCAL)
+    }) else {
+        raw.destroy_buffer(vk_buffer, None);
+        return Err("no DEVICE_LOCAL memory type".to_string());
+    };
+
+    let mut export_info = vk::ExportMemoryAllocateInfo::default()
+        .handle_types(vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD);
+    let mut dedicated_info = vk::MemoryDedicatedAllocateInfo::default().buffer(vk_buffer);
+    let allocate_info = vk::MemoryAllocateInfo::default()
+        .allocation_size(requirements.size)
+        .memory_type_index(memory_type_index)
+        .push_next(&mut export_info)
+        .push_next(&mut dedicated_info);
+    let memory = match raw.allocate_memory(&allocate_info, None) {
+        Ok(memory) => memory,
+        Err(e) => {
+            raw.destroy_buffer(vk_buffer, None);
+            return Err(format!("vkAllocateMemory failed: {e}"));
+        }
+    };
+
+    let fd_device = ash::khr::external_memory_fd::Device::new(instance, raw);
+    let fd_info = vk::MemoryGetFdInfoKHR::default()
+        .memory(memory)
+        .handle_type(vk::ExternalMemoryHandleTypeFlags::OPAQUE_FD);
+    let fd = match raw
+        .bind_buffer_memory(vk_buffer, memory, 0)
+        .and_then(|()| fd_device.get_memory_fd(&fd_info))
+    {
+        Ok(fd) => fd,
+        Err(e) => {
+            raw.destroy_buffer(vk_buffer, None);
+            raw.free_memory(memory, None);
+            return Err(format!("binding or exporting memory failed: {e}"));
+        }
+    };
+
+    // wgpu-hal takes ownership of `memory` and frees it in `destroy_buffer`.
+    let buffer = hal::vulkan::Buffer::from_raw_managed(vk_buffer, memory, 0, requirements.size);
+    Ok((buffer, fd, requirements.size))
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn wgpuDeviceCreateCommandEncoder(
     device: native::WGPUDevice,
