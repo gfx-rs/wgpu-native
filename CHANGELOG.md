@@ -18,6 +18,9 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where `size` is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
+### Changed
+- `wgpu.yml` has been updated to reflect the current state of `wgpu.h`. `wgpu.h` has been regenerated using a modified version of `webgpu-headers`'s `gen` and manually touched up to prevent API/ABI changes. A `wgpu.json` has been produced by the same generator. There is one minor breaking change: enums that extend other enums (e.g. `WGPUNativeSType`) no longer declare their own enum/typedef. By @QuantumSegfault in [#632](https://github.com/gfx-rs/wgpu-native/pull/632).
+
 ## [v29.0.1.1](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.1.1) - 2026-06-23
 
 ### Added 
