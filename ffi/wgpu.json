@@ -76,7 +76,7 @@
         },
         {
           "doc": "Enable GPU-based validation. Implies @ref WGPUInstanceFlag_Validation.\nCurrently only changes behavior on the DX12 and Vulkan backends.\n\n- D3D12: Called \"GPU-based validation\" (GBV).\n- Vulkan: Called \"GPU-Assisted Validation\" via VK_LAYER_KHRONOS_validation.\n\nWhen using @ref WGPUInstanceFlag_WithEnv, takes value from the\n@c WGPU_GPU_BASED_VALIDATION environment variable.\n",
-          "name": "gpu_based_validation"
+          "name": "g_p_u_based_validation"
         },
         {
           "doc": "Validate indirect buffer content prior to issuing indirect draws/dispatches.\n\nThis validation will transform indirect calls into no-ops if they are not\nvalid. For example, @c dispatch_workgroups_indirect arguments must be less\nthan the @c max_compute_workgroups_per_dimension device limit.\n\nWhen using @ref WGPUInstanceFlag_WithEnv, takes value from the\n@c WGPU_VALIDATION_INDIRECT_CALL environment variable.\n",

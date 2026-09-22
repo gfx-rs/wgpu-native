@@ -29,7 +29,7 @@
 #ifdef __cplusplus
 #define _wgpu_EXTEND_ENUM(E, N, V) static const E N = E(V)
 #else
-#define _wgpu_EXTEND_ENUM(E, N, V) static const E N = (E)(V)
+#define _wgpu_EXTEND_ENUM(E, N, V) enum { N = (E)(V) }
 #endif
 #endif // !defined(_wgpu_EXTEND_ENUM)
 
@@ -1256,7 +1256,7 @@ static const WGPUInstanceFlag WGPUInstanceFlag_AllowUnderlyingNoncompliantAdapte
  * When using @ref WGPUInstanceFlag_WithEnv, takes value from the
  * @c WGPU_GPU_BASED_VALIDATION environment variable.
  */
-static const WGPUInstanceFlag WGPUInstanceFlag_GpuBasedValidation = 0x0000000000000010;
+static const WGPUInstanceFlag WGPUInstanceFlag_GPUBasedValidation = 0x0000000000000010;
 /**
  * Validate indirect buffer content prior to issuing indirect draws/dispatches.
  *
@@ -2085,7 +2085,7 @@ typedef struct WGPUShaderSourceGLSL {
     /**
      * Array count for `defines`. The `INIT` macro sets this to 0.
      */
-    size_t defineCount;
+    uint32_t defineCount;
     /**
      * The `INIT` macro sets this to `NULL`.
      */

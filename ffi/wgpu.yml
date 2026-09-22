@@ -1096,7 +1096,7 @@ bitflags:
 
           When using @ref WGPUInstanceFlag_WithEnv, takes value from the
           @c WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER environment variable.
-      - name: gpu_based_validation
+      - name: g_p_u_based_validation
         doc: |
           Enable GPU-based validation. Implies @ref WGPUInstanceFlag_Validation.
           Currently only changes behavior on the DX12 and Vulkan backends.
@@ -1344,7 +1344,7 @@ structs:
         type: string_with_default_empty
       - name: defines
         doc: |
-          TODO
+          FIXME: count type size_t => uint32_t
         type: array<struct.shader_define>
         pointer: immutable
         optional: true
