@@ -784,18 +784,14 @@
       "args": [
         {
           "doc": "TODO\n",
-          "name": "callback",
-          "type": "callback.log_callback"
-        },
-        {
-          "doc": "TODO\n",
           "name": "userdata",
           "optional": true,
           "pointer": "mutable",
           "type": "c_void"
         }
       ],
-      "doc": "TODO\n",
+      "callback": "callback.log",
+      "doc": "FIXME: swap arguments; make ret type void; `WGPULogCallbackInfo callbackInfo` =\u003e `WGPULogCallback callback`\n",
       "name": "set_log_callback",
       "namespace": "webgpu"
     },
@@ -1385,7 +1381,7 @@
           "type": "string_with_default_empty"
         },
         {
-          "doc": "TODO\n",
+          "doc": "FIXME: count type size_t =\u003e uint32_t\n",
           "name": "defines",
           "optional": true,
           "pointer": "immutable",

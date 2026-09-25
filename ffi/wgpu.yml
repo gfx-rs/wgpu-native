@@ -1748,18 +1748,16 @@ functions:
   - name: set_log_callback
     namespace: webgpu
     doc: |
-      TODO
+      FIXME: swap arguments; make ret type void; `WGPULogCallbackInfo callbackInfo` => `WGPULogCallback callback`
+             Don't forget Proc pointer as well!
     args:
-      - name: callback
-        doc: |
-          TODO
-        type: callback.log_callback
       - name: userdata
         doc: |
           TODO
         type: c_void
         pointer: mutable
         optional: true
+    callback: callback.log
   - name: set_log_level
     namespace: webgpu
     doc: |
