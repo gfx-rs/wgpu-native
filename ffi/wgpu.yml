@@ -1913,7 +1913,7 @@ objects:
           - name: runtime_checks
             doc: |
               TODO
-            type: enum.shader_runtime_checks
+            type: bitflag.shader_runtime_checks
   - name: texture
     doc: |
       TODO

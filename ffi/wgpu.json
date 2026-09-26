@@ -964,7 +964,7 @@
             {
               "doc": "TODO\n",
               "name": "runtime_checks",
-              "type": "enum.shader_runtime_checks"
+              "type": "bitflag.shader_runtime_checks"
             }
           ],
           "doc": "TODO\n",
