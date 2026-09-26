@@ -1685,7 +1685,7 @@ structs:
       - name: aspect
         doc: |
           TODO
-        type: bitflag.texture_aspect
+        type: enum.texture_aspect
       - name: base_mip_level
         doc: |
           TODO

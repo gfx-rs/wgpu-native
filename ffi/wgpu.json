@@ -791,7 +791,7 @@
         }
       ],
       "callback": "callback.log",
-      "doc": "FIXME: swap arguments; make ret type void; `WGPULogCallbackInfo callbackInfo` =\u003e `WGPULogCallback callback`\n",
+      "doc": "FIXME: swap arguments; make ret type void; `WGPULogCallbackInfo callbackInfo` =\u003e `WGPULogCallback callback`\n       Don't forget Proc pointer as well!\n",
       "name": "set_log_callback",
       "namespace": "webgpu"
     },
@@ -1789,7 +1789,7 @@
         {
           "doc": "TODO\n",
           "name": "aspect",
-          "type": "bitflag.texture_aspect"
+          "type": "enum.texture_aspect"
         },
         {
           "doc": "TODO\n",

@@ -1507,7 +1507,7 @@ typedef struct WGPUDeviceExtras {
  */
 typedef struct WGPUImageSubresourceRange {
     /**
-     * The `INIT` macro sets this to @ref WGPUTextureAspect_None.
+     * The `INIT` macro sets this to @ref WGPUTextureAspect_Undefined.
      */
     WGPUTextureAspect aspect;
     /**
@@ -1532,7 +1532,7 @@ typedef struct WGPUImageSubresourceRange {
  * Initializer for @ref WGPUImageSubresourceRange.
  */
 #define WGPU_IMAGE_SUBRESOURCE_RANGE_INIT _wgpu_MAKE_INIT_STRUCT(WGPUImageSubresourceRange, { \
-    /*.aspect=*/WGPUTextureAspect_None _wgpu_COMMA \
+    /*.aspect=*/WGPUTextureAspect_Undefined _wgpu_COMMA \
     /*.baseMipLevel=*/0 _wgpu_COMMA \
     /*.mipLevelCount=*/0 _wgpu_COMMA \
     /*.baseArrayLayer=*/0 _wgpu_COMMA \
