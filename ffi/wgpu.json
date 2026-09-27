@@ -781,17 +781,8 @@
       "namespace": "webgpu"
     },
     {
-      "args": [
-        {
-          "doc": "TODO\n",
-          "name": "userdata",
-          "optional": true,
-          "pointer": "mutable",
-          "type": "c_void"
-        }
-      ],
       "callback": "callback.log",
-      "doc": "FIXME: swap arguments; make ret type void; `WGPULogCallbackInfo callbackInfo` =\u003e `WGPULogCallback callback`\n       Don't forget Proc pointer as well!\n",
+      "doc": "FIXME: Signature needs to be: void wgpuSetLogCallback(WGPULogCallback callback, WGPU_NULLABLE void * userdata)\n       Don't forget Proc pointer as well!\n",
       "name": "set_log_callback",
       "namespace": "webgpu"
     },

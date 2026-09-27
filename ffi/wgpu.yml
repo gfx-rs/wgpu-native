@@ -1748,15 +1748,8 @@ functions:
   - name: set_log_callback
     namespace: webgpu
     doc: |
-      FIXME: swap arguments; make ret type void; `WGPULogCallbackInfo callbackInfo` => `WGPULogCallback callback`
+      FIXME: Signature needs to be: void wgpuSetLogCallback(WGPULogCallback callback, WGPU_NULLABLE void * userdata)
              Don't forget Proc pointer as well!
-    args:
-      - name: userdata
-        doc: |
-          TODO
-        type: c_void
-        pointer: mutable
-        optional: true
     callback: callback.log
   - name: set_log_level
     namespace: webgpu
