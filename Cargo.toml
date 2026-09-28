@@ -107,6 +107,7 @@ workspace = true
 
 [target.'cfg(all(unix, not(target_os = "ios"), not(target_os = "macos")))'.dependencies]
 hal = { workspace = true, features = ["renderdoc"] }
+ash = "0.38"
 
 [target.'cfg(windows)'.dependencies]
 hal = { workspace = true, features = ["dx12", "renderdoc"] }

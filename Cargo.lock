@@ -1188,6 +1188,7 @@ dependencies = [
 name = "wgpu-native"
 version = "0.0.0"
 dependencies = [
+ "ash",
  "bindgen",
  "bitflags",
  "log",
