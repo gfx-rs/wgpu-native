@@ -1548,7 +1548,7 @@ extern "C"
      * Ownership of `*fd` passes to the caller. The memory is freed when the buffer is
      * released, so destroy any external import of it first.
      */
-    WGPUBuffer wgpuDeviceCreateExportableBuffer(WGPUDevice device, WGPUBufferDescriptor const * descriptor, int * fd, uint64_t * allocationSize);
+    WGPUBuffer wgpuDeviceCreateExportableVulkanBuffer(WGPUDevice device, WGPUBufferDescriptor const * descriptor, int * fd, uint64_t * allocationSize);
 
     void wgpuSetLogCallback(WGPULogCallback callback, void *userdata);
 

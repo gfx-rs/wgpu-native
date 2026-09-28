@@ -2011,7 +2011,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     not(target_os = "macos")
 ))]
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
+pub unsafe extern "C" fn wgpuDeviceCreateExportableVulkanBuffer(
     device: native::WGPUDevice,
     descriptor: Option<&native::WGPUBufferDescriptor>,
     fd: Option<&mut std::ffi::c_int>,
@@ -2045,13 +2045,13 @@ pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
 
     let (hal_buffer, raw_fd, raw_allocation_size) = {
         let Some(hal_device) = context.device_as_hal::<hal::api::Vulkan>(device_id) else {
-            log::error!("wgpuDeviceCreateExportableBuffer: device is not a Vulkan device");
+            log::error!("wgpuDeviceCreateExportableVulkanBuffer: device is not a Vulkan device");
             return std::ptr::null_mut();
         };
         match create_exportable_vk_buffer(&hal_device, desc.size) {
             Ok(result) => result,
             Err(err) => {
-                log::error!("wgpuDeviceCreateExportableBuffer: {err}");
+                log::error!("wgpuDeviceCreateExportableVulkanBuffer: {err}");
                 return std::ptr::null_mut();
             }
         }
@@ -2065,7 +2065,7 @@ pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
             error_sink,
             cause,
             desc.label,
-            "wgpuDeviceCreateExportableBuffer",
+            "wgpuDeviceCreateExportableVulkanBuffer",
         );
     } else {
         *fd = raw_fd;
@@ -2090,13 +2090,15 @@ pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
     not(target_os = "macos")
 )))]
 #[no_mangle]
-pub unsafe extern "C" fn wgpuDeviceCreateExportableBuffer(
+pub unsafe extern "C" fn wgpuDeviceCreateExportableVulkanBuffer(
     _device: native::WGPUDevice,
     _descriptor: Option<&native::WGPUBufferDescriptor>,
     _fd: Option<&mut std::ffi::c_int>,
     _allocation_size: Option<&mut u64>,
 ) -> native::WGPUBuffer {
-    log::error!("wgpuDeviceCreateExportableBuffer: only supported on Vulkan on Linux and Android");
+    log::error!(
+        "wgpuDeviceCreateExportableVulkanBuffer: only supported on Vulkan on Linux and Android"
+    );
     std::ptr::null_mut()
 }
 
