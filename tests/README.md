@@ -10,6 +10,7 @@ CPU checks (Python 3.11+ and C/C++ compilers are required):
 cargo test --locked -p wgpu-native --tests
 cargo test --locked -p wgpu-native --no-default-features --tests
 cargo test --locked -p wgpu-c-bindings --tests
+cargo test --locked -p wgpu-c-backend --tests
 python tests/check_headers.py
 python -m unittest discover -s tests -p 'test_*.py'
 ```
@@ -65,6 +66,12 @@ The default native callbacks remain fatal. This is not permission to unwind
 through an arbitrary C caller, nor a general panic-recovery contract for the
 native runtime. Compile-time tests check the consumer declarations and the
 32-bit `WGPUBool` polling signatures on both sides of the boundary.
+
+Flag ABI regressions check all three native capability bitmasks against the
+64-bit `WGPUFlags` contract in C, C++, and both generated Rust bindings. They
+also check capability struct layouts and the WGSL query return type. Backend
+conversion tests retain known texture capability flags while discarding bits
+that the pinned Rust flag type does not support.
 
 ## Metal surface lifetime regressions
 

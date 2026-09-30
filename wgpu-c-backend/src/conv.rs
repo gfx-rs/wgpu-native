@@ -895,7 +895,8 @@ pub fn map_texture_format_capabilities(
 ) -> wgpu::TextureFormatFeatures {
     wgpu::TextureFormatFeatures {
         allowed_usages: wgpu::TextureUsages::from_bits_truncate(caps.allowedUsages as u32),
-        flags: wgpu::TextureFormatFeatureFlags::from_bits_truncate(caps.flags),
+        // The C ABI uses WGPUFlags; wgpu stores its known flags in 32 bits.
+        flags: wgpu::TextureFormatFeatureFlags::from_bits_truncate(caps.flags as u32),
     }
 }
 
@@ -2036,5 +2037,26 @@ pub fn external_transfer_function_to_native(
         b: tf.b,
         g: tf.g,
         k: tf.k,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn texture_capability_flags_preserve_known_bits_and_truncate_unknown_bits() {
+        let known = wgpu::TextureFormatFeatureFlags::FILTERABLE
+            | wgpu::TextureFormatFeatureFlags::BLENDABLE;
+        let caps = native::WGPUNativeTextureFormatCapabilities {
+            allowedUsages: native::WGPUTextureUsage_TextureBinding,
+            flags: native::WGPUNativeTextureFormatFeatureFlags_Filterable
+                | native::WGPUNativeTextureFormatFeatureFlags_Blendable
+                | (1u64 << 63)
+                | (1u64 << 31),
+        };
+        let mapped = map_texture_format_capabilities(&caps);
+        assert_eq!(mapped.flags, known);
+        assert_eq!(mapped.allowed_usages, wgpu::TextureUsages::TEXTURE_BINDING);
     }
 }

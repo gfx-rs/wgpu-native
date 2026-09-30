@@ -57,6 +57,9 @@ jobs:
         with:
           version: ${{ env.CI_RUST_VERSION }}
       - run: cargo test --locked -p wgpu-native --no-default-features --features "${{ matrix.features }}" --tests
+      - name: Check generated C ABI and backend conversions
+        if: matrix.features == 'metal,wgsl'
+        run: cargo test --locked -p wgpu-c-bindings -p wgpu-c-backend --tests
 
   fmt:
     name: Format
