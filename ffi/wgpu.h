@@ -2486,7 +2486,7 @@ static const WGPUShaderRuntimeChecks WGPUShaderRuntimeChecks_IntDivChecks = 0x00
  *
  * Bit values match those of @c wgpu_types::TextureFormatFeatureFlags.
  */
-typedef uint32_t WGPUNativeTextureFormatFeatureFlags;
+typedef WGPUFlags WGPUNativeTextureFormatFeatureFlags;
 static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_None = 0x0000000000000000;
 static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_Filterable = 0x0000000000000001;
 static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureFlags_MultisampleX2 = 0x0000000000000002;
@@ -2505,7 +2505,7 @@ static const WGPUNativeTextureFormatFeatureFlags WGPUNativeTextureFormatFeatureF
  *
  * Returned by @ref wgpuGetWgslLanguageFeatures.
  */
-typedef uint32_t WGPUWgslLanguageFeatures;
+typedef WGPUFlags WGPUWgslLanguageFeatures;
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_None = 0x0000000000000000;
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ReadOnlyAndReadWriteStorageTextures = 0x0000000000000001;
 static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_Packed4x8IntegerDotProduct = 0x0000000000000002;
@@ -2518,7 +2518,7 @@ static const WGPUWgslLanguageFeatures WGPUWgslLanguageFeatures_ImmediateAddressS
  *
  * Bit values match those of @c wgpu_types::DownlevelFlags.
  */
-typedef uint32_t WGPUDownlevelFlags;
+typedef WGPUFlags WGPUDownlevelFlags;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_None = 0x0000000000000000;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_ComputeShaders = 0x0000000000000001;
 static const WGPUDownlevelFlags WGPUDownlevelFlags_FragmentWritableStorage = 0x0000000000000002;
