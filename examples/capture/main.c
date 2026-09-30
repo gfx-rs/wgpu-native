@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
                      (const WGPUBufferMapCallbackInfo){
                          .callback = handle_buffer_map
                      });
-  wgpuDevicePoll(device, true, NULL);
+  wgpuDevicePoll(device, true, NULL, 0);
 
   uint8_t *buf =
       (uint8_t *)wgpuBufferGetConstMappedRange(output_buffer, 0, buffer_size);

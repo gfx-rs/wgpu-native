@@ -22,7 +22,7 @@ elseif(UNIX AND NOT APPLE)
     set(OS_LIBRARIES "-lm -ldl")
 elseif(APPLE)
     add_definitions(-DGLFW_EXPOSE_NATIVE_COCOA)
-    set(OS_LIBRARIES "-framework CoreFoundation -framework QuartzCore -framework Metal")
+    set(OS_LIBRARIES "-framework CoreFoundation -framework QuartzCore -framework Metal -framework CoreGraphics")
 endif()
 
 target_link_libraries(texture_arrays framework glfw ${WGPU_LIBRARY} ${OS_LIBRARIES})
