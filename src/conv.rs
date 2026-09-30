@@ -67,15 +67,26 @@ map_enum_with_undefined!(
     GreaterEqual,
     Always
 );
-map_enum_with_undefined!(
-    map_texture_aspect,
-    WGPUTextureAspect,
-    wgt::TextureAspect,
-    "Unknown texture aspect",
-    All,
-    StencilOnly,
-    DepthOnly
-);
+pub fn map_texture_aspect(aspect: native::WGPUTextureAspect) -> Option<wgt::TextureAspect> {
+    match aspect {
+        native::WGPUTextureAspect_All => Some(wgt::TextureAspect::All),
+        native::WGPUTextureAspect_StencilOnly => Some(wgt::TextureAspect::StencilOnly),
+        native::WGPUTextureAspect_DepthOnly => Some(wgt::TextureAspect::DepthOnly),
+        // Native-only plane aspects (see wgpu.h) for multi-planar formats (NV12,
+        // P010, …). These are `#define`d values, not enum variants, so compare in
+        // guards rather than match patterns.
+        other if other == native::WGPUTextureAspect_Plane0 as native::WGPUTextureAspect => {
+            Some(wgt::TextureAspect::Plane0)
+        }
+        other if other == native::WGPUTextureAspect_Plane1 as native::WGPUTextureAspect => {
+            Some(wgt::TextureAspect::Plane1)
+        }
+        other if other == native::WGPUTextureAspect_Plane2 as native::WGPUTextureAspect => {
+            Some(wgt::TextureAspect::Plane2)
+        }
+        _ => None,
+    }
+}
 map_enum_with_undefined!(
     map_present_mode,
     WGPUPresentMode,
@@ -156,46 +167,47 @@ map_enum!(
     map_vertex_format,
     WGPUVertexFormat,
     wgt::VertexFormat,
-    Uint8,
-    Uint8x2,
-    Uint8x4,
-    Sint8,
-    Sint8x2,
-    Sint8x4,
-    Unorm8,
-    Unorm8x2,
-    Unorm8x4,
-    Snorm8,
-    Snorm8x2,
-    Snorm8x4,
-    Uint16,
-    Uint16x2,
-    Uint16x4,
-    Sint16,
-    Sint16x2,
-    Sint16x4,
-    Unorm16,
-    Unorm16x2,
-    Unorm16x4,
-    Snorm16,
-    Snorm16x2,
-    Snorm16x4,
-    Float16,
-    Float16x2,
-    Float16x4,
-    Float32,
-    Float32x2,
-    Float32x3,
-    Float32x4,
-    Uint32,
-    Uint32x2,
-    Uint32x3,
-    Uint32x4,
-    Sint32,
-    Sint32x2,
-    Sint32x3,
-    Sint32x4,
-    Unorm10_10_10_2
+    Uint8:Uint8,
+    Uint8x2:Uint8x2,
+    Uint8x4:Uint8x4,
+    Sint8:Sint8,
+    Sint8x2:Sint8x2,
+    Sint8x4:Sint8x4,
+    Unorm8:Unorm8,
+    Unorm8x2:Unorm8x2,
+    Unorm8x4:Unorm8x4,
+    Snorm8:Snorm8,
+    Snorm8x2:Snorm8x2,
+    Snorm8x4:Snorm8x4,
+    Uint16:Uint16,
+    Uint16x2:Uint16x2,
+    Uint16x4:Uint16x4,
+    Sint16:Sint16,
+    Sint16x2:Sint16x2,
+    Sint16x4:Sint16x4,
+    Unorm16:Unorm16,
+    Unorm16x2:Unorm16x2,
+    Unorm16x4:Unorm16x4,
+    Snorm16:Snorm16,
+    Snorm16x2:Snorm16x2,
+    Snorm16x4:Snorm16x4,
+    Float16:Float16,
+    Float16x2:Float16x2,
+    Float16x4:Float16x4,
+    Float32:Float32,
+    Float32x2:Float32x2,
+    Float32x3:Float32x3,
+    Float32x4:Float32x4,
+    Uint32:Uint32,
+    Uint32x2:Uint32x2,
+    Uint32x3:Uint32x3,
+    Uint32x4:Uint32x4,
+    Sint32:Sint32,
+    Sint32x2:Sint32x2,
+    Sint32x3:Sint32x3,
+    Sint32x4:Sint32x4,
+    Unorm10_10_10_2:Unorm10_10_10_2,
+    Unorm8x4BGRA:Unorm8x4Bgra
 );
 
 #[cfg(feature = "glsl")]
@@ -230,15 +242,24 @@ map_enum!(
     Version2
 );
 
-map_enum_with_undefined!(
-    map_storage_texture_access,
-    WGPUStorageTextureAccess,
-    wgt::StorageTextureAccess,
-    "Unknown storage texture access",
-    WriteOnly,
-    ReadOnly,
-    ReadWrite
-);
+pub const WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC: native::WGPUStorageTextureAccess =
+    native::WGPUStorageTextureAccess_Atomic as native::WGPUStorageTextureAccess;
+
+pub const WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT: native::WGPUTextureFormat =
+    native::WGPUNativeTextureFormat_R64Uint as native::WGPUTextureFormat;
+
+pub fn map_storage_texture_access(
+    value: native::WGPUStorageTextureAccess,
+) -> Option<wgt::StorageTextureAccess> {
+    match value {
+        native::WGPUStorageTextureAccess_Undefined => None,
+        native::WGPUStorageTextureAccess_WriteOnly => Some(wgt::StorageTextureAccess::WriteOnly),
+        native::WGPUStorageTextureAccess_ReadOnly => Some(wgt::StorageTextureAccess::ReadOnly),
+        native::WGPUStorageTextureAccess_ReadWrite => Some(wgt::StorageTextureAccess::ReadWrite),
+        WGPU_NATIVE_STORAGE_TEXTURE_ACCESS_ATOMIC => Some(wgt::StorageTextureAccess::Atomic),
+        x => panic!("Unknown storage texture access: {x}"),
+    }
+}
 
 map_enum_with_undefined!(
     map_sampler_border_color,
@@ -340,6 +361,9 @@ pub fn map_instance_flags(flags: native::WGPUInstanceFlag) -> wgt::InstanceFlags
     if (flags & native::WGPUInstanceFlag_AutomaticTimestampNormalization) != 0 {
         result.insert(wgt::InstanceFlags::AUTOMATIC_TIMESTAMP_NORMALIZATION);
     }
+    if (flags & native::WGPUInstanceFlag_StrictWebgpuCompliance) != 0 {
+        result.insert(wgt::InstanceFlags::STRICT_WEBGPU_COMPLIANCE);
+    }
 
     // Convenience helpers
     if (flags & native::WGPUInstanceFlag_Default) != 0 {
@@ -391,7 +415,7 @@ pub unsafe fn map_instance_descriptor(
         };
 
         let for_resource_creation = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
-        let for_device_loss = unsafe { extras.budgetForDeviceCreation.as_ref() }.copied();
+        let for_device_loss = unsafe { extras.budgetForDeviceLoss.as_ref() }.copied();
 
         let display = map_native_display_handle(&extras.displayHandle);
 
@@ -471,10 +495,37 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
     des: &native::WGPUDeviceDescriptor,
     base_limits: wgt::Limits,
     extras: Option<&native::WGPUDeviceExtras>,
+    device_extras: Option<&native::WGPUDeviceDescriptorExtras>,
 ) -> (
     wgt::DeviceDescriptor<wgc::Label<'a>>,
     Option<UncapturedErrorCallback>,
 ) {
+    // WGPUDeviceDescriptorExtras takes precedence over the legacy WGPUDeviceExtras memory fields.
+    let memory_hints = match (device_extras, extras) {
+        (Some(e), _) => match e.memoryHints {
+            native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
+            native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeMin
+                    ..e.suballocatedDeviceMemoryBlockSizeMax,
+            },
+            _ => wgt::MemoryHints::Performance,
+        },
+        (None, Some(e)) => match e.memoryHints {
+            native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
+            native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size: e.suballocatedDeviceMemoryBlockSizeStart
+                    ..e.suballocatedDeviceMemoryBlockSizeEnd,
+            },
+            _ => wgt::MemoryHints::Performance,
+        },
+        (None, None) => wgt::MemoryHints::default(),
+    };
+    let experimental_features = match device_extras {
+        Some(e) if e.experimentalFeaturesEnabled != 0 => unsafe {
+            wgt::ExperimentalFeatures::enabled()
+        },
+        _ => wgt::ExperimentalFeatures::disabled(),
+    };
     (
         wgt::DeviceDescriptor {
             label: string_view_into_label(des.label),
@@ -491,20 +542,9 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 },
                 None => base_limits,
             },
-            memory_hints: match extras {
-                Some(extras) => match extras.memoryHints {
-                    native::WGPUMemoryHints_MemoryUsage => wgt::MemoryHints::MemoryUsage,
-                    native::WGPUMemoryHints_Manual => wgt::MemoryHints::Manual {
-                        suballocated_device_memory_block_size: extras
-                            .suballocatedDeviceMemoryBlockSizeStart
-                            ..extras.suballocatedDeviceMemoryBlockSizeEnd,
-                    },
-                    _ => wgt::MemoryHints::Performance,
-                },
-                None => Default::default(),
-            },
+            memory_hints,
             trace: Default::default(),
-            experimental_features: wgt::ExperimentalFeatures::disabled(),
+            experimental_features,
         },
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
@@ -595,6 +635,36 @@ pub fn write_limits_struct(wgt_limits: wgt::Limits, limits: &mut native::WGPULim
             (*native_limits).maxBindingArraySamplerElementsPerShaderStage =
                 wgt_limits.max_binding_array_sampler_elements_per_shader_stage;
             (*native_limits).maxMultiviewViewCount = wgt_limits.max_multiview_view_count;
+            (*native_limits).maxBindingArrayAccelerationStructureElementsPerShaderStage =
+                wgt_limits.max_binding_array_acceleration_structure_elements_per_shader_stage;
+            (*native_limits).maxTaskWorkgroupTotalCount = wgt_limits.max_task_workgroup_total_count;
+            (*native_limits).maxTaskWorkgroupsPerDimension =
+                wgt_limits.max_task_workgroups_per_dimension;
+            (*native_limits).maxMeshWorkgroupTotalCount = wgt_limits.max_mesh_workgroup_total_count;
+            (*native_limits).maxMeshWorkgroupsPerDimension =
+                wgt_limits.max_mesh_workgroups_per_dimension;
+            (*native_limits).maxTaskInvocationsPerWorkgroup =
+                wgt_limits.max_task_invocations_per_workgroup;
+            (*native_limits).maxTaskInvocationsPerDimension =
+                wgt_limits.max_task_invocations_per_dimension;
+            (*native_limits).maxMeshInvocationsPerWorkgroup =
+                wgt_limits.max_mesh_invocations_per_workgroup;
+            (*native_limits).maxMeshInvocationsPerDimension =
+                wgt_limits.max_mesh_invocations_per_dimension;
+            (*native_limits).maxTaskPayloadSize = wgt_limits.max_task_payload_size;
+            (*native_limits).maxMeshOutputVertices = wgt_limits.max_mesh_output_vertices;
+            (*native_limits).maxMeshOutputPrimitives = wgt_limits.max_mesh_output_primitives;
+            (*native_limits).maxMeshOutputLayers = wgt_limits.max_mesh_output_layers;
+            (*native_limits).maxMeshMultiviewViewCount = wgt_limits.max_mesh_multiview_view_count;
+            (*native_limits).maxBlasPrimitiveCount = wgt_limits.max_blas_primitive_count;
+            (*native_limits).maxBlasGeometryCount = wgt_limits.max_blas_geometry_count;
+            (*native_limits).maxTlasInstanceCount = wgt_limits.max_tlas_instance_count;
+            (*native_limits).maxAccelerationStructuresPerShaderStage =
+                wgt_limits.max_acceleration_structures_per_shader_stage;
+            (*native_limits).maxBuffersAndAccelerationStructuresPerShaderStage =
+                wgt_limits.max_buffers_and_acceleration_structures_per_shader_stage;
+            (*native_limits).maxRayDispatchCount = wgt_limits.max_ray_dispatch_count;
+            (*native_limits).maxRayRecursionDepth = wgt_limits.max_ray_recursion_depth;
         }
     };
 }
@@ -720,6 +790,76 @@ pub fn map_required_limits(
         if limits.maxMultiviewViewCount != native::WGPU_LIMIT_U32_UNDEFINED {
             wgt_limits.max_multiview_view_count = limits.maxMultiviewViewCount;
         }
+        if limits.maxBindingArrayAccelerationStructureElementsPerShaderStage
+            != native::WGPU_LIMIT_U32_UNDEFINED
+        {
+            wgt_limits.max_binding_array_acceleration_structure_elements_per_shader_stage =
+                limits.maxBindingArrayAccelerationStructureElementsPerShaderStage;
+        }
+        if limits.maxTaskWorkgroupTotalCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_workgroup_total_count = limits.maxTaskWorkgroupTotalCount;
+        }
+        if limits.maxTaskWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_workgroups_per_dimension = limits.maxTaskWorkgroupsPerDimension;
+        }
+        if limits.maxMeshWorkgroupTotalCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_workgroup_total_count = limits.maxMeshWorkgroupTotalCount;
+        }
+        if limits.maxMeshWorkgroupsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_workgroups_per_dimension = limits.maxMeshWorkgroupsPerDimension;
+        }
+        if limits.maxTaskInvocationsPerWorkgroup != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_invocations_per_workgroup = limits.maxTaskInvocationsPerWorkgroup;
+        }
+        if limits.maxTaskInvocationsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_invocations_per_dimension = limits.maxTaskInvocationsPerDimension;
+        }
+        if limits.maxMeshInvocationsPerWorkgroup != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_invocations_per_workgroup = limits.maxMeshInvocationsPerWorkgroup;
+        }
+        if limits.maxMeshInvocationsPerDimension != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_invocations_per_dimension = limits.maxMeshInvocationsPerDimension;
+        }
+        if limits.maxTaskPayloadSize != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_task_payload_size = limits.maxTaskPayloadSize;
+        }
+        if limits.maxMeshOutputVertices != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_output_vertices = limits.maxMeshOutputVertices;
+        }
+        if limits.maxMeshOutputPrimitives != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_output_primitives = limits.maxMeshOutputPrimitives;
+        }
+        if limits.maxMeshOutputLayers != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_output_layers = limits.maxMeshOutputLayers;
+        }
+        if limits.maxMeshMultiviewViewCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_mesh_multiview_view_count = limits.maxMeshMultiviewViewCount;
+        }
+        if limits.maxBlasPrimitiveCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_blas_primitive_count = limits.maxBlasPrimitiveCount;
+        }
+        if limits.maxBlasGeometryCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_blas_geometry_count = limits.maxBlasGeometryCount;
+        }
+        if limits.maxTlasInstanceCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_tlas_instance_count = limits.maxTlasInstanceCount;
+        }
+        if limits.maxAccelerationStructuresPerShaderStage != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_acceleration_structures_per_shader_stage =
+                limits.maxAccelerationStructuresPerShaderStage;
+        }
+        if limits.maxBuffersAndAccelerationStructuresPerShaderStage
+            != native::WGPU_LIMIT_U32_UNDEFINED
+        {
+            wgt_limits.max_buffers_and_acceleration_structures_per_shader_stage =
+                limits.maxBuffersAndAccelerationStructuresPerShaderStage;
+        }
+        if limits.maxRayDispatchCount != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_ray_dispatch_count = limits.maxRayDispatchCount;
+        }
+        if limits.maxRayRecursionDepth != native::WGPU_LIMIT_U32_UNDEFINED {
+            wgt_limits.max_ray_recursion_depth = limits.maxRayRecursionDepth;
+        }
     }
     wgt_limits
 }
@@ -734,15 +874,22 @@ pub enum ShaderParseError {
     Glsl(#[from] naga::front::glsl::ParseErrors),
 }
 
+impl wgt::error::WebGpuError for ShaderParseError {
+    fn webgpu_error_type(&self) -> wgt::error::ErrorType {
+        // Shader source that fails to parse is a validation error.
+        wgt::error::ErrorType::Validation
+    }
+}
+
 #[inline]
 pub unsafe fn map_shader_module<'a>(
     _: &native::WGPUShaderModuleDescriptor,
-    spirv: Option<&native::WGPUShaderSourceSPIRV>,
-    wgsl: Option<&native::WGPUShaderSourceWGSL>,
-    glsl: Option<&native::WGPUShaderSourceGLSL>,
+    _spirv: Option<&native::WGPUShaderSourceSPIRV>,
+    _wgsl: Option<&native::WGPUShaderSourceWGSL>,
+    _glsl: Option<&native::WGPUShaderSourceGLSL>,
 ) -> Result<wgc::pipeline::ShaderModuleSource<'a>, ShaderParseError> {
     #[cfg(feature = "wgsl")]
-    if let Some(wgsl) = wgsl {
+    if let Some(wgsl) = _wgsl {
         let str_slice: &str = string_view_into_str(wgsl.code).unwrap_or("");
         return Ok(wgc::pipeline::ShaderModuleSource::Wgsl(Cow::Borrowed(
             str_slice,
@@ -750,7 +897,7 @@ pub unsafe fn map_shader_module<'a>(
     }
 
     #[cfg(feature = "spirv")]
-    if let Some(spirv) = spirv {
+    if let Some(spirv) = _spirv {
         let slice = make_slice(spirv.code, spirv.codeSize as usize);
         // Parse the given shader code and store its representation.
         let options = naga::front::spv::Options {
@@ -766,7 +913,7 @@ pub unsafe fn map_shader_module<'a>(
     }
 
     #[cfg(feature = "glsl")]
-    if let Some(glsl) = glsl {
+    if let Some(glsl) = _glsl {
         let str_slice: &str = string_view_into_str(glsl.code).unwrap_or("");
         let mut options = naga::front::glsl::Options::from(
             map_shader_stage(glsl.stage)
@@ -843,6 +990,129 @@ pub fn map_texture_data_layout(
 }
 
 #[inline]
+pub fn optional_bool_to_native(value: Option<bool>) -> native::WGPUOptionalBool {
+    match value {
+        Some(true) => native::WGPUOptionalBool_True,
+        Some(false) => native::WGPUOptionalBool_False,
+        None => native::WGPUOptionalBool_Undefined,
+    }
+}
+
+pub fn map_display_hdr_info(info: wgt::DisplayHdrInfo) -> native::WGPUDisplayHdrInfo {
+    // Unknown `Option<f32>` values are encoded as NaN.
+    fn f(v: Option<f32>) -> f32 {
+        v.unwrap_or(f32::NAN)
+    }
+    fn pair(v: Option<[f32; 2]>) -> (f32, f32) {
+        match v {
+            Some([x, y]) => (x, y),
+            None => (f32::NAN, f32::NAN),
+        }
+    }
+    let luminance = match info.luminance {
+        Some(l) => native::WGPUDisplayLuminance {
+            present: true as native::WGPUBool,
+            maxNits: f(l.max_nits),
+            maxFullFrameNits: f(l.max_full_frame_nits),
+            minNits: f(l.min_nits),
+            sdrWhiteNits: f(l.sdr_white_nits),
+        },
+        None => native::WGPUDisplayLuminance {
+            present: false as native::WGPUBool,
+            maxNits: f32::NAN,
+            maxFullFrameNits: f32::NAN,
+            minNits: f32::NAN,
+            sdrWhiteNits: f32::NAN,
+        },
+    };
+    let headroom = match info.headroom {
+        Some(h) => native::WGPUDisplayHeadroom {
+            present: true as native::WGPUBool,
+            current: f(h.current),
+            potential: f(h.potential),
+            reference: f(h.reference),
+        },
+        None => native::WGPUDisplayHeadroom {
+            present: false as native::WGPUBool,
+            current: f32::NAN,
+            potential: f32::NAN,
+            reference: f32::NAN,
+        },
+    };
+    let chromaticity = match info.chromaticity {
+        Some(c) => {
+            let (red_x, red_y) = pair(c.red);
+            let (green_x, green_y) = pair(c.green);
+            let (blue_x, blue_y) = pair(c.blue);
+            let (white_x, white_y) = pair(c.white);
+            native::WGPUDisplayChromaticity {
+                present: true as native::WGPUBool,
+                redX: red_x,
+                redY: red_y,
+                greenX: green_x,
+                greenY: green_y,
+                blueX: blue_x,
+                blueY: blue_y,
+                whiteX: white_x,
+                whiteY: white_y,
+            }
+        }
+        None => native::WGPUDisplayChromaticity {
+            present: false as native::WGPUBool,
+            redX: f32::NAN,
+            redY: f32::NAN,
+            greenX: f32::NAN,
+            greenY: f32::NAN,
+            blueX: f32::NAN,
+            blueY: f32::NAN,
+            whiteX: f32::NAN,
+            whiteY: f32::NAN,
+        },
+    };
+    let coarse = match info.coarse {
+        Some(c) => {
+            let (has_gamut, gamut) = match c.gamut {
+                Some(wgt::DisplayGamut::Srgb) => {
+                    (true as native::WGPUBool, native::WGPUDisplayGamut_Srgb)
+                }
+                Some(wgt::DisplayGamut::DisplayP3) => {
+                    (true as native::WGPUBool, native::WGPUDisplayGamut_DisplayP3)
+                }
+                Some(wgt::DisplayGamut::Rec2020) => {
+                    (true as native::WGPUBool, native::WGPUDisplayGamut_Rec2020)
+                }
+                // A future gamut we can't represent yet — report as unknown.
+                Some(_) => (false as native::WGPUBool, native::WGPUDisplayGamut_Srgb),
+                None => (false as native::WGPUBool, native::WGPUDisplayGamut_Srgb),
+            };
+            native::WGPUDisplayCoarseRange {
+                present: true as native::WGPUBool,
+                highDynamicRange: optional_bool_to_native(c.high_dynamic_range),
+                hasGamut: has_gamut,
+                gamut,
+            }
+        }
+        None => native::WGPUDisplayCoarseRange {
+            present: false as native::WGPUBool,
+            highDynamicRange: native::WGPUOptionalBool_Undefined,
+            hasGamut: false as native::WGPUBool,
+            gamut: native::WGPUDisplayGamut_Srgb,
+        },
+    };
+    let (has_bits_per_color, bits_per_color) = match info.bits_per_color {
+        Some(b) => (true as native::WGPUBool, b),
+        None => (false as native::WGPUBool, 0),
+    };
+    native::WGPUDisplayHdrInfo {
+        luminance,
+        headroom,
+        chromaticity,
+        coarse,
+        hasBitsPerColor: has_bits_per_color,
+        bitsPerColor: bits_per_color,
+    }
+}
+
 pub fn map_load_op<T>(
     command: native::WGPULoadOp,
     clear_value: T,
@@ -850,6 +1120,18 @@ pub fn map_load_op<T>(
     match command {
         native::WGPULoadOp_Load => Some(wgc::command::LoadOp::Load),
         native::WGPULoadOp_Clear => Some(wgc::command::LoadOp::Clear(clear_value)),
+        // `WGPULoadOp_DontCare` is a native-only value (a `WGPUNativeLoadOp`
+        // member, not part of the standard `WGPULoadOp` enum), so it's compared
+        // in a guard rather than used as a match pattern, with a cast to the
+        // standard enum's repr type.
+        //
+        // SAFETY: `DontCare` was explicitly requested by the C caller, opting in
+        // to its documented undefined-contents semantics at their own risk.
+        other if other == native::WGPULoadOp_DontCare as native::WGPULoadOp => {
+            Some(wgc::command::LoadOp::DontCare(unsafe {
+                wgt::LoadOpDontCare::enabled()
+            }))
+        }
         _ => None,
     }
 }
@@ -925,6 +1207,8 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_R32Float => Some(wgt::TextureFormat::R32Float),
         native::WGPUTextureFormat_R32Uint => Some(wgt::TextureFormat::R32Uint),
         native::WGPUTextureFormat_R32Sint => Some(wgt::TextureFormat::R32Sint),
+        native::WGPUTextureFormat_RG16Unorm => Some(wgt::TextureFormat::Rg16Unorm),
+        native::WGPUTextureFormat_RG16Snorm => Some(wgt::TextureFormat::Rg16Snorm),
         native::WGPUTextureFormat_RG16Uint => Some(wgt::TextureFormat::Rg16Uint),
         native::WGPUTextureFormat_RG16Sint => Some(wgt::TextureFormat::Rg16Sint),
         native::WGPUTextureFormat_RG16Float => Some(wgt::TextureFormat::Rg16Float),
@@ -942,6 +1226,8 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         native::WGPUTextureFormat_RG32Float => Some(wgt::TextureFormat::Rg32Float),
         native::WGPUTextureFormat_RG32Uint => Some(wgt::TextureFormat::Rg32Uint),
         native::WGPUTextureFormat_RG32Sint => Some(wgt::TextureFormat::Rg32Sint),
+        native::WGPUTextureFormat_RGBA16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
+        native::WGPUTextureFormat_RGBA16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         native::WGPUTextureFormat_RGBA16Uint => Some(wgt::TextureFormat::Rgba16Uint),
         native::WGPUTextureFormat_RGBA16Sint => Some(wgt::TextureFormat::Rgba16Sint),
         native::WGPUTextureFormat_RGBA16Float => Some(wgt::TextureFormat::Rgba16Float),
@@ -1010,12 +1296,24 @@ pub fn map_texture_format(value: native::WGPUTextureFormat) -> Option<wgt::Textu
         // now in webgpu.h
         native::WGPUTextureFormat_R16Unorm => Some(wgt::TextureFormat::R16Unorm),
         native::WGPUTextureFormat_R16Snorm => Some(wgt::TextureFormat::R16Snorm),
-        native::WGPUTextureFormat_RG16Unorm => Some(wgt::TextureFormat::Rg16Unorm),
-        native::WGPUTextureFormat_RG16Snorm => Some(wgt::TextureFormat::Rg16Snorm),
-        native::WGPUTextureFormat_RGBA16Unorm => Some(wgt::TextureFormat::Rgba16Unorm),
-        native::WGPUTextureFormat_RGBA16Snorm => Some(wgt::TextureFormat::Rgba16Snorm),
         // wgpu.h extended
         native::WGPUNativeTextureFormat_NV12  => Some(wgt::TextureFormat::NV12),
+        native::WGPUNativeTextureFormat_P010  => Some(wgt::TextureFormat::P010),
+        WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT   => Some(wgt::TextureFormat::R64Uint),
+        native::WGPUNativeTextureFormat_Astc4x4Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B4x4, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc5x4Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B5x4, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc5x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B5x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc6x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B6x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc6x6Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B6x6, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc8x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B8x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc8x6Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B8x6, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc8x8Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B8x8, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x5Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x6Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x8Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc10x10Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc12x10Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::Hdr }),
+        native::WGPUNativeTextureFormat_Astc12x12Sfloat => Some(wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Hdr }),
         _ => panic!("Unknown texture format"),
     }
 }
@@ -1026,10 +1324,6 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
     use wgt::{AstcBlock, AstcChannel};
 
     match rs_type {
-        // unimplemented in webgpu.h
-        wgt::TextureFormat::Astc { block:_, channel: AstcChannel::Hdr } => None,
-        wgt::TextureFormat::R64Uint => None,
-
         wgt::TextureFormat::R8Unorm => Some(native::WGPUTextureFormat_R8Unorm),
         wgt::TextureFormat::R8Snorm => Some(native::WGPUTextureFormat_R8Snorm),
         wgt::TextureFormat::R8Uint => Some(native::WGPUTextureFormat_R8Uint),
@@ -1044,6 +1338,8 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::R32Float => Some(native::WGPUTextureFormat_R32Float),
         wgt::TextureFormat::R32Uint => Some(native::WGPUTextureFormat_R32Uint),
         wgt::TextureFormat::R32Sint => Some(native::WGPUTextureFormat_R32Sint),
+        wgt::TextureFormat::Rg16Unorm => Some(native::WGPUTextureFormat_RG16Unorm),
+        wgt::TextureFormat::Rg16Snorm => Some(native::WGPUTextureFormat_RG16Snorm),
         wgt::TextureFormat::Rg16Uint => Some(native::WGPUTextureFormat_RG16Uint),
         wgt::TextureFormat::Rg16Sint => Some(native::WGPUTextureFormat_RG16Sint),
         wgt::TextureFormat::Rg16Float => Some(native::WGPUTextureFormat_RG16Float),
@@ -1061,6 +1357,8 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
         wgt::TextureFormat::Rg32Float => Some(native::WGPUTextureFormat_RG32Float),
         wgt::TextureFormat::Rg32Uint => Some(native::WGPUTextureFormat_RG32Uint),
         wgt::TextureFormat::Rg32Sint => Some(native::WGPUTextureFormat_RG32Sint),
+        wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUTextureFormat_RGBA16Unorm),
+        wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUTextureFormat_RGBA16Snorm),
         wgt::TextureFormat::Rgba16Uint => Some(native::WGPUTextureFormat_RGBA16Uint),
         wgt::TextureFormat::Rgba16Sint => Some(native::WGPUTextureFormat_RGBA16Sint),
         wgt::TextureFormat::Rgba16Float => Some(native::WGPUTextureFormat_RGBA16Float),
@@ -1128,13 +1426,24 @@ pub fn to_native_texture_format(rs_type: wgt::TextureFormat) -> Option<native::W
 
         wgt::TextureFormat::R16Unorm => Some(native::WGPUTextureFormat_R16Unorm),
         wgt::TextureFormat::R16Snorm => Some(native::WGPUTextureFormat_R16Snorm),
-        wgt::TextureFormat::Rg16Unorm => Some(native::WGPUTextureFormat_RG16Unorm),
-        wgt::TextureFormat::Rg16Snorm => Some(native::WGPUTextureFormat_RG16Snorm),
-        wgt::TextureFormat::Rgba16Unorm => Some(native::WGPUTextureFormat_RGBA16Unorm),
-        wgt::TextureFormat::Rgba16Snorm => Some(native::WGPUTextureFormat_RGBA16Snorm),
         // wgpu.h extended
         wgt::TextureFormat::NV12 => Some(native::WGPUNativeTextureFormat_NV12),
-        wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010)
+        wgt::TextureFormat::P010 => Some(native::WGPUNativeTextureFormat_P010),
+        wgt::TextureFormat::R64Uint => Some(WGPU_NATIVE_TEXTURE_FORMAT_R64_UINT),
+        wgt::TextureFormat::Astc { block: AstcBlock::B4x4,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc4x4Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x4,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc5x4Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B5x5,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc5x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x5,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc6x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B6x6,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc6x6Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x5,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc8x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x6,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc8x6Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B8x8,  channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc8x8Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x5, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x5Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x6, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x6Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x8, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x8Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B10x10, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc10x10Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x10, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc12x10Sfloat),
+        wgt::TextureFormat::Astc { block: AstcBlock::B12x12, channel: AstcChannel::Hdr } => Some(native::WGPUNativeTextureFormat_Astc12x12Sfloat),
     }
 }
 
@@ -1376,10 +1685,9 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::TEXTURE_FORMAT_P010) {
         temp.push(native::WGPUNativeFeature_TextureFormatP010);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::EXTERNAL_TEXTURE) {
-    //     temp.push(native::WGPUNativeFeature_ExternalTexture);
-    // }
+    if features.contains(wgt::Features::EXTERNAL_TEXTURE) {
+        temp.push(native::WGPUNativeFeature_ExternalTexture);
+    }
     if features.contains(wgt::Features::PIPELINE_CACHE) {
         temp.push(native::WGPUNativeFeature_PipelineCache);
     }
@@ -1389,45 +1697,40 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     if features.contains(wgt::Features::SHADER_INT64_ATOMIC_ALL_OPS) {
         temp.push(native::WGPUNativeFeature_ShaderInt64AtomicAllOps);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::VULKAN_GOOGLE_DISPLAY_TIMING) {
-    //     temp.push(native::WGPUNativeFeature_VulkanGoogleDisplayTiming);
-    // }
-    // if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
-    //     temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
-    // }
+    if features.contains(wgt::Features::VULKAN_GOOGLE_DISPLAY_TIMING) {
+        temp.push(native::WGPUNativeFeature_VulkanGoogleDisplayTiming);
+    }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_WIN32) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryWin32);
+    }
     if features.contains(wgt::Features::TEXTURE_INT64_ATOMIC) {
         temp.push(native::WGPUNativeFeature_TextureInt64Atomic);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::UNIFORM_BUFFER_BINDING_ARRAYS) {
-    //     temp.push(native::WGPUNativeFeature_UniformBufferBindingArrays);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
-    //     temp.push(native::WGPUNativeFeature_MeshShader);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
-    //     temp.push(native::WGPUNativeFeature_RayHitVertexReturn);
-    // }
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
-    //     temp.push(native::WGPUNativeFeature_MeshShaderMultiview);
-    // }
-    // if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
-    //     temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
-    // }
-    // if features.contains(wgt::Features::PASSTHROUGH_SHADERS) {
-    //     temp.push(native::WGPUNativeFeature_PassthroughShaders);
-    // }
+    // WGPUNativeFeature_UniformBufferBindingArrays is not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER) {
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShader);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
+        temp.push(native::WGPUNativeFeature_ExperimentalRayHitVertexReturn);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW) {
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShaderMultiview);
+    }
+    if features.contains(wgt::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS) {
+        temp.push(native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats);
+    }
+    if features.contains(wgt::Features::PASSTHROUGH_SHADERS) {
+        temp.push(native::WGPUNativeFeature_PassthroughShaders);
+    }
     if features.contains(wgt::Features::SHADER_BARYCENTRICS) {
         temp.push(native::WGPUNativeFeature_ShaderBarycentrics);
     }
     if features.contains(wgt::Features::SELECTIVE_MULTIVIEW) {
         temp.push(native::WGPUNativeFeature_SelectiveMultiview);
     }
-    // TODO: requires wgpu.h api change
-    // if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
-    //     temp.push(native::WGPUNativeFeature_MeshShaderPoints);
-    // }
+    if features.contains(wgt::Features::EXPERIMENTAL_MESH_SHADER_POINTS) {
+        temp.push(native::WGPUNativeFeature_ExperimentalMeshShaderPoints);
+    }
     if features.contains(wgt::Features::MULTISAMPLE_ARRAY) {
         temp.push(native::WGPUNativeFeature_MultisampleArray);
     }
@@ -1448,6 +1751,15 @@ pub fn features_to_native(features: wgt::Features) -> Vec<native::WGPUFeatureNam
     }
     if features.contains(wgt::Features::MEMORY_DECORATION_VOLATILE) {
         temp.push(native::WGPUNativeFeature_MemoryDecorationVolatile);
+    }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_FD) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryFd);
+    }
+    if features.contains(wgt::Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF) {
+        temp.push(native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf);
+    }
+    if features.contains(wgt::Features::EXPERIMENTAL_RAY_TRACING_PIPELINES) {
+        temp.push(native::WGPUNativeFeature_ExperimentalRayTracingPipelines);
     }
 
     temp
@@ -1515,26 +1827,22 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_ShaderFloat32Atomic => Some(Features::SHADER_FLOAT32_ATOMIC),
         native::WGPUNativeFeature_TextureAtomic => Some(Features::TEXTURE_ATOMIC),
         native::WGPUNativeFeature_TextureFormatP010 => Some(Features::TEXTURE_FORMAT_P010),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_ExternalTexture => Some(Features::EXTERNAL_TEXTURE),
+        native::WGPUNativeFeature_ExternalTexture => Some(Features::EXTERNAL_TEXTURE),
         native::WGPUNativeFeature_PipelineCache => Some(Features::PIPELINE_CACHE),
         native::WGPUNativeFeature_ShaderInt64AtomicMinMax => Some(Features::SHADER_INT64_ATOMIC_MIN_MAX),
         native::WGPUNativeFeature_ShaderInt64AtomicAllOps => Some(Features::SHADER_INT64_ATOMIC_ALL_OPS),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
-        // native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
+        native::WGPUNativeFeature_VulkanGoogleDisplayTiming => Some(Features::VULKAN_GOOGLE_DISPLAY_TIMING),
+        native::WGPUNativeFeature_VulkanExternalMemoryWin32 => Some(Features::VULKAN_EXTERNAL_MEMORY_WIN32),
         native::WGPUNativeFeature_TextureInt64Atomic => Some(Features::TEXTURE_INT64_ATOMIC),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_UniformBufferBindingArrays => Some(Features::UNIFORM_BUFFER_BINDING_ARRAYS),
-        // native::WGPUNativeFeature_MeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
-        // native::WGPUNativeFeature_RayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
-        // native::WGPUNativeFeature_MeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
-        // native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
-        // native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
+        // WGPUNativeFeature_UniformBufferBindingArrays not yet implemented: https://github.com/gfx-rs/wgpu/issues/7149
+        native::WGPUNativeFeature_ExperimentalMeshShader => Some(Features::EXPERIMENTAL_MESH_SHADER),
+        native::WGPUNativeFeature_ExperimentalRayHitVertexReturn => Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN),
+        native::WGPUNativeFeature_ExperimentalMeshShaderMultiview => Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW),
+        native::WGPUNativeFeature_ExtendedAccelerationStructureVertexFormats => Some(Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS),
+        native::WGPUNativeFeature_PassthroughShaders => Some(Features::PASSTHROUGH_SHADERS),
         native::WGPUNativeFeature_ShaderBarycentrics => Some(Features::SHADER_BARYCENTRICS),
         native::WGPUNativeFeature_SelectiveMultiview => Some(Features::SELECTIVE_MULTIVIEW),
-        // TODO: requires wgpu.h api change
-        // native::WGPUNativeFeature_MeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
+        native::WGPUNativeFeature_ExperimentalMeshShaderPoints => Some(Features::EXPERIMENTAL_MESH_SHADER_POINTS),
         native::WGPUNativeFeature_MultisampleArray => Some(Features::MULTISAMPLE_ARRAY),
         native::WGPUNativeFeature_CooperativeMatrix => Some(Features::EXPERIMENTAL_COOPERATIVE_MATRIX),
         native::WGPUNativeFeature_ShaderPerVertex => Some(Features::SHADER_PER_VERTEX),
@@ -1542,6 +1850,11 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
         native::WGPUNativeFeature_AccelerationStructureBindingArray => Some(Features::ACCELERATION_STRUCTURE_BINDING_ARRAY),
         native::WGPUNativeFeature_MemoryDecorationCoherent => Some(Features::MEMORY_DECORATION_COHERENT),
         native::WGPUNativeFeature_MemoryDecorationVolatile => Some(Features::MEMORY_DECORATION_VOLATILE),
+        native::WGPUNativeFeature_VulkanExternalMemoryFd => Some(Features::VULKAN_EXTERNAL_MEMORY_FD),
+        native::WGPUNativeFeature_VulkanExternalMemoryDmaBuf => Some(Features::VULKAN_EXTERNAL_MEMORY_DMA_BUF),
+        native::WGPUNativeFeature_ExperimentalRayTracingPipelines => {
+            Some(Features::EXPERIMENTAL_RAY_TRACING_PIPELINES)
+        }
         // fallback, probably not available in wgpu-core
         _ => None,
     }
@@ -1575,6 +1888,7 @@ pub fn to_native_composite_alpha_mode(
 pub fn map_bind_group_entry<'a>(
     entry: &'a native::WGPUBindGroupEntry,
     extras: Option<&native::WGPUBindGroupEntryExtras>,
+    et_binding: Option<&native::WGPUExternalTextureBindingEntry>,
 ) -> wgc::binding_model::BindGroupEntry<'a> {
     if let Some(buffer) = unsafe { entry.buffer.as_ref() } {
         return wgc::binding_model::BindGroupEntry {
@@ -1636,10 +1950,10 @@ pub fn map_bind_group_entry<'a>(
                         .expect("invalid buffers for bind group entry extras")
                         .id,
                     offset: entry.offset,
-                    size: if entry.size == 0 {
-                        None
-                    } else {
-                        Some(entry.size)
+                    size: match entry.size {
+                        0 => panic!("invalid size"),
+                        WGPU_WHOLE_SIZE => None,
+                        s => Some(s),
                     },
                 })
                 .collect();
@@ -1647,7 +1961,36 @@ pub fn map_bind_group_entry<'a>(
                 binding: entry.binding,
                 resource: wgc::binding_model::BindingResource::BufferArray(arr),
             };
+        } else if let Some(tlas) = unsafe { extras.tlas.as_ref() } {
+            return wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::AccelerationStructure(tlas.id),
+            };
+        } else if let Some(tlases) = unsafe { extras.tlases.as_ref() } {
+            let arr: Vec<_> = make_slice(tlases, extras.tlasCount)
+                .iter()
+                .map(|v| {
+                    unsafe { v.as_ref() }
+                        .expect("invalid tlas for bind group entry extras")
+                        .id
+                })
+                .collect();
+            return wgc::binding_model::BindGroupEntry {
+                binding: entry.binding,
+                resource: wgc::binding_model::BindingResource::AccelerationStructureArray(
+                    std::borrow::Cow::Owned(arr),
+                ),
+            };
         }
+    }
+
+    if let Some(et) = et_binding {
+        let et_ref = unsafe { et.externalTexture.as_ref() }
+            .expect("invalid external texture in bind group entry");
+        return wgc::binding_model::BindGroupEntry {
+            binding: entry.binding,
+            resource: wgc::binding_model::BindingResource::ExternalTexture(et_ref.id),
+        };
     }
 
     panic!("invalid bind group entry for bind group descriptor");
@@ -1657,6 +2000,8 @@ pub fn map_bind_group_entry<'a>(
 pub fn map_bind_group_layout_entry(
     entry: &native::WGPUBindGroupLayoutEntry,
     extras: Option<&native::WGPUBindGroupLayoutEntryExtras>,
+    as_layout: Option<&native::WGPUAccelerationStructureBindingLayout>,
+    external_texture_layout: Option<&native::WGPUExternalTextureBindingLayout>,
 ) -> wgt::BindGroupLayoutEntry {
     let is_buffer = entry.buffer.type_ != native::WGPUBufferBindingType_BindingNotUsed;
     let is_sampler = entry.sampler.type_ != native::WGPUSamplerBindingType_BindingNotUsed;
@@ -1756,6 +2101,12 @@ pub fn map_bind_group_layout_entry(
                 NonZeroU64::new(entry.buffer.minBindingSize)
             },
         }
+    } else if let Some(as_layout) = as_layout {
+        wgt::BindingType::AccelerationStructure {
+            vertex_return: as_layout.vertexReturn != 0,
+        }
+    } else if external_texture_layout.is_some() {
+        wgt::BindingType::ExternalTexture
     } else {
         panic!("invalid bind group layout entry for bind group layout descriptor");
     };
@@ -1765,7 +2116,9 @@ pub fn map_bind_group_layout_entry(
         binding: entry.binding,
         visibility: from_u64_bits(entry.visibility)
             .expect("invalid visibility for bind group layout entry"),
-        count: extras.and_then(|v| NonZeroU32::new(v.count)),
+        count: extras
+            .and_then(|v| NonZeroU32::new(v.count))
+            .or_else(|| NonZeroU32::new(entry.bindingArraySize)),
     }
 }
 
@@ -1832,8 +2185,19 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     if (flags & native::WGPUTextureUsage_TextureBinding) != 0 {
         temp.insert(wgt::TextureUsages::TEXTURE_BINDING);
     }
+    if (flags & native::WGPUTextureUsage_StorageBinding) != 0 {
+        temp.insert(wgt::TextureUsages::STORAGE_BINDING);
+    }
     if (flags & native::WGPUTextureUsage_RenderAttachment) != 0 {
         temp.insert(wgt::TextureUsages::RENDER_ATTACHMENT);
+    }
+    if (flags & native::WGPUTextureUsage_TransientAttachment) != 0 {
+        temp.insert(wgt::TextureUsages::TRANSIENT_ATTACHMENT);
+    }
+    // STORAGE_ATOMIC (1 << 16) is a wgpu-native extension not in the standard WebGPU C API.
+    // We pass the raw wgpu-types bit value through the C API and recognize it here.
+    if (flags & wgt::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage) != 0 {
+        temp.insert(wgt::TextureUsages::STORAGE_ATOMIC);
     }
     temp
 }
@@ -1845,13 +2209,22 @@ pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUT
         flag |= native::WGPUTextureUsage_CopySrc;
     }
     if flags.contains(wgt::TextureUsages::COPY_DST) {
-        flag |= native::WGPUTextureUsage_CopySrc;
+        flag |= native::WGPUTextureUsage_CopyDst;
     }
     if flags.contains(wgt::TextureUsages::TEXTURE_BINDING) {
         flag |= native::WGPUTextureUsage_TextureBinding;
     }
+    if flags.contains(wgt::TextureUsages::STORAGE_BINDING) {
+        flag |= native::WGPUTextureUsage_StorageBinding;
+    }
     if flags.contains(wgt::TextureUsages::RENDER_ATTACHMENT) {
         flag |= native::WGPUTextureUsage_RenderAttachment;
+    }
+    if flags.contains(wgt::TextureUsages::TRANSIENT_ATTACHMENT) {
+        flag |= native::WGPUTextureUsage_TransientAttachment;
+    }
+    if flags.contains(wgt::TextureUsages::STORAGE_ATOMIC) {
+        flag |= wgt::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage;
     }
     flag
 }
@@ -1879,6 +2252,8 @@ pub unsafe fn map_surface(
     _metal: Option<&native::WGPUSurfaceSourceMetalLayer>,
     android: Option<&native::WGPUSurfaceSourceAndroidNativeWindow>,
     _swap_chain_panel: Option<&native::WGPUSurfaceSourceSwapChainPanel>,
+    _uiview: Option<&native::WGPUSurfaceSourceUIView>,
+    _drm: Option<&native::WGPUSurfaceSourceDrm>,
     ohos: Option<&native::WGPUSurfaceSourceOhosNativeWindow>,
 ) -> CreateSurfaceParams {
     if let Some(win) = win {
@@ -1960,7 +2335,79 @@ pub unsafe fn map_surface(
         return CreateSurfaceParams::SwapChainPanel(swap_chain_panel.panelNative);
     }
 
+    #[cfg(all(
+        any(target_os = "ios", target_os = "tvos", target_os = "visionos"),
+        feature = "metal"
+    ))]
+    if let Some(uiview) = _uiview {
+        let ui_view = NonNull::new(uiview.uiView).expect("UIView surface source must not be null");
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::UiKit(raw_window_handle::UiKitDisplayHandle::new()),
+            raw_window_handle::RawWindowHandle::UiKit(raw_window_handle::UiKitWindowHandle::new(
+                ui_view,
+            )),
+        ));
+    }
+
+    #[cfg(feature = "drm")]
+    if let Some(drm) = _drm {
+        return CreateSurfaceParams::Raw((
+            raw_window_handle::RawDisplayHandle::Drm(raw_window_handle::DrmDisplayHandle::new(
+                drm.fd,
+            )),
+            raw_window_handle::RawWindowHandle::Drm(raw_window_handle::DrmWindowHandle::new(
+                drm.plane,
+            )),
+        ));
+    }
+
     panic!("Error: Unsupported Surface");
+}
+
+pub fn map_surface_color_space(cs: native::WGPUSurfaceColorSpace) -> wgt::SurfaceColorSpace {
+    match cs {
+        native::WGPUSurfaceColorSpace_Srgb => wgt::SurfaceColorSpace::Srgb,
+        native::WGPUSurfaceColorSpace_ExtendedSrgbLinear => {
+            wgt::SurfaceColorSpace::ExtendedSrgbLinear
+        }
+        native::WGPUSurfaceColorSpace_DisplayP3 => wgt::SurfaceColorSpace::DisplayP3,
+        native::WGPUSurfaceColorSpace_Bt2100Pq => wgt::SurfaceColorSpace::Bt2100Pq,
+        native::WGPUSurfaceColorSpace_Bt2100Hlg => wgt::SurfaceColorSpace::Bt2100Hlg,
+        native::WGPUSurfaceColorSpace_ExtendedSrgb => wgt::SurfaceColorSpace::ExtendedSrgb,
+        native::WGPUSurfaceColorSpace_ExtendedDisplayP3 => {
+            wgt::SurfaceColorSpace::ExtendedDisplayP3
+        }
+        // WGPUSurfaceColorSpace_Auto and any unknown value.
+        _ => wgt::SurfaceColorSpace::Auto,
+    }
+}
+
+pub fn surface_color_spaces_to_native(
+    cs: wgt::SurfaceColorSpaces,
+) -> native::WGPUSurfaceColorSpaces {
+    let mut out = native::WGPUSurfaceColorSpaces_None;
+    if cs.contains(wgt::SurfaceColorSpaces::SRGB) {
+        out |= native::WGPUSurfaceColorSpaces_Srgb;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::EXTENDED_SRGB_LINEAR) {
+        out |= native::WGPUSurfaceColorSpaces_ExtendedSrgbLinear;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::DISPLAY_P3) {
+        out |= native::WGPUSurfaceColorSpaces_DisplayP3;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::BT2100_PQ) {
+        out |= native::WGPUSurfaceColorSpaces_Bt2100Pq;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::BT2100_HLG) {
+        out |= native::WGPUSurfaceColorSpaces_Bt2100Hlg;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::EXTENDED_SRGB) {
+        out |= native::WGPUSurfaceColorSpaces_ExtendedSrgb;
+    }
+    if cs.contains(wgt::SurfaceColorSpaces::EXTENDED_DISPLAY_P3) {
+        out |= native::WGPUSurfaceColorSpaces_ExtendedDisplayP3;
+    }
+    out
 }
 
 #[inline]
@@ -1975,6 +2422,9 @@ pub fn map_surface_configuration(
         width: config.width,
         height: config.height,
         present_mode: map_present_mode(config.presentMode).unwrap_or(wgt::PresentMode::Fifo),
+        color_space: extras
+            .map(|e| map_surface_color_space(e.colorSpace))
+            .unwrap_or(wgt::SurfaceColorSpace::Auto),
         alpha_mode: map_composite_alpha_mode(config.alphaMode)
             .expect("invalid alpha mode for surface configuration"),
         view_formats: make_slice(config.viewFormats, config.viewFormatCount)
@@ -2005,7 +2455,7 @@ pub fn map_adapter_type(device_type: wgt::DeviceType) -> native::WGPUAdapterType
         wgt::DeviceType::Other => native::WGPUAdapterType_Unknown,
         wgt::DeviceType::IntegratedGpu => native::WGPUAdapterType_IntegratedGPU,
         wgt::DeviceType::DiscreteGpu => native::WGPUAdapterType_DiscreteGPU,
-        wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_CPU, // close enough?
+        wgt::DeviceType::VirtualGpu => native::WGPUAdapterType_Unknown,
         wgt::DeviceType::Cpu => native::WGPUAdapterType_CPU,
     }
 }
@@ -2056,6 +2506,7 @@ pub fn map_shader_runtime_checks(
 ) -> wgt::ShaderRuntimeChecks {
     wgt::ShaderRuntimeChecks {
         bounds_checks: (value & native::WGPUShaderRuntimeChecks_BoundsChecks) != 0,
+        int_div_checks: (value & native::WGPUShaderRuntimeChecks_IntDivChecks) != 0,
         force_loop_bounding: (value & native::WGPUShaderRuntimeChecks_ForceLoopBounding) != 0,
         ray_query_initialization_tracking: (value
             & native::WGPUShaderRuntimeChecks_RayQueryInitializationTracking)
@@ -2085,4 +2536,361 @@ pub fn from_u64_bits<T: bitflags::Flags<Bits = u32>>(value: u64) -> Option<T> {
     }
 
     T::from_bits(value as u32)
+}
+
+#[inline]
+pub fn map_acceleration_structure_flags(
+    flags: native::WGPUAccelerationStructureFlags,
+) -> wgt::AccelerationStructureFlags {
+    let mut out = wgt::AccelerationStructureFlags::empty();
+    if (flags & native::WGPUAccelerationStructureFlags_AllowUpdate) != 0 {
+        out |= wgt::AccelerationStructureFlags::ALLOW_UPDATE;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_AllowCompaction) != 0 {
+        out |= wgt::AccelerationStructureFlags::ALLOW_COMPACTION;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_PreferFastTrace) != 0 {
+        out |= wgt::AccelerationStructureFlags::PREFER_FAST_TRACE;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_PreferFastBuild) != 0 {
+        out |= wgt::AccelerationStructureFlags::PREFER_FAST_BUILD;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_LowMemory) != 0 {
+        out |= wgt::AccelerationStructureFlags::LOW_MEMORY;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_UseTransform) != 0 {
+        out |= wgt::AccelerationStructureFlags::USE_TRANSFORM;
+    }
+    if (flags & native::WGPUAccelerationStructureFlags_AllowRayHitVertexReturn) != 0 {
+        out |= wgt::AccelerationStructureFlags::ALLOW_RAY_HIT_VERTEX_RETURN;
+    }
+    out
+}
+
+#[inline]
+pub fn map_acceleration_structure_update_mode(
+    mode: native::WGPUAccelerationStructureUpdateMode,
+) -> wgt::AccelerationStructureUpdateMode {
+    match mode {
+        native::WGPUAccelerationStructureUpdateMode_PreferUpdate => {
+            wgt::AccelerationStructureUpdateMode::PreferUpdate
+        }
+        _ => wgt::AccelerationStructureUpdateMode::Build,
+    }
+}
+
+#[inline]
+pub fn map_acceleration_structure_geometry_flags(
+    flags: native::WGPUAccelerationStructureGeometryFlags,
+) -> wgt::AccelerationStructureGeometryFlags {
+    let mut out = wgt::AccelerationStructureGeometryFlags::empty();
+    if (flags & native::WGPUAccelerationStructureGeometryFlags_Opaque) != 0 {
+        out |= wgt::AccelerationStructureGeometryFlags::OPAQUE;
+    }
+    if (flags & native::WGPUAccelerationStructureGeometryFlags_NoDuplicateAnyHitInvocation) != 0 {
+        out |= wgt::AccelerationStructureGeometryFlags::NO_DUPLICATE_ANY_HIT_INVOCATION;
+    }
+    out
+}
+
+pub fn map_downlevel_capabilities(
+    caps: &wgt::DownlevelCapabilities,
+) -> native::WGPUDownlevelCapabilities {
+    let mut flags = native::WGPUDownlevelFlags_None;
+    macro_rules! flag {
+        ($wgt:ident => $native:ident) => {
+            if caps.flags.contains(wgt::DownlevelFlags::$wgt) {
+                flags |= native::$native;
+            }
+        };
+    }
+    flag!(COMPUTE_SHADERS => WGPUDownlevelFlags_ComputeShaders);
+    flag!(FRAGMENT_WRITABLE_STORAGE => WGPUDownlevelFlags_FragmentWritableStorage);
+    flag!(INDIRECT_EXECUTION => WGPUDownlevelFlags_IndirectExecution);
+    flag!(BASE_VERTEX => WGPUDownlevelFlags_BaseVertex);
+    flag!(READ_ONLY_DEPTH_STENCIL => WGPUDownlevelFlags_ReadOnlyDepthStencil);
+    flag!(NON_POWER_OF_TWO_MIPMAPPED_TEXTURES => WGPUDownlevelFlags_NonPowerOfTwoMipmappedTextures);
+    flag!(CUBE_ARRAY_TEXTURES => WGPUDownlevelFlags_CubeArrayTextures);
+    flag!(COMPARISON_SAMPLERS => WGPUDownlevelFlags_ComparisonSamplers);
+    flag!(INDEPENDENT_BLEND => WGPUDownlevelFlags_IndependentBlend);
+    flag!(VERTEX_STORAGE => WGPUDownlevelFlags_VertexStorage);
+    flag!(ANISOTROPIC_FILTERING => WGPUDownlevelFlags_AnisotropicFiltering);
+    flag!(FRAGMENT_STORAGE => WGPUDownlevelFlags_FragmentStorage);
+    flag!(MULTISAMPLED_SHADING => WGPUDownlevelFlags_MultisampledShading);
+    flag!(DEPTH_TEXTURE_AND_BUFFER_COPIES => WGPUDownlevelFlags_DepthTextureAndBufferCopies);
+    flag!(WEBGPU_TEXTURE_FORMAT_SUPPORT => WGPUDownlevelFlags_WebGpuTextureFormatSupport);
+    flag!(BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED => WGPUDownlevelFlags_BufferBindingsNot16ByteAligned);
+    flag!(UNRESTRICTED_INDEX_BUFFER => WGPUDownlevelFlags_UnrestrictedIndexBuffer);
+    flag!(FULL_DRAW_INDEX_UINT32 => WGPUDownlevelFlags_FullDrawIndexUint32);
+    flag!(DEPTH_BIAS_CLAMP => WGPUDownlevelFlags_DepthBiasClamp);
+    flag!(VIEW_FORMATS => WGPUDownlevelFlags_ViewFormats);
+    flag!(UNRESTRICTED_EXTERNAL_TEXTURE_COPIES => WGPUDownlevelFlags_UnrestrictedExternalTextureCopies);
+    flag!(SURFACE_VIEW_FORMATS => WGPUDownlevelFlags_SurfaceViewFormats);
+    flag!(NONBLOCKING_QUERY_RESOLVE => WGPUDownlevelFlags_NonblockingQueryResolve);
+    flag!(SHADER_F16_IN_F32 => WGPUDownlevelFlags_ShaderF16InF32);
+    flag!(MSL2_1 => WGPUDownlevelFlags_Msl21);
+    flag!(TEXTURE_COMPRESSION => WGPUDownlevelFlags_TextureCompression);
+
+    let shader_model = match caps.shader_model {
+        wgt::ShaderModel::Sm2 => native::WGPUShaderModel_Sm2,
+        wgt::ShaderModel::Sm4 => native::WGPUShaderModel_Sm4,
+        wgt::ShaderModel::Sm5 => native::WGPUShaderModel_Sm5,
+    };
+
+    native::WGPUDownlevelCapabilities {
+        flags,
+        shaderModel: shader_model,
+    }
+}
+
+pub fn map_cooperative_scalar_type(
+    t: wgt::CooperativeScalarType,
+) -> native::WGPUNativeCooperativeScalarType {
+    match t {
+        wgt::CooperativeScalarType::F32 => native::WGPUNativeCooperativeScalarType_F32,
+        wgt::CooperativeScalarType::F16 => native::WGPUNativeCooperativeScalarType_F16,
+        wgt::CooperativeScalarType::I32 => native::WGPUNativeCooperativeScalarType_I32,
+        wgt::CooperativeScalarType::U32 => native::WGPUNativeCooperativeScalarType_U32,
+    }
+}
+
+#[allow(clippy::unnecessary_cast)]
+pub fn map_state_to_u32(s: native::WGPUBufferMapState) -> u32 {
+    s as u32
+}
+
+pub fn map_presentation_timestamp(
+    ts: wgt::PresentationTimestamp,
+) -> native::WGPUPresentationTimestamp {
+    native::WGPUPresentationTimestamp {
+        nanoseconds: u64::try_from(ts.0).unwrap_or(u64::MAX),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wgt::Features;
+
+    fn zeroed_device_descriptor() -> native::WGPUDeviceDescriptor {
+        unsafe { std::mem::zeroed() }
+    }
+
+    fn descriptor_extras(
+        hints: native::WGPUMemoryHints,
+        min: u64,
+        max: u64,
+    ) -> native::WGPUDeviceDescriptorExtras {
+        let mut extras: native::WGPUDeviceDescriptorExtras = unsafe { std::mem::zeroed() };
+        extras.memoryHints = hints;
+        extras.suballocatedDeviceMemoryBlockSizeMin = min;
+        extras.suballocatedDeviceMemoryBlockSizeMax = max;
+        extras
+    }
+
+    fn legacy_device_extras(
+        hints: native::WGPUMemoryHints,
+        start: u64,
+        end: u64,
+    ) -> native::WGPUDeviceExtras {
+        let mut extras: native::WGPUDeviceExtras = unsafe { std::mem::zeroed() };
+        extras.memoryHints = hints;
+        extras.suballocatedDeviceMemoryBlockSizeStart = start;
+        extras.suballocatedDeviceMemoryBlockSizeEnd = end;
+        extras
+    }
+
+    fn mapped_memory_hints(
+        legacy: Option<&native::WGPUDeviceExtras>,
+        extras: Option<&native::WGPUDeviceDescriptorExtras>,
+    ) -> wgt::MemoryHints {
+        let descriptor = zeroed_device_descriptor();
+        let (desc, _) =
+            unsafe { map_device_descriptor(&descriptor, wgt::Limits::default(), legacy, extras) };
+        desc.memory_hints
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_prefer_descriptor_extras_over_legacy_extras() {
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_MemoryUsage, 0, 0);
+        let extras = descriptor_extras(native::WGPUMemoryHints_Manual, 4096, 65536);
+        match mapped_memory_hints(Some(&legacy), Some(&extras)) {
+            wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size,
+            } => assert_eq!(suballocated_device_memory_block_size, 4096..65536),
+            other => panic!("expected Manual from WGPUDeviceDescriptorExtras, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_fall_back_to_legacy_device_extras() {
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_Manual, 1024, 8192);
+        match mapped_memory_hints(Some(&legacy), None) {
+            wgt::MemoryHints::Manual {
+                suballocated_device_memory_block_size,
+            } => assert_eq!(suballocated_device_memory_block_size, 1024..8192),
+            other => panic!("expected Manual from legacy WGPUDeviceExtras, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn device_descriptor_memory_hints_default_to_performance_without_extras() {
+        assert!(matches!(
+            mapped_memory_hints(None, None),
+            wgt::MemoryHints::Performance
+        ));
+    }
+
+    #[test]
+    fn device_descriptor_zero_initialized_memory_hints_mean_performance() {
+        // WGPUMemoryHints_Undefined (0) must behave like Performance so that
+        // zero-initialized extras keep the previous behavior.
+        let legacy = legacy_device_extras(native::WGPUMemoryHints_Undefined, 0, 0);
+        assert!(matches!(
+            mapped_memory_hints(Some(&legacy), None),
+            wgt::MemoryHints::Performance
+        ));
+    }
+
+    #[test]
+    fn load_op_maps_standard_and_native_extension_values() {
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_Load, 0u32),
+            Some(wgc::command::LoadOp::Load)
+        ));
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_Clear, 7u32),
+            Some(wgc::command::LoadOp::Clear(7))
+        ));
+        assert!(matches!(
+            map_load_op(native::WGPULoadOp_DontCare as native::WGPULoadOp, 0u32),
+            Some(wgc::command::LoadOp::DontCare(_))
+        ));
+    }
+
+    #[test]
+    fn load_op_rejects_values_outside_standard_and_native_sets() {
+        assert!(map_load_op(0x7EAD_BEEF as native::WGPULoadOp, 0u32).is_none());
+    }
+
+    #[test]
+    fn multi_draw_indirect_count_feature_round_trips_through_the_c_abi() {
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_MultiDrawIndirectCount),
+            Some(Features::MULTI_DRAW_INDIRECT_COUNT)
+        );
+        assert!(features_to_native(Features::MULTI_DRAW_INDIRECT_COUNT)
+            .contains(&native::WGPUNativeFeature_MultiDrawIndirectCount));
+    }
+
+    #[test]
+    fn retired_multi_draw_indirect_feature_value_is_rejected() {
+        // 0x00030003 was WGPUNativeFeature_MultiDrawIndirect before wgpu made
+        // fixed-count multi-draw unconditional (gfx-rs/wgpu#8162). The hole
+        // must not silently map to another feature.
+        assert_eq!(map_feature(0x00030003 as native::WGPUFeatureName), None);
+    }
+
+    #[test]
+    fn experimental_features_map_to_wgpu_experimental_features() {
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalMeshShader),
+            Some(Features::EXPERIMENTAL_MESH_SHADER)
+        );
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalMeshShaderMultiview),
+            Some(Features::EXPERIMENTAL_MESH_SHADER_MULTIVIEW)
+        );
+        assert_eq!(
+            map_feature(native::WGPUNativeFeature_ExperimentalRayHitVertexReturn),
+            Some(Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN)
+        );
+    }
+
+    #[test]
+    fn feature_name_table_round_trips_every_mapped_feature() {
+        let names = features_to_native(Features::all());
+        assert!(
+            !names.is_empty(),
+            "features_to_native must enumerate the mapped feature names"
+        );
+
+        let mut seen = std::collections::HashSet::new();
+        for name in names {
+            let feature = map_feature(name)
+                .unwrap_or_else(|| panic!("feature name {name:#010x} has no reverse mapping"));
+            assert!(
+                Features::all().contains(feature),
+                "feature name {name:#010x} maps outside Features::all()"
+            );
+            assert!(
+                seen.insert(name),
+                "feature name {name:#010x} is produced by two different features"
+            );
+        }
+
+        // The table is reviewed on every wgpu upgrade: this count changes when
+        // wgpu adds features and the mapping table grows to match.
+        assert_eq!(seen.len(), features_to_native(Features::all()).len());
+    }
+
+    #[test]
+    fn map_features_accumulates_recognized_names_and_ignores_unknown_values() {
+        let names = [
+            native::WGPUFeatureName_TimestampQuery,
+            native::WGPUFeatureName_DepthClipControl,
+            native::WGPUNativeFeature_MultiDrawIndirectCount,
+            0x7EAD_BEE0 as native::WGPUFeatureName,
+        ];
+        let mapped = map_features(&names);
+        assert!(mapped.contains(Features::TIMESTAMP_QUERY));
+        assert!(mapped.contains(Features::DEPTH_CLIP_CONTROL));
+        assert!(mapped.contains(Features::MULTI_DRAW_INDIRECT_COUNT));
+        assert_eq!(map_features(&[]), Features::empty());
+    }
+
+    #[test]
+    fn surface_color_space_maps_every_c_abi_value_and_defaults_unknown_to_auto() {
+        let pairs = [
+            (
+                native::WGPUSurfaceColorSpace_Srgb,
+                wgt::SurfaceColorSpace::Srgb,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedSrgbLinear,
+                wgt::SurfaceColorSpace::ExtendedSrgbLinear,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_DisplayP3,
+                wgt::SurfaceColorSpace::DisplayP3,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_Bt2100Pq,
+                wgt::SurfaceColorSpace::Bt2100Pq,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_Bt2100Hlg,
+                wgt::SurfaceColorSpace::Bt2100Hlg,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedSrgb,
+                wgt::SurfaceColorSpace::ExtendedSrgb,
+            ),
+            (
+                native::WGPUSurfaceColorSpace_ExtendedDisplayP3,
+                wgt::SurfaceColorSpace::ExtendedDisplayP3,
+            ),
+        ];
+        for (c_value, expected) in pairs {
+            assert_eq!(map_surface_color_space(c_value), expected);
+        }
+        assert_eq!(
+            map_surface_color_space(native::WGPUSurfaceColorSpace_Auto),
+            wgt::SurfaceColorSpace::Auto
+        );
+        assert_eq!(
+            map_surface_color_space(0x7EAD_BEE0 as native::WGPUSurfaceColorSpace),
+            wgt::SurfaceColorSpace::Auto
+        );
+    }
 }

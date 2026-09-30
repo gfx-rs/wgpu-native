@@ -704,12 +704,17 @@ int main(int argc, char *argv[]) {
       }
       continue;
     }
-    
+    case WGPUSurfaceGetCurrentTextureStatus_Error:
     case WGPUSurfaceGetCurrentTextureStatus_Force32:
-      // Fatal error
       printf(LOG_PREFIX " get_current_texture status=%#.8x\n",
              surface_texture.status);
       abort();
+    default:
+      // WGPUSurfaceGetCurrentTextureStatus_Occluded or unknown — skip frame
+      if (surface_texture.texture != NULL) {
+        wgpuTextureRelease(surface_texture.texture);
+      }
+      continue;
     }
     assert(surface_texture.texture);
 
