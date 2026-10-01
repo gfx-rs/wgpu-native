@@ -1955,16 +1955,34 @@ typedef struct WGPUXlibDisplayHandle {
  * Currently required by the GLES backend when presenting on Wayland. Other
  * backends ignore this field. If the instance is created with a display handle,
  * all surfaces created from it must use the same display connection.
+ *
+ * Default values can be set using @ref WGPU_NATIVE_DISPLAY_HANDLE_INIT as initializer.
  */
 typedef struct WGPUNativeDisplayHandle {
+    /**
+     * The `INIT` macro sets this to (@ref WGPUNativeDisplayHandleType)0.
+     */
     WGPUNativeDisplayHandleType type;
 
+    /**
+     * The `INIT` macro sets this to @ref WGPU_XLIB_DISPLAY_HANDLE_INIT.
+     */
     union {
         WGPUXlibDisplayHandle xlib;
         WGPUXcbDisplayHandle xcb;
         WGPUWaylandDisplayHandle wayland;
     } data;
 } WGPUNativeDisplayHandle WGPU_STRUCTURE_ATTRIBUTE;
+
+/**
+ * Initializer for @ref WGPUNativeDisplayHandle.
+ */
+#define WGPU_NATIVE_DISPLAY_HANDLE_INIT _wgpu_MAKE_INIT_STRUCT(WGPUNativeDisplayHandle, { \
+    /*.type=*/_wgpu_ENUM_ZERO_INIT(WGPUNativeDisplayHandleType) _wgpu_COMMA \
+    /*.data=*/{ \
+        /*.xlib=*/WGPU_XLIB_DISPLAY_HANDLE_INIT _wgpu_COMMA \
+    } _wgpu_COMMA \
+})
 
 /**
  * Default values can be set using @ref WGPU_HUB_REPORT_INIT as initializer.
