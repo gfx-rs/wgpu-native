@@ -832,6 +832,7 @@
           ],
           "doc": "TODO\n",
           "name": "enumerate_adapters",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "type": "usize"
@@ -855,6 +856,7 @@
           ],
           "doc": "TODO\n",
           "name": "submit_for_index",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "type": "typedef.submission_index"
@@ -863,6 +865,7 @@
         {
           "doc": "TODO\n",
           "name": "get_timestamp_period",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "type": "float32"
@@ -871,6 +874,7 @@
         {
           "doc": "Returns the backend-native `id\u003cMTLCommandQueue\u003e` as an opaque pointer.\n\nThe returned pointer is borrowed and remains valid only while `queue` is alive.\nOwnership is retained by wgpu-native; callers must not release or destroy it.\nReturns NULL when the active backend is not Metal or when the handle is unavailable.\n",
           "name": "get_native_metal_command_queue",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "pointer": "mutable",
@@ -901,6 +905,7 @@
           ],
           "doc": "Returns true if the queue is empty, or false if there are more queue submissions still in flight.\n",
           "name": "poll",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "type": "bool"
@@ -917,6 +922,7 @@
           ],
           "doc": "TODO\n",
           "name": "create_shader_module_spir_v",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "passed_with_ownership": true,
@@ -926,6 +932,7 @@
         {
           "doc": "Returns the backend-native `id\u003cMTLDevice\u003e` as an opaque pointer.\n\nThe returned pointer is borrowed and remains valid only while `device` is alive.\nOwnership is retained by wgpu-native; callers must not release or destroy it.\nReturns NULL when the active backend is not Metal or when the handle is unavailable.\n",
           "name": "get_native_metal_device",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "pointer": "mutable",
@@ -935,6 +942,7 @@
         {
           "doc": "Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.\n",
           "name": "start_graphics_debugger_capture",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "type": "bool"
@@ -942,7 +950,8 @@
         },
         {
           "doc": "TODO\n",
-          "name": "stop_graphics_debugger_capture"
+          "name": "stop_graphics_debugger_capture",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -960,6 +969,7 @@
           ],
           "doc": "TODO\n",
           "name": "create_shader_module_trusted",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "passed_with_ownership": true,
@@ -976,6 +986,7 @@
         {
           "doc": "Returns the backend-native `id\u003cMTLTexture\u003e` as an opaque pointer.\n\nThe returned pointer is borrowed and remains valid only while `texture` is alive.\nOwnership is retained by wgpu-native; callers must not release or destroy it.\nReturns NULL when the active backend is not Metal or when the handle is unavailable.\n",
           "name": "get_native_metal_texture",
+          "namespace": "webgpu",
           "returns": {
             "doc": "TODO\n",
             "pointer": "mutable",
@@ -1008,7 +1019,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "multi_draw_indirect"
+          "name": "multi_draw_indirect",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -1029,7 +1041,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "multi_draw_indexed_indirect"
+          "name": "multi_draw_indexed_indirect",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -1060,7 +1073,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "multi_draw_indirect_count"
+          "name": "multi_draw_indirect_count",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -1091,7 +1105,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "multi_draw_indexed_indirect_count"
+          "name": "multi_draw_indexed_indirect_count",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -1107,11 +1122,13 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "begin_pipeline_statistics_query"
+          "name": "begin_pipeline_statistics_query",
+          "namespace": "webgpu"
         },
         {
           "doc": "TODO\n",
-          "name": "end_pipeline_statistics_query"
+          "name": "end_pipeline_statistics_query",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -1127,7 +1144,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "write_timestamp"
+          "name": "write_timestamp",
+          "namespace": "webgpu"
         }
       ],
       "name": "render_pass_encoder"
@@ -1150,11 +1168,13 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "begin_pipeline_statistics_query"
+          "name": "begin_pipeline_statistics_query",
+          "namespace": "webgpu"
         },
         {
           "doc": "TODO\n",
-          "name": "end_pipeline_statistics_query"
+          "name": "end_pipeline_statistics_query",
+          "namespace": "webgpu"
         },
         {
           "args": [
@@ -1170,7 +1190,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "write_timestamp"
+          "name": "write_timestamp",
+          "namespace": "webgpu"
         }
       ],
       "name": "compute_pass_encoder"
@@ -1194,7 +1215,8 @@
             }
           ],
           "doc": "TODO\n",
-          "name": "clear_texture"
+          "name": "clear_texture",
+          "namespace": "webgpu"
         }
       ],
       "name": "command_encoder"

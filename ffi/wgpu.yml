@@ -1775,6 +1775,7 @@ objects:
     extended: true
     methods:
       - name: enumerate_adapters
+        namespace: webgpu
         doc: |
           TODO
         returns:
@@ -1799,6 +1800,7 @@ objects:
     extended: true
     methods:
       - name: submit_for_index
+        namespace: webgpu
         doc: |
           TODO
         returns:
@@ -1812,6 +1814,7 @@ objects:
             type: array<object.command_buffer>
             pointer: immutable
       - name: get_timestamp_period
+        namespace: webgpu
         doc: |
           TODO
         returns:
@@ -1819,6 +1822,7 @@ objects:
             TODO
           type: float32
       - name: get_native_metal_command_queue
+        namespace: webgpu
         doc: |
           Returns the backend-native `id<MTLCommandQueue>` as an opaque pointer.
 
@@ -1836,6 +1840,7 @@ objects:
     extended: true
     methods:
       - name: poll
+        namespace: webgpu
         doc: |
           Returns true if the queue is empty, or false if there are more queue submissions still in flight.
         returns:
@@ -1854,6 +1859,7 @@ objects:
             pointer: immutable
             optional: true
       - name: create_shader_module_spir_v
+        namespace: webgpu
         doc: |
           TODO
         returns:
@@ -1868,6 +1874,7 @@ objects:
             type: struct.shader_module_descriptor_spir_v
             pointer: immutable
       - name: get_native_metal_device
+        namespace: webgpu
         doc: |
           Returns the backend-native `id<MTLDevice>` as an opaque pointer.
 
@@ -1880,6 +1887,7 @@ objects:
           type: c_void
           pointer: mutable
       - name: start_graphics_debugger_capture
+        namespace: webgpu
         doc: |
           Returns true if the capture was successfully started, or false if it failed to start or is not supported on the current platform.
         returns:
@@ -1887,9 +1895,11 @@ objects:
             TODO
           type: bool
       - name: stop_graphics_debugger_capture
+        namespace: webgpu
         doc: |
           TODO
       - name: create_shader_module_trusted
+        namespace: webgpu
         doc: |
           TODO
         returns:
@@ -1913,6 +1923,7 @@ objects:
     extended: true
     methods:
       - name: get_native_metal_texture
+        namespace: webgpu
         doc: |
           Returns the backend-native `id<MTLTexture>` as an opaque pointer.
 
@@ -1930,6 +1941,7 @@ objects:
     extended: true
     methods:
       - name: multi_draw_indirect
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -1946,6 +1958,7 @@ objects:
               TODO
             type: uint32
       - name: multi_draw_indexed_indirect
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -1962,6 +1975,7 @@ objects:
               TODO
             type: uint32
       - name: multi_draw_indirect_count
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -1986,6 +2000,7 @@ objects:
               TODO
             type: uint32
       - name: multi_draw_indexed_indirect_count
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -2010,6 +2025,7 @@ objects:
               TODO
             type: uint32
       - name: begin_pipeline_statistics_query
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -2022,9 +2038,11 @@ objects:
               TODO
             type: uint32
       - name: end_pipeline_statistics_query
+        namespace: webgpu
         doc: |
           TODO
       - name: write_timestamp
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -2042,6 +2060,7 @@ objects:
     extended: true
     methods:
       - name: begin_pipeline_statistics_query
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -2054,9 +2073,11 @@ objects:
               TODO
             type: uint32
       - name: end_pipeline_statistics_query
+        namespace: webgpu
         doc: |
           TODO
       - name: write_timestamp
+        namespace: webgpu
         doc: |
           TODO
         args:
@@ -2074,6 +2095,7 @@ objects:
     extended: true
     methods:
       - name: clear_texture
+        namespace: webgpu
         doc: |
           TODO
         args:
