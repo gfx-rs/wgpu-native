@@ -20,7 +20,7 @@ license = "MIT OR Apache-2.0"
 [workspace]
 members = ["."]
 default-members = ["."]
-resolver = "2"
+resolver = "3"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
