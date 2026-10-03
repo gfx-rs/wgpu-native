@@ -67,6 +67,10 @@ typedef enum WGPUNativeSType
     WGPUSType_SurfaceSourceUIView = 0x00030016,
     /** Identifies @ref WGPUSurfaceSourceDrm. */
     WGPUSType_SurfaceSourceDrm = 0x00030017,
+    /** Identifies @ref WGPUWgpuBufferUsageExtras. */
+    WGPUSType_WgpuBufferUsageExtras = 0x00030018,
+    /** Identifies @ref WGPUWgpuTextureUsageExtras. */
+    WGPUSType_WgpuTextureUsageExtras = 0x00030019,
     WGPUNativeSType_Force32 = 0x7FFFFFFF
 } WGPUNativeSType;
 
@@ -992,11 +996,42 @@ typedef enum WGPUNativeLoadOp
 } WGPUNativeLoadOp;
 
 /**
- * Native extension values for @ref WGPUBufferUsage used as acceleration
- * structure build inputs. These match the public wgpu BufferUsages flags.
+ * Native buffer usages, passed separately from @ref WGPUBufferUsage through
+ * @ref WGPUWgpuBufferUsageExtras. These are not values of WGPUBufferUsage.
  */
-static const WGPUBufferUsage WGPUBufferUsage_BlasInput = 0x0000000000000400;
-static const WGPUBufferUsage WGPUBufferUsage_TlasInput = 0x0000000000000800;
+typedef WGPUFlags WGPUWgpuBufferUsage;
+static const WGPUWgpuBufferUsage WGPUWgpuBufferUsage_None = 0x0000000000000000;
+static const WGPUWgpuBufferUsage WGPUWgpuBufferUsage_BlasInput = 0x0000000000000001;
+static const WGPUWgpuBufferUsage WGPUWgpuBufferUsage_TlasInput = 0x0000000000000002;
+
+/**
+ * Chain into @ref WGPUBufferDescriptor to add native usages to its standard
+ * usage field. Set chain.sType to @ref WGPUSType_WgpuBufferUsageExtras.
+ * Acceleration structure usages require the corresponding experimental ray
+ * tracing feature. @ref wgpuBufferGetUsage returns only the standard usages.
+ */
+typedef struct WGPUWgpuBufferUsageExtras {
+    WGPUChainedStruct chain;
+    WGPUWgpuBufferUsage usage;
+} WGPUWgpuBufferUsageExtras WGPU_STRUCTURE_ATTRIBUTE;
+
+/** Native texture usages, separate from @ref WGPUTextureUsage. */
+typedef WGPUFlags WGPUWgpuTextureUsage;
+static const WGPUWgpuTextureUsage WGPUWgpuTextureUsage_None = 0x0000000000000000;
+static const WGPUWgpuTextureUsage WGPUWgpuTextureUsage_StorageAtomic = 0x0000000000000001;
+
+/**
+ * Chain into @ref WGPUTextureDescriptor or @ref WGPUTextureViewDescriptor to
+ * add native usages to the standard usage field. Set chain.sType to
+ * @ref WGPUSType_WgpuTextureUsageExtras. StorageAtomic requires the appropriate
+ * texture atomic feature for the format. @ref wgpuTextureGetUsage returns only
+ * the standard usages. A view with both usage fields set to None inherits all
+ * usages from its texture, including native usages.
+ */
+typedef struct WGPUWgpuTextureUsageExtras {
+    WGPUChainedStruct chain;
+    WGPUWgpuTextureUsage usage;
+} WGPUWgpuTextureUsageExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /** Native storage texture access for atomic operations. */
 typedef enum WGPUNativeStorageTextureAccess {
@@ -2581,6 +2616,8 @@ typedef struct WGPUNativeTextureFormatCapabilities {
     WGPUTextureUsage allowedUsages;
     /** Feature flags for this format (see @ref WGPUNativeTextureFormatFeatureFlags). */
     WGPUNativeTextureFormatFeatureFlags flags;
+    /** Native usages supported for this format, separate from allowedUsages. */
+    WGPUWgpuTextureUsage allowedWgpuUsages;
 } WGPUNativeTextureFormatCapabilities WGPU_STRUCTURE_ATTRIBUTE;
 
 /** Format of the plane(s) backing an external texture. */
