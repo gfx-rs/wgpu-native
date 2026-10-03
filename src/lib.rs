@@ -3,12 +3,13 @@
 use conv::{
     from_u64_bits, map_acceleration_structure_flags, map_acceleration_structure_geometry_flags,
     map_acceleration_structure_update_mode, map_adapter_type, map_backend_type,
-    map_bind_group_entry, map_bind_group_layout_entry, map_cooperative_scalar_type,
-    map_device_descriptor, map_index_format, map_instance_backend_flags, map_instance_descriptor,
-    map_pipeline_layout_descriptor, map_query_set_descriptor, map_query_set_index,
-    map_sampler_border_color_extras, map_shader_module, map_shader_runtime_checks,
-    map_state_to_u32, map_surface, map_surface_configuration, map_vertex_format,
-    CreateSurfaceParams,
+    map_bind_group_entry, map_bind_group_layout_entry, map_buffer_usage,
+    map_cooperative_scalar_type, map_device_descriptor, map_index_format,
+    map_instance_backend_flags, map_instance_descriptor, map_pipeline_layout_descriptor,
+    map_query_set_descriptor, map_query_set_index, map_sampler_border_color_extras,
+    map_shader_module, map_shader_runtime_checks, map_state_to_u32, map_surface,
+    map_surface_configuration, map_texture_descriptor_usage, map_texture_view_usage,
+    map_vertex_format, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -1016,7 +1017,8 @@ pub unsafe extern "C" fn wgpuAdapterGetTextureFormatCapabilities(
     };
     let feats = context.adapter_get_texture_format_features(adapter_id, wgt_format);
 
-    capabilities.allowedUsages = feats.allowed_usages.bits() as native::WGPUTextureUsage;
+    capabilities.allowedUsages = conv::to_native_texture_usage_flags(feats.allowed_usages);
+    capabilities.allowedWgpuUsages = conv::to_native_wgpu_texture_usage(feats.allowed_usages);
     capabilities.flags = feats.flags.bits() as native::WGPUNativeTextureFormatFeatureFlags;
 
     native::WGPUStatus_Success
@@ -2214,7 +2216,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateBuffer(
     let desc = wgt::BufferDescriptor {
         label: string_view_into_label(descriptor.label),
         size: descriptor.size,
-        usage: from_u64_bits(descriptor.usage).expect("invalid buffer usage"),
+        usage: follow_chain!(map_buffer_usage((descriptor),
+            WGPUSType_WgpuBufferUsageExtras => native::WGPUWgpuBufferUsageExtras))
+        .expect("invalid buffer usage"),
         mapped_at_creation: descriptor.mappedAtCreation != 0,
     };
 
@@ -3093,8 +3097,9 @@ pub unsafe extern "C" fn wgpuDeviceCreateTexture(
             .unwrap_or(wgt::TextureDimension::D2),
         format: conv::map_texture_format(descriptor.format)
             .expect("invalid texture format for texture descriptor"),
-        usage: from_u64_bits(descriptor.usage)
-            .expect("invalid texture usage for texture descriptor"),
+        usage: follow_chain!(map_texture_descriptor_usage((descriptor),
+            WGPUSType_WgpuTextureUsageExtras => native::WGPUWgpuTextureUsageExtras))
+        .expect("invalid texture usage for texture descriptor"),
         view_formats: make_slice(descriptor.viewFormats, descriptor.viewFormatCount)
             .iter()
             .map(|v| {
@@ -5041,7 +5046,8 @@ pub unsafe extern "C" fn wgpuTextureCreateView(
 
     let desc = match descriptor {
         Some(descriptor) => wgc::resource::TextureViewDescriptor {
-            usage: Some(conv::map_texture_usage_flags(descriptor.usage)),
+            usage: follow_chain!(map_texture_view_usage((descriptor),
+                WGPUSType_WgpuTextureUsageExtras => native::WGPUWgpuTextureUsageExtras)),
             label: string_view_into_label(descriptor.label),
             format: conv::map_texture_format(descriptor.format),
             dimension: conv::map_texture_view_dimension(descriptor.dimension),

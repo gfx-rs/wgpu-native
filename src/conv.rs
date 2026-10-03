@@ -2173,6 +2173,97 @@ pub unsafe fn map_query_set_descriptor<'a>(
     }
 }
 
+pub fn map_buffer_usage(
+    descriptor: &native::WGPUBufferDescriptor,
+    extras: Option<&native::WGPUWgpuBufferUsageExtras>,
+) -> Option<wgt::BufferUsages> {
+    let mut remaining = descriptor.usage;
+    let mut usage = wgt::BufferUsages::empty();
+    for (flag, mapped) in [
+        (native::WGPUBufferUsage_MapRead, wgt::BufferUsages::MAP_READ),
+        (
+            native::WGPUBufferUsage_MapWrite,
+            wgt::BufferUsages::MAP_WRITE,
+        ),
+        (native::WGPUBufferUsage_CopySrc, wgt::BufferUsages::COPY_SRC),
+        (native::WGPUBufferUsage_CopyDst, wgt::BufferUsages::COPY_DST),
+        (native::WGPUBufferUsage_Index, wgt::BufferUsages::INDEX),
+        (native::WGPUBufferUsage_Vertex, wgt::BufferUsages::VERTEX),
+        (native::WGPUBufferUsage_Uniform, wgt::BufferUsages::UNIFORM),
+        (native::WGPUBufferUsage_Storage, wgt::BufferUsages::STORAGE),
+        (
+            native::WGPUBufferUsage_Indirect,
+            wgt::BufferUsages::INDIRECT,
+        ),
+        (
+            native::WGPUBufferUsage_QueryResolve,
+            wgt::BufferUsages::QUERY_RESOLVE,
+        ),
+    ] {
+        if remaining & flag != 0 {
+            usage.insert(mapped);
+            remaining &= !flag;
+        }
+    }
+    let extra_usage = extras.map_or(0, |extras| extras.usage);
+    if remaining != 0
+        || extra_usage
+            & !(native::WGPUWgpuBufferUsage_BlasInput | native::WGPUWgpuBufferUsage_TlasInput)
+            != 0
+    {
+        return None;
+    }
+    if extra_usage & native::WGPUWgpuBufferUsage_BlasInput != 0 {
+        usage.insert(wgt::BufferUsages::BLAS_INPUT);
+    }
+    if extra_usage & native::WGPUWgpuBufferUsage_TlasInput != 0 {
+        usage.insert(wgt::BufferUsages::TLAS_INPUT);
+    }
+    Some(usage)
+}
+
+pub fn map_texture_usage(
+    flags: native::WGPUTextureUsage,
+    extras: Option<&native::WGPUWgpuTextureUsageExtras>,
+) -> Option<wgt::TextureUsages> {
+    let mut usage = map_texture_usage_flags(flags);
+    let extra_usage = extras.map_or(0, |extras| extras.usage);
+    if to_native_texture_usage_flags(usage) != flags
+        || extra_usage & !native::WGPUWgpuTextureUsage_StorageAtomic != 0
+    {
+        return None;
+    }
+    if extra_usage & native::WGPUWgpuTextureUsage_StorageAtomic != 0 {
+        usage.insert(wgt::TextureUsages::STORAGE_ATOMIC);
+    }
+    Some(usage)
+}
+
+pub fn map_texture_descriptor_usage(
+    descriptor: &native::WGPUTextureDescriptor,
+    extras: Option<&native::WGPUWgpuTextureUsageExtras>,
+) -> Option<wgt::TextureUsages> {
+    map_texture_usage(descriptor.usage, extras)
+}
+
+pub fn map_texture_view_usage(
+    descriptor: &native::WGPUTextureViewDescriptor,
+    extras: Option<&native::WGPUWgpuTextureUsageExtras>,
+) -> Option<wgt::TextureUsages> {
+    let usage = map_texture_usage(descriptor.usage, extras).expect("invalid texture view usage");
+    // An unspecified view usage inherits both standard and native texture usages.
+    (!usage.is_empty()).then_some(usage)
+}
+
+#[inline]
+pub fn to_native_wgpu_texture_usage(flags: wgt::TextureUsages) -> native::WGPUWgpuTextureUsage {
+    if flags.contains(wgt::TextureUsages::STORAGE_ATOMIC) {
+        native::WGPUWgpuTextureUsage_StorageAtomic
+    } else {
+        native::WGPUWgpuTextureUsage_None
+    }
+}
+
 #[inline]
 pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureUsages {
     let mut temp = wgt::TextureUsages::empty();
@@ -2193,11 +2284,6 @@ pub fn map_texture_usage_flags(flags: native::WGPUTextureUsage) -> wgt::TextureU
     }
     if (flags & native::WGPUTextureUsage_TransientAttachment) != 0 {
         temp.insert(wgt::TextureUsages::TRANSIENT_ATTACHMENT);
-    }
-    // STORAGE_ATOMIC (1 << 16) is a wgpu-native extension not in the standard WebGPU C API.
-    // We pass the raw wgpu-types bit value through the C API and recognize it here.
-    if (flags & wgt::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage) != 0 {
-        temp.insert(wgt::TextureUsages::STORAGE_ATOMIC);
     }
     temp
 }
@@ -2222,9 +2308,6 @@ pub fn to_native_texture_usage_flags(flags: wgt::TextureUsages) -> native::WGPUT
     }
     if flags.contains(wgt::TextureUsages::TRANSIENT_ATTACHMENT) {
         flag |= native::WGPUTextureUsage_TransientAttachment;
-    }
-    if flags.contains(wgt::TextureUsages::STORAGE_ATOMIC) {
-        flag |= wgt::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage;
     }
     flag
 }
