@@ -12,6 +12,7 @@ struct ExpectedDownlevelCapabilities {
 struct ExpectedTextureFormatCapabilities {
     allowed_usages: u64,
     flags: u64,
+    allowed_wgpu_usages: u64,
 }
 
 #[test]
@@ -20,10 +21,33 @@ fn public_flag_types_and_layouts_use_wgpu_flags() {
     // generated from the same potentially incorrect header.
     const HIGH_BIT: u64 = 1 << 63;
     macro_rules! check_abi {
-        ($api:ident) => {
+        ($api:ident) => {{
             let _: $api::WGPUNativeTextureFormatFeatureFlags = HIGH_BIT;
             let _: $api::WGPUWgslLanguageFeatures = HIGH_BIT;
             let _: $api::WGPUDownlevelFlags = HIGH_BIT;
+            let _: $api::WGPUWgpuBufferUsage = HIGH_BIT;
+            let _: $api::WGPUWgpuTextureUsage = HIGH_BIT;
+            #[repr(C)]
+            struct ExpectedUsageExtras {
+                chain: $api::WGPUChainedStruct,
+                usage: u64,
+            }
+            assert_eq!(
+                size_of::<$api::WGPUWgpuBufferUsageExtras>(),
+                size_of::<ExpectedUsageExtras>()
+            );
+            assert_eq!(
+                size_of::<$api::WGPUWgpuTextureUsageExtras>(),
+                size_of::<ExpectedUsageExtras>()
+            );
+            assert_eq!(
+                offset_of!($api::WGPUWgpuBufferUsageExtras, usage),
+                offset_of!(ExpectedUsageExtras, usage)
+            );
+            assert_eq!(
+                offset_of!($api::WGPUWgpuTextureUsageExtras, usage),
+                offset_of!(ExpectedUsageExtras, usage)
+            );
             assert_eq!(
                 size_of::<$api::WGPUDownlevelCapabilities>(),
                 size_of::<ExpectedDownlevelCapabilities>()
@@ -48,7 +72,11 @@ fn public_flag_types_and_layouts_use_wgpu_flags() {
                 offset_of!($api::WGPUNativeTextureFormatCapabilities, flags),
                 offset_of!(ExpectedTextureFormatCapabilities, flags)
             );
-        };
+            assert_eq!(
+                offset_of!($api::WGPUNativeTextureFormatCapabilities, allowedWgpuUsages),
+                offset_of!(ExpectedTextureFormatCapabilities, allowed_wgpu_usages)
+            );
+        }};
     }
     check_abi!(bindings);
     check_abi!(runtime);

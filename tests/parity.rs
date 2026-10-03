@@ -1,22 +1,171 @@
 use wgpu_native::{conv, native};
 
 #[test]
-fn acceleration_structure_buffer_usages_match_public_wgpu_flags() {
+fn acceleration_structure_buffer_usages_use_a_separate_namespace() {
+    let mut descriptor: native::WGPUBufferDescriptor = unsafe { std::mem::zeroed() };
+    descriptor.usage = native::WGPUBufferUsage_CopyDst;
     for (native_usage, expected) in [
         (
-            native::WGPUBufferUsage_BlasInput,
+            native::WGPUWgpuBufferUsage_BlasInput,
             wgt::BufferUsages::BLAS_INPUT,
         ),
         (
-            native::WGPUBufferUsage_TlasInput,
+            native::WGPUWgpuBufferUsage_TlasInput,
             wgt::BufferUsages::TLAS_INPUT,
         ),
     ] {
+        let mut extras: native::WGPUWgpuBufferUsageExtras = unsafe { std::mem::zeroed() };
+        extras.usage = native_usage;
         assert_eq!(
-            conv::from_u64_bits::<wgt::BufferUsages>(native_usage),
-            Some(expected)
+            conv::map_buffer_usage(&descriptor, Some(&extras)),
+            Some(wgt::BufferUsages::COPY_DST | expected)
         );
     }
+    assert_eq!(
+        conv::map_buffer_usage(&descriptor, None),
+        Some(wgt::BufferUsages::COPY_DST)
+    );
+    for unknown in [0x400, 0x800, 1 << 32, 1 << 63] {
+        descriptor.usage = native::WGPUBufferUsage_CopyDst | unknown;
+        assert_eq!(conv::map_buffer_usage(&descriptor, None), None);
+    }
+    descriptor.usage = native::WGPUBufferUsage_CopyDst;
+    let mut extras: native::WGPUWgpuBufferUsageExtras = unsafe { std::mem::zeroed() };
+    for unknown in [4, 0x400, 0x800, 1 << 32, 1 << 63] {
+        extras.usage = native::WGPUWgpuBufferUsage_BlasInput | unknown;
+        assert_eq!(conv::map_buffer_usage(&descriptor, Some(&extras)), None);
+    }
+}
+
+#[test]
+fn all_standard_buffer_usages_remain_independent_of_native_usages() {
+    for (flag, expected) in [
+        (native::WGPUBufferUsage_MapRead, wgt::BufferUsages::MAP_READ),
+        (
+            native::WGPUBufferUsage_MapWrite,
+            wgt::BufferUsages::MAP_WRITE,
+        ),
+        (native::WGPUBufferUsage_CopySrc, wgt::BufferUsages::COPY_SRC),
+        (native::WGPUBufferUsage_CopyDst, wgt::BufferUsages::COPY_DST),
+        (native::WGPUBufferUsage_Index, wgt::BufferUsages::INDEX),
+        (native::WGPUBufferUsage_Vertex, wgt::BufferUsages::VERTEX),
+        (native::WGPUBufferUsage_Uniform, wgt::BufferUsages::UNIFORM),
+        (native::WGPUBufferUsage_Storage, wgt::BufferUsages::STORAGE),
+        (
+            native::WGPUBufferUsage_Indirect,
+            wgt::BufferUsages::INDIRECT,
+        ),
+        (
+            native::WGPUBufferUsage_QueryResolve,
+            wgt::BufferUsages::QUERY_RESOLVE,
+        ),
+    ] {
+        let mut descriptor: native::WGPUBufferDescriptor = unsafe { std::mem::zeroed() };
+        descriptor.usage = flag;
+        assert_eq!(conv::map_buffer_usage(&descriptor, None), Some(expected));
+    }
+}
+
+#[test]
+fn native_usage_extensions_are_found_after_other_chain_entries() {
+    use conv::{map_buffer_usage, map_texture_descriptor_usage};
+    let mut buffer: native::WGPUBufferDescriptor = unsafe { std::mem::zeroed() };
+    buffer.usage = native::WGPUBufferUsage_CopyDst;
+    let mut buffer_extras: native::WGPUWgpuBufferUsageExtras = unsafe { std::mem::zeroed() };
+    buffer_extras.chain.sType = native::WGPUSType_WgpuBufferUsageExtras;
+    buffer_extras.usage =
+        native::WGPUWgpuBufferUsage_BlasInput | native::WGPUWgpuBufferUsage_TlasInput;
+    let mut texture: native::WGPUTextureDescriptor = unsafe { std::mem::zeroed() };
+    texture.usage = native::WGPUTextureUsage_StorageBinding;
+    let mut texture_extras: native::WGPUWgpuTextureUsageExtras = unsafe { std::mem::zeroed() };
+    texture_extras.chain.sType = native::WGPUSType_WgpuTextureUsageExtras;
+    texture_extras.usage = native::WGPUWgpuTextureUsage_StorageAtomic;
+    for prefix_count in [0, 1, 2] {
+        for (head, is_buffer) in [
+            (&mut buffer_extras.chain, true),
+            (&mut texture_extras.chain, false),
+        ] {
+            let mut head = std::ptr::from_mut(head);
+            let mut prefix = vec![
+                native::WGPUChainedStruct {
+                    next: std::ptr::null_mut(),
+                    sType: 0x7fff_ff01
+                };
+                prefix_count
+            ];
+            for link in &mut prefix {
+                link.next = head;
+                head = std::ptr::from_mut(link);
+            }
+            if is_buffer {
+                buffer.nextInChain = head;
+                let mapped = unsafe {
+                    wgpu_native::follow_chain!(map_buffer_usage((&buffer),
+                    WGPUSType_WgpuBufferUsageExtras => native::WGPUWgpuBufferUsageExtras))
+                };
+                assert_eq!(
+                    mapped,
+                    Some(
+                        wgt::BufferUsages::COPY_DST
+                            | wgt::BufferUsages::BLAS_INPUT
+                            | wgt::BufferUsages::TLAS_INPUT
+                    )
+                );
+            } else {
+                texture.nextInChain = head;
+                let mapped = unsafe {
+                    wgpu_native::follow_chain!(map_texture_descriptor_usage((&texture),
+                    WGPUSType_WgpuTextureUsageExtras => native::WGPUWgpuTextureUsageExtras))
+                };
+                assert_eq!(
+                    mapped,
+                    Some(wgt::TextureUsages::STORAGE_BINDING | wgt::TextureUsages::STORAGE_ATOMIC)
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn atomic_texture_usages_are_separate_and_views_inherit_when_unspecified() {
+    let mut extras: native::WGPUWgpuTextureUsageExtras = unsafe { std::mem::zeroed() };
+    extras.usage = native::WGPUWgpuTextureUsage_StorageAtomic;
+    let expected = wgt::TextureUsages::TEXTURE_BINDING | wgt::TextureUsages::STORAGE_ATOMIC;
+    assert_eq!(
+        conv::map_texture_usage(native::WGPUTextureUsage_TextureBinding, Some(&extras)),
+        Some(expected)
+    );
+    assert_eq!(
+        conv::to_native_texture_usage_flags(expected),
+        native::WGPUTextureUsage_TextureBinding
+    );
+    assert_eq!(
+        conv::to_native_wgpu_texture_usage(expected),
+        native::WGPUWgpuTextureUsage_StorageAtomic
+    );
+    for unknown in [1 << 16, 1 << 32, 1 << 63] {
+        assert_eq!(conv::map_texture_usage(unknown, None), None);
+        extras.usage = unknown | native::WGPUWgpuTextureUsage_StorageAtomic;
+        assert_eq!(conv::map_texture_usage(0, Some(&extras)), None);
+    }
+    let mut view: native::WGPUTextureViewDescriptor = unsafe { std::mem::zeroed() };
+    assert_eq!(conv::map_texture_view_usage(&view, None), None);
+    extras.usage = 0;
+    assert_eq!(conv::map_texture_view_usage(&view, Some(&extras)), None);
+    extras.usage = native::WGPUWgpuTextureUsage_StorageAtomic;
+    assert_eq!(
+        conv::map_texture_view_usage(&view, Some(&extras)),
+        Some(wgt::TextureUsages::STORAGE_ATOMIC)
+    );
+    view.usage = native::WGPUTextureUsage_TextureBinding;
+    assert_eq!(
+        conv::map_texture_view_usage(&view, Some(&extras)),
+        Some(expected)
+    );
+    assert_eq!(
+        conv::map_texture_view_usage(&view, None),
+        Some(wgt::TextureUsages::TEXTURE_BINDING)
+    );
 }
 
 #[test]

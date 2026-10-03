@@ -894,7 +894,8 @@ pub fn map_texture_format_capabilities(
     caps: &native::WGPUNativeTextureFormatCapabilities,
 ) -> wgpu::TextureFormatFeatures {
     wgpu::TextureFormatFeatures {
-        allowed_usages: wgpu::TextureUsages::from_bits_truncate(caps.allowedUsages as u32),
+        allowed_usages: map_texture_usage(caps.allowedUsages)
+            | map_wgpu_texture_usage(caps.allowedWgpuUsages),
         // The C ABI uses WGPUFlags; wgpu stores its known flags in 32 bits.
         flags: wgpu::TextureFormatFeatureFlags::from_bits_truncate(caps.flags as u32),
     }
@@ -1355,13 +1356,16 @@ pub fn buffer_usage_to_native(u: wgpu::BufferUsages) -> native::WGPUBufferUsage 
     if u.contains(wgpu::BufferUsages::QUERY_RESOLVE) {
         out |= native::WGPUBufferUsage_QueryResolve;
     }
-    // BLAS_INPUT and TLAS_INPUT share their bit values with wgpu-types, and wgpu-native
-    // uses the same wgpu-types, so we pass the raw bits directly.
+    out
+}
+
+pub fn buffer_usage_to_wgpu_native(u: wgpu::BufferUsages) -> native::WGPUWgpuBufferUsage {
+    let mut out = native::WGPUWgpuBufferUsage_None;
     if u.contains(wgpu::BufferUsages::BLAS_INPUT) {
-        out |= wgpu::BufferUsages::BLAS_INPUT.bits() as native::WGPUBufferUsage;
+        out |= native::WGPUWgpuBufferUsage_BlasInput;
     }
     if u.contains(wgpu::BufferUsages::TLAS_INPUT) {
-        out |= wgpu::BufferUsages::TLAS_INPUT.bits() as native::WGPUBufferUsage;
+        out |= native::WGPUWgpuBufferUsage_TlasInput;
     }
     out
 }
@@ -1383,12 +1387,26 @@ pub fn texture_usage_to_native(u: wgpu::TextureUsages) -> native::WGPUTextureUsa
     if u.contains(wgpu::TextureUsages::RENDER_ATTACHMENT) {
         out |= native::WGPUTextureUsage_RenderAttachment;
     }
-    if u.contains(wgpu::TextureUsages::STORAGE_ATOMIC) {
-        // Pass STORAGE_ATOMIC's raw bit (1 << 16) directly; wgpu-native's
-        // from_u64_bits recognizes it as wgpu_types::TextureUsages::STORAGE_ATOMIC.
-        out |= wgpu::TextureUsages::STORAGE_ATOMIC.bits() as native::WGPUTextureUsage;
+    if u.contains(wgpu::TextureUsages::TRANSIENT_ATTACHMENT) {
+        out |= native::WGPUTextureUsage_TransientAttachment;
     }
     out
+}
+
+pub fn texture_usage_to_wgpu_native(u: wgpu::TextureUsages) -> native::WGPUWgpuTextureUsage {
+    if u.contains(wgpu::TextureUsages::STORAGE_ATOMIC) {
+        native::WGPUWgpuTextureUsage_StorageAtomic
+    } else {
+        native::WGPUWgpuTextureUsage_None
+    }
+}
+
+pub fn map_wgpu_texture_usage(u: native::WGPUWgpuTextureUsage) -> wgpu::TextureUsages {
+    if u & native::WGPUWgpuTextureUsage_StorageAtomic != 0 {
+        wgpu::TextureUsages::STORAGE_ATOMIC
+    } else {
+        wgpu::TextureUsages::empty()
+    }
 }
 
 pub fn map_texture_usage(u: native::WGPUTextureUsage) -> wgpu::TextureUsages {
@@ -1407,6 +1425,9 @@ pub fn map_texture_usage(u: native::WGPUTextureUsage) -> wgpu::TextureUsages {
     }
     if (u & native::WGPUTextureUsage_RenderAttachment) != 0 {
         out |= wgpu::TextureUsages::RENDER_ATTACHMENT;
+    }
+    if (u & native::WGPUTextureUsage_TransientAttachment) != 0 {
+        out |= wgpu::TextureUsages::TRANSIENT_ATTACHMENT;
     }
     out
 }
@@ -2050,6 +2071,7 @@ mod tests {
             | wgpu::TextureFormatFeatureFlags::BLENDABLE;
         let caps = native::WGPUNativeTextureFormatCapabilities {
             allowedUsages: native::WGPUTextureUsage_TextureBinding,
+            allowedWgpuUsages: native::WGPUWgpuTextureUsage_StorageAtomic,
             flags: native::WGPUNativeTextureFormatFeatureFlags_Filterable
                 | native::WGPUNativeTextureFormatFeatureFlags_Blendable
                 | (1u64 << 63)
@@ -2057,6 +2079,39 @@ mod tests {
         };
         let mapped = map_texture_format_capabilities(&caps);
         assert_eq!(mapped.flags, known);
-        assert_eq!(mapped.allowed_usages, wgpu::TextureUsages::TEXTURE_BINDING);
+        assert_eq!(
+            mapped.allowed_usages,
+            wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_ATOMIC
+        );
+    }
+
+    #[test]
+    fn native_resource_usages_do_not_leak_into_standard_flags() {
+        let buffer = wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::BLAS_INPUT
+            | wgpu::BufferUsages::TLAS_INPUT;
+        assert_eq!(
+            buffer_usage_to_native(buffer),
+            native::WGPUBufferUsage_CopyDst
+        );
+        assert_eq!(
+            buffer_usage_to_wgpu_native(buffer),
+            native::WGPUWgpuBufferUsage_BlasInput | native::WGPUWgpuBufferUsage_TlasInput
+        );
+        let texture = wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_ATOMIC;
+        assert_eq!(
+            texture_usage_to_native(texture),
+            native::WGPUTextureUsage_TextureBinding
+        );
+        assert_eq!(
+            texture_usage_to_wgpu_native(texture),
+            native::WGPUWgpuTextureUsage_StorageAtomic
+        );
+        assert_eq!(
+            map_texture_usage(texture_usage_to_native(texture))
+                | map_wgpu_texture_usage(texture_usage_to_wgpu_native(texture)),
+            texture
+        );
+        assert_eq!(map_texture_usage(1 << 16), wgpu::TextureUsages::empty());
     }
 }

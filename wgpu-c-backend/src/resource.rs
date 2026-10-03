@@ -241,8 +241,22 @@ c_resource!(CTexture, native::WGPUTexture, wgpuTextureRelease);
 impl TextureInterface for CTexture {
     fn create_view(&self, desc: &wgpu::TextureViewDescriptor<'_>) -> DispatchTextureView {
         let label_sv = conv::opt_str_to_string_view(desc.label);
+        let mut extras = native::WGPUWgpuTextureUsageExtras {
+            chain: native::WGPUChainedStruct {
+                next: std::ptr::null_mut(),
+                sType: native::WGPUSType_WgpuTextureUsageExtras,
+            },
+            usage: desc
+                .usage
+                .map(conv::texture_usage_to_wgpu_native)
+                .unwrap_or(0),
+        };
         let c_desc = native::WGPUTextureViewDescriptor {
-            nextInChain: std::ptr::null_mut(),
+            nextInChain: if extras.usage != 0 {
+                &mut extras.chain
+            } else {
+                std::ptr::null_mut()
+            },
             label: label_sv,
             format: desc
                 .format
@@ -264,7 +278,7 @@ impl TextureInterface for CTexture {
             usage: desc
                 .usage
                 .map(conv::texture_usage_to_native)
-                .unwrap_or_else(|| unsafe { wgpuTextureGetUsage(self.ptr) }),
+                .unwrap_or(native::WGPUTextureUsage_None),
         };
         let ptr = unsafe { wgpuTextureCreateView(self.ptr, std::ptr::from_ref(&c_desc)) };
         DispatchTextureView::custom(CTextureView { ptr })

@@ -41,6 +41,16 @@ _Static_assert(_Generic(&wgpuGetWgslLanguageFeatures, WGPUFlags (*)(void): 1, de
 CHECK_FLAG_TYPE(WGPUNativeTextureFormatFeatureFlags);
 CHECK_FLAG_TYPE(WGPUWgslLanguageFeatures);
 CHECK_FLAG_TYPE(WGPUDownlevelFlags);
+CHECK_FLAG_TYPE(WGPUWgpuBufferUsage);
+CHECK_FLAG_TYPE(WGPUWgpuTextureUsage);
+typedef struct {
+    WGPUChainedStruct chain;
+    WGPUFlags usage;
+} ExpectedUsageExtras;
+ABI_ASSERT(sizeof(WGPUWgpuBufferUsageExtras) == sizeof(ExpectedUsageExtras), "buffer usage extras size");
+ABI_ASSERT(sizeof(WGPUWgpuTextureUsageExtras) == sizeof(ExpectedUsageExtras), "texture usage extras size");
+ABI_ASSERT(offsetof(WGPUWgpuBufferUsageExtras, usage) == offsetof(ExpectedUsageExtras, usage), "buffer usage offset");
+ABI_ASSERT(offsetof(WGPUWgpuTextureUsageExtras, usage) == offsetof(ExpectedUsageExtras, usage), "texture usage offset");
 typedef struct {
     WGPUFlags flags;
     WGPUShaderModel shaderModel;
@@ -48,6 +58,7 @@ typedef struct {
 typedef struct {
     WGPUTextureUsage allowedUsages;
     WGPUFlags flags;
+    WGPUFlags allowedWgpuUsages;
 } ExpectedTextureFormatCapabilities;
 ABI_ASSERT(sizeof(WGPUDownlevelCapabilities) == sizeof(ExpectedDownlevelCapabilities),
            "downlevel capabilities size");
@@ -62,8 +73,13 @@ int main(void) {
     assert(limits.chain.next == NULL);
     assert(limits.chain.sType == (WGPUSType)WGPUSType_NativeLimits);
 """ + checks + """
-    assert(WGPUBufferUsage_BlasInput == 0x400);
-    assert(WGPUBufferUsage_TlasInput == 0x800);
+    assert(WGPUWgpuBufferUsage_None == 0);
+    assert(WGPUWgpuBufferUsage_BlasInput == 1);
+    assert(WGPUWgpuBufferUsage_TlasInput == 2);
+    assert(WGPUWgpuTextureUsage_None == 0);
+    assert(WGPUWgpuTextureUsage_StorageAtomic == 1);
+    assert(WGPUSType_WgpuBufferUsageExtras == 0x00030018);
+    assert(WGPUSType_WgpuTextureUsageExtras == 0x00030019);
     return 0;
 }
 """
@@ -83,6 +99,12 @@ int main(void) {
             ], check=True)
             subprocess.run([str(executable)], check=True)
             print(f"{standard}: flag ABI checks and {len(fields)} native limit defaults passed")
+        subprocess.run([
+            os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", "-fsyntax-only",
+            f"-I{root_source / 'ffi'}", f"-I{root_source / 'ffi/webgpu-headers'}",
+            str(ROOT / "tests/native_usage.cpp"),
+        ], check=True)
+        print("c++17: direct native-usage consumer compiles")
 
 
 if __name__ == "__main__":

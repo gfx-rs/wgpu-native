@@ -375,6 +375,7 @@ impl AdapterInterface for CAdapter {
         }
         let mut caps = native::WGPUNativeTextureFormatCapabilities {
             allowedUsages: 0,
+            allowedWgpuUsages: 0,
             flags: 0,
         };
         let status = unsafe {

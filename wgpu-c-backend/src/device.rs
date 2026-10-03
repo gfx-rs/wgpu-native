@@ -1169,15 +1169,26 @@ impl DeviceInterface for CDevice {
         // Any bits not in KNOWN_BUFFER_USAGE_BITS cannot be represented in the C API.
         // Pass usage=0 so wgpu-native generates a validation error (empty usage is always
         // invalid) captured by any active error scope — matching expected wgpu semantics.
-        let native_usage = if (desc.usage.bits() & !conv::KNOWN_BUFFER_USAGE_BITS.bits()) == 0 {
-            conv::buffer_usage_to_native(desc.usage)
+        let usage = if (desc.usage.bits() & !conv::KNOWN_BUFFER_USAGE_BITS.bits()) == 0 {
+            desc.usage
         } else {
-            0
+            wgpu::BufferUsages::empty()
+        };
+        let mut extras = native::WGPUWgpuBufferUsageExtras {
+            chain: native::WGPUChainedStruct {
+                next: std::ptr::null_mut(),
+                sType: native::WGPUSType_WgpuBufferUsageExtras,
+            },
+            usage: conv::buffer_usage_to_wgpu_native(usage),
         };
         let c_desc = native::WGPUBufferDescriptor {
-            nextInChain: std::ptr::null_mut(),
+            nextInChain: if extras.usage != 0 {
+                &mut extras.chain
+            } else {
+                std::ptr::null_mut()
+            },
             label: label_sv,
-            usage: native_usage,
+            usage: conv::buffer_usage_to_native(usage),
             size: desc.size,
             mappedAtCreation: desc.mapped_at_creation as u32,
         };
@@ -1199,8 +1210,19 @@ impl DeviceInterface for CDevice {
             .iter()
             .map(|&f| conv::texture_format_to_native(f))
             .collect();
+        let mut extras = native::WGPUWgpuTextureUsageExtras {
+            chain: native::WGPUChainedStruct {
+                next: std::ptr::null_mut(),
+                sType: native::WGPUSType_WgpuTextureUsageExtras,
+            },
+            usage: conv::texture_usage_to_wgpu_native(desc.usage),
+        };
         let c_desc = native::WGPUTextureDescriptor {
-            nextInChain: std::ptr::null_mut(),
+            nextInChain: if extras.usage != 0 {
+                &mut extras.chain
+            } else {
+                std::ptr::null_mut()
+            },
             label: label_sv,
             usage: conv::texture_usage_to_native(desc.usage),
             dimension: conv::texture_dimension_to_native(desc.dimension),

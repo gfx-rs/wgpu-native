@@ -73,6 +73,26 @@ also check capability struct layouts and the WGSL query return type. Backend
 conversion tests retain known texture capability flags while discarding bits
 that the pinned Rust flag type does not support.
 
+Native buffer and texture usage flags have separate `WGPUFlags` types and
+descriptor chains; they never occupy unregistered bits in the standard usage
+fields. CPU regressions cover all standard buffer flags, mixed/native-only
+usages, unknown bits in either namespace, extension-chain traversal, texture
+capability conversion, and default versus explicit texture-view usages.
+
+For direct C API validation on a macOS Metal adapter supporting ray queries and
+texture atomics (tested on M4 Max):
+
+```sh
+python3 tests/run_native_usage_tests.py --native-source /path/to/feature-checkout --target-dir /path/to/cargo-target --output /path/to/usage-results
+```
+
+This checks missing-feature validation, native-only/mixed BLAS/TLAS buffer
+creation, standard-only usage getters, separated texture capability flags, and
+atomic bind-group validation with inherited, explicit native, and restricted
+standard-only views. Missing adapter/features fail this targeted runner instead
+of silently skipping its coverage. It does not measure GPU execution or
+performance. The output retains the log and runtime/library/test-source hashes.
+
 ## Metal surface lifetime regressions
 
 On a macOS host with a Metal adapter and a window-server session:
