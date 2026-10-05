@@ -22,6 +22,9 @@ fn main() {
 
     #[rustfmt::skip]
     let types_to_rename = vec![
+        ("WGPUBlas", "WGPUBlasImpl"),
+        ("WGPUExternalTexture", "WGPUExternalTextureImpl"),
+        ("WGPUTlas", "WGPUTlasImpl"),
         ("WGPUAdapter", "WGPUAdapterImpl"),
         ("WGPUBindGroup", "WGPUBindGroupImpl"),
         ("WGPUBindGroupLayout", "WGPUBindGroupLayoutImpl"),
@@ -32,6 +35,7 @@ fn main() {
         ("WGPUComputePipeline", "WGPUComputePipelineImpl"),
         ("WGPUDevice", "WGPUDeviceImpl"),
         ("WGPUInstance", "WGPUInstanceImpl"),
+        ("WGPUPipelineCache", "WGPUPipelineCacheImpl"),
         ("WGPUPipelineLayout", "WGPUPipelineLayoutImpl"),
         ("WGPUQuerySet", "WGPUQuerySetImpl"),
         ("WGPUQueue", "WGPUQueueImpl"),
