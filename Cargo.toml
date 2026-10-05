@@ -133,3 +133,7 @@ bitflags = "2"
 
 [build-dependencies]
 bindgen = "0.72"
+
+[profile.release]
+codegen-units = 1
+lto = true
