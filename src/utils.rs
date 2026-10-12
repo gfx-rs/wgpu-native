@@ -269,7 +269,7 @@ macro_rules! map_enum {
     };
 }
 
-/// Equivalent to [map_enum], but it returns [Option<T>] and "undefined" values are converted to [None].
+/// Equivalent to [map_enum], but it returns [`Option<T>`] and "undefined" values are converted to [None].
 #[macro_export]
 macro_rules! map_enum_with_undefined {
     ($name:ident, $c_name:ident, $rs_type:ty, $($variant:ident),+) => {
