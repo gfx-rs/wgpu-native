@@ -1,0 +1,17 @@
+[package]
+name = "wgpu-c-bindings"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.87"
+homepage = "https://github.com/gfx-rs/wgpu-native"
+repository = "https://github.com/gfx-rs/wgpu-native"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+wgpu-native = { path = "../", features = ["vulkan-portability", "angle", "spirv", "glsl", "wgsl", "drm"] }
+
+[build-dependencies]
+bindgen = "0.72"

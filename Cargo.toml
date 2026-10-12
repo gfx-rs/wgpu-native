@@ -9,7 +9,7 @@ authors = [
 	"Rajesh Malviya <rajveer0malviya@gmail.com>",
 ]
 edition = "2021"
-rust-version = "1.87"
+rust-version = "1.93"
 description = "Native WebGPU implementation based on wgpu-core"
 homepage = "https://github.com/gfx-rs/wgpu-native"
 repository = "https://github.com/gfx-rs/wgpu-native"
@@ -18,28 +18,37 @@ categories = ["graphics", "rendering"]
 license = "MIT OR Apache-2.0"
 
 [workspace]
-members = ["."]
-default-members = ["."]
+members = [".", "wgpu-c-backend/", "wgpu-c-bindings/"]
+default-members = [".", "wgpu-c-backend/", "wgpu-c-bindings/"]
 resolver = "2"
+
+[workspace.dependencies.wgpu]
+package = "wgpu"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.wgc]
 package = "wgpu-core"
-version = "29.0.1"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.wgt]
 package = "wgpu-types"
-version = "29.0.1"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.hal]
 package = "wgpu-hal"
-version = "29.0.1"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [workspace.dependencies.naga]
 package = "naga"
-version = "29.0.1"
+git = "https://github.com/gfx-rs/wgpu.git"
+rev = "1a3a4cc27d8082dfd07beaf76dcf3dfb78dda321"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "rlib", "staticlib"]
 
 [features]
 default = ["wgsl", "spirv", "glsl", "dx12", "metal", "vulkan", "gles"]
@@ -51,7 +60,7 @@ dx12 = ["wgc/dx12"]
 metal = ["wgc/metal"]
 
 ## Enables the GLES backend via [ANGLE](https://github.com/google/angle) on macOS using.
-angle = ["wgc/gles"]
+angle = ["wgc/angle"]
 
 ## Enables the Vulkan backend on Windows, Linux, and Android.
 vulkan = ["wgc/vulkan"]
@@ -59,7 +68,7 @@ vulkan = ["wgc/vulkan"]
 gles = ["wgc/gles"]
 
 ## Enables the Vulkan backend on macOS & iOS.
-vulkan-portability = ["wgc/vulkan"]
+vulkan-portability = ["wgc/vulkan-portability"]
 
 #! **Note:** In the documentation, if you see that an item depends on a backend,
 #! it means that the item is only available when that backend is enabled _and_ the backend
@@ -75,7 +84,7 @@ spirv = ["naga/spv-in", "wgc/spirv"]
 glsl = ["naga/glsl-in", "wgc/glsl"]
 
 ## Enable accepting WGSL shaders as input.
-wgsl = ["wgc/wgsl"]
+wgsl = ["naga/wgsl-in", "wgc/wgsl"]
 
 #! ### Logging & Tracing
 # --------------------------------------------------------------------
@@ -88,16 +97,34 @@ strict_asserts = ["wgc/strict_asserts", "wgt/strict_asserts"]
 ## Log all API entry points at info instead of trace level.
 api_log_info = ["wgc/api_log_info"]
 
+## Enable resource counters returned by wgpuDeviceGetInternalCounters.
+counters = ["wgc/counters"]
+
 ## Enables serialization via `serde` on common wgpu types.
 serde = ["dep:serde", "wgc/serde"]
-
-# Uncomment once upstream adds it again — https://github.com/gfx-rs/wgpu/issues/5974
-# ## Allow writing of trace capture files. See [`Adapter::request_device`].
-# trace = ["serde", "wgc/trace"]
 
 ## Allow deserializing of trace capture files that were written with the `trace` feature.
 ## To replay a trace file use the [wgpu player](https://github.com/gfx-rs/wgpu/tree/trunk/player).
 replay = ["serde", "wgc/replay"]
+
+#! ### Backend features
+# --------------------------------------------------------------------
+
+## Support creating surfaces from DRM display/window handles (Linux KMS/DRM, no X11/Wayland).
+drm = ["wgc/drm"]
+
+#! ### External libraries
+# --------------------------------------------------------------------
+
+## Enables statically linking DXC.
+##
+## Normally, to use the modern DXC shader compiler with wgpu, the final application
+## must be shipped alongside `dxcompiler.dll` (min v1.8.2502). This feature statically
+## links a version of DXC so that no external binaries are required to compile DX12 shaders.
+static-dxc = ["wgc/static-dxc"]
+
+## Enable portable atomics on platforms that do not support 64-bit atomics.
+portable-atomic = ["wgc/portable-atomic"]
 
 [dependencies.wgc]
 workspace = true
