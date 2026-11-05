@@ -3076,9 +3076,9 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
     command_count: usize,
     commands: *const native::WGPUCommandBuffer,
 ) {
-    let (queue_id, context) = {
+    let (queue_id, context, error_sink) = {
         let queue = queue.as_ref().expect("invalid queue");
-        (queue.queue.id, &queue.queue.context)
+        (queue.queue.id, &queue.queue.context, &queue.error_sink)
     };
 
     let command_buffers = make_slice(commands, command_count)
@@ -3091,7 +3091,7 @@ pub unsafe extern "C" fn wgpuQueueSubmit(
         .collect::<SmallVec<[_; 4]>>();
 
     if let Err(cause) = context.queue_submit(queue_id, &command_buffers) {
-        handle_error_fatal(cause.1, "wgpuQueueSubmit");
+        handle_error(error_sink, cause.1, None, "wgpuQueueSubmit");
     }
 }
 
@@ -4212,7 +4212,16 @@ pub unsafe extern "C" fn wgpuSurfaceGetCurrentTexture(
                 None => std::ptr::null_mut(),
             };
         }
-        Err(cause) => handle_error_fatal(cause, "wgpuSurfaceGetCurrentTexture"),
+        Err(cause) => {
+            handle_error(
+                &surface_data.error_sink,
+                cause,
+                None,
+                "wgpuSurfaceGetCurrentTexture",
+            );
+            surface_texture.status = native::WGPUSurfaceGetCurrentTextureStatus_Error;
+            surface_texture.texture = std::ptr::null_mut();
+        }
     };
 }
 

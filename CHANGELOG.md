@@ -17,6 +17,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where `size` is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
+- `wgpuQueueSubmit` and `wgpuSurfaceGetCurrentTexture` no longer abort the process on an error such as a lost device: they report it through the error sink, and `wgpuSurfaceGetCurrentTexture` returns `WGPUSurfaceGetCurrentTextureStatus_Error`. By @AxonDesigns in [#641](https://github.com/gfx-rs/wgpu-native/pull/641).
 
 ## [v29.0.1.1](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.1.1) - 2026-06-23
 
