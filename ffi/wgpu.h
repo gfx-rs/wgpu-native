@@ -1225,6 +1225,12 @@ typedef struct WGPUDeviceExtras
     uint64_t suballocatedDeviceMemoryBlockSizeStart;
     /** See @ref WGPUDeviceExtras::suballocatedDeviceMemoryBlockSizeStart. */
     uint64_t suballocatedDeviceMemoryBlockSizeEnd;
+    /**
+     * Allows features documented as @b EXPERIMENTAL to be requested; when
+     * zero, requesting one fails device creation. Such features may have
+     * bugs that cause undefined behavior.
+     */
+    WGPUBool experimentalFeaturesEnabled;
 } WGPUDeviceExtras;
 
 typedef struct WGPUNativeLimits

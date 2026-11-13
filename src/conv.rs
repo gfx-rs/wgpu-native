@@ -504,7 +504,13 @@ pub(crate) unsafe fn map_device_descriptor<'a>(
                 None => Default::default(),
             },
             trace: Default::default(),
-            experimental_features: wgt::ExperimentalFeatures::disabled(),
+            experimental_features: match extras {
+                // SAFETY: the caller opted in via `WGPUDeviceExtras::experimentalFeaturesEnabled`.
+                Some(extras) if extras.experimentalFeaturesEnabled != 0 => unsafe {
+                    wgt::ExperimentalFeatures::enabled()
+                },
+                _ => wgt::ExperimentalFeatures::disabled(),
+            },
         },
         match des.uncapturedErrorCallbackInfo.callback {
             None => None,
