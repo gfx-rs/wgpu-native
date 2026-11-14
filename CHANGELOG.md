@@ -14,7 +14,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 ### Added
 - `WGPUDeviceExtras` now exposes `DeviceDescriptor::memory_hints` via `memoryHints` (`WGPUMemoryHints`: `Performance`/`MemoryUsage`/`Manual` with a block-size range); zero-initialized keeps the previous behavior. By @RubyBit in [#619](https://github.com/gfx-rs/wgpu-native/pull/619).
 - Support OpenHarmonyOS raw-window-handle. By @richerfu in [#626](https://github.com/gfx-rs/wgpu-native/pull/626).
-- `wgpuAdapterGetCooperativeMatrixProperties` exposes `Adapter::cooperative_matrix_properties`: the matrix sizes and element types the adapter supports. By @RubyBit.
+- `wgpuAdapterGetCooperativeMatrixProperties` exposes `Adapter::cooperative_matrix_properties`: the matrix sizes and element types the adapter supports. By @RubyBit in [#643](https://github.com/gfx-rs/wgpu-native/pull/643).
 
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where `size` is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
