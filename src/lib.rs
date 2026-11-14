@@ -813,6 +813,26 @@ pub unsafe extern "C" fn wgpuAdapterHasFeature(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn wgpuAdapterGetCooperativeMatrixProperties(
+    adapter: native::WGPUAdapter,
+    properties: *mut native::WGPUCooperativeMatrixProperties,
+) -> usize {
+    let adapter = adapter.as_ref().expect("invalid adapter");
+    let result = adapter
+        .context
+        .adapter_cooperative_matrix_properties(adapter.id);
+
+    if !properties.is_null() {
+        let out = std::slice::from_raw_parts_mut(properties, result.len());
+        for (dst, props) in out.iter_mut().zip(&result) {
+            *dst = conv::to_native_cooperative_matrix_properties(props);
+        }
+    }
+
+    result.len()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn wgpuAdapterInfoFreeMembers(adapter_info: native::WGPUAdapterInfo) {
     utils::drop_string_view(adapter_info.vendor);
     utils::drop_string_view(adapter_info.architecture);

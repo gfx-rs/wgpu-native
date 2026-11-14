@@ -1548,6 +1548,26 @@ pub fn map_feature(feature: native::WGPUFeatureName) -> Option<wgt::Features> {
 }
 
 #[inline]
+pub fn to_native_cooperative_matrix_properties(
+    props: &wgt::CooperativeMatrixProperties,
+) -> native::WGPUCooperativeMatrixProperties {
+    let scalar = |t: wgt::CooperativeScalarType| match t {
+        wgt::CooperativeScalarType::F32 => native::WGPUCooperativeScalarType_F32,
+        wgt::CooperativeScalarType::F16 => native::WGPUCooperativeScalarType_F16,
+        wgt::CooperativeScalarType::I32 => native::WGPUCooperativeScalarType_I32,
+        wgt::CooperativeScalarType::U32 => native::WGPUCooperativeScalarType_U32,
+    };
+    native::WGPUCooperativeMatrixProperties {
+        mSize: props.m_size,
+        nSize: props.n_size,
+        kSize: props.k_size,
+        abType: scalar(props.ab_type),
+        crType: scalar(props.cr_type),
+        saturatingAccumulation: props.saturating_accumulation as native::WGPUBool,
+    }
+}
+
+#[inline]
 pub fn to_native_present_mode(mode: wgt::PresentMode) -> Option<native::WGPUPresentMode> {
     match mode {
         wgt::PresentMode::Fifo => Some(native::WGPUPresentMode_Fifo),
