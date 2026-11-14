@@ -680,14 +680,12 @@ typedef enum WGPUNativeFeature
      * @b EXPERIMENTAL: Features enabled by this may have major bugs and are
      * expected to be subject to breaking changes.
      * 
-     * **Current limitations:** The implementation currently only supports 8x8 f32 matrices.
-     * On Vulkan, support is determined by querying `vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR`
-     * for configurations matching 8x8x8 f32. Most Vulkan implementations (NVIDIA, AMD) primarily
-     * support f16 inputs at larger sizes (e.g., 16x16), so Vulkan support may be limited.
+     * Supported sizes and element types vary by adapter; list them with
+     * @ref wgpuAdapterGetCooperativeMatrixProperties.
      * 
      * Supported platforms:
      * - Metal (with MSL 2.3+ and Apple7+/Mac2+, using simdgroup matrix operations)
-     * - Vulkan (with [VK_KHR_cooperative_matrix](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_cooperative_matrix.html), if 8x8 f32 is supported)
+     * - Vulkan (with [VK_KHR_cooperative_matrix](https://registry.khronos.org/vulkan/specs/latest/man/html/VK_KHR_cooperative_matrix.html))
      * 
      * This is a native only feature.
      */
@@ -1347,6 +1345,28 @@ typedef struct WGPUInstanceEnumerateAdapterOptions
     WGPUInstanceBackend backends;
 } WGPUInstanceEnumerateAdapterOptions;
 
+typedef enum WGPUCooperativeScalarType
+{
+    WGPUCooperativeScalarType_F32 = 0x00000000,
+    WGPUCooperativeScalarType_F16 = 0x00000001,
+    WGPUCooperativeScalarType_I32 = 0x00000002,
+    WGPUCooperativeScalarType_U32 = 0x00000003,
+    WGPUCooperativeScalarType_Force32 = 0x7FFFFFFF
+} WGPUCooperativeScalarType;
+
+/** A supported `C = A * B + C` configuration: A is M x K, B is K x N, C is M x N. */
+typedef struct WGPUCooperativeMatrixProperties
+{
+    uint32_t mSize;
+    uint32_t nSize;
+    uint32_t kSize;
+    /** Element type of A and B. */
+    WGPUCooperativeScalarType abType;
+    /** Element type of C and the result. */
+    WGPUCooperativeScalarType crType;
+    WGPUBool saturatingAccumulation;
+} WGPUCooperativeMatrixProperties;
+
 typedef struct WGPUBindGroupEntryExtras
 {
     WGPUChainedStruct chain;
@@ -1531,6 +1551,8 @@ extern "C"
 
     void wgpuGenerateReport(WGPUInstance instance, WGPUGlobalReport *report);
     size_t wgpuInstanceEnumerateAdapters(WGPUInstance instance, WGPU_NULLABLE WGPUInstanceEnumerateAdapterOptions const *options, WGPUAdapter *adapters);
+    // Returns the number of supported cooperative matrix configurations, and writes them to `properties` if not NULL.
+    size_t wgpuAdapterGetCooperativeMatrixProperties(WGPUAdapter adapter, WGPUCooperativeMatrixProperties *properties);
 
     WGPUSubmissionIndex wgpuQueueSubmitForIndex(WGPUQueue queue, size_t commandCount, WGPUCommandBuffer const *commands);
     float wgpuQueueGetTimestampPeriod(WGPUQueue queue);
