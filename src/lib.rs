@@ -5,7 +5,8 @@ use conv::{
     map_bind_group_layout_entry, map_device_descriptor, map_instance_backend_flags,
     map_instance_descriptor, map_pipeline_layout_descriptor, map_query_set_descriptor,
     map_query_set_index, map_sampler_border_color_extras, map_shader_module,
-    map_shader_runtime_checks, map_surface, map_surface_configuration, CreateSurfaceParams,
+    map_shader_runtime_checks, map_surface, map_surface_composition_scale,
+    map_surface_configuration, CreateSurfaceParams,
 };
 use parking_lot::Mutex;
 use smallvec::SmallVec;
@@ -4053,10 +4054,20 @@ pub unsafe extern "C" fn wgpuSurfaceConfigure(
         (config),
         WGPUSType_SurfaceConfigurationExtras => native::WGPUSurfaceConfigurationExtras
     ));
+    let composition_scale = follow_chain!(map_surface_composition_scale(
+        (config),
+        WGPUSType_SurfaceConfigurationExtras => native::WGPUSurfaceConfigurationExtras
+    ));
 
     match context.surface_configure(surface.id, device.id, &surface_config) {
         Some(cause) => handle_error_fatal(cause, "wgpuSurfaceConfigure"),
         None => {
+            if let Some((scale_x, scale_y)) = composition_scale {
+                if let Err(cause) = set_composition_scale(context, surface.id, scale_x, scale_y) {
+                    handle_error(&device.error_sink, cause, None, "wgpuSurfaceConfigure");
+                }
+            }
+
             let mut surface_data_guard = surface.data.lock();
             *surface_data_guard = Some(SurfaceData {
                 error_sink: device.error_sink.clone(),
@@ -4078,6 +4089,60 @@ pub unsafe extern "C" fn wgpuSurfaceConfigure(
                 .store(false, atomic::Ordering::SeqCst);
         }
     };
+}
+
+#[derive(Debug, thiserror::Error)]
+enum CompositionScaleError {
+    #[error("composition scale must be positive and finite, got {0} x {1}")]
+    InvalidScale(f32, f32),
+    #[error("surface has no D3D12 composition swap chain to scale")]
+    NoCompositionSwapChain,
+    #[cfg(all(target_os = "windows", feature = "dx12"))]
+    #[error("IDXGISwapChain2::SetMatrixTransform failed: {0}")]
+    SetMatrixTransform(windows::core::Error),
+}
+
+/// Gives the surface's swap chain the inverse of the composition scale as its
+/// matrix transform, so that a SwapChainPanel shows it at one texel per pixel.
+fn set_composition_scale(
+    context: &Context,
+    surface_id: id::SurfaceId,
+    scale_x: f32,
+    scale_y: f32,
+) -> Result<(), CompositionScaleError> {
+    let valid = |scale: f32| scale.is_finite() && scale > 0.0;
+    if !valid(scale_x) || !valid(scale_y) {
+        return Err(CompositionScaleError::InvalidScale(scale_x, scale_y));
+    }
+
+    #[cfg(all(target_os = "windows", feature = "dx12"))]
+    {
+        use windows::core::Interface;
+        use windows::Win32::Graphics::Dxgi::{IDXGISwapChain2, DXGI_MATRIX_3X2_F};
+
+        let hal_surface = unsafe { context.surface_as_hal::<hal::api::Dx12>(surface_id) }
+            .ok_or(CompositionScaleError::NoCompositionSwapChain)?;
+        let swap_chain: IDXGISwapChain2 = hal_surface
+            .swap_chain()
+            .ok_or(CompositionScaleError::NoCompositionSwapChain)?
+            .cast()
+            .map_err(CompositionScaleError::SetMatrixTransform)?;
+        let matrix = DXGI_MATRIX_3X2_F {
+            _11: 1.0 / scale_x,
+            _22: 1.0 / scale_y,
+            ..Default::default()
+        };
+        // Fails with DXGI_ERROR_INVALID_CALL for a swap chain not made for
+        // composition, such as one for a window handle.
+        unsafe { swap_chain.SetMatrixTransform(&matrix) }
+            .map_err(CompositionScaleError::SetMatrixTransform)
+    }
+
+    #[cfg(not(all(target_os = "windows", feature = "dx12")))]
+    {
+        let _ = (context, surface_id);
+        Err(CompositionScaleError::NoCompositionSwapChain)
+    }
 }
 
 #[no_mangle]
