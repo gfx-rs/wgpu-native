@@ -18,6 +18,10 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 ### Fixed
 - `wgpuBufferMayAsync` now correctly handles the case where `size` is `WGPU_WHOLE_MAP_SIZE`. By @Vipitis in [#602](https://github.com/gfx-rs/wgpu-native/pull/602).
 
+### Changed
+
+- internal: MacOS targets now add the `-headerpad_max_install_names` linker argument to allow dynamic library install name changes (and supporting a longer path) [#645](https://github.com/gfx-rs/wgpu-native/issues/645). By @zeyus in [#646](https://github.com/gfx-rs/wgpu-native/issues/646)
+
 ## [v29.0.1.1](https://github.com/gfx-rs/wgpu-native/releases/tag/v29.0.1.1) - 2026-06-23
 
 ### Added 
