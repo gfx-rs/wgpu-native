@@ -1989,6 +1989,16 @@ pub fn map_surface_configuration(
     }
 }
 
+/// The composition scale in the extras, if one is set (not both 0).
+pub fn map_surface_composition_scale(
+    _: &native::WGPUSurfaceConfiguration,
+    extras: Option<&native::WGPUSurfaceConfigurationExtras>,
+) -> Option<(f32, f32)> {
+    extras
+        .map(|extras| (extras.compositionScaleX, extras.compositionScaleY))
+        .filter(|&scale| scale != (0.0, 0.0))
+}
+
 pub fn map_backend_type(backend: wgt::Backend) -> native::WGPUBackendType {
     match backend {
         wgt::Backend::Noop => native::WGPUBackendType_Null,

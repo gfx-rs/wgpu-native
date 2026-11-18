@@ -1387,6 +1387,28 @@ typedef struct WGPUSurfaceConfigurationExtras
      * - 3+: Maximize throughput.
      */
     uint32_t desiredMaximumFrameLatency;
+    /**
+     * The composition scale of a @ref WGPUSurfaceSourceSwapChainPanel surface's
+     * panel: its
+     * [`CompositionScaleX`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.swapchainpanel.compositionscalex)
+     * and `CompositionScaleY`.
+     *
+     * A SwapChainPanel shows its swap chain at one texel per DIP, so on a
+     * display whose scale isn't 1 the output is stretched. With a scale, the
+     * swap chain gets its inverse as its matrix transform
+     * ([`IDXGISwapChain2::SetMatrixTransform`](https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_3/nf-dxgi1_3-idxgiswapchain2-setmatrixtransform))
+     * after each @ref wgpuSurfaceConfigure, so a swap chain sized in physical
+     * pixels fills the panel at one texel per pixel. Configure again when the
+     * scale changes.
+     *
+     * Both 0 (zero-initialized) leaves the swap chain's transform as it is.
+     * Otherwise both must be positive. D3D12 only: on a surface without a
+     * composition swap chain, such as one made from a window handle, a scale
+     * is reported as a validation error.
+     */
+    float compositionScaleX;
+    /** The vertical scale; see @c compositionScaleX. */
+    float compositionScaleY;
 } WGPUSurfaceConfigurationExtras WGPU_STRUCTURE_ATTRIBUTE;
 
 /**

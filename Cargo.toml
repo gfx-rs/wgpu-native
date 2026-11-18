@@ -110,6 +110,8 @@ hal = { workspace = true, features = ["renderdoc"] }
 
 [target.'cfg(windows)'.dependencies]
 hal = { workspace = true, features = ["dx12", "renderdoc"] }
+# The version wgpu-hal uses, so that its DXGI types are the same.
+windows = { version = "0.62", default-features = false, features = ["Win32_Graphics_Dxgi"] }
 
 [dependencies.wgt]
 workspace = true
