@@ -20,6 +20,12 @@ fn main() {
     println!("cargo:rerun-if-env-changed=TARGET");
     println!("cargo:rerun-if-env-changed=BINDGEN_EXTRA_CLANG_ARGS");
 
+    // Allow the linker to add padding to the header of the dynamic library
+    // to allow changes to the install name.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        println!("cargo:rustc-link-arg=-Wl,-headerpad_max_install_names");
+    }
+
     #[rustfmt::skip]
     let types_to_rename = vec![
         ("WGPUAdapter", "WGPUAdapterImpl"),
